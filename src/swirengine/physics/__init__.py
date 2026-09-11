@@ -1,3 +1,10 @@
 from .collision2d import AABB, BoxCollider2D, CollisionWorld2D
+from .rigidbody2d import PhysicsWorld2D, RigidBody2D
 
-__all__ = ["AABB", "BoxCollider2D", "CollisionWorld2D"]
+__all__ = [
+    "AABB",
+    "BoxCollider2D",
+    "CollisionWorld2D",
+    "PhysicsWorld2D",
+    "RigidBody2D",
+]
