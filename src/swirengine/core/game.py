@@ -7,12 +7,14 @@ from typing import Literal, TypeVar
 
 from ..assets import AssetManager
 from ..audio import AudioEngine, AudioHandle
+from ..debug import DebugOverlay
 from ..graphics.camera import Camera2D
 from ..graphics.primitives import Sprite2D, Text2D
 from ..input.manager import InputManager
 from ..particles import ParticleEmitter2D
 from ..physics.collision2d import BoxCollider2D, CollisionWorld2D
 from ..physics.rigidbody2d import PhysicsWorld2D, RigidBody2D
+from ..profiler import Profiler
 from ..storage import SaveStore
 from ..tilemap import TileMap2D
 from ..ui import UIButton, UILabel, UIManager, UIPanel, UIProgressBar
@@ -56,6 +58,8 @@ class Game:
         self.physics = PhysicsWorld2D(self.collisions)
         self.storage = SaveStore(save_path or "save.json", autoload=save_path is not None)
         self.ui = UIManager(self.scene)
+        self.profiler = Profiler()
+        self.debug_overlay = DebugOverlay(self.scene, self.profiler)
         self.running = False
 
         self._update_callbacks: list[Callable[[float], None]] = []
@@ -186,6 +190,10 @@ class Game:
         """Play background music, replacing the previous music track."""
         return self.audio.music(asset, volume=volume, loop=loop)
 
+    def show_debug(self, enabled: bool = True) -> DebugOverlay:
+        """Show or hide the built-in FPS/timing/render-statistics overlay."""
+        return self.debug_overlay.set_enabled(enabled)
+
     def key(self, name: str) -> bool:
         """Beginner-friendly shorthand for ``game.input.key(name)``."""
         return self.input.key(name)
@@ -264,25 +272,32 @@ class Game:
                 dt = min(frame_start - last, 0.25)
                 last = frame_start
                 accumulator += dt
+                self.profiler.begin_frame()
 
-                self.input.begin_frame()
-                glfw.poll_events()
-                self.ui.update(self.input, self.width, self.height)
+                with self.profiler.measure("update"):
+                    self.input.begin_frame()
+                    glfw.poll_events()
+                    self.ui.update(self.input, self.width, self.height)
 
-                for callback in tuple(self._update_callbacks):
-                    callback(dt)
-                self.scene.update(dt)
+                    for callback in tuple(self._update_callbacks):
+                        callback(dt)
+                    self.scene.update(dt)
 
-                fixed_steps = 0
-                while accumulator >= fixed_dt and fixed_steps < 8:
-                    for callback in tuple(self._fixed_callbacks):
-                        callback(fixed_dt)
-                    self.physics.step(fixed_dt)
-                    accumulator -= fixed_dt
-                    fixed_steps += 1
+                with self.profiler.measure("physics"):
+                    fixed_steps = 0
+                    while accumulator >= fixed_dt and fixed_steps < 8:
+                        for callback in tuple(self._fixed_callbacks):
+                            callback(fixed_dt)
+                        self.physics.step(fixed_dt)
+                        accumulator -= fixed_dt
+                        fixed_steps += 1
 
-                renderer.render(self.scene, camera=self.camera)
-                glfw.swap_buffers(window)
+                with self.profiler.measure("render"):
+                    renderer.render(self.scene, camera=self.camera)
+                    glfw.swap_buffers(window)
+
+                self.profiler.end_frame(dt, renderer.stats)
+                self.debug_overlay.update(dt, self.width, self.height)
                 self.events.emit("frame", dt)
 
                 if not self.vsync:

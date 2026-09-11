@@ -1,0 +1,29 @@
+from dataclasses import dataclass
+
+
+@dataclass(slots=True)
+class RendererStats:
+    draw_calls: int = 0
+    sprites: int = 0
+    sprite_batches: int = 0
+    rectangles: int = 0
+    texts: int = 0
+    cubes: int = 0
+    triangles: int = 0
+    texture_uploads: int = 0
+    text_uploads: int = 0
+    texture_cache_entries: int = 0
+    text_cache_entries: int = 0
+
+    def reset(self) -> None:
+        self.draw_calls = 0
+        self.sprites = 0
+        self.sprite_batches = 0
+        self.rectangles = 0
+        self.texts = 0
+        self.cubes = 0
+        self.triangles = 0
+        self.texture_uploads = 0
+        self.text_uploads = 0
+        self.texture_cache_entries = 0
+        self.text_cache_entries = 0

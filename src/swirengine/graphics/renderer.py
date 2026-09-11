@@ -1,23 +1,39 @@
 from __future__ import annotations
 
 import math
+from collections import OrderedDict
 from pathlib import Path
 
 import numpy as np
 
 from ..math.types import orthographic, perspective
+from .batching import SpriteBatch, build_render_runs
 from .camera import Camera2D
 from .primitives import Cube3D, Rectangle2D, Sprite2D, Text2D
+from .stats import RendererStats
 
 
 class Renderer:
-    def __init__(self, ctx, width: int, height: int, mode: str = "2d") -> None:
+    def __init__(
+        self,
+        ctx,
+        width: int,
+        height: int,
+        mode: str = "2d",
+        *,
+        text_cache_limit: int = 128,
+    ) -> None:
         self.ctx = ctx
         self.width = width
         self.height = height
         self.mode = mode
+        self.text_cache_limit = max(8, int(text_cache_limit))
+        self.stats = RendererStats()
         self._textures: dict[str, tuple[object, int, int]] = {}
-        self._text_textures: dict[tuple[str, str, int], tuple[object, int, int]] = {}
+        self._text_textures: OrderedDict[
+            tuple[str, str, int], tuple[object, int, int]
+        ] = OrderedDict()
+        self._sprite_batch_capacity = 0
         self._init_2d()
         self._init_3d()
 
@@ -27,23 +43,21 @@ class Renderer:
         self.ctx.viewport = (0, 0, self.width, self.height)
 
     def _init_2d(self) -> None:
-        vertex_shader = """
-            #version 330
-            in vec2 in_pos;
-            uniform mat4 projection;
-            uniform vec2 center;
-            uniform vec2 size;
-            uniform float angle;
-            void main() {
-                float c = cos(angle);
-                float s = sin(angle);
-                vec2 p = in_pos * size;
-                p = vec2(c*p.x - s*p.y, s*p.x + c*p.y) + center;
-                gl_Position = projection * vec4(p, 0.0, 1.0);
-            }
-        """
         self.program2d = self.ctx.program(
-            vertex_shader=vertex_shader,
+            vertex_shader="""
+                #version 330
+                in vec2 in_pos;
+                uniform mat4 projection;
+                uniform vec2 center;
+                uniform vec2 size;
+                uniform float angle;
+                void main() {
+                    float c = cos(angle), s = sin(angle);
+                    vec2 p = in_pos * size;
+                    p = vec2(c*p.x - s*p.y, s*p.x + c*p.y) + center;
+                    gl_Position = projection * vec4(p, 0.0, 1.0);
+                }
+            """,
             fragment_shader="""
                 #version 330
                 uniform vec4 color;
@@ -52,14 +66,7 @@ class Renderer:
             """,
         )
         quad = np.array(
-            [
-                -0.5, -0.5,
-                 0.5, -0.5,
-                 0.5,  0.5,
-                -0.5, -0.5,
-                 0.5,  0.5,
-                -0.5,  0.5,
-            ],
+            [-0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, -0.5, 0.5, 0.5, -0.5, 0.5],
             dtype="f4",
         )
         self.vbo2d = self.ctx.buffer(quad.tobytes())
@@ -77,8 +84,7 @@ class Renderer:
                 uniform vec4 uv_rect;
                 out vec2 v_uv;
                 void main() {
-                    float c = cos(angle);
-                    float s = sin(angle);
+                    float c = cos(angle), s = sin(angle);
                     vec2 p = in_pos * size;
                     p = vec2(c*p.x - s*p.y, s*p.x + c*p.y) + center;
                     gl_Position = projection * vec4(p, 0.0, 1.0);
@@ -91,9 +97,7 @@ class Renderer:
                 uniform vec4 tint;
                 in vec2 v_uv;
                 out vec4 fragColor;
-                void main() {
-                    fragColor = texture(image, v_uv) * tint;
-                }
+                void main() { fragColor = texture(image, v_uv) * tint; }
             """,
         )
         sprite_quad = np.array(
@@ -113,6 +117,55 @@ class Renderer:
             [(self.sprite_vbo, "2f 2f", "in_pos", "in_uv")],
         )
         self.sprite_program["image"].value = 0
+
+        self.sprite_batch_program = self.ctx.program(
+            vertex_shader="""
+                #version 330
+                in vec2 in_pos;
+                in vec2 in_uv;
+                in vec4 in_tint;
+                uniform mat4 projection;
+                out vec2 v_uv;
+                out vec4 v_tint;
+                void main() {
+                    gl_Position = projection * vec4(in_pos, 0.0, 1.0);
+                    v_uv = in_uv;
+                    v_tint = in_tint;
+                }
+            """,
+            fragment_shader="""
+                #version 330
+                uniform sampler2D image;
+                in vec2 v_uv;
+                in vec4 v_tint;
+                out vec4 fragColor;
+                void main() { fragColor = texture(image, v_uv) * v_tint; }
+            """,
+        )
+        self.sprite_batch_program["image"].value = 0
+        self._create_sprite_batch_buffer(256)
+
+    def _create_sprite_batch_buffer(self, capacity: int) -> None:
+        if self._sprite_batch_capacity:
+            self.sprite_batch_vao.release()
+            self.sprite_batch_vbo.release()
+        self._sprite_batch_capacity = max(1, int(capacity))
+        bytes_per_sprite = 6 * 8 * np.dtype("f4").itemsize
+        self.sprite_batch_vbo = self.ctx.buffer(
+            reserve=self._sprite_batch_capacity * bytes_per_sprite
+        )
+        self.sprite_batch_vao = self.ctx.vertex_array(
+            self.sprite_batch_program,
+            [(self.sprite_batch_vbo, "2f 2f 4f", "in_pos", "in_uv", "in_tint")],
+        )
+
+    def _ensure_sprite_batch_capacity(self, count: int) -> None:
+        if count <= self._sprite_batch_capacity:
+            return
+        capacity = self._sprite_batch_capacity
+        while capacity < count:
+            capacity *= 2
+        self._create_sprite_batch_buffer(capacity)
 
     def _init_3d(self) -> None:
         self.program3d = self.ctx.program(
@@ -135,60 +188,28 @@ class Renderer:
                 out vec4 fragColor;
                 void main() {
                     vec3 n = normalize(v_normal);
-                    vec3 lightDir = normalize(vec3(0.4, 0.8, 0.6));
-                    float diffuse = max(dot(n, lightDir), 0.0);
-                    float light = 0.25 + 0.75 * diffuse;
-                    fragColor = vec4(color.rgb * light, color.a);
+                    float d = max(dot(n, normalize(vec3(0.4, 0.8, 0.6))), 0.0);
+                    fragColor = vec4(color.rgb * (0.25 + 0.75*d), color.a);
                 }
             """,
         )
         p = 0.5
         faces = [
-            ((0, 0, 1), [(-p, -p, p), (p, -p, p), (p, p, p), (-p, -p, p), (p, p, p), (-p, p, p)]),
-            (
-                (0, 0, -1),
-                [
-                    (p, -p, -p),
-                    (-p, -p, -p),
-                    (-p, p, -p),
-                    (p, -p, -p),
-                    (-p, p, -p),
-                    (p, p, -p),
-                ],
-            ),
-            ((1, 0, 0), [(p, -p, p), (p, -p, -p), (p, p, -p), (p, -p, p), (p, p, -p), (p, p, p)]),
-            (
-                (-1, 0, 0),
-                [
-                    (-p, -p, -p),
-                    (-p, -p, p),
-                    (-p, p, p),
-                    (-p, -p, -p),
-                    (-p, p, p),
-                    (-p, p, -p),
-                ],
-            ),
-            ((0, 1, 0), [(-p, p, p), (p, p, p), (p, p, -p), (-p, p, p), (p, p, -p), (-p, p, -p)]),
-            (
-                (0, -1, 0),
-                [
-                    (-p, -p, -p),
-                    (p, -p, -p),
-                    (p, -p, p),
-                    (-p, -p, -p),
-                    (p, -p, p),
-                    (-p, -p, p),
-                ],
-            ),
+            ((0, 0, 1), ((-p, -p, p), (p, -p, p), (p, p, p), (-p, p, p))),
+            ((0, 0, -1), ((p, -p, -p), (-p, -p, -p), (-p, p, -p), (p, p, -p))),
+            ((1, 0, 0), ((p, -p, p), (p, -p, -p), (p, p, -p), (p, p, p))),
+            ((-1, 0, 0), ((-p, -p, -p), (-p, -p, p), (-p, p, p), (-p, p, -p))),
+            ((0, 1, 0), ((-p, p, p), (p, p, p), (p, p, -p), (-p, p, -p))),
+            ((0, -1, 0), ((-p, -p, -p), (p, -p, -p), (p, -p, p), (-p, -p, p))),
         ]
         vertices: list[float] = []
-        for normal, positions in faces:
-            for pos in positions:
-                vertices.extend((*pos, *normal))
-        cube = np.array(vertices, dtype="f4")
-        self.vbo3d = self.ctx.buffer(cube.tobytes())
+        for normal, (a, b, c, d) in faces:
+            for position in (a, b, c, a, c, d):
+                vertices.extend((*position, *normal))
+        self.vbo3d = self.ctx.buffer(np.asarray(vertices, dtype="f4").tobytes())
         self.vao3d = self.ctx.vertex_array(
-            self.program3d, [(self.vbo3d, "3f 3f", "in_pos", "in_normal")]
+            self.program3d,
+            [(self.vbo3d, "3f 3f", "in_pos", "in_normal")],
         )
 
     @staticmethod
@@ -200,7 +221,6 @@ class Renderer:
         cached = self._textures.get(key)
         if cached is not None:
             return cached
-
         from PIL import Image
 
         with Image.open(key) as source:
@@ -211,6 +231,7 @@ class Renderer:
         texture.filter = (self.ctx.LINEAR_MIPMAP_LINEAR, self.ctx.LINEAR)
         cached = (texture, width, height)
         self._textures[key] = cached
+        self.stats.texture_uploads += 1
         return cached
 
     def _text_texture(self, obj: Text2D) -> tuple[object, int, int]:
@@ -218,8 +239,8 @@ class Renderer:
         key = (obj.text, font_key, max(1, int(obj.font_size)))
         cached = self._text_textures.get(key)
         if cached is not None:
+            self._text_textures.move_to_end(key)
             return cached
-
         from PIL import Image, ImageDraw, ImageFont
 
         size = key[2]
@@ -227,20 +248,24 @@ class Renderer:
             font = ImageFont.truetype(font_key or "DejaVuSans.ttf", size)
         except OSError:
             font = ImageFont.load_default()
-        sample = obj.text if obj.text else " "
+        sample = obj.text or " "
         scratch = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(scratch)
-        bbox = draw.textbbox((0, 0), sample, font=font)
+        bbox = ImageDraw.Draw(scratch).textbbox((0, 0), sample, font=font)
         width = max(1, bbox[2] - bbox[0])
         height = max(1, bbox[3] - bbox[1])
         image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(image)
-        draw.text((-bbox[0], -bbox[1]), sample, font=font, fill=(255, 255, 255, 255))
+        ImageDraw.Draw(image).text(
+            (-bbox[0], -bbox[1]), sample, font=font, fill=(255, 255, 255, 255)
+        )
         image = image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
         texture = self.ctx.texture((width, height), 4, image.tobytes())
         texture.filter = (self.ctx.LINEAR, self.ctx.LINEAR)
         cached = (texture, width, height)
         self._text_textures[key] = cached
+        self.stats.text_uploads += 1
+        while len(self._text_textures) > self.text_cache_limit:
+            _, (old_texture, _, _) = self._text_textures.popitem(last=False)
+            old_texture.release()
         return cached
 
     @staticmethod
@@ -248,11 +273,39 @@ class Renderer:
         obj: Rectangle2D | Sprite2D | Text2D,
         camera: Camera2D,
     ) -> tuple[float, float]:
-        x = float(obj.x)
-        y = float(obj.y)
-        if obj.screen_space:
-            return x, y
-        return x - camera.x, y - camera.y
+        x, y = float(obj.x), float(obj.y)
+        return (x, y) if obj.screen_space else (x - camera.x, y - camera.y)
+
+    @staticmethod
+    def _sprite_vertices(
+        batch: SpriteBatch,
+        image_width: int,
+        image_height: int,
+        camera: Camera2D,
+    ) -> np.ndarray:
+        values: list[float] = []
+        for sprite in batch.sprites:
+            width = float(sprite.width if sprite.width is not None else image_width)
+            height = float(sprite.height if sprite.height is not None else image_height)
+            center_x, center_y = Renderer._center(sprite, camera)
+            angle = math.radians(float(sprite.rotation))
+            cos_angle, sin_angle = math.cos(angle), math.sin(angle)
+            u0, v0, u1, v1 = map(float, sprite.uv_rect)
+            tint = sprite.tint.clamped()
+            vertices = (
+                (-0.5, -0.5, u0, v0),
+                (0.5, -0.5, u1, v0),
+                (0.5, 0.5, u1, v1),
+                (-0.5, -0.5, u0, v0),
+                (0.5, 0.5, u1, v1),
+                (-0.5, 0.5, u0, v1),
+            )
+            for local_x, local_y, u, v in vertices:
+                scaled_x, scaled_y = local_x * width, local_y * height
+                world_x = cos_angle * scaled_x - sin_angle * scaled_y + center_x
+                world_y = sin_angle * scaled_x + cos_angle * scaled_y + center_y
+                values.extend((world_x, world_y, u, v, tint.r, tint.g, tint.b, tint.a))
+        return np.asarray(values, dtype="f4")
 
     def render(
         self,
@@ -261,68 +314,77 @@ class Renderer:
         camera: Camera2D | None = None,
         clear_color=(0.035, 0.045, 0.07, 1.0),
     ) -> None:
+        self.stats.reset()
         self.ctx.clear(*clear_color)
         if self.mode == "3d":
             self._render_3d(scene)
         else:
             self._render_2d(scene, camera or Camera2D())
+        self.stats.texture_cache_entries = len(self._textures)
+        self.stats.text_cache_entries = len(self._text_textures)
+
+    def _render_sprite_batch(
+        self,
+        batch: SpriteBatch,
+        camera: Camera2D,
+        projection: np.ndarray,
+        screen_projection: np.ndarray,
+    ) -> None:
+        texture, image_width, image_height = self._texture(batch.key.texture)
+        current = screen_projection if batch.key.screen_space else projection
+        vertices = self._sprite_vertices(batch, image_width, image_height, camera)
+        count = len(batch.sprites)
+        self._ensure_sprite_batch_capacity(count)
+        self.sprite_batch_vbo.write(vertices.tobytes())
+        self._write_mat4(self.sprite_batch_program["projection"], current)
+        texture.use(location=0)
+        self.sprite_batch_vao.render(vertices=count * 6)
+        self.stats.draw_calls += 1
+        self.stats.sprites += count
+        self.stats.sprite_batches += 1
+        self.stats.triangles += count * 2
 
     def _render_2d(self, scene, camera: Camera2D) -> None:
         self.ctx.enable(self.ctx.BLEND)
         self.ctx.blend_func = self.ctx.SRC_ALPHA, self.ctx.ONE_MINUS_SRC_ALPHA
-
         projection = orthographic(
             self.width / camera.safe_zoom,
             self.height / camera.safe_zoom,
         )
         screen_projection = orthographic(self.width, self.height)
-
         objects = sorted(scene.objects, key=lambda item: getattr(item, "layer", 0))
-        for obj in objects:
-            if not getattr(obj, "enabled", True) or not getattr(obj, "visible", True):
-                continue
 
-            current_projection = screen_projection if getattr(obj, "screen_space", False) else projection
+        for item in build_render_runs(objects):
+            if isinstance(item, SpriteBatch):
+                self._render_sprite_batch(item, camera, projection, screen_projection)
+                continue
+            obj = item
+            current = screen_projection if obj.screen_space else projection
             if isinstance(obj, Rectangle2D):
-                self._write_mat4(self.program2d["projection"], current_projection)
+                self._write_mat4(self.program2d["projection"], current)
                 self.program2d["center"].value = self._center(obj, camera)
                 self.program2d["size"].value = (float(obj.width), float(obj.height))
                 self.program2d["angle"].value = math.radians(float(obj.rotation))
                 color = obj.color.clamped()
                 self.program2d["color"].value = (color.r, color.g, color.b, color.a)
                 self.vao2d.render()
-                continue
-
-            if isinstance(obj, Sprite2D):
-                texture, image_width, image_height = self._texture(obj.texture)
-                width = float(obj.width if obj.width is not None else image_width)
-                height = float(obj.height if obj.height is not None else image_height)
-                self._write_mat4(self.sprite_program["projection"], current_projection)
+                self.stats.draw_calls += 1
+                self.stats.rectangles += 1
+                self.stats.triangles += 2
+            elif isinstance(obj, Text2D):
+                texture, width, height = self._text_texture(obj)
+                self._write_mat4(self.sprite_program["projection"], current)
                 self.sprite_program["center"].value = self._center(obj, camera)
-                self.sprite_program["size"].value = (width, height)
-                self.sprite_program["angle"].value = math.radians(float(obj.rotation))
-                tint = obj.tint.clamped()
-                self.sprite_program["tint"].value = (tint.r, tint.g, tint.b, tint.a)
-                self.sprite_program["uv_rect"].value = tuple(float(value) for value in obj.uv_rect)
-                texture.use(location=0)
-                self.sprite_vao.render()
-                continue
-
-            if isinstance(obj, Text2D):
-                texture, text_width, text_height = self._text_texture(obj)
-                self._write_mat4(self.sprite_program["projection"], current_projection)
-                self.sprite_program["center"].value = self._center(obj, camera)
-                self.sprite_program["size"].value = (
-                    float(text_width) * obj.scale,
-                    float(text_height) * obj.scale,
-                )
+                self.sprite_program["size"].value = (width * obj.scale, height * obj.scale)
                 self.sprite_program["angle"].value = 0.0
                 color = obj.color.clamped()
                 self.sprite_program["tint"].value = (color.r, color.g, color.b, color.a)
                 self.sprite_program["uv_rect"].value = (0.0, 0.0, 1.0, 1.0)
                 texture.use(location=0)
                 self.sprite_vao.render()
-
+                self.stats.draw_calls += 1
+                self.stats.texts += 1
+                self.stats.triangles += 2
         self.ctx.disable(self.ctx.BLEND)
 
     def _render_3d(self, scene) -> None:
@@ -338,12 +400,17 @@ class Renderer:
             color = obj.color.clamped()
             self.program3d["color"].value = (color.r, color.g, color.b, color.a)
             self.vao3d.render()
+            self.stats.draw_calls += 1
+            self.stats.cubes += 1
+            self.stats.triangles += 12
         self.ctx.disable(self.ctx.DEPTH_TEST)
 
     def release(self) -> None:
-        for texture, _width, _height in self._textures.values():
+        for texture, _, _ in self._textures.values():
             texture.release()
         self._textures.clear()
-        for texture, _width, _height in self._text_textures.values():
+        for texture, _, _ in self._text_textures.values():
             texture.release()
         self._text_textures.clear()
+        self.sprite_batch_vao.release()
+        self.sprite_batch_vbo.release()
