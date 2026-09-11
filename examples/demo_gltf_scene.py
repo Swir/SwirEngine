@@ -1,6 +1,5 @@
 import swirengine
 
-
 game = swirengine.Game("SwirEngine glTF Scene", mode="3d", asset_root="assets")
 
 for instance in swirengine.load_gltf_scene(game.assets.require("models/scene.glb")):
