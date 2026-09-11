@@ -1,8 +1,8 @@
-# SwirEngine 0.3.5
+# SwirEngine 0.4.0
 
 SwirEngine is a Python-first 2D/3D game engine built around one approachable API.
 Its goal is to let people create real games in Python without learning OpenGL before
-they can put a character on screen.
+they can put a character or 3D model on screen.
 
 > SwirEngine is still pre-1.0. The public API is growing quickly, but the project is
 > already being kept testable and cross-platform from the start.
@@ -15,7 +15,7 @@ they can put a character on screen.
 - colored 2D primitives, render layers and camera-independent screen-space objects
 - textured `Sprite2D` rendering with alpha blending
 - adjacent compatible sprite batching to reduce draw calls without changing render order
-- renderer statistics for draw calls, batches, sprites, primitives, triangles and cache usage
+- renderer statistics for draw calls, batches, sprites, meshes, triangles and cache usage
 - frame profiler with update/physics/render timings and history averages
 - built-in live debug overlay through `game.show_debug()`
 - bounded LRU text-texture cache for changing HUD/debug text
@@ -25,14 +25,17 @@ they can put a character on screen.
 - reusable `TileMap2D` grids backed by pooled sprites
 - lazy GPU texture cache
 - movable/zoomable `Camera2D`
+- real perspective `Camera3D` with look-at and local-space movement
+- reusable `MeshData` / `Mesh3D` geometry with lazy GPU mesh caching
+- Wavefront OBJ import with polygon triangulation and generated normals
 - project `AssetManager` with aliases and strict validation
 - sound effects and background music through a pluggable audio service
 - AABB collision detection plus fixed-step arcade rigid-body physics
 - pooled particle effects
 - JSON `SaveStore` with atomic persistence
-- lit 3D cubes
+- lit 3D cubes and imported meshes
 - scene lifecycle, names and tags
-- creator-friendly factories for gameplay and UI objects
+- creator-friendly factories for gameplay, UI and 3D objects
 - variable update + deterministic fixed-update loop
 - vectors, colors and transforms
 - CLI project generator
@@ -247,13 +250,18 @@ hero_path = game.assets.require("hero")
 
 Aliases work for audio too, because the audio service shares the game's `AssetManager`.
 
-## Tiny 3D game
+## 3D camera, meshes and OBJ files
+
+`Game(mode="3d")` now creates a `Camera3D`. Its default view looks down the negative Z axis,
+so old `Cube3D` scenes remain compatible. You can move in camera-local axes and point it at
+any world position:
 
 ```python
 from swirengine import Color, Cube3D, Game, Vec3
 
 game = Game("My 3D Game", mode="3d")
 cube = game.add(Cube3D(position=Vec3(0, 0, -4), color=Color(0.8, 0.2, 0.5, 1)))
+game.camera.move(0, 1, 2).look_at(cube.position)
 
 @game.update
 def spin(dt):
@@ -261,6 +269,24 @@ def spin(dt):
 
 game.run()
 ```
+
+For imported geometry, put an OBJ file below `assets/` and use the creator-facing factory:
+
+```python
+from swirengine import Game, Vec3
+
+game = Game("OBJ Viewer", mode="3d")
+model = game.obj("models/ship.obj")
+model.position = Vec3(0, 0, -5)
+game.camera.look_at(model.position)
+game.run()
+```
+
+The OBJ loader accepts triangle and polygon faces, positive or negative indices, normals,
+and common `v/vt/vn` references. Polygons are triangulated automatically and missing
+normals are generated. Texture coordinates and materials are the next 0.4 renderer step.
+`MeshData` can also be constructed directly and instantiated with `game.mesh(...)`; its GPU
+vertex buffer is uploaded lazily and reused between scene instances sharing the same data.
 
 ## CLI
 
