@@ -9,6 +9,7 @@ from .graphics.camera import Camera2D
 from .graphics.camera3d import Camera3D
 from .graphics.gltf import GltfSceneMesh, load_gltf, load_gltf_scene
 from .graphics.gltf_asset import GltfPrimitiveAsset, load_gltf_material, load_gltf_primitives
+from .graphics.lights import DirectionalLight3D, PointLight3D, SpotLight3D
 from .graphics.material import Material3D
 from .graphics.mesh import Mesh3D, MeshData, cube_mesh
 from .graphics.obj import load_obj
@@ -38,6 +39,7 @@ __all__ = [
     "Color",
     "Cube3D",
     "DebugOverlay",
+    "DirectionalLight3D",
     "EventBus",
     "FrameProfile",
     "Game",
@@ -48,6 +50,7 @@ __all__ = [
     "MeshData",
     "ParticleEmitter2D",
     "PhysicsWorld2D",
+    "PointLight3D",
     "Profiler",
     "PygameAudioBackend",
     "Rectangle2D",
@@ -55,6 +58,7 @@ __all__ = [
     "RigidBody2D",
     "SaveStore",
     "Scene",
+    "SpotLight3D",
     "Sprite2D",
     "SpriteSheet",
     "Text2D",
@@ -76,4 +80,4 @@ __all__ = [
     "load_obj",
 ]
 
-__version__ = "0.4.4"
+__version__ = "0.4.5"
