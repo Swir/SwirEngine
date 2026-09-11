@@ -11,6 +11,7 @@ from ..debug import DebugOverlay
 from ..graphics.camera import Camera2D
 from ..graphics.camera3d import Camera3D
 from ..graphics.gltf import load_gltf
+from ..graphics.lights import DirectionalLight3D, PointLight3D, SpotLight3D
 from ..graphics.mesh import Mesh3D, MeshData
 from ..graphics.obj import load_obj
 from ..graphics.primitives import Sprite2D, Text2D
@@ -120,6 +121,24 @@ class Game:
         if self.mode != "3d":
             raise RuntimeError("Game.gltf(...) requires mode='3d'")
         return self.mesh(load_gltf(self.assets.require(asset), mesh_index=mesh_index), **kwargs)
+
+    def directional_light(self, **kwargs: object) -> DirectionalLight3D:
+        """Create a sun/moon-style directional light in a 3D game."""
+        if self.mode != "3d":
+            raise RuntimeError("Game.directional_light(...) requires mode='3d'")
+        return self.add(DirectionalLight3D(**kwargs))
+
+    def point_light(self, **kwargs: object) -> PointLight3D:
+        """Create an omnidirectional point light in a 3D game."""
+        if self.mode != "3d":
+            raise RuntimeError("Game.point_light(...) requires mode='3d'")
+        return self.add(PointLight3D(**kwargs))
+
+    def spot_light(self, **kwargs: object) -> SpotLight3D:
+        """Create a cone-shaped spot light in a 3D game."""
+        if self.mode != "3d":
+            raise RuntimeError("Game.spot_light(...) requires mode='3d'")
+        return self.add(SpotLight3D(**kwargs))
 
     def label(self, value: str, x: float = 0.0, y: float = 0.0, **kwargs: object) -> UILabel:
         return self.ui.label(value, x, y, **kwargs)
