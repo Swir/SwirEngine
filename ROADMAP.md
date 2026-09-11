@@ -1,11 +1,10 @@
 # SwirEngine Roadmap
 
-## 0.2 - Real 2D workflow — foundation complete
+## 0.2 - Real 2D workflow — complete
 
 Completed: textured sprites, alpha blending, texture cache, camera 2D, names/tags,
-creator-friendly scene/input shortcuts, render layers and cached text rendering.
-
-Still planned for the broader 2D toolset: GPU sprite batching and a profiling overlay.
+creator-friendly scene/input shortcuts, render layers, cached text rendering,
+adjacent-texture GPU sprite batching and frame/render profiling.
 
 ## 0.3 - 2D gameplay systems — feature complete, hardening in progress
 
@@ -14,8 +13,11 @@ collision layers/masks, one-shot keyboard and mouse input, tilemaps, JSON save d
 pooled particles, fixed-step arcade rigid-body physics, pluggable sound/music playback,
 screen-space UI, labels, panels, buttons and progress bars.
 
-Next: harden 0.3.x APIs, improve renderer batching/profiling and fix issues found by real
-sample games before moving to serious 3D.
+Hardening completed so far: bounded dynamic-text cache, renderer statistics, frame profiler,
+built-in debug overlay and sprite draw-call batching that preserves transparent render order.
+
+Next: exercise 0.3.x with larger sample games, improve error messages/resource diagnostics and
+stabilize the creator-facing API before moving to serious 3D.
 
 ## 0.4 - Serious 3D
 

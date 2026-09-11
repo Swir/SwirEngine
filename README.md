@@ -1,4 +1,4 @@
-# SwirEngine 0.3.4
+# SwirEngine 0.3.5
 
 SwirEngine is a Python-first 2D/3D game engine built around one approachable API.
 Its goal is to let people create real games in Python without learning OpenGL before
@@ -14,6 +14,11 @@ they can put a character on screen.
 - GLFW keyboard + mouse input with held/pressed/released queries
 - colored 2D primitives, render layers and camera-independent screen-space objects
 - textured `Sprite2D` rendering with alpha blending
+- adjacent compatible sprite batching to reduce draw calls without changing render order
+- renderer statistics for draw calls, batches, sprites, primitives, triangles and cache usage
+- frame profiler with update/physics/render timings and history averages
+- built-in live debug overlay through `game.show_debug()`
+- bounded LRU text-texture cache for changing HUD/debug text
 - cached `Text2D` rendering with custom fonts/sizes/colors
 - built-in UI labels, panels, buttons and progress bars
 - sprite-sheet UV regions and named `AnimatedSprite2D` animations
@@ -71,6 +76,26 @@ def update(dt):
 game.run()
 ```
 
+## Performance profiler and debug overlay
+
+Enable the built-in diagnostics HUD before `game.run()`:
+
+```python
+from swirengine import Game
+
+game = Game("Profile Me")
+game.show_debug()
+game.run()
+```
+
+The overlay displays FPS, frame/CPU time, update/physics/render timings, draw calls,
+sprite count, sprite batches and triangle count. Programmatic data is available through
+`game.profiler.latest`, `game.profiler.samples` and `game.profiler.average(...)`.
+
+The 2D renderer automatically merges adjacent sprites that share the same texture, layer
+and screen/world-space mode into a single GPU draw call. Batching deliberately preserves
+render order, which keeps alpha-blended scenes predictable.
+
 ## UI and text
 
 UI elements are screen-space objects, so they stay fixed while the world camera moves.
@@ -96,6 +121,8 @@ game.run()
 
 Use `game.text(...)` for world-space text that follows the camera, and `game.label(...)`
 for HUD/menu text. `Text2D` supports a custom TrueType font path, size, color and scale.
+Dynamic text textures are kept in a bounded LRU cache so changing counters/debug labels do
+not grow GPU memory forever.
 
 ## Audio and music
 
@@ -123,13 +150,14 @@ game.run()
 
 `Game.music(...)` replaces the previous music track and loops by default. Sound effects can
 loop independently. `AudioHandle` exposes `stop()`, `set_volume(...)`, `active`, `loop` and
-`path`. The backend protocol is public, so tests, servers and future platform targets can
-provide another implementation without changing game code.
+`path`. The backend protocol is public, so future platform targets can provide another
+implementation without changing game code.
 
 ## Tilemaps
 
 A tile atlas is addressed row-major from its top-left tile. The tilemap owns a fixed pool
-of sprites, so editing cells does not continuously allocate scene objects.
+of sprites, so editing cells does not continuously allocate scene objects. Because pooled
+tiles usually share one atlas texture, they also benefit strongly from sprite batching.
 
 ```python
 from swirengine import Game

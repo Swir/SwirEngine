@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.5 - 2026-09-11
+
+Renderer performance and diagnostics update.
+
+- added adjacent-compatible `Sprite2D` batching that preserves render order and transparency
+- added a reusable dynamic GPU vertex buffer that grows geometrically for large sprite runs
+- added `RendererStats` with draw-call, sprite, batch, primitive, triangle and cache counters
+- added `Profiler` and immutable `FrameProfile` history/averaging APIs
+- instrumented update, physics and rendering sections in the main game loop
+- added `DebugOverlay` plus `Game.show_debug(...)` for live FPS/timing/render statistics
+- bounded the dynamic text texture cache with LRU eviction to prevent debug/HUD text growth
+- exposed profiler/debug/statistics types from the top-level package
+- added batching, profiler and debug-overlay tests plus a profiler example
+- hardened batching to ignore non-renderable scene service objects
+- marked the remaining 0.2 rendering/profiling goals complete
+- bumped package version to 0.3.5
+
 ## 0.3.4 - 2026-09-11
 
 UI and text-rendering update.
