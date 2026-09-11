@@ -66,7 +66,8 @@ class DebugOverlay:
             return
         self._elapsed %= interval
 
-        profile = self.profiler.average(min(30, len(self.profiler.samples)))
+        sample_count = min(30, len(self.profiler.samples))
+        profile = self.profiler.average(sample_count) if sample_count else self.profiler.latest
         self._lines[0].text = (
             f"FPS {profile.fps:6.1f} | frame {profile.frame_ms:6.2f} ms | "
             f"CPU {profile.cpu_ms:6.2f} ms"

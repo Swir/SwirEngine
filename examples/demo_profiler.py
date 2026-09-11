@@ -1,6 +1,5 @@
 from swirengine import Color, Game, Rectangle2D
 
-
 game = Game("SwirEngine Profiler", 1000, 650)
 game.show_debug()
 
@@ -15,6 +14,5 @@ for row in range(8):
                 color=Color(0.2 + row * 0.04, 0.4, 0.8, 1.0),
             )
         )
-
 
 game.run()

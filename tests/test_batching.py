@@ -51,3 +51,15 @@ def test_hidden_objects_are_removed_before_batching(tmp_path):
     assert len(runs) == 1
     assert isinstance(runs[0], SpriteBatch)
     assert runs[0].sprites == (first, second)
+
+
+def test_non_renderable_scene_objects_are_ignored(tmp_path):
+    texture = tmp_path / "atlas.png"
+    sprite = Sprite2D(texture)
+    marker = object()
+
+    runs = build_render_runs((marker, sprite))
+
+    assert len(runs) == 1
+    assert isinstance(runs[0], SpriteBatch)
+    assert runs[0].sprites == (sprite,)

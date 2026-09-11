@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import time
 from collections import deque
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
-from typing import Iterator
+from typing import ClassVar
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,7 +25,7 @@ class FrameProfile:
 class Profiler:
     """Low-overhead frame profiler used by the runtime and debug overlay."""
 
-    _KNOWN_SECTIONS = {"update", "physics", "render"}
+    _KNOWN_SECTIONS: ClassVar[frozenset[str]] = frozenset({"update", "physics", "render"})
 
     def __init__(self, *, history: int = 120, enabled: bool = True) -> None:
         if history < 1:

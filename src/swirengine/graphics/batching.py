@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
-from .primitives import Sprite2D
+from .primitives import Rectangle2D, Sprite2D, Text2D
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,11 +29,14 @@ def sprite_batch_key(sprite: Sprite2D) -> SpriteBatchKey:
 
 
 def build_render_runs(objects: Iterable[object]) -> tuple[object | SpriteBatch, ...]:
-    """Preserve render order while merging adjacent compatible sprites."""
+    """Preserve visible render order while merging adjacent compatible sprites."""
+    renderable_types = (Rectangle2D, Sprite2D, Text2D)
     visible = tuple(
         obj
         for obj in objects
-        if getattr(obj, "enabled", True) and getattr(obj, "visible", True)
+        if isinstance(obj, renderable_types)
+        and getattr(obj, "enabled", True)
+        and getattr(obj, "visible", True)
     )
     runs: list[object | SpriteBatch] = []
     index = 0
