@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.0 - 2026-09-11
+
+First gameplay-systems milestone.
+
+- added `SpriteSheet`, `AnimationClip` and `AnimatedSprite2D`
+- added normalized sprite UV regions for sprite-sheet rendering
+- added stable 2D render layers
+- added `AssetManager` with aliases, resolution, existence checks and strict loading
+- added `AABB`, `BoxCollider2D` and `CollisionWorld2D`
+- added collision layers/masks and tag-filtered collision queries
+- added `Game.sprite(...)` and `Game.collider(...)` convenience factories
+- added collider cleanup when a scene object is removed through `Game.remove(...)`
+- added named key pressed/released helpers
+- fixed all lint failures found by GitHub Actions after 0.2.0
+- upgraded CI to current Node-24-based official GitHub actions
+- disabled matrix fail-fast so one platform cannot hide results from the others
+- expanded the suite from 16 to 33 tests
+- added animation and collision examples
+
 ## 0.2.0 - 2026-09-11
 
 First creator-focused 2D milestone.
