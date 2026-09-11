@@ -1,6 +1,5 @@
 import swirengine
 
-
 game = swirengine.Game("SwirEngine 3D Lighting", 1100, 700, mode="3d")
 game.camera.position = swirengine.Vec3(0.0, 2.5, 7.0)
 game.camera.look_at(swirengine.Vec3(0.0, 0.0, 0.0))
