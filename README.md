@@ -1,4 +1,4 @@
-# SwirEngine 0.4.0
+# SwirEngine 0.4.5
 
 SwirEngine is a Python-first 2D/3D game engine built around one approachable API.
 Its goal is to let people create real games in Python without learning OpenGL before
@@ -27,13 +27,15 @@ they can put a character or 3D model on screen.
 - movable/zoomable `Camera2D`
 - real perspective `Camera3D` with look-at and local-space movement
 - reusable `MeshData` / `Mesh3D` geometry with lazy GPU mesh caching
-- Wavefront OBJ import with polygon triangulation and generated normals
+- Wavefront OBJ plus static glTF/GLB mesh and scene import
+- material-aware glTF/GLB base-color texture loading
+- `DirectionalLight3D`, `PointLight3D` and `SpotLight3D`
+- distance and spotlight-cone attenuation plus Phong specular/shininess materials
 - project `AssetManager` with aliases and strict validation
 - sound effects and background music through a pluggable audio service
 - AABB collision detection plus fixed-step arcade rigid-body physics
 - pooled particle effects
 - JSON `SaveStore` with atomic persistence
-- lit 3D cubes and imported meshes
 - scene lifecycle, names and tags
 - creator-friendly factories for gameplay, UI and 3D objects
 - variable update + deterministic fixed-update loop
@@ -250,11 +252,11 @@ hero_path = game.assets.require("hero")
 
 Aliases work for audio too, because the audio service shares the game's `AssetManager`.
 
-## 3D camera, meshes and OBJ files
+## 3D camera, meshes and import
 
-`Game(mode="3d")` now creates a `Camera3D`. Its default view looks down the negative Z axis,
-so old `Cube3D` scenes remain compatible. You can move in camera-local axes and point it at
-any world position:
+`Game(mode="3d")` creates a `Camera3D`. Its default view looks down the negative Z axis,
+so older `Cube3D` scenes remain compatible. You can move in camera-local axes and point it
+at any world position:
 
 ```python
 from swirengine import Color, Cube3D, Game, Vec3
@@ -270,23 +272,47 @@ def spin(dt):
 game.run()
 ```
 
-For imported geometry, put an OBJ file below `assets/` and use the creator-facing factory:
+For imported geometry, put an OBJ, glTF or GLB asset below `assets/`. OBJ files can be
+loaded with `game.obj(...)`, while static glTF meshes can be loaded with `game.gltf(...)`.
+Lower-level glTF APIs preserve scene hierarchies and per-primitive materials when needed.
+
+## 3D lighting and materials
+
+Explicit lights are scene objects and can be created directly from `Game`. When a scene
+contains no explicit light, the renderer keeps the historical default directional light so
+older 3D projects continue to render as expected.
 
 ```python
-from swirengine import Game, Vec3
+from swirengine import Color, Game, Material3D, Vec3, cube_mesh
 
-game = Game("OBJ Viewer", mode="3d")
-model = game.obj("models/ship.obj")
-model.position = Vec3(0, 0, -5)
+game = Game("Lighting", mode="3d")
+material = Material3D(
+    tint=Color(0.6, 0.8, 1.0, 1.0),
+    ambient=0.12,
+    diffuse=0.8,
+    specular=0.6,
+    shininess=48.0,
+)
+model = game.mesh(cube_mesh(), material=material)
+model.position = Vec3(0.0, 0.0, -4.0)
+
+game.directional_light(direction=Vec3(-0.4, -1.0, -0.3), intensity=0.7)
+game.point_light(position=Vec3(2.0, 2.0, -2.0), range=8.0, intensity=2.0)
+game.spot_light(
+    position=Vec3(-2.0, 3.0, -1.0),
+    direction=Vec3(0.5, -0.8, -0.4),
+    inner_angle=18.0,
+    outer_angle=30.0,
+)
+
 game.camera.look_at(model.position)
 game.run()
 ```
 
-The OBJ loader accepts triangle and polygon faces, positive or negative indices, normals,
-and common `v/vt/vn` references. Polygons are triangulated automatically and missing
-normals are generated. Texture coordinates and materials are the next 0.4 renderer step.
-`MeshData` can also be constructed directly and instantiated with `game.mesh(...)`; its GPU
-vertex buffer is uploaded lazily and reused between scene instances sharing the same data.
+`DirectionalLight3D` models distant sun/moon lighting. `PointLight3D` uses smooth distance
+attenuation, while `SpotLight3D` combines distance attenuation with smooth inner/outer cone
+cutoffs. The current 0.4 renderer accepts one active light of each type; multiple lights per
+type, richer PBR mapping, shadows, skyboxes and post-processing remain roadmap work.
 
 ## CLI
 
