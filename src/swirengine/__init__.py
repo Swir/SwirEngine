@@ -35,6 +35,9 @@ from .ui import UIButton, UILabel, UIManager, UIPanel, UIProgressBar
 
 __all__ = [
     "AABB",
+    "MAX_DIRECTIONAL_LIGHTS",
+    "MAX_POINT_LIGHTS",
+    "MAX_SPOT_LIGHTS",
     "AnimatedSprite2D",
     "AnimationClip",
     "AssetManager",
@@ -55,9 +58,6 @@ __all__ = [
     "GltfPrimitiveAsset",
     "GltfSceneMesh",
     "LightSelection3D",
-    "MAX_DIRECTIONAL_LIGHTS",
-    "MAX_POINT_LIGHTS",
-    "MAX_SPOT_LIGHTS",
     "Material3D",
     "Mesh3D",
     "MeshData",
