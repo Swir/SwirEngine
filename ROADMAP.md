@@ -22,11 +22,12 @@ polish while 3D grows in parallel.
 ## 0.4 - Serious 3D — in progress
 
 Completed: real `Camera3D`, perspective/view matrices, local camera navigation, `MeshData`,
-`Mesh3D`, lazy GPU mesh caching, mesh render statistics and Wavefront OBJ import with polygon
-triangulation plus generated normals.
+`Mesh3D`, lazy GPU mesh caching, mesh render statistics, Wavefront OBJ import with polygon
+triangulation plus generated normals, optional UV channels, OBJ `vt` import, `Material3D`
+and textured forward rendering with per-instance tinting.
 
-Next: texture coordinates/material abstraction, textured meshes, glTF import,
-directional/point/spot lights, skybox and post-processing.
+Next: glTF import, directional/point/spot lights, material specular controls, skybox and
+post-processing.
 
 ## 0.5 - Architecture
 
