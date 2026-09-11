@@ -10,7 +10,15 @@ from ..math.types import Color, orthographic, perspective
 from .batching import SpriteBatch, build_render_runs
 from .camera import Camera2D
 from .camera3d import Camera3D
-from .lights import DirectionalLight3D, PointLight3D, SpotLight3D
+from .lights import (
+    MAX_DIRECTIONAL_LIGHTS,
+    MAX_POINT_LIGHTS,
+    MAX_SPOT_LIGHTS,
+    DirectionalLight3D,
+    PointLight3D,
+    SpotLight3D,
+    select_lights,
+)
 from .material import Material3D
 from .mesh import Mesh3D
 from .primitives import Cube3D, Rectangle2D, Sprite2D, Text2D
@@ -203,25 +211,76 @@ class Renderer:
                 uniform float shininess;
                 uniform vec3 view_position;
 
-                uniform bool dir_enabled;
-                uniform vec3 dir_direction;
-                uniform vec3 dir_color;
-                uniform float dir_intensity;
+                uniform bool dir0_enabled;
+                uniform vec3 dir0_direction;
+                uniform vec3 dir0_color;
+                uniform float dir0_intensity;
+                uniform bool dir1_enabled;
+                uniform vec3 dir1_direction;
+                uniform vec3 dir1_color;
+                uniform float dir1_intensity;
+                uniform bool dir2_enabled;
+                uniform vec3 dir2_direction;
+                uniform vec3 dir2_color;
+                uniform float dir2_intensity;
+                uniform bool dir3_enabled;
+                uniform vec3 dir3_direction;
+                uniform vec3 dir3_color;
+                uniform float dir3_intensity;
 
-                uniform bool point_enabled;
-                uniform vec3 point_position;
-                uniform vec3 point_color;
-                uniform float point_intensity;
-                uniform float point_range;
+                uniform bool point0_enabled;
+                uniform vec3 point0_position;
+                uniform vec3 point0_color;
+                uniform float point0_intensity;
+                uniform float point0_range;
+                uniform bool point1_enabled;
+                uniform vec3 point1_position;
+                uniform vec3 point1_color;
+                uniform float point1_intensity;
+                uniform float point1_range;
+                uniform bool point2_enabled;
+                uniform vec3 point2_position;
+                uniform vec3 point2_color;
+                uniform float point2_intensity;
+                uniform float point2_range;
+                uniform bool point3_enabled;
+                uniform vec3 point3_position;
+                uniform vec3 point3_color;
+                uniform float point3_intensity;
+                uniform float point3_range;
 
-                uniform bool spot_enabled;
-                uniform vec3 spot_position;
-                uniform vec3 spot_direction;
-                uniform vec3 spot_color;
-                uniform float spot_intensity;
-                uniform float spot_range;
-                uniform float spot_inner_cos;
-                uniform float spot_outer_cos;
+                uniform bool spot0_enabled;
+                uniform vec3 spot0_position;
+                uniform vec3 spot0_direction;
+                uniform vec3 spot0_color;
+                uniform float spot0_intensity;
+                uniform float spot0_range;
+                uniform float spot0_inner_cos;
+                uniform float spot0_outer_cos;
+                uniform bool spot1_enabled;
+                uniform vec3 spot1_position;
+                uniform vec3 spot1_direction;
+                uniform vec3 spot1_color;
+                uniform float spot1_intensity;
+                uniform float spot1_range;
+                uniform float spot1_inner_cos;
+                uniform float spot1_outer_cos;
+                uniform bool spot2_enabled;
+                uniform vec3 spot2_position;
+                uniform vec3 spot2_direction;
+                uniform vec3 spot2_color;
+                uniform float spot2_intensity;
+                uniform float spot2_range;
+                uniform float spot2_inner_cos;
+                uniform float spot2_outer_cos;
+                uniform bool spot3_enabled;
+                uniform vec3 spot3_position;
+                uniform vec3 spot3_direction;
+                uniform vec3 spot3_color;
+                uniform float spot3_intensity;
+                uniform float spot3_range;
+                uniform float spot3_inner_cos;
+                uniform float spot3_outer_cos;
 
                 in vec3 v_normal;
                 in vec3 v_world_pos;
@@ -253,6 +312,65 @@ class Renderer:
                     return falloff * falloff;
                 }
 
+                vec3 directional_light(
+                    vec3 normal,
+                    vec3 view_dir,
+                    vec3 surface,
+                    vec3 direction,
+                    vec3 light_color,
+                    float intensity
+                ) {
+                    return illuminate(
+                        normal, view_dir, normalize(-direction), light_color, intensity, surface
+                    );
+                }
+
+                vec3 point_light(
+                    vec3 normal,
+                    vec3 view_dir,
+                    vec3 surface,
+                    vec3 position,
+                    vec3 light_color,
+                    float intensity,
+                    float light_range
+                ) {
+                    vec3 delta = position - v_world_pos;
+                    float distance_to_light = length(delta);
+                    if (distance_to_light <= 0.0001) {
+                        return vec3(0.0);
+                    }
+                    float power = intensity * attenuation(distance_to_light, light_range);
+                    return illuminate(
+                        normal, view_dir, delta / distance_to_light, light_color, power, surface
+                    );
+                }
+
+                vec3 spot_light(
+                    vec3 normal,
+                    vec3 view_dir,
+                    vec3 surface,
+                    vec3 position,
+                    vec3 direction,
+                    vec3 light_color,
+                    float intensity,
+                    float light_range,
+                    float inner_cos,
+                    float outer_cos
+                ) {
+                    vec3 delta = position - v_world_pos;
+                    float distance_to_light = length(delta);
+                    if (distance_to_light <= 0.0001) {
+                        return vec3(0.0);
+                    }
+                    vec3 light_dir = delta / distance_to_light;
+                    float theta = dot(-light_dir, normalize(direction));
+                    float cone = smoothstep(outer_cos, inner_cos, theta);
+                    float power = intensity * cone * attenuation(distance_to_light, light_range);
+                    return illuminate(
+                        normal, view_dir, light_dir, light_color, power, surface
+                    );
+                }
+
                 void main() {
                     vec4 surface_rgba = color;
                     if (use_texture) {
@@ -263,34 +381,20 @@ class Renderer:
                     vec3 view_dir = normalize(view_position - v_world_pos);
                     vec3 lighting = surface * ambient_strength;
 
-                    if (dir_enabled) {
-                        vec3 light_dir = normalize(-dir_direction);
-                        lighting += illuminate(
-                            normal, view_dir, light_dir, dir_color, dir_intensity, surface
-                        );
-                    }
+                    if (dir0_enabled) lighting += directional_light(normal, view_dir, surface, dir0_direction, dir0_color, dir0_intensity);
+                    if (dir1_enabled) lighting += directional_light(normal, view_dir, surface, dir1_direction, dir1_color, dir1_intensity);
+                    if (dir2_enabled) lighting += directional_light(normal, view_dir, surface, dir2_direction, dir2_color, dir2_intensity);
+                    if (dir3_enabled) lighting += directional_light(normal, view_dir, surface, dir3_direction, dir3_color, dir3_intensity);
 
-                    if (point_enabled) {
-                        vec3 delta = point_position - v_world_pos;
-                        float distance_to_light = length(delta);
-                        vec3 light_dir = normalize(delta);
-                        float power = point_intensity * attenuation(distance_to_light, point_range);
-                        lighting += illuminate(
-                            normal, view_dir, light_dir, point_color, power, surface
-                        );
-                    }
+                    if (point0_enabled) lighting += point_light(normal, view_dir, surface, point0_position, point0_color, point0_intensity, point0_range);
+                    if (point1_enabled) lighting += point_light(normal, view_dir, surface, point1_position, point1_color, point1_intensity, point1_range);
+                    if (point2_enabled) lighting += point_light(normal, view_dir, surface, point2_position, point2_color, point2_intensity, point2_range);
+                    if (point3_enabled) lighting += point_light(normal, view_dir, surface, point3_position, point3_color, point3_intensity, point3_range);
 
-                    if (spot_enabled) {
-                        vec3 delta = spot_position - v_world_pos;
-                        float distance_to_light = length(delta);
-                        vec3 light_dir = normalize(delta);
-                        float theta = dot(normalize(-light_dir), normalize(spot_direction));
-                        float cone = smoothstep(spot_outer_cos, spot_inner_cos, theta);
-                        float power = spot_intensity * cone * attenuation(distance_to_light, spot_range);
-                        lighting += illuminate(
-                            normal, view_dir, light_dir, spot_color, power, surface
-                        );
-                    }
+                    if (spot0_enabled) lighting += spot_light(normal, view_dir, surface, spot0_position, spot0_direction, spot0_color, spot0_intensity, spot0_range, spot0_inner_cos, spot0_outer_cos);
+                    if (spot1_enabled) lighting += spot_light(normal, view_dir, surface, spot1_position, spot1_direction, spot1_color, spot1_intensity, spot1_range, spot1_inner_cos, spot1_outer_cos);
+                    if (spot2_enabled) lighting += spot_light(normal, view_dir, surface, spot2_position, spot2_direction, spot2_color, spot2_intensity, spot2_range, spot2_inner_cos, spot2_outer_cos);
+                    if (spot3_enabled) lighting += spot_light(normal, view_dir, surface, spot3_position, spot3_direction, spot3_color, spot3_intensity, spot3_range, spot3_inner_cos, spot3_outer_cos);
 
                     fragColor = vec4(lighting, surface_rgba.a);
                 }
@@ -524,40 +628,65 @@ class Renderer:
             color.a * tint.a,
         )
 
-    def _configure_lights(self, scene, camera: Camera3D) -> None:
-        directional = next(
-            (
-                obj
-                for obj in scene.objects
-                if isinstance(obj, DirectionalLight3D)
-                and getattr(obj, "enabled", True)
-                and getattr(obj, "visible", True)
-            ),
-            None,
+    def _set_directional_light(self, slot: int, light: DirectionalLight3D | None) -> None:
+        prefix = f"dir{slot}"
+        self.program3d[f"{prefix}_enabled"].value = light is not None
+        if light is None:
+            return
+        direction = light.direction.normalized()
+        color = light.color.clamped()
+        self.program3d[f"{prefix}_direction"].value = (
+            direction.x,
+            direction.y,
+            direction.z,
         )
-        point = next(
-            (
-                obj
-                for obj in scene.objects
-                if isinstance(obj, PointLight3D)
-                and getattr(obj, "enabled", True)
-                and getattr(obj, "visible", True)
-            ),
-            None,
-        )
-        spot = next(
-            (
-                obj
-                for obj in scene.objects
-                if isinstance(obj, SpotLight3D)
-                and getattr(obj, "enabled", True)
-                and getattr(obj, "visible", True)
-            ),
-            None,
-        )
+        self.program3d[f"{prefix}_color"].value = (color.r, color.g, color.b)
+        self.program3d[f"{prefix}_intensity"].value = float(light.intensity)
 
-        if directional is None and point is None and spot is None:
-            directional = DirectionalLight3D()
+    def _set_point_light(self, slot: int, light: PointLight3D | None) -> None:
+        prefix = f"point{slot}"
+        self.program3d[f"{prefix}_enabled"].value = light is not None
+        if light is None:
+            return
+        color = light.color.clamped()
+        self.program3d[f"{prefix}_position"].value = (
+            light.position.x,
+            light.position.y,
+            light.position.z,
+        )
+        self.program3d[f"{prefix}_color"].value = (color.r, color.g, color.b)
+        self.program3d[f"{prefix}_intensity"].value = float(light.intensity)
+        self.program3d[f"{prefix}_range"].value = float(light.range)
+
+    def _set_spot_light(self, slot: int, light: SpotLight3D | None) -> None:
+        prefix = f"spot{slot}"
+        self.program3d[f"{prefix}_enabled"].value = light is not None
+        if light is None:
+            return
+        direction = light.direction.normalized()
+        color = light.color.clamped()
+        self.program3d[f"{prefix}_position"].value = (
+            light.position.x,
+            light.position.y,
+            light.position.z,
+        )
+        self.program3d[f"{prefix}_direction"].value = (
+            direction.x,
+            direction.y,
+            direction.z,
+        )
+        self.program3d[f"{prefix}_color"].value = (color.r, color.g, color.b)
+        self.program3d[f"{prefix}_intensity"].value = float(light.intensity)
+        self.program3d[f"{prefix}_range"].value = float(light.range)
+        self.program3d[f"{prefix}_inner_cos"].value = math.cos(math.radians(light.inner_angle))
+        self.program3d[f"{prefix}_outer_cos"].value = math.cos(math.radians(light.outer_angle))
+
+    def _configure_lights(self, scene, camera: Camera3D) -> None:
+        selection = select_lights(scene.objects)
+        self.stats.directional_lights = len(selection.directional)
+        self.stats.point_lights = len(selection.point)
+        self.stats.spot_lights = len(selection.spot)
+        self.stats.lights_dropped = selection.dropped
 
         self.program3d["view_position"].value = (
             float(camera.position.x),
@@ -565,41 +694,15 @@ class Renderer:
             float(camera.position.z),
         )
 
-        self.program3d["dir_enabled"].value = directional is not None
-        if directional is not None:
-            direction = directional.direction.normalized()
-            color = directional.color.clamped()
-            self.program3d["dir_direction"].value = (direction.x, direction.y, direction.z)
-            self.program3d["dir_color"].value = (color.r, color.g, color.b)
-            self.program3d["dir_intensity"].value = float(directional.intensity)
-
-        self.program3d["point_enabled"].value = point is not None
-        if point is not None:
-            color = point.color.clamped()
-            self.program3d["point_position"].value = (
-                point.position.x,
-                point.position.y,
-                point.position.z,
-            )
-            self.program3d["point_color"].value = (color.r, color.g, color.b)
-            self.program3d["point_intensity"].value = float(point.intensity)
-            self.program3d["point_range"].value = float(point.range)
-
-        self.program3d["spot_enabled"].value = spot is not None
-        if spot is not None:
-            direction = spot.direction.normalized()
-            color = spot.color.clamped()
-            self.program3d["spot_position"].value = (
-                spot.position.x,
-                spot.position.y,
-                spot.position.z,
-            )
-            self.program3d["spot_direction"].value = (direction.x, direction.y, direction.z)
-            self.program3d["spot_color"].value = (color.r, color.g, color.b)
-            self.program3d["spot_intensity"].value = float(spot.intensity)
-            self.program3d["spot_range"].value = float(spot.range)
-            self.program3d["spot_inner_cos"].value = math.cos(math.radians(spot.inner_angle))
-            self.program3d["spot_outer_cos"].value = math.cos(math.radians(spot.outer_angle))
+        for slot in range(MAX_DIRECTIONAL_LIGHTS):
+            light = selection.directional[slot] if slot < len(selection.directional) else None
+            self._set_directional_light(slot, light)
+        for slot in range(MAX_POINT_LIGHTS):
+            light = selection.point[slot] if slot < len(selection.point) else None
+            self._set_point_light(slot, light)
+        for slot in range(MAX_SPOT_LIGHTS):
+            light = selection.spot[slot] if slot < len(selection.spot) else None
+            self._set_spot_light(slot, light)
 
     def _render_model(
         self,

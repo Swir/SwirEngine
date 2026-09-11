@@ -29,11 +29,11 @@ containers, binary chunks, default/custom scene selection, hierarchical node tra
 node matrices, TRS/quaternion transforms, world-space normal transformation, mirrored-winding
 preservation, glTF/GLB base-color material loading with per-primitive material boundaries,
 `baseColorFactor`, external images, data-URI images and embedded GLB `bufferView` textures,
-`DirectionalLight3D`, `PointLight3D`, `SpotLight3D`, distance/cone attenuation and Phong
-specular/shininess material controls.
+`DirectionalLight3D`, `PointLight3D`, `SpotLight3D`, distance/cone attenuation, Phong
+specular/shininess material controls and simultaneous multi-light forward rendering with
+explicit per-type GPU budgets plus overflow diagnostics.
 
-Next: multiple simultaneous lights per type, richer PBR mapping, skybox, shadows and
-post-processing.
+Next: richer PBR mapping from glTF metallic/roughness, skybox, shadows and post-processing.
 
 ## 0.5 - Architecture
 

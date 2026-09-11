@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.6 - 2026-09-12
+
+Multi-light forward-rendering and diagnostics update.
+
+- upgraded the 3D forward shader from one light per type to multiple simultaneous lights
+- added explicit OpenGL 3.3 budgets of four directional, four point and four spot lights per pass
+- added deterministic scene-order light selection that respects `enabled` and `visible`
+- preserved the legacy fallback directional light only when no explicit active light exists
+- added public `LightSelection3D`, `select_lights(...)` and per-type light-budget constants
+- added renderer statistics for directional/point/spot light counts and dropped-over-budget lights
+- propagated light statistics into `FrameProfile`, profiler averaging and the built-in debug overlay
+- hardened point/spot shader math against zero-distance light vectors
+- expanded the 3D lighting example to exercise multiple lights of every type
+- added regression tests for ordering, filtering, fallback behavior, GPU-budget overflow and diagnostics
+- advanced the 0.4 roadmap from single-light Phong rendering toward PBR, shadows and post-processing
+- bumped package version to 0.4.6
+
 ## 0.4.5 - 2026-09-11
 
 3D lighting and material-specular update.

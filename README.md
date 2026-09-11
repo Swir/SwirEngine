@@ -1,4 +1,4 @@
-# SwirEngine 0.4.5
+# SwirEngine 0.4.6
 
 SwirEngine is a Python-first 2D/3D game engine built around one approachable API.
 Its goal is to let people create real games in Python without learning OpenGL before
@@ -15,7 +15,7 @@ they can put a character or 3D model on screen.
 - colored 2D primitives, render layers and camera-independent screen-space objects
 - textured `Sprite2D` rendering with alpha blending
 - adjacent compatible sprite batching to reduce draw calls without changing render order
-- renderer statistics for draw calls, batches, sprites, meshes, triangles and cache usage
+- renderer statistics for draw calls, batches, sprites, meshes, triangles, lights and cache usage
 - frame profiler with update/physics/render timings and history averages
 - built-in live debug overlay through `game.show_debug()`
 - bounded LRU text-texture cache for changing HUD/debug text
@@ -30,6 +30,7 @@ they can put a character or 3D model on screen.
 - Wavefront OBJ plus static glTF/GLB mesh and scene import
 - material-aware glTF/GLB base-color texture loading
 - `DirectionalLight3D`, `PointLight3D` and `SpotLight3D`
+- multiple simultaneous lights with explicit 4/4/4 directional/point/spot GPU budgets
 - distance and spotlight-cone attenuation plus Phong specular/shininess materials
 - project `AssetManager` with aliases and strict validation
 - sound effects and background music through a pluggable audio service
@@ -94,8 +95,10 @@ game.run()
 ```
 
 The overlay displays FPS, frame/CPU time, update/physics/render timings, draw calls,
-sprite count, sprite batches and triangle count. Programmatic data is available through
-`game.profiler.latest`, `game.profiler.samples` and `game.profiler.average(...)`.
+sprite count, sprite batches, triangle count and 3D directional/point/spot light usage.
+It also reports lights dropped when a scene exceeds the forward renderer's per-type GPU
+budget. Programmatic data is available through `game.profiler.latest`,
+`game.profiler.samples` and `game.profiler.average(...)`.
 
 The 2D renderer automatically merges adjacent sprites that share the same texture, layer
 and screen/world-space mode into a single GPU draw call. Batching deliberately preserves
@@ -297,7 +300,9 @@ model = game.mesh(cube_mesh(), material=material)
 model.position = Vec3(0.0, 0.0, -4.0)
 
 game.directional_light(direction=Vec3(-0.4, -1.0, -0.3), intensity=0.7)
+game.directional_light(direction=Vec3(0.5, -0.3, 0.7), intensity=0.2)
 game.point_light(position=Vec3(2.0, 2.0, -2.0), range=8.0, intensity=2.0)
+game.point_light(position=Vec3(-2.0, 1.0, -3.0), range=7.0, intensity=1.5)
 game.spot_light(
     position=Vec3(-2.0, 3.0, -1.0),
     direction=Vec3(0.5, -0.8, -0.4),
@@ -311,8 +316,13 @@ game.run()
 
 `DirectionalLight3D` models distant sun/moon lighting. `PointLight3D` uses smooth distance
 attenuation, while `SpotLight3D` combines distance attenuation with smooth inner/outer cone
-cutoffs. The current 0.4 renderer accepts one active light of each type; multiple lights per
-type, richer PBR mapping, shadows, skyboxes and post-processing remain roadmap work.
+cutoffs. The OpenGL 3.3 forward pass currently accepts up to four active lights of each
+type at once. Selection is deterministic in scene order, and any lights above the budget
+are reported through `RendererStats.lights_dropped`, `FrameProfile.lights_dropped` and the
+debug overlay instead of being silently ignored. `MAX_DIRECTIONAL_LIGHTS`,
+`MAX_POINT_LIGHTS` and `MAX_SPOT_LIGHTS` expose the current budgets.
+
+Richer PBR mapping, shadows, skyboxes and post-processing remain roadmap work.
 
 ## CLI
 
