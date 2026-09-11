@@ -4,12 +4,16 @@ class InputManager:
         self._pressed: set[int] = set()
         self._released: set[int] = set()
         self._buttons: set[int] = set()
+        self._buttons_pressed: set[int] = set()
+        self._buttons_released: set[int] = set()
         self.mouse_x = self.mouse_y = 0.0
         self.mouse_dx = self.mouse_dy = 0.0
 
     def begin_frame(self) -> None:
         self._pressed.clear()
         self._released.clear()
+        self._buttons_pressed.clear()
+        self._buttons_released.clear()
         self.mouse_dx = self.mouse_dy = 0.0
 
     @staticmethod
@@ -45,6 +49,12 @@ class InputManager:
     def mouse_button(self, button: int) -> bool:
         return button in self._buttons
 
+    def mouse_button_pressed(self, button: int) -> bool:
+        return button in self._buttons_pressed
+
+    def mouse_button_released(self, button: int) -> bool:
+        return button in self._buttons_released
+
     def _on_key(self, key: int, action: int) -> None:
         import glfw
 
@@ -65,5 +75,7 @@ class InputManager:
 
         if action == glfw.PRESS:
             self._buttons.add(button)
+            self._buttons_pressed.add(button)
         elif action == glfw.RELEASE:
             self._buttons.discard(button)
+            self._buttons_released.add(button)

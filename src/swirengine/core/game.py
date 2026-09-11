@@ -8,13 +8,14 @@ from typing import Literal, TypeVar
 from ..assets import AssetManager
 from ..audio import AudioEngine, AudioHandle
 from ..graphics.camera import Camera2D
-from ..graphics.primitives import Sprite2D
+from ..graphics.primitives import Sprite2D, Text2D
 from ..input.manager import InputManager
 from ..particles import ParticleEmitter2D
 from ..physics.collision2d import BoxCollider2D, CollisionWorld2D
 from ..physics.rigidbody2d import PhysicsWorld2D, RigidBody2D
 from ..storage import SaveStore
 from ..tilemap import TileMap2D
+from ..ui import UIButton, UILabel, UIManager, UIPanel, UIProgressBar
 from .events import EventBus
 from .scene import Scene
 
@@ -54,6 +55,7 @@ class Game:
         self.collisions = CollisionWorld2D()
         self.physics = PhysicsWorld2D(self.collisions)
         self.storage = SaveStore(save_path or "save.json", autoload=save_path is not None)
+        self.ui = UIManager(self.scene)
         self.running = False
 
         self._update_callbacks: list[Callable[[float], None]] = []
@@ -69,6 +71,8 @@ class Game:
         return self.scene.add_many(*objects)
 
     def remove(self, obj: object) -> bool:
+        if self.ui.remove(obj):
+            return True
         if isinstance(obj, (TileMap2D, ParticleEmitter2D)):
             for child in obj.children:
                 self.scene.remove(child)
@@ -86,6 +90,37 @@ class Game:
     def sprite(self, texture: str | Path, **kwargs: object) -> Sprite2D:
         """Create and add a sprite resolved relative to the game's asset directory."""
         return self.add(Sprite2D(self.assets.resolve(texture), **kwargs))
+
+    def text(self, value: str, x: float = 0.0, y: float = 0.0, **kwargs: object) -> Text2D:
+        """Create world-space text rendered through the shared 2D texture pipeline."""
+        return self.add(Text2D(value, x, y, **kwargs))
+
+    def label(self, value: str, x: float = 0.0, y: float = 0.0, **kwargs: object) -> UILabel:
+        return self.ui.label(value, x, y, **kwargs)
+
+    def panel(self, x: float, y: float, width: float, height: float, **kwargs: object) -> UIPanel:
+        return self.ui.panel(x, y, width, height, **kwargs)
+
+    def button(
+        self,
+        value: str,
+        x: float,
+        y: float,
+        width: float = 220.0,
+        height: float = 56.0,
+        **kwargs: object,
+    ) -> UIButton:
+        return self.ui.button(value, x, y, width, height, **kwargs)
+
+    def progress_bar(
+        self,
+        x: float,
+        y: float,
+        width: float = 260.0,
+        height: float = 24.0,
+        **kwargs: object,
+    ) -> UIProgressBar:
+        return self.ui.progress_bar(x, y, width, height, **kwargs)
 
     def tilemap(
         self,
@@ -208,9 +243,13 @@ class Game:
         glfw.set_mouse_button_callback(
             window, lambda _w, button, action, _mods: self.input._on_button(button, action)
         )
-        glfw.set_framebuffer_size_callback(
-            window, lambda _w, width, height: renderer.resize(width, height)
-        )
+
+        def on_resize(_window, width: int, height: int) -> None:
+            self.width = max(1, int(width))
+            self.height = max(1, int(height))
+            renderer.resize(self.width, self.height)
+
+        glfw.set_framebuffer_size_callback(window, on_resize)
 
         self.running = True
         last = time.perf_counter()
@@ -228,6 +267,7 @@ class Game:
 
                 self.input.begin_frame()
                 glfw.poll_events()
+                self.ui.update(self.input, self.width, self.height)
 
                 for callback in tuple(self._update_callbacks):
                     callback(dt)

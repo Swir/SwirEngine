@@ -3,18 +3,19 @@
 ## 0.2 - Real 2D workflow — foundation complete
 
 Completed: textured sprites, alpha blending, texture cache, camera 2D, names/tags,
-creator-friendly scene/input shortcuts and render layers.
+creator-friendly scene/input shortcuts, render layers and cached text rendering.
 
-Still planned for the broader 2D toolset: GPU sprite batching, text rendering and a
-profiling overlay.
+Still planned for the broader 2D toolset: GPU sprite batching and a profiling overlay.
 
-## 0.3 - 2D gameplay systems — in progress
+## 0.3 - 2D gameplay systems — feature complete, hardening in progress
 
 Completed: sprite sheets, named animation clips, asset manager, AABB box collisions,
-collision layers/masks, one-shot input helpers, tilemaps, JSON save data, pooled particles,
-fixed-step arcade rigid-body physics and pluggable sound/music playback.
+collision layers/masks, one-shot keyboard and mouse input, tilemaps, JSON save data,
+pooled particles, fixed-step arcade rigid-body physics, pluggable sound/music playback,
+screen-space UI, labels, panels, buttons and progress bars.
 
-Next: UI controls. Then harden 0.3.x APIs before moving to serious 3D.
+Next: harden 0.3.x APIs, improve renderer batching/profiling and fix issues found by real
+sample games before moving to serious 3D.
 
 ## 0.4 - Serious 3D
 

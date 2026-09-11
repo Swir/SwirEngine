@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "swirengine"
-version = "0.3.3"
+version = "0.3.4"
 description = "Modern Python-first 2D/3D game engine with a unified API."
 readme = "README.md"
 requires-python = ">=3.10"

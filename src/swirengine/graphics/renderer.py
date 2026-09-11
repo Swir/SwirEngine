@@ -7,7 +7,7 @@ import numpy as np
 
 from ..math.types import orthographic, perspective
 from .camera import Camera2D
-from .primitives import Cube3D, Rectangle2D, Sprite2D
+from .primitives import Cube3D, Rectangle2D, Sprite2D, Text2D
 
 
 class Renderer:
@@ -17,6 +17,7 @@ class Renderer:
         self.height = height
         self.mode = mode
         self._textures: dict[str, tuple[object, int, int]] = {}
+        self._text_textures: dict[tuple[str, str, int], tuple[object, int, int]] = {}
         self._init_2d()
         self._init_3d()
 
@@ -212,6 +213,47 @@ class Renderer:
         self._textures[key] = cached
         return cached
 
+    def _text_texture(self, obj: Text2D) -> tuple[object, int, int]:
+        font_key = str(obj.font) if obj.font is not None else ""
+        key = (obj.text, font_key, max(1, int(obj.font_size)))
+        cached = self._text_textures.get(key)
+        if cached is not None:
+            return cached
+
+        from PIL import Image, ImageDraw, ImageFont
+
+        size = key[2]
+        try:
+            font = ImageFont.truetype(font_key or "DejaVuSans.ttf", size)
+        except OSError:
+            font = ImageFont.load_default()
+        sample = obj.text if obj.text else " "
+        scratch = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(scratch)
+        bbox = draw.textbbox((0, 0), sample, font=font)
+        width = max(1, bbox[2] - bbox[0])
+        height = max(1, bbox[3] - bbox[1])
+        image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(image)
+        draw.text((-bbox[0], -bbox[1]), sample, font=font, fill=(255, 255, 255, 255))
+        image = image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+        texture = self.ctx.texture((width, height), 4, image.tobytes())
+        texture.filter = (self.ctx.LINEAR, self.ctx.LINEAR)
+        cached = (texture, width, height)
+        self._text_textures[key] = cached
+        return cached
+
+    @staticmethod
+    def _center(
+        obj: Rectangle2D | Sprite2D | Text2D,
+        camera: Camera2D,
+    ) -> tuple[float, float]:
+        x = float(obj.x)
+        y = float(obj.y)
+        if obj.screen_space:
+            return x, y
+        return x - camera.x, y - camera.y
+
     def render(
         self,
         scene,
@@ -233,19 +275,17 @@ class Renderer:
             self.width / camera.safe_zoom,
             self.height / camera.safe_zoom,
         )
-        self._write_mat4(self.program2d["projection"], projection)
-        self._write_mat4(self.sprite_program["projection"], projection)
+        screen_projection = orthographic(self.width, self.height)
 
         objects = sorted(scene.objects, key=lambda item: getattr(item, "layer", 0))
         for obj in objects:
             if not getattr(obj, "enabled", True) or not getattr(obj, "visible", True):
                 continue
 
+            current_projection = screen_projection if getattr(obj, "screen_space", False) else projection
             if isinstance(obj, Rectangle2D):
-                self.program2d["center"].value = (
-                    float(obj.x - camera.x),
-                    float(obj.y - camera.y),
-                )
+                self._write_mat4(self.program2d["projection"], current_projection)
+                self.program2d["center"].value = self._center(obj, camera)
                 self.program2d["size"].value = (float(obj.width), float(obj.height))
                 self.program2d["angle"].value = math.radians(float(obj.rotation))
                 color = obj.color.clamped()
@@ -257,15 +297,29 @@ class Renderer:
                 texture, image_width, image_height = self._texture(obj.texture)
                 width = float(obj.width if obj.width is not None else image_width)
                 height = float(obj.height if obj.height is not None else image_height)
-                self.sprite_program["center"].value = (
-                    float(obj.x - camera.x),
-                    float(obj.y - camera.y),
-                )
+                self._write_mat4(self.sprite_program["projection"], current_projection)
+                self.sprite_program["center"].value = self._center(obj, camera)
                 self.sprite_program["size"].value = (width, height)
                 self.sprite_program["angle"].value = math.radians(float(obj.rotation))
                 tint = obj.tint.clamped()
                 self.sprite_program["tint"].value = (tint.r, tint.g, tint.b, tint.a)
                 self.sprite_program["uv_rect"].value = tuple(float(value) for value in obj.uv_rect)
+                texture.use(location=0)
+                self.sprite_vao.render()
+                continue
+
+            if isinstance(obj, Text2D):
+                texture, text_width, text_height = self._text_texture(obj)
+                self._write_mat4(self.sprite_program["projection"], current_projection)
+                self.sprite_program["center"].value = self._center(obj, camera)
+                self.sprite_program["size"].value = (
+                    float(text_width) * obj.scale,
+                    float(text_height) * obj.scale,
+                )
+                self.sprite_program["angle"].value = 0.0
+                color = obj.color.clamped()
+                self.sprite_program["tint"].value = (color.r, color.g, color.b, color.a)
+                self.sprite_program["uv_rect"].value = (0.0, 0.0, 1.0, 1.0)
                 texture.use(location=0)
                 self.sprite_vao.render()
 
@@ -290,3 +344,6 @@ class Renderer:
         for texture, _width, _height in self._textures.values():
             texture.release()
         self._textures.clear()
+        for texture, _width, _height in self._text_textures.values():
+            texture.release()
+        self._text_textures.clear()

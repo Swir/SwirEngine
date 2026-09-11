@@ -5,13 +5,14 @@ from .core.game import Game
 from .core.scene import Scene
 from .graphics.animation import AnimatedSprite2D, AnimationClip, SpriteSheet, animated_sprite
 from .graphics.camera import Camera2D
-from .graphics.primitives import Cube3D, Rectangle2D, Sprite2D
+from .graphics.primitives import Cube3D, Rectangle2D, Sprite2D, Text2D
 from .math.types import Color, Transform, Vec2, Vec3
 from .particles import ParticleEmitter2D
 from .physics.collision2d import AABB, BoxCollider2D, CollisionWorld2D
 from .physics.rigidbody2d import PhysicsWorld2D, RigidBody2D
 from .storage import SaveStore
 from .tilemap import TileMap2D
+from .ui import UIButton, UILabel, UIManager, UIPanel, UIProgressBar
 
 __all__ = [
     "AABB",
@@ -37,11 +38,17 @@ __all__ = [
     "Scene",
     "Sprite2D",
     "SpriteSheet",
+    "Text2D",
     "TileMap2D",
     "Transform",
+    "UIButton",
+    "UILabel",
+    "UIManager",
+    "UIPanel",
+    "UIProgressBar",
     "Vec2",
     "Vec3",
     "animated_sprite",
 ]
 
-__version__ = "0.3.3"
+__version__ = "0.3.4"

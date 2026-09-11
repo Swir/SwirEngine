@@ -1,4 +1,4 @@
-# SwirEngine 0.3.3
+# SwirEngine 0.3.4
 
 SwirEngine is a Python-first 2D/3D game engine built around one approachable API.
 Its goal is to let people create real games in Python without learning OpenGL before
@@ -11,9 +11,11 @@ they can put a character on screen.
 
 - one `Game` API for 2D and 3D
 - GPU rendering with ModernGL / OpenGL 3.3
-- GLFW window, keyboard and mouse input
-- colored 2D primitives and render layers
+- GLFW keyboard + mouse input with held/pressed/released queries
+- colored 2D primitives, render layers and camera-independent screen-space objects
 - textured `Sprite2D` rendering with alpha blending
+- cached `Text2D` rendering with custom fonts/sizes/colors
+- built-in UI labels, panels, buttons and progress bars
 - sprite-sheet UV regions and named `AnimatedSprite2D` animations
 - reusable `TileMap2D` grids backed by pooled sprites
 - lazy GPU texture cache
@@ -25,8 +27,7 @@ they can put a character on screen.
 - JSON `SaveStore` with atomic persistence
 - lit 3D cubes
 - scene lifecycle, names and tags
-- creator-friendly factories for sprites, tilemaps, colliders, bodies, particles and audio
-- held / pressed / released keyboard queries
+- creator-friendly factories for gameplay and UI objects
 - variable update + deterministic fixed-update loop
 - vectors, colors and transforms
 - CLI project generator
@@ -69,6 +70,32 @@ def update(dt):
 
 game.run()
 ```
+
+## UI and text
+
+UI elements are screen-space objects, so they stay fixed while the world camera moves.
+Buttons include hover, press and click handling, and overlapping buttons only activate the
+topmost control.
+
+```python
+from swirengine import Game
+
+game = Game("Menu")
+game.panel(0, 0, 420, 260)
+game.label("Main Menu", 0, 85, font_size=32)
+progress = game.progress_bar(0, 20, 280, 24, value=0.4)
+
+
+def play(_button):
+    progress.value = min(1.0, progress.value + 0.1)
+
+
+game.button("Play", 0, -70, 180, 52, on_click=play)
+game.run()
+```
+
+Use `game.text(...)` for world-space text that follows the camera, and `game.label(...)`
+for HUD/menu text. `Text2D` supports a custom TrueType font path, size, color and scale.
 
 ## Audio and music
 
@@ -191,16 +218,6 @@ hero_path = game.assets.require("hero")
 ```
 
 Aliases work for audio too, because the audio service shares the game's `AssetManager`.
-
-## One-shot input
-
-```python
-if game.key_pressed("SPACE"):
-    shoot()
-
-if game.key_released("ESCAPE"):
-    close_menu()
-```
 
 ## Tiny 3D game
 

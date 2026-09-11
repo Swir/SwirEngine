@@ -21,6 +21,7 @@ class Rectangle2D:
     name: str = ""
     tags: set[str] = field(default_factory=set)
     layer: int = 0
+    screen_space: bool = False
 
     def update(self, dt: float) -> None:
         pass
@@ -41,6 +42,27 @@ class Sprite2D:
     tags: set[str] = field(default_factory=set)
     layer: int = 0
     uv_rect: UVRect = (0.0, 0.0, 1.0, 1.0)
+    screen_space: bool = False
+
+    def update(self, dt: float) -> None:
+        pass
+
+
+@dataclass(slots=True)
+class Text2D:
+    text: str
+    x: float = 0.0
+    y: float = 0.0
+    color: Color = field(default_factory=Color)
+    font_size: int = 24
+    font: str | Path | None = None
+    scale: float = 1.0
+    enabled: bool = True
+    visible: bool = True
+    name: str = ""
+    tags: set[str] = field(default_factory=set)
+    layer: int = 0
+    screen_space: bool = False
 
     def update(self, dt: float) -> None:
         pass

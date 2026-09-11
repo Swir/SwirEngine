@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.4 - 2026-09-11
+
+UI and text-rendering update.
+
+- added cached `Text2D` rendering through Pillow + the existing textured quad shader
+- added camera-independent `screen_space` rendering for rectangles, sprites and text
+- added `UIManager`, `UILabel`, `UIPanel`, `UIButton` and `UIProgressBar`
+- added hover/pressed/click state handling with topmost-button hit testing
+- added one-frame mouse pressed/released queries to `InputManager`
+- added `Game.ui`, `Game.text(...)`, `Game.label(...)`, `Game.panel(...)`, `Game.button(...)` and `Game.progress_bar(...)`
+- added automatic UI child registration and cleanup through `Game.remove(...)`
+- fixed framebuffer resize bookkeeping so UI hit testing follows the real window size
+- added headless UI/input tests and a runnable UI example
+- marked the 0.3 gameplay feature set complete and moved the milestone into API hardening
+- bumped package version to 0.3.4
+
 ## 0.3.3 - 2026-09-11
 
 Audio foundation and lifecycle update.
