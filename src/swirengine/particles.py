@@ -37,7 +37,7 @@ class ParticleEmitter2D:
         angle: tuple[float, float] = (0.0, 360.0),
         size: tuple[float, float] = (3.0, 8.0),
         gravity: tuple[float, float] = (0.0, -80.0),
-        color: Color = Color(),
+        color: Color | None = None,
         layer: int = 0,
         emitting: bool = True,
         seed: int | None = None,
@@ -60,7 +60,7 @@ class ParticleEmitter2D:
         self.angle = tuple(map(float, angle))
         self.size = tuple(map(float, size))
         self.gravity = (float(gravity[0]), float(gravity[1]))
-        self.color = color.clamped()
+        self.color = (color or Color()).clamped()
         self.layer = int(layer)
         self.emitting = bool(emitting)
         self.enabled = True
