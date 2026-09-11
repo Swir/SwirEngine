@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 
 from ..math.types import Color, Vec3
+
+MAX_DIRECTIONAL_LIGHTS = 4
+MAX_POINT_LIGHTS = 4
+MAX_SPOT_LIGHTS = 4
 
 
 def _positive(value: float, name: str) -> float:
@@ -86,3 +91,78 @@ class SpotLight3D:
 
     def update(self, dt: float) -> None:
         pass
+
+
+@dataclass(frozen=True, slots=True)
+class LightSelection3D:
+    """Active lights selected for one forward-rendering pass."""
+
+    directional: tuple[DirectionalLight3D, ...] = ()
+    point: tuple[PointLight3D, ...] = ()
+    spot: tuple[SpotLight3D, ...] = ()
+    dropped_directional: int = 0
+    dropped_point: int = 0
+    dropped_spot: int = 0
+
+    @property
+    def dropped(self) -> int:
+        return self.dropped_directional + self.dropped_point + self.dropped_spot
+
+    @property
+    def total(self) -> int:
+        return len(self.directional) + len(self.point) + len(self.spot)
+
+
+def select_lights(
+    objects: Iterable[object],
+    *,
+    max_directional: int = MAX_DIRECTIONAL_LIGHTS,
+    max_point: int = MAX_POINT_LIGHTS,
+    max_spot: int = MAX_SPOT_LIGHTS,
+    default_directional: bool = True,
+) -> LightSelection3D:
+    """Select visible lights in scene order and report lights beyond GPU budgets."""
+
+    limits = (int(max_directional), int(max_point), int(max_spot))
+    if any(limit < 0 for limit in limits):
+        raise ValueError("light limits cannot be negative")
+
+    directional: list[DirectionalLight3D] = []
+    point: list[PointLight3D] = []
+    spot: list[SpotLight3D] = []
+    dropped_directional = dropped_point = dropped_spot = 0
+    active_user_lights = 0
+
+    for obj in objects:
+        if not getattr(obj, "enabled", True) or not getattr(obj, "visible", True):
+            continue
+        if isinstance(obj, DirectionalLight3D):
+            active_user_lights += 1
+            if len(directional) < limits[0]:
+                directional.append(obj)
+            else:
+                dropped_directional += 1
+        elif isinstance(obj, PointLight3D):
+            active_user_lights += 1
+            if len(point) < limits[1]:
+                point.append(obj)
+            else:
+                dropped_point += 1
+        elif isinstance(obj, SpotLight3D):
+            active_user_lights += 1
+            if len(spot) < limits[2]:
+                spot.append(obj)
+            else:
+                dropped_spot += 1
+
+    if active_user_lights == 0 and default_directional and limits[0] > 0:
+        directional.append(DirectionalLight3D())
+
+    return LightSelection3D(
+        directional=tuple(directional),
+        point=tuple(point),
+        spot=tuple(spot),
+        dropped_directional=dropped_directional,
+        dropped_point=dropped_point,
+        dropped_spot=dropped_spot,
+    )
