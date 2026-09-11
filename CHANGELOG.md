@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.1 - 2026-09-11
+
+Textured 3D materials update.
+
+- added optional per-vertex UV coordinates to `MeshData` while preserving the existing six-float `interleaved()` default
+- added UV-aware GPU mesh uploads using an eight-float position/normal/UV vertex layout
+- added `Material3D` with optional albedo texture, tint, ambient and diffuse strengths
+- added texture sampling to the forward 3D shader without breaking existing solid-color `Cube3D` and `Mesh3D` workflows
+- made `Mesh3D.color` continue to act as an instance tint multiplied by the material tint
+- upgraded `cube_mesh()` and the built-in cube renderer geometry with face-local UV coordinates
+- upgraded Wavefront OBJ loading to parse `vt` records, positive/negative texture indices and mixed missing-UV data
+- kept OBJ files without texture coordinates UV-less instead of inventing a material requirement
+- added UV/material/OBJ regression tests and a textured OBJ example
+- advanced the 0.4 roadmap from mesh/import foundation into textured material rendering
+- bumped package version to 0.4.1
+
 ## 0.4.0 - 2026-09-11
 
 Serious 3D foundation milestone.
