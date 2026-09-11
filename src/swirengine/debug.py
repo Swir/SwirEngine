@@ -32,7 +32,7 @@ class DebugOverlay:
                 visible=False,
                 name=f"__swir_debug_{index}",
             )
-            for index in range(3)
+            for index in range(4)
         )
         scene.add_many(*self._lines)
 
@@ -57,7 +57,7 @@ class DebugOverlay:
         left = -max(1, int(width)) / 2.0
         top = max(1, int(height)) / 2.0
         for index, line in enumerate(self._lines):
-            line.x = left + 180.0
+            line.x = left + 205.0
             line.y = top - 20.0 - index * 20.0
 
         self._elapsed += max(0.0, float(dt))
@@ -79,4 +79,8 @@ class DebugOverlay:
         self._lines[2].text = (
             f"draw {profile.draw_calls} | sprites {profile.sprites} | "
             f"batches {profile.sprite_batches} | tris {profile.triangles}"
+        )
+        self._lines[3].text = (
+            f"lights D/P/S {profile.directional_lights}/{profile.point_lights}/"
+            f"{profile.spot_lights} | dropped {profile.lights_dropped}"
         )
