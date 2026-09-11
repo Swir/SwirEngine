@@ -28,7 +28,7 @@ class MeshData:
 
     @property
     def vertex_count(self) -> int:
-        return int(len(self.vertices))
+        return len(self.vertices)
 
     @property
     def triangle_count(self) -> int:
