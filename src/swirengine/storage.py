@@ -65,7 +65,7 @@ class SaveStore:
         except json.JSONDecodeError as exc:
             raise ValueError(f"invalid save data JSON: {self.path}") from exc
         if not isinstance(raw, dict):
-            raise ValueError("save data root must be a JSON object")
+            raise TypeError("save data root must be a JSON object")
         self._data = dict(self._defaults)
         self._data.update(raw)
         return self

@@ -45,5 +45,5 @@ def test_save_store_rejects_invalid_json_and_non_object_root(tmp_path):
 
     array = tmp_path / "array.json"
     array.write_text("[1, 2, 3]", encoding="utf-8")
-    with pytest.raises(ValueError, match="root"):
+    with pytest.raises(TypeError, match="root"):
         SaveStore(array)
