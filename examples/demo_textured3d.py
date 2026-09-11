@@ -1,6 +1,5 @@
 from swirengine import Game, Material3D, Vec3
 
-
 game = Game("SwirEngine Textured 3D", mode="3d")
 material = Material3D(
     texture=game.assets.require("models/crate.png"),
