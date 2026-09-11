@@ -1,6 +1,5 @@
 from swirengine import Color, Game
 
-
 game = Game("SwirEngine UI", 960, 540)
 game.panel(0, 0, 420, 260)
 game.label("SwirEngine UI", 0, 90, font_size=32)
