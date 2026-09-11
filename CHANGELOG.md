@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.5 - 2026-09-11
+
+3D lighting and material-specular update.
+
+- added public `DirectionalLight3D`, `PointLight3D` and `SpotLight3D` scene objects
+- added normalized light directions, intensity/range validation and smooth spotlight cone validation
+- added creator-facing `Game.directional_light(...)`, `Game.point_light(...)` and `Game.spot_light(...)`
+- upgraded the forward 3D shader with world-space positions, camera-aware Phong specular highlights and per-material shininess
+- added distance attenuation for point/spot lights and smooth inner/outer spotlight cutoffs
+- preserved the previous default directional lighting when a 3D scene contains no explicit lights
+- kept unmaterialed legacy cubes free from new specular highlights for closer visual compatibility
+- added `Material3D.specular` and `Material3D.shininess` controls
+- added 3D lighting regression tests and a runnable multi-light example
+- advanced the 0.4 roadmap toward richer PBR, multiple simultaneous lights, shadows and post-processing
+- bumped package version to 0.4.5
+
 ## 0.4.4 - 2026-09-11
 
 glTF/GLB material-preservation update.
