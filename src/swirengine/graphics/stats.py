@@ -11,11 +11,19 @@ class RendererStats:
     cubes: int = 0
     meshes: int = 0
     triangles: int = 0
+    directional_lights: int = 0
+    point_lights: int = 0
+    spot_lights: int = 0
+    lights_dropped: int = 0
     texture_uploads: int = 0
     text_uploads: int = 0
     mesh_uploads: int = 0
     texture_cache_entries: int = 0
     text_cache_entries: int = 0
+
+    @property
+    def active_lights(self) -> int:
+        return self.directional_lights + self.point_lights + self.spot_lights
 
     def reset(self) -> None:
         self.draw_calls = 0
@@ -26,6 +34,10 @@ class RendererStats:
         self.cubes = 0
         self.meshes = 0
         self.triangles = 0
+        self.directional_lights = 0
+        self.point_lights = 0
+        self.spot_lights = 0
+        self.lights_dropped = 0
         self.texture_uploads = 0
         self.text_uploads = 0
         self.mesh_uploads = 0
