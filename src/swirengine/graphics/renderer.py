@@ -10,6 +10,7 @@ from ..math.types import Color, orthographic, perspective
 from .batching import SpriteBatch, build_render_runs
 from .camera import Camera2D
 from .camera3d import Camera3D
+from .lights import DirectionalLight3D, PointLight3D, SpotLight3D
 from .material import Material3D
 from .mesh import Mesh3D
 from .primitives import Cube3D, Rectangle2D, Sprite2D, Text2D
@@ -181,9 +182,12 @@ class Renderer:
                 uniform mat4 mvp;
                 uniform mat4 model;
                 out vec3 v_normal;
+                out vec3 v_world_pos;
                 out vec2 v_uv;
                 void main() {
+                    vec4 world = model * vec4(in_pos, 1.0);
                     gl_Position = mvp * vec4(in_pos, 1.0);
+                    v_world_pos = world.xyz;
                     v_normal = mat3(transpose(inverse(model))) * in_normal;
                     v_uv = in_uv;
                 }
@@ -195,18 +199,100 @@ class Renderer:
                 uniform bool use_texture;
                 uniform float ambient_strength;
                 uniform float diffuse_strength;
+                uniform float specular_strength;
+                uniform float shininess;
+                uniform vec3 view_position;
+
+                uniform bool dir_enabled;
+                uniform vec3 dir_direction;
+                uniform vec3 dir_color;
+                uniform float dir_intensity;
+
+                uniform bool point_enabled;
+                uniform vec3 point_position;
+                uniform vec3 point_color;
+                uniform float point_intensity;
+                uniform float point_range;
+
+                uniform bool spot_enabled;
+                uniform vec3 spot_position;
+                uniform vec3 spot_direction;
+                uniform vec3 spot_color;
+                uniform float spot_intensity;
+                uniform float spot_range;
+                uniform float spot_inner_cos;
+                uniform float spot_outer_cos;
+
                 in vec3 v_normal;
+                in vec3 v_world_pos;
                 in vec2 v_uv;
                 out vec4 fragColor;
-                void main() {
-                    vec3 n = normalize(v_normal);
-                    float d = max(dot(n, normalize(vec3(0.4, 0.8, 0.6))), 0.0);
-                    vec4 surface = color;
-                    if (use_texture) {
-                        surface *= texture(image, v_uv);
+
+                vec3 illuminate(
+                    vec3 normal,
+                    vec3 view_dir,
+                    vec3 light_dir,
+                    vec3 light_color,
+                    float power,
+                    vec3 surface
+                ) {
+                    float diffuse_term = max(dot(normal, light_dir), 0.0);
+                    vec3 reflected = reflect(-light_dir, normal);
+                    float specular_term = 0.0;
+                    if (diffuse_term > 0.0 && specular_strength > 0.0) {
+                        specular_term = pow(max(dot(view_dir, reflected), 0.0), shininess);
                     }
-                    float light = ambient_strength + diffuse_strength * d;
-                    fragColor = vec4(surface.rgb * light, surface.a);
+                    vec3 diffuse_light = surface * diffuse_strength * diffuse_term;
+                    vec3 specular_light = vec3(specular_strength * specular_term);
+                    return (diffuse_light + specular_light) * light_color * power;
+                }
+
+                float attenuation(float distance_to_light, float light_range) {
+                    float ratio = clamp(distance_to_light / max(light_range, 0.0001), 0.0, 1.0);
+                    float falloff = 1.0 - ratio * ratio;
+                    return falloff * falloff;
+                }
+
+                void main() {
+                    vec4 surface_rgba = color;
+                    if (use_texture) {
+                        surface_rgba *= texture(image, v_uv);
+                    }
+                    vec3 surface = surface_rgba.rgb;
+                    vec3 normal = normalize(v_normal);
+                    vec3 view_dir = normalize(view_position - v_world_pos);
+                    vec3 lighting = surface * ambient_strength;
+
+                    if (dir_enabled) {
+                        vec3 light_dir = normalize(-dir_direction);
+                        lighting += illuminate(
+                            normal, view_dir, light_dir, dir_color, dir_intensity, surface
+                        );
+                    }
+
+                    if (point_enabled) {
+                        vec3 delta = point_position - v_world_pos;
+                        float distance_to_light = length(delta);
+                        vec3 light_dir = normalize(delta);
+                        float power = point_intensity * attenuation(distance_to_light, point_range);
+                        lighting += illuminate(
+                            normal, view_dir, light_dir, point_color, power, surface
+                        );
+                    }
+
+                    if (spot_enabled) {
+                        vec3 delta = spot_position - v_world_pos;
+                        float distance_to_light = length(delta);
+                        vec3 light_dir = normalize(delta);
+                        float theta = dot(normalize(-light_dir), normalize(spot_direction));
+                        float cone = smoothstep(spot_outer_cos, spot_inner_cos, theta);
+                        float power = spot_intensity * cone * attenuation(distance_to_light, spot_range);
+                        lighting += illuminate(
+                            normal, view_dir, light_dir, spot_color, power, surface
+                        );
+                    }
+
+                    fragColor = vec4(lighting, surface_rgba.a);
                 }
             """,
         )
@@ -438,6 +524,83 @@ class Renderer:
             color.a * tint.a,
         )
 
+    def _configure_lights(self, scene, camera: Camera3D) -> None:
+        directional = next(
+            (
+                obj
+                for obj in scene.objects
+                if isinstance(obj, DirectionalLight3D)
+                and getattr(obj, "enabled", True)
+                and getattr(obj, "visible", True)
+            ),
+            None,
+        )
+        point = next(
+            (
+                obj
+                for obj in scene.objects
+                if isinstance(obj, PointLight3D)
+                and getattr(obj, "enabled", True)
+                and getattr(obj, "visible", True)
+            ),
+            None,
+        )
+        spot = next(
+            (
+                obj
+                for obj in scene.objects
+                if isinstance(obj, SpotLight3D)
+                and getattr(obj, "enabled", True)
+                and getattr(obj, "visible", True)
+            ),
+            None,
+        )
+
+        if directional is None and point is None and spot is None:
+            directional = DirectionalLight3D()
+
+        self.program3d["view_position"].value = (
+            float(camera.position.x),
+            float(camera.position.y),
+            float(camera.position.z),
+        )
+
+        self.program3d["dir_enabled"].value = directional is not None
+        if directional is not None:
+            direction = directional.direction.normalized()
+            color = directional.color.clamped()
+            self.program3d["dir_direction"].value = (direction.x, direction.y, direction.z)
+            self.program3d["dir_color"].value = (color.r, color.g, color.b)
+            self.program3d["dir_intensity"].value = float(directional.intensity)
+
+        self.program3d["point_enabled"].value = point is not None
+        if point is not None:
+            color = point.color.clamped()
+            self.program3d["point_position"].value = (
+                point.position.x,
+                point.position.y,
+                point.position.z,
+            )
+            self.program3d["point_color"].value = (color.r, color.g, color.b)
+            self.program3d["point_intensity"].value = float(point.intensity)
+            self.program3d["point_range"].value = float(point.range)
+
+        self.program3d["spot_enabled"].value = spot is not None
+        if spot is not None:
+            direction = spot.direction.normalized()
+            color = spot.color.clamped()
+            self.program3d["spot_position"].value = (
+                spot.position.x,
+                spot.position.y,
+                spot.position.z,
+            )
+            self.program3d["spot_direction"].value = (direction.x, direction.y, direction.z)
+            self.program3d["spot_color"].value = (color.r, color.g, color.b)
+            self.program3d["spot_intensity"].value = float(spot.intensity)
+            self.program3d["spot_range"].value = float(spot.range)
+            self.program3d["spot_inner_cos"].value = math.cos(math.radians(spot.inner_angle))
+            self.program3d["spot_outer_cos"].value = math.cos(math.radians(spot.outer_angle))
+
     def _render_model(
         self,
         vao,
@@ -455,8 +618,12 @@ class Renderer:
 
         ambient = material.ambient if material is not None else 0.25
         diffuse = material.diffuse if material is not None else 0.75
+        specular = material.specular if material is not None else 0.0
+        shininess = material.shininess if material is not None else 32.0
         self.program3d["ambient_strength"].value = float(ambient)
         self.program3d["diffuse_strength"].value = float(diffuse)
+        self.program3d["specular_strength"].value = float(specular)
+        self.program3d["shininess"].value = float(shininess)
 
         texture_path = material.texture if material is not None else None
         self.program3d["use_texture"].value = texture_path is not None
@@ -477,6 +644,7 @@ class Renderer:
             float(camera.far),
         )
         view_projection = projection @ camera.view_matrix()
+        self._configure_lights(scene, camera)
         for obj in scene.objects:
             if not getattr(obj, "enabled", True) or not getattr(obj, "visible", True):
                 continue
