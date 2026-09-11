@@ -7,7 +7,7 @@ from .debug import DebugOverlay
 from .graphics.animation import AnimatedSprite2D, AnimationClip, SpriteSheet, animated_sprite
 from .graphics.camera import Camera2D
 from .graphics.camera3d import Camera3D
-from .graphics.gltf import load_gltf
+from .graphics.gltf import GltfSceneMesh, load_gltf, load_gltf_scene
 from .graphics.material import Material3D
 from .graphics.mesh import Mesh3D, MeshData, cube_mesh
 from .graphics.obj import load_obj
@@ -40,6 +40,7 @@ __all__ = [
     "EventBus",
     "FrameProfile",
     "Game",
+    "GltfSceneMesh",
     "Material3D",
     "Mesh3D",
     "MeshData",
@@ -67,7 +68,8 @@ __all__ = [
     "animated_sprite",
     "cube_mesh",
     "load_gltf",
+    "load_gltf_scene",
     "load_obj",
 ]
 
-__version__ = "0.4.2"
+__version__ = "0.4.3"
