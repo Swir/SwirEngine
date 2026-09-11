@@ -1,4 +1,4 @@
-# SwirEngine 0.3.0
+# SwirEngine 0.3.1
 
 SwirEngine is a Python-first 2D/3D game engine built around one approachable API.
 Its goal is to let people create real games in Python without learning OpenGL before
@@ -15,14 +15,16 @@ they can put a character on screen.
 - colored 2D primitives and render layers
 - textured `Sprite2D` rendering with alpha blending
 - sprite-sheet UV regions and named `AnimatedSprite2D` animations
+- reusable `TileMap2D` grids backed by pooled sprites
 - lazy GPU texture cache
 - movable/zoomable `Camera2D`
 - project `AssetManager` with aliases and strict validation
 - AABB / box collision detection and `CollisionWorld2D`
+- JSON `SaveStore` with atomic persistence
 - lit 3D cubes
 - scene lifecycle, names and tags
 - `game.add(...)`, `game.spawn(...)`, `game.remove(...)` creator shortcuts
-- `game.sprite(...)` and `game.collider(...)` factories
+- `game.sprite(...)`, `game.tilemap(...)` and `game.collider(...)` factories
 - held / pressed / released keyboard queries
 - variable update + deterministic fixed-update loop
 - vectors, colors and transforms
@@ -59,6 +61,51 @@ def update(dt):
 
 game.run()
 ```
+
+## Tilemaps
+
+A tile atlas is addressed row-major from its top-left tile. The tilemap owns a fixed pool
+of sprites, so editing cells does not continuously allocate scene objects.
+
+```python
+from swirengine import Game
+
+game = Game("Tile World")
+world = game.tilemap(
+    "tiles.png",
+    width=20,
+    height=12,
+    tile_width=32,
+    tile_height=32,
+    atlas_columns=8,
+    atlas_rows=4,
+    layer=-10,
+)
+
+world.fill(0)
+world.set_tile(3, 2, 7)
+world.set_tile(4, 2, 7)
+world.set_tile(5, 2, None)
+
+game.run()
+```
+
+Use `world.world_to_cell(x, y)` for picking and `world.cell_to_world(column, row)` when
+placing actors on grid centers.
+
+## Save data
+
+Pass `save_path` to autoload an existing JSON save file. Writes are atomic.
+
+```python
+from swirengine import Game
+
+game = Game("Persistent Game", save_path="saves/profile.json")
+score = game.storage.get("score", 0)
+game.storage.set("score", score + 100).save()
+```
+
+`SaveStore` can also be used directly when a game needs multiple save slots.
 
 ## Sprite-sheet animation
 

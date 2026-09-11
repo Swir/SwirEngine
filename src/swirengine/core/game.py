@@ -10,6 +10,8 @@ from ..graphics.camera import Camera2D
 from ..graphics.primitives import Sprite2D
 from ..input.manager import InputManager
 from ..physics.collision2d import BoxCollider2D, CollisionWorld2D
+from ..storage import SaveStore
+from ..tilemap import TileMap2D
 from .events import EventBus
 from .scene import Scene
 
@@ -28,6 +30,7 @@ class Game:
         target_fps: int = 120,
         fixed_hz: int = 60,
         asset_root: str | Path = "assets",
+        save_path: str | Path | None = None,
     ) -> None:
         if mode not in ("2d", "3d"):
             raise ValueError("mode must be '2d' or '3d'")
@@ -45,6 +48,7 @@ class Game:
         self.input = InputManager()
         self.assets = AssetManager(asset_root)
         self.collisions = CollisionWorld2D()
+        self.storage = SaveStore(save_path or "save.json", autoload=save_path is not None)
         self.running = False
 
         self._update_callbacks: list[Callable[[float], None]] = []
@@ -60,6 +64,10 @@ class Game:
         return self.scene.add_many(*objects)
 
     def remove(self, obj: object) -> bool:
+        if isinstance(obj, TileMap2D):
+            for child in obj.children:
+                self.scene.remove(child)
+
         removed = self.scene.remove(obj)
         if removed:
             for collider in tuple(self.collisions.colliders):
@@ -70,6 +78,32 @@ class Game:
     def sprite(self, texture: str | Path, **kwargs: object) -> Sprite2D:
         """Create and add a sprite resolved relative to the game's asset directory."""
         return self.add(Sprite2D(self.assets.resolve(texture), **kwargs))
+
+    def tilemap(
+        self,
+        texture: str | Path,
+        width: int,
+        height: int,
+        tile_width: float,
+        tile_height: float,
+        atlas_columns: int,
+        atlas_rows: int,
+        **kwargs: object,
+    ) -> TileMap2D:
+        """Create a tilemap and register its pooled sprites with the current scene."""
+        tilemap = TileMap2D(
+            self.assets.resolve(texture),
+            width,
+            height,
+            tile_width,
+            tile_height,
+            atlas_columns,
+            atlas_rows,
+            **kwargs,
+        )
+        self.add(tilemap)
+        self.add_many(*tilemap.children)
+        return tilemap
 
     def collider(self, target: object, **kwargs: object) -> BoxCollider2D:
         """Create and register a box collider for an existing scene object."""

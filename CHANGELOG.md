@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.1 - 2026-09-11
+
+Level-building and persistence update.
+
+- added `TileMap2D` with atlas UV mapping and a fixed reusable sprite pool
+- added tile fill/clear/row loading plus world/cell coordinate helpers
+- added `Game.tilemap(...)` with asset-root resolution and automatic scene registration
+- added tilemap child cleanup through `Game.remove(...)`
+- added `SaveStore` with defaults, dict-like helpers and UTF-8 JSON persistence
+- added atomic save writes using a same-directory temporary file and `os.replace`
+- added optional `Game.storage` autoload through `save_path=...`
+- added tilemap and save-data tests
+- bumped package version to 0.3.1
+
 ## 0.3.0 - 2026-09-11
 
 First gameplay-systems milestone.

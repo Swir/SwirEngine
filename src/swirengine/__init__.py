@@ -7,6 +7,8 @@ from .graphics.camera import Camera2D
 from .graphics.primitives import Cube3D, Rectangle2D, Sprite2D
 from .math.types import Color, Transform, Vec2, Vec3
 from .physics.collision2d import AABB, BoxCollider2D, CollisionWorld2D
+from .storage import SaveStore
+from .tilemap import TileMap2D
 
 __all__ = [
     "AABB",
@@ -21,13 +23,15 @@ __all__ = [
     "EventBus",
     "Game",
     "Rectangle2D",
+    "SaveStore",
     "Scene",
     "Sprite2D",
     "SpriteSheet",
+    "TileMap2D",
     "Transform",
     "Vec2",
     "Vec3",
     "animated_sprite",
 ]
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"

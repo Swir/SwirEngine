@@ -11,9 +11,9 @@ profiling overlay.
 ## 0.3 - 2D gameplay systems — in progress
 
 Completed: sprite sheets, named animation clips, asset manager, AABB box collisions,
-collision layers/masks and one-shot input helpers.
+collision layers/masks, one-shot input helpers, tilemaps and JSON save data.
 
-Next: particles, tilemaps, audio/music, save data, UI controls and rigid-body 2D physics.
+Next: particles, audio/music, UI controls and rigid-body 2D physics.
 
 ## 0.4 - Serious 3D
 
