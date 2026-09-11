@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.2 - 2026-09-11
+
+Static glTF 2.0 import update.
+
+- added `load_gltf(...)` for JSON `.gltf` 2.0 assets
+- added external binary buffer and embedded base64 data-URI support
+- added accessor decoding for common glTF component and vector types, including byte strides
+- added indexed and non-indexed TRIANGLES primitive import
+- added POSITION, NORMAL and TEXCOORD_0 attribute import with validation
+- added automatic flat-normal generation when glTF normals are absent
+- added multi-primitive mesh combination with zero-filled UV fallback for mixed UV data
+- added clear errors for unsupported sparse accessors, GLB containers and non-triangle primitives
+- added creator-facing `Game.gltf(...)` and top-level `load_gltf` API
+- added glTF regression tests and a runnable 3D viewer example
+- advanced the 0.4 roadmap toward GLB, node transforms, materials and lighting
+- bumped package version to 0.4.2
+
 ## 0.4.1 - 2026-09-11
 
 Textured 3D materials update.
