@@ -20,6 +20,14 @@ class FrameProfile:
     sprites: int = 0
     sprite_batches: int = 0
     triangles: int = 0
+    directional_lights: int = 0
+    point_lights: int = 0
+    spot_lights: int = 0
+    lights_dropped: int = 0
+
+    @property
+    def active_lights(self) -> int:
+        return self.directional_lights + self.point_lights + self.spot_lights
 
 
 class Profiler:
@@ -98,6 +106,10 @@ class Profiler:
                 sprites=int(getattr(renderer_stats, "sprites", 0)),
                 sprite_batches=int(getattr(renderer_stats, "sprite_batches", 0)),
                 triangles=int(getattr(renderer_stats, "triangles", 0)),
+                directional_lights=int(getattr(renderer_stats, "directional_lights", 0)),
+                point_lights=int(getattr(renderer_stats, "point_lights", 0)),
+                spot_lights=int(getattr(renderer_stats, "spot_lights", 0)),
+                lights_dropped=int(getattr(renderer_stats, "lights_dropped", 0)),
             )
         self._history.append(profile)
         return profile
@@ -123,4 +135,8 @@ class Profiler:
             sprites=round(sum(item.sprites for item in samples) / size),
             sprite_batches=round(sum(item.sprite_batches for item in samples) / size),
             triangles=round(sum(item.triangles for item in samples) / size),
+            directional_lights=round(sum(item.directional_lights for item in samples) / size),
+            point_lights=round(sum(item.point_lights for item in samples) / size),
+            spot_lights=round(sum(item.spot_lights for item in samples) / size),
+            lights_dropped=round(sum(item.lights_dropped for item in samples) / size),
         )
