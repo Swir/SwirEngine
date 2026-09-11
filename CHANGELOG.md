@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.0 - 2026-09-11
+
+Serious 3D foundation milestone.
+
+- added `Camera3D` with perspective settings, look-at view matrices and local-space movement
+- made `Game(mode="3d")` expose a real `Camera3D` while preserving `Camera2D` for 2D games
+- added validated CPU-side `MeshData` and transformable `Mesh3D` scene objects
+- added lazy GPU mesh upload/cache in the renderer with mesh/triangle/upload statistics
+- upgraded 3D normal transformation for non-uniform model scaling
+- added Wavefront OBJ loading with polygon fan triangulation, positive/negative indices and normals
+- added automatic flat-normal generation when OBJ normals are missing
+- added creator-facing `Game.mesh(...)` and `Game.obj(...)` factories
+- kept the existing `Cube3D` API working through the upgraded camera-aware 3D renderer
+- added a runnable OBJ viewer/navigation example and 3D camera/mesh/import tests
+- bumped package version to 0.4.0 because the public 3D API now starts the roadmap's 0.4 milestone
+
 ## 0.3.5 - 2026-09-11
 
 Renderer performance and diagnostics update.
