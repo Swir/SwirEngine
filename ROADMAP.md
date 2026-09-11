@@ -27,11 +27,13 @@ triangulation plus generated normals, optional UV channels, OBJ `vt` import, `Ma
 textured forward rendering with per-instance tinting, static glTF 2.0 mesh import, GLB 2.0
 containers, binary chunks, default/custom scene selection, hierarchical node traversal, 4x4
 node matrices, TRS/quaternion transforms, world-space normal transformation, mirrored-winding
-preservation, and glTF/GLB base-color material loading with per-primitive material boundaries,
-`baseColorFactor`, external images, data-URI images and embedded GLB `bufferView` textures.
+preservation, glTF/GLB base-color material loading with per-primitive material boundaries,
+`baseColorFactor`, external images, data-URI images and embedded GLB `bufferView` textures,
+`DirectionalLight3D`, `PointLight3D`, `SpotLight3D`, distance/cone attenuation and Phong
+specular/shininess material controls.
 
-Next: directional/point/spot lights, material specular controls, richer PBR mapping,
-skybox and post-processing.
+Next: multiple simultaneous lights per type, richer PBR mapping, skybox, shadows and
+post-processing.
 
 ## 0.5 - Architecture
 
