@@ -24,11 +24,13 @@ polish while 3D grows in parallel.
 Completed: real `Camera3D`, perspective/view matrices, local camera navigation, `MeshData`,
 `Mesh3D`, lazy GPU mesh caching, mesh render statistics, Wavefront OBJ import with polygon
 triangulation plus generated normals, optional UV channels, OBJ `vt` import, `Material3D`,
-textured forward rendering with per-instance tinting, and static glTF 2.0 JSON mesh import
-with indexed/non-indexed triangles, external/base64 buffers, normals and `TEXCOORD_0`.
+textured forward rendering with per-instance tinting, static glTF 2.0 mesh import, GLB 2.0
+containers, binary chunks, default/custom scene selection, hierarchical node traversal, 4x4
+node matrices, TRS/quaternion transforms, world-space normal transformation and mirrored-winding
+preservation.
 
-Next: GLB containers and scene/node transforms, glTF materials, directional/point/spot lights,
-material specular controls, skybox and post-processing.
+Next: glTF materials/textures, directional/point/spot lights, material specular controls,
+skybox and post-processing.
 
 ## 0.5 - Architecture
 
