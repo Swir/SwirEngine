@@ -107,7 +107,7 @@ def _material(
     material_index: int | None,
 ) -> tuple[Material3D, float, float]:
     if material_index is None:
-        return Material3D(), 1.0, 1.0
+        return Material3D(metallic=1.0, roughness=1.0), 1.0, 1.0
     materials = document.get("materials", [])
     try:
         spec = materials[material_index]
@@ -152,9 +152,16 @@ def _material(
     if not 0.0 <= metallic <= 1.0 or not 0.0 <= roughness <= 1.0:
         raise ValueError(f"glTF material {material_index}: metallic/roughness factors must be 0..1")
 
+    if pbr.get("metallicRoughnessTexture") is not None:
+        raise ValueError(
+            f"glTF material {material_index}: metallicRoughnessTexture is not supported yet"
+        )
+
     material = Material3D(
         texture=texture_path,
         tint=Color(*(float(value) for value in factor)),
+        metallic=metallic,
+        roughness=roughness,
     )
     return material, metallic, roughness
 
