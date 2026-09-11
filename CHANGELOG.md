@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4.4 - 2026-09-11
+
+glTF/GLB material-preservation update.
+
+- added public `GltfPrimitiveAsset`, `load_gltf_material(...)` and `load_gltf_primitives(...)`
+- preserved glTF primitive boundaries instead of forcing multi-material meshes into one material-less mesh
+- mapped glTF `baseColorFactor` to renderer-ready `Material3D.tint`
+- mapped glTF `baseColorTexture` to renderer-ready `Material3D.texture`
+- added external image URI support for glTF materials
+- added content-addressed temporary image caching for base64 data-URI textures
+- added embedded GLB `bufferView` image extraction for PNG/JPEG/WebP material textures
+- exposed metallic/roughness factors as primitive metadata for future PBR renderer work
+- added strict validation for unsupported alpha modes, emissive materials, non-zero texture-coordinate sets and texture-transform extensions
+- kept existing `load_gltf(...)` and `load_gltf_scene(...)` behavior backward compatible
+- added material/texture regression tests and a runnable glTF material example
+- advanced the 0.4 roadmap from asset containers into material-aware 3D loading
+- bumped package version to 0.4.4
+
 ## 0.4.3 - 2026-09-11
 
 GLB container and glTF scene-graph update.

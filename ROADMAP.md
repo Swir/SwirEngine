@@ -26,10 +26,11 @@ Completed: real `Camera3D`, perspective/view matrices, local camera navigation, 
 triangulation plus generated normals, optional UV channels, OBJ `vt` import, `Material3D`,
 textured forward rendering with per-instance tinting, static glTF 2.0 mesh import, GLB 2.0
 containers, binary chunks, default/custom scene selection, hierarchical node traversal, 4x4
-node matrices, TRS/quaternion transforms, world-space normal transformation and mirrored-winding
-preservation.
+node matrices, TRS/quaternion transforms, world-space normal transformation, mirrored-winding
+preservation, and glTF/GLB base-color material loading with per-primitive material boundaries,
+`baseColorFactor`, external images, data-URI images and embedded GLB `bufferView` textures.
 
-Next: glTF materials/textures, directional/point/spot lights, material specular controls,
+Next: directional/point/spot lights, material specular controls, richer PBR mapping,
 skybox and post-processing.
 
 ## 0.5 - Architecture

@@ -8,6 +8,7 @@ from .graphics.animation import AnimatedSprite2D, AnimationClip, SpriteSheet, an
 from .graphics.camera import Camera2D
 from .graphics.camera3d import Camera3D
 from .graphics.gltf import GltfSceneMesh, load_gltf, load_gltf_scene
+from .graphics.gltf_asset import GltfPrimitiveAsset, load_gltf_material, load_gltf_primitives
 from .graphics.material import Material3D
 from .graphics.mesh import Mesh3D, MeshData, cube_mesh
 from .graphics.obj import load_obj
@@ -40,6 +41,7 @@ __all__ = [
     "EventBus",
     "FrameProfile",
     "Game",
+    "GltfPrimitiveAsset",
     "GltfSceneMesh",
     "Material3D",
     "Mesh3D",
@@ -68,8 +70,10 @@ __all__ = [
     "animated_sprite",
     "cube_mesh",
     "load_gltf",
+    "load_gltf_material",
+    "load_gltf_primitives",
     "load_gltf_scene",
     "load_obj",
 ]
 
-__version__ = "0.4.3"
+__version__ = "0.4.4"
