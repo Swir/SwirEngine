@@ -9,7 +9,9 @@ from ..assets import AssetManager
 from ..graphics.camera import Camera2D
 from ..graphics.primitives import Sprite2D
 from ..input.manager import InputManager
+from ..particles import ParticleEmitter2D
 from ..physics.collision2d import BoxCollider2D, CollisionWorld2D
+from ..physics.rigidbody2d import PhysicsWorld2D, RigidBody2D
 from ..storage import SaveStore
 from ..tilemap import TileMap2D
 from .events import EventBus
@@ -48,6 +50,7 @@ class Game:
         self.input = InputManager()
         self.assets = AssetManager(asset_root)
         self.collisions = CollisionWorld2D()
+        self.physics = PhysicsWorld2D(self.collisions)
         self.storage = SaveStore(save_path or "save.json", autoload=save_path is not None)
         self.running = False
 
@@ -64,7 +67,7 @@ class Game:
         return self.scene.add_many(*objects)
 
     def remove(self, obj: object) -> bool:
-        if isinstance(obj, TileMap2D):
+        if isinstance(obj, (TileMap2D, ParticleEmitter2D)):
             for child in obj.children:
                 self.scene.remove(child)
 
@@ -73,6 +76,9 @@ class Game:
             for collider in tuple(self.collisions.colliders):
                 if collider.target is obj:
                     self.collisions.remove(collider)
+            for body in tuple(self.physics.bodies):
+                if body.target is obj:
+                    self.physics.remove(body)
         return removed
 
     def sprite(self, texture: str | Path, **kwargs: object) -> Sprite2D:
@@ -105,9 +111,35 @@ class Game:
         self.add_many(*tilemap.children)
         return tilemap
 
+    def particles(self, x: float = 0.0, y: float = 0.0, **kwargs: object) -> ParticleEmitter2D:
+        """Create a pooled particle emitter and register its visuals with the scene."""
+        emitter = ParticleEmitter2D(x, y, **kwargs)
+        self.add(emitter)
+        self.add_many(*emitter.children)
+        return emitter
+
     def collider(self, target: object, **kwargs: object) -> BoxCollider2D:
         """Create and register a box collider for an existing scene object."""
         return self.collisions.add(BoxCollider2D(target, **kwargs))
+
+    def rigidbody(
+        self,
+        target: object,
+        *,
+        collider: BoxCollider2D | None = None,
+        **kwargs: object,
+    ) -> RigidBody2D:
+        """Create a rigid body, reusing the target's registered collider when possible."""
+        if collider is None:
+            collider = next(
+                (item for item in self.collisions.colliders if item.target is target),
+                None,
+            )
+        if collider is None:
+            collider = self.collider(target)
+        elif not any(item is collider for item in self.collisions.colliders):
+            self.collisions.add(collider)
+        return self.physics.add(RigidBody2D(target, collider, **kwargs))
 
     def key(self, name: str) -> bool:
         """Beginner-friendly shorthand for ``game.input.key(name)``."""
@@ -195,6 +227,7 @@ class Game:
                 while accumulator >= fixed_dt and fixed_steps < 8:
                     for callback in tuple(self._fixed_callbacks):
                         callback(fixed_dt)
+                    self.physics.step(fixed_dt)
                     accumulator -= fixed_dt
                     fixed_steps += 1
 
