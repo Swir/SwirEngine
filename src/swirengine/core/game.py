@@ -10,6 +10,7 @@ from ..audio import AudioEngine, AudioHandle
 from ..debug import DebugOverlay
 from ..graphics.camera import Camera2D
 from ..graphics.camera3d import Camera3D
+from ..graphics.gltf import load_gltf
 from ..graphics.mesh import Mesh3D, MeshData
 from ..graphics.obj import load_obj
 from ..graphics.primitives import Sprite2D, Text2D
@@ -113,6 +114,12 @@ class Game:
         if self.mode != "3d":
             raise RuntimeError("Game.obj(...) requires mode='3d'")
         return self.mesh(load_obj(self.assets.require(asset)), **kwargs)
+
+    def gltf(self, asset: str | Path, *, mesh_index: int = 0, **kwargs: object) -> Mesh3D:
+        """Load a static glTF 2.0 mesh from the asset root and add it as a Mesh3D."""
+        if self.mode != "3d":
+            raise RuntimeError("Game.gltf(...) requires mode='3d'")
+        return self.mesh(load_gltf(self.assets.require(asset), mesh_index=mesh_index), **kwargs)
 
     def label(self, value: str, x: float = 0.0, y: float = 0.0, **kwargs: object) -> UILabel:
         return self.ui.label(value, x, y, **kwargs)
