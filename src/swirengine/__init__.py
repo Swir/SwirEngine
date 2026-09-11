@@ -1,4 +1,5 @@
 from .assets import AssetManager
+from .audio import AudioBackend, AudioEngine, AudioHandle, PygameAudioBackend
 from .core.events import EventBus
 from .core.game import Game
 from .core.scene import Scene
@@ -17,6 +18,9 @@ __all__ = [
     "AnimatedSprite2D",
     "AnimationClip",
     "AssetManager",
+    "AudioBackend",
+    "AudioEngine",
+    "AudioHandle",
     "BoxCollider2D",
     "Camera2D",
     "CollisionWorld2D",
@@ -26,6 +30,7 @@ __all__ = [
     "Game",
     "ParticleEmitter2D",
     "PhysicsWorld2D",
+    "PygameAudioBackend",
     "Rectangle2D",
     "RigidBody2D",
     "SaveStore",
@@ -39,4 +44,4 @@ __all__ = [
     "animated_sprite",
 ]
 
-__version__ = "0.3.2"
+__version__ = "0.3.3"

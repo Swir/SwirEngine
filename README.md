@@ -1,4 +1,4 @@
-# SwirEngine 0.3.1
+# SwirEngine 0.3.3
 
 SwirEngine is a Python-first 2D/3D game engine built around one approachable API.
 Its goal is to let people create real games in Python without learning OpenGL before
@@ -19,12 +19,13 @@ they can put a character on screen.
 - lazy GPU texture cache
 - movable/zoomable `Camera2D`
 - project `AssetManager` with aliases and strict validation
-- AABB / box collision detection and `CollisionWorld2D`
+- sound effects and background music through a pluggable audio service
+- AABB collision detection plus fixed-step arcade rigid-body physics
+- pooled particle effects
 - JSON `SaveStore` with atomic persistence
 - lit 3D cubes
 - scene lifecycle, names and tags
-- `game.add(...)`, `game.spawn(...)`, `game.remove(...)` creator shortcuts
-- `game.sprite(...)`, `game.tilemap(...)` and `game.collider(...)` factories
+- creator-friendly factories for sprites, tilemaps, colliders, bodies, particles and audio
 - held / pressed / released keyboard queries
 - variable update + deterministic fixed-update loop
 - vectors, colors and transforms
@@ -37,6 +38,13 @@ they can put a character on screen.
 python -m pip install -e ".[dev]"
 pytest
 ruff check src tests examples
+python -m compileall -q src examples
+```
+
+Audio playback is optional so headless development remains lightweight:
+
+```bash
+python -m pip install -e ".[audio]"
 ```
 
 ## Tiny 2D game
@@ -61,6 +69,35 @@ def update(dt):
 
 game.run()
 ```
+
+## Audio and music
+
+Put supported audio files under `assets/`, install the audio extra, then use the same
+asset resolution rules as sprites and tilemaps:
+
+```python
+from swirengine import Game
+
+game = Game("Audio Demo")
+game.audio.master_volume = 0.8
+game.audio.music_volume = 0.6
+music = game.music("music/theme.ogg")
+
+@game.update
+def update(_dt):
+    if game.key_pressed("SPACE"):
+        shot = game.sound("sfx/laser.wav", volume=0.7)
+        shot.set_volume(0.9)
+    if game.key_pressed("M"):
+        music.stop()
+
+game.run()
+```
+
+`Game.music(...)` replaces the previous music track and loops by default. Sound effects can
+loop independently. `AudioHandle` exposes `stop()`, `set_volume(...)`, `active`, `loop` and
+`path`. The backend protocol is public, so tests, servers and future platform targets can
+provide another implementation without changing game code.
 
 ## Tilemaps
 
@@ -130,31 +167,21 @@ game.run()
 Animations advance automatically because `AnimatedSprite2D` participates in normal scene
 updates. Clips can loop or stop on their final frame.
 
-## Collision in a few lines
+## Collision and physics
 
 ```python
 from swirengine import Color, Game, Rectangle2D
 
-game = Game("Collision")
+game = Game("Physics")
 player = game.add(Rectangle2D(0, 0, 64, 64, Color(0.2, 0.7, 1.0, 1.0)))
-wall = game.add(Rectangle2D(200, 0, 64, 240, Color(1.0, 0.3, 0.3, 1.0)))
-player_hitbox = game.collider(player, tag="player")
-game.collider(wall, tag="wall")
-
-@game.update
-def update(dt):
-    old_x = player.x
-    if game.key("D"):
-        player.x += 250 * dt
-    if game.collisions.query(player_hitbox, tag="wall"):
-        player.x = old_x
+body = game.rigidbody(player, restitution=0.1)
+body.apply_impulse(220, 420)
 
 game.run()
 ```
 
-The current collision system is intentionally lightweight: it provides AABB detection,
-layers/masks and queries. Rigid-body physics and collision response belong to a later
-milestone.
+The collision layer also supports lightweight AABB queries when full rigid-body response
+is unnecessary.
 
 ## Asset aliases
 
@@ -163,8 +190,7 @@ game.assets.register("hero", "characters/hero.png")
 hero_path = game.assets.require("hero")
 ```
 
-`require()` fails immediately if an asset is missing, which is useful for validation and
-build tooling.
+Aliases work for audio too, because the audio service shares the game's `AssetManager`.
 
 ## One-shot input
 

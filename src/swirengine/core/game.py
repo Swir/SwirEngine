@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Literal, TypeVar
 
 from ..assets import AssetManager
+from ..audio import AudioEngine, AudioHandle
 from ..graphics.camera import Camera2D
 from ..graphics.primitives import Sprite2D
 from ..input.manager import InputManager
@@ -49,6 +50,7 @@ class Game:
         self.events = EventBus()
         self.input = InputManager()
         self.assets = AssetManager(asset_root)
+        self.audio = AudioEngine(self.assets)
         self.collisions = CollisionWorld2D()
         self.physics = PhysicsWorld2D(self.collisions)
         self.storage = SaveStore(save_path or "save.json", autoload=save_path is not None)
@@ -140,6 +142,14 @@ class Game:
         elif not any(item is collider for item in self.collisions.colliders):
             self.collisions.add(collider)
         return self.physics.add(RigidBody2D(target, collider, **kwargs))
+
+    def sound(self, asset: str | Path, *, volume: float = 1.0, loop: bool = False) -> AudioHandle:
+        """Play a sound effect through the game's audio service."""
+        return self.audio.play(asset, volume=volume, loop=loop)
+
+    def music(self, asset: str | Path, *, volume: float = 1.0, loop: bool = True) -> AudioHandle:
+        """Play background music, replacing the previous music track."""
+        return self.audio.music(asset, volume=volume, loop=loop)
 
     def key(self, name: str) -> bool:
         """Beginner-friendly shorthand for ``game.input.key(name)``."""
@@ -242,6 +252,7 @@ class Game:
         finally:
             self.running = False
             self.events.emit("stop", self)
+            self.audio.shutdown()
             renderer.release()
             glfw.destroy_window(window)
             glfw.terminate()

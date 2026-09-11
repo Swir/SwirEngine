@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.3 - 2026-09-11
+
+Audio foundation and lifecycle update.
+
+- added `AudioEngine` with sound-effect and background-music channels
+- added pluggable `AudioBackend` protocol and lazy `PygameAudioBackend`
+- added independent master, sound and music volume controls with live handle updates
+- added looping, per-handle volume, stop controls and automatic music replacement
+- added asset alias/path validation for audio through the existing `AssetManager`
+- added `Game.audio`, `Game.sound(...)` and `Game.music(...)` creator-facing APIs
+- added automatic audio shutdown when the game runtime exits
+- added optional `audio` installation extra so headless users and CI stay lightweight
+- added audio lifecycle/volume tests
+- added bytecode compilation to the cross-platform CI matrix
+- bumped package version to 0.3.3
+
 ## 0.3.2 - 2026-09-11
 
 Physics and effects update.
