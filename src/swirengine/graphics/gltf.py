@@ -43,7 +43,7 @@ def _load_buffers(document: dict[str, Any], source: Path) -> list[bytes]:
     for index, spec in enumerate(document.get("buffers", [])):
         uri = spec.get("uri")
         if not isinstance(uri, str):
-            raise ValueError(
+            raise TypeError(
                 f"buffer {index} has no URI; GLB binary chunks are not supported by load_gltf()"
             )
         if uri.startswith("data:"):
@@ -196,14 +196,13 @@ def load_gltf(path: str | Path, *, mesh_index: int = 0) -> MeshData:
                 f"mesh {mesh_index} primitive {primitive_index}: POSITION is required"
             )
 
-        positions = np.asarray(
-            _accessor_array(document, buffers, int(attributes["POSITION"])),
-            dtype="f4",
-        )
+        position_source = _accessor_array(document, buffers, int(attributes["POSITION"]))
+        positions = np.asarray(position_source, dtype="f4")
         if positions.ndim != 2 or positions.shape[1] != 3:
             raise ValueError(
                 f"mesh {mesh_index} primitive {primitive_index}: POSITION must be VEC3"
             )
+        original_count = len(positions)
 
         indices = None
         if "indices" in primitive:
@@ -234,7 +233,7 @@ def load_gltf(path: str | Path, *, mesh_index: int = 0) -> MeshData:
                 _accessor_array(document, buffers, int(attributes["NORMAL"])),
                 dtype="f4",
             )
-            if normals.shape != (len(_accessor_array(document, buffers, int(attributes["POSITION"]))), 3):
+            if normals.shape != (original_count, 3):
                 raise ValueError(
                     f"mesh {mesh_index} primitive {primitive_index}: NORMAL must match POSITION"
                 )
@@ -248,7 +247,6 @@ def load_gltf(path: str | Path, *, mesh_index: int = 0) -> MeshData:
                 _accessor_array(document, buffers, int(attributes["TEXCOORD_0"])),
                 dtype="f4",
             )
-            original_count = len(_accessor_array(document, buffers, int(attributes["POSITION"])))
             if uvs.shape != (original_count, 2):
                 raise ValueError(
                     f"mesh {mesh_index} primitive {primitive_index}: TEXCOORD_0 must be VEC2"
