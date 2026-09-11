@@ -16,13 +16,17 @@ screen-space UI, labels, panels, buttons and progress bars.
 Hardening completed so far: bounded dynamic-text cache, renderer statistics, frame profiler,
 built-in debug overlay and sprite draw-call batching that preserves transparent render order.
 
-Next: exercise 0.3.x with larger sample games, improve error messages/resource diagnostics and
-stabilize the creator-facing API before moving to serious 3D.
+Remaining hardening: larger sample games, clearer resource diagnostics and creator-facing API
+polish while 3D grows in parallel.
 
-## 0.4 - Serious 3D
+## 0.4 - Serious 3D — in progress
 
-Camera 3D, mesh abstraction, OBJ/glTF import, textures/materials, directional/point/spot
-lights, skybox and post-processing.
+Completed: real `Camera3D`, perspective/view matrices, local camera navigation, `MeshData`,
+`Mesh3D`, lazy GPU mesh caching, mesh render statistics and Wavefront OBJ import with polygon
+triangulation plus generated normals.
+
+Next: texture coordinates/material abstraction, textured meshes, glTF import,
+directional/point/spot lights, skybox and post-processing.
 
 ## 0.5 - Architecture
 
