@@ -1,4 +1,7 @@
-from swirengine import Game, load_gltf_scene
+from swirengine import (
+    Game,
+    load_gltf_scene,
+)
 
 
 game = Game("SwirEngine glTF Scene", mode="3d", asset_root="assets")
