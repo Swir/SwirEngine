@@ -1,6 +1,5 @@
 from swirengine import Game, Vec3
 
-
 game = Game("SwirEngine glTF Viewer", mode="3d", width=1280, height=720)
 model = game.gltf("models/model.gltf")
 model.position = Vec3(0.0, 0.0, -4.0)
