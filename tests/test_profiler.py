@@ -11,7 +11,16 @@ def test_profiler_records_sections_and_renderer_stats():
     profiler.record("update", 0.002)
     profiler.record("physics", 0.001)
     profiler.record("render", 0.003)
-    stats = SimpleNamespace(draw_calls=4, sprites=12, sprite_batches=2, triangles=30)
+    stats = SimpleNamespace(
+        draw_calls=4,
+        sprites=12,
+        sprite_batches=2,
+        triangles=30,
+        directional_lights=2,
+        point_lights=3,
+        spot_lights=1,
+        lights_dropped=2,
+    )
 
     frame = profiler.end_frame(0.02, stats)
 
@@ -24,6 +33,11 @@ def test_profiler_records_sections_and_renderer_stats():
     assert frame.sprites == 12
     assert frame.sprite_batches == 2
     assert frame.triangles == 30
+    assert frame.directional_lights == 2
+    assert frame.point_lights == 3
+    assert frame.spot_lights == 1
+    assert frame.active_lights == 6
+    assert frame.lights_dropped == 2
 
 
 def test_profiler_average_uses_recent_samples():
