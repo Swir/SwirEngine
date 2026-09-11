@@ -20,8 +20,9 @@ def _resolve_index(raw: str, length: int) -> int:
 def load_obj(path: str | Path) -> MeshData:
     """Load triangle geometry from a Wavefront OBJ file.
 
-    Supports positions, normals, positive/negative indices and polygon fan triangulation.
-    Texture coordinates/materials are intentionally ignored until the material milestone.
+    Supports positions, UV coordinates, normals, positive/negative indices and polygon fan
+    triangulation. Missing normals are generated per triangle. Missing UVs are represented
+    as zero coordinates while meshes without any ``vt`` references remain UV-less.
     """
 
     source = Path(path).expanduser().resolve()
@@ -29,8 +30,10 @@ def load_obj(path: str | Path) -> MeshData:
         raise FileNotFoundError(f"OBJ file not found: {source}")
 
     positions: list[tuple[float, float, float]] = []
+    texcoords: list[tuple[float, float]] = []
     normals: list[tuple[float, float, float]] = []
     out_positions: list[tuple[float, float, float]] = []
+    out_uvs: list[tuple[float, float] | None] = []
     out_normals: list[tuple[float, float, float] | None] = []
 
     for line_number, raw_line in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
@@ -42,6 +45,8 @@ def load_obj(path: str | Path) -> MeshData:
         try:
             if kind == "v" and len(parts) >= 4:
                 positions.append(tuple(map(float, parts[1:4])))
+            elif kind == "vt" and len(parts) >= 3:
+                texcoords.append(tuple(map(float, parts[1:3])))
             elif kind == "vn" and len(parts) >= 4:
                 normals.append(tuple(map(float, parts[1:4])))
             elif kind == "f":
@@ -53,6 +58,13 @@ def load_obj(path: str | Path) -> MeshData:
                         fields = ref.split("/")
                         vertex_index = _resolve_index(fields[0], len(positions))
                         out_positions.append(positions[vertex_index])
+
+                        uv = None
+                        if len(fields) >= 2 and fields[1]:
+                            uv_index = _resolve_index(fields[1], len(texcoords))
+                            uv = texcoords[uv_index]
+                        out_uvs.append(uv)
+
                         normal = None
                         if len(fields) >= 3 and fields[2]:
                             normal_index = _resolve_index(fields[2], len(normals))
@@ -85,4 +97,12 @@ def load_obj(path: str | Path) -> MeshData:
     nonzero = lengths > 0
     resolved_normals[nonzero] /= lengths[nonzero, None]
     resolved_normals[~nonzero] = (0.0, 1.0, 0.0)
-    return MeshData(vertices, resolved_normals)
+
+    resolved_uvs = None
+    if any(value is not None for value in out_uvs):
+        resolved_uvs = np.asarray(
+            [(0.0, 0.0) if value is None else value for value in out_uvs],
+            dtype="f4",
+        )
+
+    return MeshData(vertices, resolved_normals, resolved_uvs)
