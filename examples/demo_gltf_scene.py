@@ -1,12 +1,9 @@
-from swirengine import (
-    Game,
-    load_gltf_scene,
-)
+import swirengine
 
 
-game = Game("SwirEngine glTF Scene", mode="3d", asset_root="assets")
+game = swirengine.Game("SwirEngine glTF Scene", mode="3d", asset_root="assets")
 
-for instance in load_gltf_scene(game.assets.require("models/scene.glb")):
+for instance in swirengine.load_gltf_scene(game.assets.require("models/scene.glb")):
     game.mesh(instance.mesh, name=instance.node_name or f"node-{instance.node_index}")
 
 game.camera.position.z = 6.0
