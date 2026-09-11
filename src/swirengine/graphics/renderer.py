@@ -6,10 +6,11 @@ from pathlib import Path
 
 import numpy as np
 
-from ..math.types import orthographic, perspective
+from ..math.types import Color, orthographic, perspective
 from .batching import SpriteBatch, build_render_runs
 from .camera import Camera2D
 from .camera3d import Camera3D
+from .material import Material3D
 from .mesh import Mesh3D
 from .primitives import Cube3D, Rectangle2D, Sprite2D, Text2D
 from .stats import RendererStats
@@ -176,43 +177,60 @@ class Renderer:
                 #version 330
                 in vec3 in_pos;
                 in vec3 in_normal;
+                in vec2 in_uv;
                 uniform mat4 mvp;
                 uniform mat4 model;
                 out vec3 v_normal;
+                out vec2 v_uv;
                 void main() {
                     gl_Position = mvp * vec4(in_pos, 1.0);
                     v_normal = mat3(transpose(inverse(model))) * in_normal;
+                    v_uv = in_uv;
                 }
             """,
             fragment_shader="""
                 #version 330
                 uniform vec4 color;
+                uniform sampler2D image;
+                uniform bool use_texture;
+                uniform float ambient_strength;
+                uniform float diffuse_strength;
                 in vec3 v_normal;
+                in vec2 v_uv;
                 out vec4 fragColor;
                 void main() {
                     vec3 n = normalize(v_normal);
                     float d = max(dot(n, normalize(vec3(0.4, 0.8, 0.6))), 0.0);
-                    fragColor = vec4(color.rgb * (0.25 + 0.75*d), color.a);
+                    vec4 surface = color;
+                    if (use_texture) {
+                        surface *= texture(image, v_uv);
+                    }
+                    float light = ambient_strength + diffuse_strength * d;
+                    fragColor = vec4(surface.rgb * light, surface.a);
                 }
             """,
         )
+        self.program3d["image"].value = 0
+
         p = 0.5
-        faces = [
+        faces = (
             ((0, 0, 1), ((-p, -p, p), (p, -p, p), (p, p, p), (-p, p, p))),
             ((0, 0, -1), ((p, -p, -p), (-p, -p, -p), (-p, p, -p), (p, p, -p))),
             ((1, 0, 0), ((p, -p, p), (p, -p, -p), (p, p, -p), (p, p, p))),
             ((-1, 0, 0), ((-p, -p, -p), (-p, -p, p), (-p, p, p), (-p, p, -p))),
             ((0, 1, 0), ((-p, p, p), (p, p, p), (p, p, -p), (-p, p, -p))),
             ((0, -1, 0), ((-p, -p, -p), (p, -p, -p), (p, -p, p), (-p, -p, p))),
-        ]
+        )
+        quad_uvs = ((0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0))
+        indices = (0, 1, 2, 0, 2, 3)
         vertices: list[float] = []
-        for normal, (a, b, c, d) in faces:
-            for position in (a, b, c, a, c, d):
-                vertices.extend((*position, *normal))
+        for normal, positions in faces:
+            for index in indices:
+                vertices.extend((*positions[index], *normal, *quad_uvs[index]))
         self.vbo3d = self.ctx.buffer(np.asarray(vertices, dtype="f4").tobytes())
         self.vao3d = self.ctx.vertex_array(
             self.program3d,
-            [(self.vbo3d, "3f 3f", "in_pos", "in_normal")],
+            [(self.vbo3d, "3f 3f 2f", "in_pos", "in_normal", "in_uv")],
         )
 
     @staticmethod
@@ -396,30 +414,56 @@ class Renderer:
         key = id(obj.mesh)
         cached = self._mesh_gpu.get(key)
         if cached is None:
-            data = obj.mesh.interleaved()
+            data = obj.mesh.interleaved(include_uvs=True)
             vbo = self.ctx.buffer(data.tobytes())
             vao = self.ctx.vertex_array(
                 self.program3d,
-                [(vbo, "3f 3f", "in_pos", "in_normal")],
+                [(vbo, "3f 3f 2f", "in_pos", "in_normal", "in_uv")],
             )
             cached = (vbo, vao, obj.mesh.vertex_count)
             self._mesh_gpu[key] = cached
             self.stats.mesh_uploads += 1
         return cached[1], cached[2]
 
+    @staticmethod
+    def _combined_color(instance: Color, material: Material3D | None) -> Color:
+        if material is None:
+            return instance.clamped()
+        tint = material.tint.clamped()
+        color = instance.clamped()
+        return Color(
+            color.r * tint.r,
+            color.g * tint.g,
+            color.b * tint.b,
+            color.a * tint.a,
+        )
+
     def _render_model(
         self,
         vao,
         model: np.ndarray,
         view_projection: np.ndarray,
-        color,
+        color: Color,
         *,
         vertices: int,
+        material: Material3D | None = None,
     ) -> None:
         self._write_mat4(self.program3d["model"], model)
         self._write_mat4(self.program3d["mvp"], view_projection @ model)
-        clamped = color.clamped()
-        self.program3d["color"].value = (clamped.r, clamped.g, clamped.b, clamped.a)
+        combined = self._combined_color(color, material)
+        self.program3d["color"].value = (combined.r, combined.g, combined.b, combined.a)
+
+        ambient = material.ambient if material is not None else 0.25
+        diffuse = material.diffuse if material is not None else 0.75
+        self.program3d["ambient_strength"].value = float(ambient)
+        self.program3d["diffuse_strength"].value = float(diffuse)
+
+        texture_path = material.texture if material is not None else None
+        self.program3d["use_texture"].value = texture_path is not None
+        if texture_path is not None:
+            texture, _, _ = self._texture(texture_path)
+            texture.use(location=0)
+
         vao.render(vertices=vertices)
         self.stats.draw_calls += 1
         self.stats.triangles += vertices // 3
@@ -453,6 +497,7 @@ class Renderer:
                     view_projection,
                     obj.color,
                     vertices=vertex_count,
+                    material=obj.material,
                 )
                 self.stats.meshes += 1
         self.ctx.disable(self.ctx.DEPTH_TEST)
