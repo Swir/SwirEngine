@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.2 - 2026-09-11
+
+Physics and effects update.
+
+- added `RigidBody2D` with dynamic, kinematic and static body modes
+- added fixed-step gravity, forces, impulses, damping and restitution
+- added axis-by-axis AABB collision resolution through `PhysicsWorld2D`
+- integrated physics with the existing `CollisionWorld2D` registry
+- added `Game.physics` and `Game.rigidbody(...)` convenience APIs
+- added pooled `ParticleEmitter2D` using renderer-native rectangles
+- added configurable particle rate, burst emission, lifetime, speed, angle, size, gravity and fading
+- added `Game.particles(...)` with automatic pooled child registration and cleanup
+- added rigid-body and particle tests
+- bumped package version to 0.3.2
+
 ## 0.3.1 - 2026-09-11
 
 Level-building and persistence update.
