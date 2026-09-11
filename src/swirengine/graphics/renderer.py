@@ -73,6 +73,7 @@ class Renderer:
                 uniform vec2 center;
                 uniform vec2 size;
                 uniform float angle;
+                uniform vec4 uv_rect;
                 out vec2 v_uv;
                 void main() {
                     float c = cos(angle);
@@ -80,7 +81,7 @@ class Renderer:
                     vec2 p = in_pos * size;
                     p = vec2(c*p.x - s*p.y, s*p.x + c*p.y) + center;
                     gl_Position = projection * vec4(p, 0.0, 1.0);
-                    v_uv = in_uv;
+                    v_uv = mix(uv_rect.xy, uv_rect.zw, in_uv);
                 }
             """,
             fragment_shader="""
@@ -143,11 +144,41 @@ class Renderer:
         p = 0.5
         faces = [
             ((0, 0, 1), [(-p, -p, p), (p, -p, p), (p, p, p), (-p, -p, p), (p, p, p), (-p, p, p)]),
-            ((0, 0, -1), [(p, -p, -p), (-p, -p, -p), (-p, p, -p), (p, -p, -p), (-p, p, -p), (p, p, -p)]),
+            (
+                (0, 0, -1),
+                [
+                    (p, -p, -p),
+                    (-p, -p, -p),
+                    (-p, p, -p),
+                    (p, -p, -p),
+                    (-p, p, -p),
+                    (p, p, -p),
+                ],
+            ),
             ((1, 0, 0), [(p, -p, p), (p, -p, -p), (p, p, -p), (p, -p, p), (p, p, -p), (p, p, p)]),
-            ((-1, 0, 0), [(-p, -p, -p), (-p, -p, p), (-p, p, p), (-p, -p, -p), (-p, p, p), (-p, p, -p)]),
+            (
+                (-1, 0, 0),
+                [
+                    (-p, -p, -p),
+                    (-p, -p, p),
+                    (-p, p, p),
+                    (-p, -p, -p),
+                    (-p, p, p),
+                    (-p, p, -p),
+                ],
+            ),
             ((0, 1, 0), [(-p, p, p), (p, p, p), (p, p, -p), (-p, p, p), (p, p, -p), (-p, p, -p)]),
-            ((0, -1, 0), [(-p, -p, -p), (p, -p, -p), (p, -p, p), (-p, -p, -p), (p, -p, p), (-p, -p, p)]),
+            (
+                (0, -1, 0),
+                [
+                    (-p, -p, -p),
+                    (p, -p, -p),
+                    (p, -p, p),
+                    (-p, -p, -p),
+                    (p, -p, p),
+                    (-p, -p, p),
+                ],
+            ),
         ]
         vertices: list[float] = []
         for normal, positions in faces:
@@ -205,7 +236,8 @@ class Renderer:
         self._write_mat4(self.program2d["projection"], projection)
         self._write_mat4(self.sprite_program["projection"], projection)
 
-        for obj in scene.objects:
+        objects = sorted(scene.objects, key=lambda item: getattr(item, "layer", 0))
+        for obj in objects:
             if not getattr(obj, "enabled", True) or not getattr(obj, "visible", True):
                 continue
 
@@ -233,6 +265,7 @@ class Renderer:
                 self.sprite_program["angle"].value = math.radians(float(obj.rotation))
                 tint = obj.tint.clamped()
                 self.sprite_program["tint"].value = (tint.r, tint.g, tint.b, tint.a)
+                self.sprite_program["uv_rect"].value = tuple(float(value) for value in obj.uv_rect)
                 texture.use(location=0)
                 self.sprite_vao.render()
 

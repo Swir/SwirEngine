@@ -5,6 +5,8 @@ from pathlib import Path
 
 from ..math.types import Color, Transform, Vec3
 
+UVRect = tuple[float, float, float, float]
+
 
 @dataclass(slots=True)
 class Rectangle2D:
@@ -18,6 +20,7 @@ class Rectangle2D:
     visible: bool = True
     name: str = ""
     tags: set[str] = field(default_factory=set)
+    layer: int = 0
 
     def update(self, dt: float) -> None:
         pass
@@ -36,6 +39,8 @@ class Sprite2D:
     visible: bool = True
     name: str = ""
     tags: set[str] = field(default_factory=set)
+    layer: int = 0
+    uv_rect: UVRect = (0.0, 0.0, 1.0, 1.0)
 
     def update(self, dt: float) -> None:
         pass

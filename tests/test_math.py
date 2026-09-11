@@ -1,12 +1,14 @@
 import math
+
 import numpy as np
-from swirengine import Vec2, Vec3, Color, Transform
+
+from swirengine import Color, Transform, Vec2, Vec3
 
 
 def test_vec2_length_and_normalize():
-    v = Vec2(3, 4)
-    assert v.length == 5
-    assert math.isclose(v.normalized().length, 1.0)
+    vector = Vec2(3, 4)
+    assert vector.length == 5
+    assert math.isclose(vector.normalized().length, 1.0)
 
 
 def test_vec3_ops():
@@ -19,5 +21,5 @@ def test_color_clamp():
 
 
 def test_transform_translation():
-    m = Transform(position=Vec3(1, 2, 3)).matrix()
-    assert np.allclose(m[:3, 3], [1, 2, 3])
+    matrix = Transform(position=Vec3(1, 2, 3)).matrix()
+    assert np.allclose(matrix[:3, 3], [1, 2, 3])

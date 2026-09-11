@@ -1,10 +1,12 @@
 from __future__ import annotations
+
 import argparse
-from pathlib import Path
 import sys
+from pathlib import Path
+
 from . import __version__
 
-TEMPLATE_2D = '''from swirengine import Game, Rectangle2D, Color
+TEMPLATE_2D = '''from swirengine import Color, Game, Rectangle2D
 
 game = Game("{name}", 1280, 720, mode="2d")
 player = game.add(Rectangle2D(0, 0, 140, 80, Color(0.1, 0.7, 1.0, 1.0), name="player"))
@@ -12,15 +14,19 @@ player = game.add(Rectangle2D(0, 0, 140, 80, Color(0.1, 0.7, 1.0, 1.0), name="pl
 @game.update
 def update(dt):
     speed = 400
-    if game.key("A"): player.x -= speed * dt
-    if game.key("D"): player.x += speed * dt
-    if game.key("W"): player.y += speed * dt
-    if game.key("S"): player.y -= speed * dt
+    if game.key("A"):
+        player.x -= speed * dt
+    if game.key("D"):
+        player.x += speed * dt
+    if game.key("W"):
+        player.y += speed * dt
+    if game.key("S"):
+        player.y -= speed * dt
 
 game.run()
 '''
 
-TEMPLATE_3D = '''from swirengine import Game, Cube3D, Color, Vec3
+TEMPLATE_3D = '''from swirengine import Color, Cube3D, Game, Vec3
 
 game = Game("{name}", 1280, 720, mode="3d")
 cube = Cube3D(position=Vec3(0, 0, -4), color=Color(0.2, 0.7, 1.0, 1.0))
@@ -43,7 +49,7 @@ def new_project(name: str, mode: str) -> Path:
     template = TEMPLATE_3D if mode == "3d" else TEMPLATE_2D
     (root / "main.py").write_text(template.format(name=name), encoding="utf-8")
     (root / "swirproject.toml").write_text(
-        f'name = "{name}"\nmode = "{mode}"\nengine = ">=0.2,<0.3"\n', encoding="utf-8"
+        f'name = "{name}"\nmode = "{mode}"\nengine = ">=0.3,<0.4"\n', encoding="utf-8"
     )
     (root / ".gitignore").write_text("__pycache__/\n.venv/\n", encoding="utf-8")
     return root

@@ -1,13 +1,17 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 import time
+from collections.abc import Callable
+from pathlib import Path
 from typing import Literal, TypeVar
 
+from ..assets import AssetManager
+from ..graphics.camera import Camera2D
+from ..graphics.primitives import Sprite2D
+from ..input.manager import InputManager
+from ..physics.collision2d import BoxCollider2D, CollisionWorld2D
 from .events import EventBus
 from .scene import Scene
-from ..graphics.camera import Camera2D
-from ..input.manager import InputManager
 
 T = TypeVar("T")
 
@@ -23,6 +27,7 @@ class Game:
         vsync: bool = True,
         target_fps: int = 120,
         fixed_hz: int = 60,
+        asset_root: str | Path = "assets",
     ) -> None:
         if mode not in ("2d", "3d"):
             raise ValueError("mode must be '2d' or '3d'")
@@ -38,6 +43,8 @@ class Game:
         self.camera = Camera2D()
         self.events = EventBus()
         self.input = InputManager()
+        self.assets = AssetManager(asset_root)
+        self.collisions = CollisionWorld2D()
         self.running = False
 
         self._update_callbacks: list[Callable[[float], None]] = []
@@ -53,11 +60,30 @@ class Game:
         return self.scene.add_many(*objects)
 
     def remove(self, obj: object) -> bool:
-        return self.scene.remove(obj)
+        removed = self.scene.remove(obj)
+        if removed:
+            for collider in tuple(self.collisions.colliders):
+                if collider.target is obj:
+                    self.collisions.remove(collider)
+        return removed
+
+    def sprite(self, texture: str | Path, **kwargs: object) -> Sprite2D:
+        """Create and add a sprite resolved relative to the game's asset directory."""
+        return self.add(Sprite2D(self.assets.resolve(texture), **kwargs))
+
+    def collider(self, target: object, **kwargs: object) -> BoxCollider2D:
+        """Create and register a box collider for an existing scene object."""
+        return self.collisions.add(BoxCollider2D(target, **kwargs))
 
     def key(self, name: str) -> bool:
         """Beginner-friendly shorthand for ``game.input.key(name)``."""
         return self.input.key(name)
+
+    def key_pressed(self, name: str) -> bool:
+        return self.input.key_pressed(name)
+
+    def key_released(self, name: str) -> bool:
+        return self.input.key_released(name)
 
     def update(self, callback: Callable[[float], None]) -> Callable[[float], None]:
         self._update_callbacks.append(callback)
