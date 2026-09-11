@@ -6,7 +6,9 @@ from .graphics.animation import AnimatedSprite2D, AnimationClip, SpriteSheet, an
 from .graphics.camera import Camera2D
 from .graphics.primitives import Cube3D, Rectangle2D, Sprite2D
 from .math.types import Color, Transform, Vec2, Vec3
+from .particles import ParticleEmitter2D
 from .physics.collision2d import AABB, BoxCollider2D, CollisionWorld2D
+from .physics.rigidbody2d import PhysicsWorld2D, RigidBody2D
 from .storage import SaveStore
 from .tilemap import TileMap2D
 
@@ -22,7 +24,10 @@ __all__ = [
     "Cube3D",
     "EventBus",
     "Game",
+    "ParticleEmitter2D",
+    "PhysicsWorld2D",
     "Rectangle2D",
+    "RigidBody2D",
     "SaveStore",
     "Scene",
     "Sprite2D",
@@ -34,4 +39,4 @@ __all__ = [
     "animated_sprite",
 ]
 
-__version__ = "0.3.1"
+__version__ = "0.3.2"
