@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.3 - 2026-09-11
+
+GLB container and glTF scene-graph update.
+
+- extended `load_gltf(...)` to support binary GLB 2.0 containers in addition to JSON `.gltf`
+- added strict GLB header/chunk validation plus JSON and BIN chunk decoding
+- added public `GltfSceneMesh` metadata and `load_gltf_scene(...)`
+- added default/custom scene selection and fallback root-node discovery for assets without scenes
+- added hierarchical node traversal with cycle and invalid-node validation
+- added glTF 4x4 node matrix support and TRS composition with normalized quaternion rotation
+- added world-space position baking and inverse-transpose normal transformation
+- preserved triangle winding for mirrored/negative-scale node transforms
+- kept `load_gltf(..., mesh_index=...)` behavior backward compatible for direct mesh loading
+- expanded glTF regression coverage for GLB, hierarchy, scale/translation, quaternion rotation and malformed containers
+- advanced the 0.4 roadmap toward glTF materials and full lighting
+- bumped package version to 0.4.3
+
 ## 0.4.2 - 2026-09-11
 
 Static glTF 2.0 import update.
