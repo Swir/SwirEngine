@@ -6,6 +6,9 @@ from .core.scene import Scene
 from .debug import DebugOverlay
 from .graphics.animation import AnimatedSprite2D, AnimationClip, SpriteSheet, animated_sprite
 from .graphics.camera import Camera2D
+from .graphics.camera3d import Camera3D
+from .graphics.mesh import Mesh3D, MeshData, cube_mesh
+from .graphics.obj import load_obj
 from .graphics.primitives import Cube3D, Rectangle2D, Sprite2D, Text2D
 from .graphics.stats import RendererStats
 from .math.types import Color, Transform, Vec2, Vec3
@@ -27,6 +30,7 @@ __all__ = [
     "AudioHandle",
     "BoxCollider2D",
     "Camera2D",
+    "Camera3D",
     "CollisionWorld2D",
     "Color",
     "Cube3D",
@@ -34,6 +38,8 @@ __all__ = [
     "EventBus",
     "FrameProfile",
     "Game",
+    "Mesh3D",
+    "MeshData",
     "ParticleEmitter2D",
     "PhysicsWorld2D",
     "Profiler",
@@ -56,6 +62,8 @@ __all__ = [
     "Vec2",
     "Vec3",
     "animated_sprite",
+    "cube_mesh",
+    "load_obj",
 ]
 
-__version__ = "0.3.5"
+__version__ = "0.4.0"

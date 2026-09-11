@@ -9,6 +9,8 @@ import numpy as np
 from ..math.types import orthographic, perspective
 from .batching import SpriteBatch, build_render_runs
 from .camera import Camera2D
+from .camera3d import Camera3D
+from .mesh import Mesh3D
 from .primitives import Cube3D, Rectangle2D, Sprite2D, Text2D
 from .stats import RendererStats
 
@@ -33,6 +35,7 @@ class Renderer:
         self._text_textures: OrderedDict[
             tuple[str, str, int], tuple[object, int, int]
         ] = OrderedDict()
+        self._mesh_gpu: dict[int, tuple[object, object, int]] = {}
         self._sprite_batch_capacity = 0
         self._init_2d()
         self._init_3d()
@@ -178,7 +181,7 @@ class Renderer:
                 out vec3 v_normal;
                 void main() {
                     gl_Position = mvp * vec4(in_pos, 1.0);
-                    v_normal = mat3(model) * in_normal;
+                    v_normal = mat3(transpose(inverse(model))) * in_normal;
                 }
             """,
             fragment_shader="""
@@ -311,15 +314,17 @@ class Renderer:
         self,
         scene,
         *,
-        camera: Camera2D | None = None,
+        camera: Camera2D | Camera3D | None = None,
         clear_color=(0.035, 0.045, 0.07, 1.0),
     ) -> None:
         self.stats.reset()
         self.ctx.clear(*clear_color)
         if self.mode == "3d":
-            self._render_3d(scene)
+            active = camera if isinstance(camera, Camera3D) else Camera3D()
+            self._render_3d(scene, active)
         else:
-            self._render_2d(scene, camera or Camera2D())
+            active_2d = camera if isinstance(camera, Camera2D) else Camera2D()
+            self._render_2d(scene, active_2d)
         self.stats.texture_cache_entries = len(self._textures)
         self.stats.text_cache_entries = len(self._text_textures)
 
@@ -387,22 +392,69 @@ class Renderer:
                 self.stats.triangles += 2
         self.ctx.disable(self.ctx.BLEND)
 
-    def _render_3d(self, scene) -> None:
+    def _gpu_mesh(self, obj: Mesh3D) -> tuple[object, int]:
+        key = id(obj.mesh)
+        cached = self._mesh_gpu.get(key)
+        if cached is None:
+            data = obj.mesh.interleaved()
+            vbo = self.ctx.buffer(data.tobytes())
+            vao = self.ctx.vertex_array(
+                self.program3d,
+                [(vbo, "3f 3f", "in_pos", "in_normal")],
+            )
+            cached = (vbo, vao, obj.mesh.vertex_count)
+            self._mesh_gpu[key] = cached
+            self.stats.mesh_uploads += 1
+        return cached[1], cached[2]
+
+    def _render_model(
+        self,
+        vao,
+        model: np.ndarray,
+        view_projection: np.ndarray,
+        color,
+        *,
+        vertices: int,
+    ) -> None:
+        self._write_mat4(self.program3d["model"], model)
+        self._write_mat4(self.program3d["mvp"], view_projection @ model)
+        clamped = color.clamped()
+        self.program3d["color"].value = (clamped.r, clamped.g, clamped.b, clamped.a)
+        vao.render(vertices=vertices)
+        self.stats.draw_calls += 1
+        self.stats.triangles += vertices // 3
+
+    def _render_3d(self, scene, camera: Camera3D) -> None:
         self.ctx.enable(self.ctx.DEPTH_TEST)
-        projection = perspective(60.0, self.width / max(1, self.height), 0.1, 100.0)
-        view = np.eye(4, dtype="f4")
+        projection = perspective(
+            float(camera.fov),
+            self.width / max(1, self.height),
+            float(camera.near),
+            float(camera.far),
+        )
+        view_projection = projection @ camera.view_matrix()
         for obj in scene.objects:
-            if not isinstance(obj, Cube3D) or not obj.enabled or not obj.visible:
+            if not getattr(obj, "enabled", True) or not getattr(obj, "visible", True):
                 continue
-            model = obj.transform.matrix()
-            self._write_mat4(self.program3d["model"], model)
-            self._write_mat4(self.program3d["mvp"], projection @ view @ model)
-            color = obj.color.clamped()
-            self.program3d["color"].value = (color.r, color.g, color.b, color.a)
-            self.vao3d.render()
-            self.stats.draw_calls += 1
-            self.stats.cubes += 1
-            self.stats.triangles += 12
+            if isinstance(obj, Cube3D):
+                self._render_model(
+                    self.vao3d,
+                    obj.transform.matrix(),
+                    view_projection,
+                    obj.color,
+                    vertices=36,
+                )
+                self.stats.cubes += 1
+            elif isinstance(obj, Mesh3D):
+                vao, vertex_count = self._gpu_mesh(obj)
+                self._render_model(
+                    vao,
+                    obj.transform.matrix(),
+                    view_projection,
+                    obj.color,
+                    vertices=vertex_count,
+                )
+                self.stats.meshes += 1
         self.ctx.disable(self.ctx.DEPTH_TEST)
 
     def release(self) -> None:
@@ -412,5 +464,15 @@ class Renderer:
         for texture, _, _ in self._text_textures.values():
             texture.release()
         self._text_textures.clear()
+        for vbo, vao, _ in self._mesh_gpu.values():
+            vao.release()
+            vbo.release()
+        self._mesh_gpu.clear()
         self.sprite_batch_vao.release()
         self.sprite_batch_vbo.release()
+        self.vao3d.release()
+        self.vbo3d.release()
+        self.sprite_vao.release()
+        self.sprite_vbo.release()
+        self.vao2d.release()
+        self.vbo2d.release()

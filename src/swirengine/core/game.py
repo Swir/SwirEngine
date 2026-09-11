@@ -9,6 +9,9 @@ from ..assets import AssetManager
 from ..audio import AudioEngine, AudioHandle
 from ..debug import DebugOverlay
 from ..graphics.camera import Camera2D
+from ..graphics.camera3d import Camera3D
+from ..graphics.mesh import Mesh3D, MeshData
+from ..graphics.obj import load_obj
 from ..graphics.primitives import Sprite2D, Text2D
 from ..input.manager import InputManager
 from ..particles import ParticleEmitter2D
@@ -49,7 +52,7 @@ class Game:
         self.fixed_hz = max(1, int(fixed_hz))
 
         self.scene = Scene()
-        self.camera = Camera2D()
+        self.camera: Camera2D | Camera3D = Camera3D() if mode == "3d" else Camera2D()
         self.events = EventBus()
         self.input = InputManager()
         self.assets = AssetManager(asset_root)
@@ -98,6 +101,18 @@ class Game:
     def text(self, value: str, x: float = 0.0, y: float = 0.0, **kwargs: object) -> Text2D:
         """Create world-space text rendered through the shared 2D texture pipeline."""
         return self.add(Text2D(value, x, y, **kwargs))
+
+    def mesh(self, data: MeshData, **kwargs: object) -> Mesh3D:
+        """Create and add a 3D mesh instance from CPU-side mesh data."""
+        if self.mode != "3d":
+            raise RuntimeError("Game.mesh(...) requires mode='3d'")
+        return self.add(Mesh3D(data, **kwargs))
+
+    def obj(self, asset: str | Path, **kwargs: object) -> Mesh3D:
+        """Load a Wavefront OBJ from the asset root and add it as a Mesh3D."""
+        if self.mode != "3d":
+            raise RuntimeError("Game.obj(...) requires mode='3d'")
+        return self.mesh(load_obj(self.assets.require(asset)), **kwargs)
 
     def label(self, value: str, x: float = 0.0, y: float = 0.0, **kwargs: object) -> UILabel:
         return self.ui.label(value, x, y, **kwargs)

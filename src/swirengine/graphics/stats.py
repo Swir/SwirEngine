@@ -9,9 +9,11 @@ class RendererStats:
     rectangles: int = 0
     texts: int = 0
     cubes: int = 0
+    meshes: int = 0
     triangles: int = 0
     texture_uploads: int = 0
     text_uploads: int = 0
+    mesh_uploads: int = 0
     texture_cache_entries: int = 0
     text_cache_entries: int = 0
 
@@ -22,8 +24,10 @@ class RendererStats:
         self.rectangles = 0
         self.texts = 0
         self.cubes = 0
+        self.meshes = 0
         self.triangles = 0
         self.texture_uploads = 0
         self.text_uploads = 0
+        self.mesh_uploads = 0
         self.texture_cache_entries = 0
         self.text_cache_entries = 0
