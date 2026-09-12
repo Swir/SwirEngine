@@ -6,7 +6,6 @@ from types import ModuleType
 import pytest
 
 from swirengine import (
-    HotReloadSnapshot,
     HotReloadStateError,
     HotReloadStateRegistry,
     PluginError,
