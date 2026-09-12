@@ -1,4 +1,4 @@
-# SwirEngine 0.4.6
+# SwirEngine 0.4.10
 
 SwirEngine is a Python-first 2D/3D game engine built around one approachable API.
 Its goal is to let people create real games in Python without learning OpenGL before
@@ -28,15 +28,17 @@ they can put a character or 3D model on screen.
 - real perspective `Camera3D` with look-at and local-space movement
 - reusable `MeshData` / `Mesh3D` geometry with lazy GPU mesh caching
 - Wavefront OBJ plus static glTF/GLB mesh and scene import
-- material-aware glTF/GLB base-color texture loading
+- material-aware glTF/GLB base-color and packed metallic/roughness texture loading
 - `DirectionalLight3D`, `PointLight3D` and `SpotLight3D`
 - multiple simultaneous lights with explicit 4/4/4 directional/point/spot GPU budgets
-- distance and spotlight-cone attenuation plus Phong specular/shininess materials
-- project `AssetManager` with aliases and strict validation
+- legacy Phong materials plus native Cook-Torrance GGX metallic/roughness PBR
+- project `AssetManager` with aliases, scanning and diagnostics
 - sound effects and background music through a pluggable audio service
 - AABB collision detection plus fixed-step arcade rigid-body physics
 - pooled particle effects
 - JSON `SaveStore` with atomic persistence
+- reusable prefabs with per-instance overrides
+- versioned scene/prefab JSON serialization with a safe codec registry
 - scene lifecycle, names and tags
 - creator-friendly factories for gameplay, UI and 3D objects
 - variable update + deterministic fixed-update loop
@@ -246,14 +248,17 @@ game.run()
 The collision layer also supports lightweight AABB queries when full rigid-body response
 is unnecessary.
 
-## Asset aliases
+## Asset aliases and diagnostics
 
 ```python
 game.assets.register("hero", "characters/hero.png")
 hero_path = game.assets.require("hero")
+report = game.assets.diagnostics()
 ```
 
 Aliases work for audio too, because the audio service shares the game's `AssetManager`.
+Asset diagnostics can scan the project tree, summarize sizes/types and identify aliases
+whose targets no longer exist without loading the assets into RAM or GPU memory.
 
 ## 3D camera, meshes and import
 
@@ -285,6 +290,8 @@ Explicit lights are scene objects and can be created directly from `Game`. When 
 contains no explicit light, the renderer keeps the historical default directional light so
 older 3D projects continue to render as expected.
 
+Legacy Phong materials remain supported:
+
 ```python
 from swirengine import Color, Game, Material3D, Vec3, cube_mesh
 
@@ -300,19 +307,29 @@ model = game.mesh(cube_mesh(), material=material)
 model.position = Vec3(0.0, 0.0, -4.0)
 
 game.directional_light(direction=Vec3(-0.4, -1.0, -0.3), intensity=0.7)
-game.directional_light(direction=Vec3(0.5, -0.3, 0.7), intensity=0.2)
 game.point_light(position=Vec3(2.0, 2.0, -2.0), range=8.0, intensity=2.0)
-game.point_light(position=Vec3(-2.0, 1.0, -3.0), range=7.0, intensity=1.5)
-game.spot_light(
-    position=Vec3(-2.0, 3.0, -1.0),
-    direction=Vec3(0.5, -0.8, -0.4),
-    inner_angle=18.0,
-    outer_angle=30.0,
-)
-
 game.camera.look_at(model.position)
 game.run()
 ```
+
+For physically based metallic/roughness shading, set either PBR factor. SwirEngine then
+uses a Cook-Torrance BRDF with GGX normal distribution, Schlick-GGX geometry and
+Fresnel-Schlick reflection instead of the legacy Phong path:
+
+```python
+material = Material3D(
+    tint=Color(0.82, 0.35, 0.12, 1.0),
+    ambient=0.04,
+    metallic=0.9,
+    roughness=0.18,
+)
+```
+
+`metallic_roughness_texture` is also supported. It follows glTF 2.0 packing: roughness is
+read from the green channel and metallic from the blue channel, then multiplied by the
+scalar `roughness` and `metallic` factors. glTF/GLB `metallicRoughnessTexture` assets are
+resolved automatically alongside base-color textures, including external files, data URIs
+and images embedded in GLB buffer views.
 
 `DirectionalLight3D` models distant sun/moon lighting. `PointLight3D` uses smooth distance
 attenuation, while `SpotLight3D` combines distance attenuation with smooth inner/outer cone
@@ -322,7 +339,16 @@ are reported through `RendererStats.lights_dropped`, `FrameProfile.lights_droppe
 debug overlay instead of being silently ignored. `MAX_DIRECTIONAL_LIGHTS`,
 `MAX_POINT_LIGHTS` and `MAX_SPOT_LIGHTS` expose the current budgets.
 
-Richer PBR mapping, shadows, skyboxes and post-processing remain roadmap work.
+Skybox/environment lighting, shadows, post-processing and broader glTF normal/occlusion/
+emissive map support remain roadmap work. Color-space fidelity will also be hardened as the
+PBR renderer grows.
+
+## Prefabs and scene persistence
+
+Reusable groups can be captured as prefabs, instantiated independently and overridden per
+instance. Scene/prefab JSON serialization uses a versioned format and an explicit safe codec
+registry rather than dynamically importing arbitrary classes named by a file. This is the
+foundation for later editor files, hot reload and plugin workflows.
 
 ## CLI
 
