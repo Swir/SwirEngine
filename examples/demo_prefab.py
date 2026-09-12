@@ -1,6 +1,5 @@
 import swirengine as sw
 
-
 game = sw.Game("Prefab Demo", 960, 540)
 
 enemy_prefab = sw.Prefab(
