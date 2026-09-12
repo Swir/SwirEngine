@@ -81,13 +81,19 @@ with stale-target and stale-parent protection so failed structural rollback atte
 Portable `EditorHierarchyState` snapshots now persist parenting, sibling order and selection across scene
 serialization/reload using scene-object indices and stable ECS IDs rather than process-local object keys;
 restore pre-validates all references and can leave project loading out of the user's undo history.
+`EditorProjectState` and `EditorWorkspace` now lift that foundation to project scope: per-scene hierarchy,
+selection and viewport state, validated panel layout, JSON/file persistence, scene switching, hierarchy
+filters and immutable `EditorShellFrame` snapshots are coordinated behind one GUI-agnostic visual-editor
+shell contract.
 
-Next: strengthen rollback guarantees for multi-domain restore, add project-level editor state and begin
-the first visual-editor shell around the shared hierarchy/inspector contract.
+Next: strengthen rollback guarantees for multi-domain restore and connect the editor workspace shell to
+an actual interactive visual front-end, then add asset-browser data models and scene transform gizmos.
 
 ## 0.6 - Tools
 
-Visual editor, hierarchy/inspector, asset browser, console/profiler and scene gizmos.
+Visual editor foundation now includes a shared project/workspace shell, hierarchy/inspector contract,
+persistent panel layout and viewport preferences. Next: interactive visual front-end, asset browser,
+console/profiler integration and scene transform gizmos.
 
 ## 0.7+ - Runtime and export
 

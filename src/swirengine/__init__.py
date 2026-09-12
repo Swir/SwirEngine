@@ -22,6 +22,17 @@ from .editor_state import (
     capture_editor_hierarchy,
     restore_editor_hierarchy,
 )
+from .editor_workspace import (
+    EDITOR_PROJECT_FORMAT,
+    EDITOR_PROJECT_VERSION,
+    EditorPanelState,
+    EditorProjectState,
+    EditorSceneState,
+    EditorShellFrame,
+    EditorViewportState,
+    EditorWorkspace,
+    default_editor_panels,
+)
 from .filewatch import FileChangeEvent, PluginAutoReloader, PollingFileWatcher, ReloadResult
 from .graphics.animation import AnimatedSprite2D, AnimationClip, SpriteSheet, animated_sprite
 from .graphics.camera import Camera2D
@@ -68,6 +79,8 @@ __all__ = [
     "AABB",
     "EDITOR_HIERARCHY_FORMAT",
     "EDITOR_HIERARCHY_VERSION",
+    "EDITOR_PROJECT_FORMAT",
+    "EDITOR_PROJECT_VERSION",
     "MAX_DIRECTIONAL_LIGHTS",
     "MAX_POINT_LIGHTS",
     "MAX_SPOT_LIGHTS",
@@ -92,7 +105,13 @@ __all__ = [
     "ECSWorld",
     "EditorHierarchyNode",
     "EditorHierarchyState",
+    "EditorPanelState",
+    "EditorProjectState",
+    "EditorSceneState",
+    "EditorShellFrame",
     "EditorTargetRef",
+    "EditorViewportState",
+    "EditorWorkspace",
     "Entity",
     "Environment3D",
     "EnvironmentInstallation",
@@ -160,6 +179,7 @@ __all__ = [
     "animated_sprite",
     "capture_editor_hierarchy",
     "cube_mesh",
+    "default_editor_panels",
     "load_gltf",
     "load_gltf_material",
     "load_gltf_primitives",
