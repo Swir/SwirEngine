@@ -1,6 +1,12 @@
-from pathlib import Path
-
-from swirengine import AssetManager, Material3D, Mesh3D, RendererAssetBridge, Scene, Sprite2D, cube_mesh
+from swirengine import (
+    AssetManager,
+    Material3D,
+    Mesh3D,
+    RendererAssetBridge,
+    Scene,
+    Sprite2D,
+    cube_mesh,
+)
 
 
 class FakeTexture:
