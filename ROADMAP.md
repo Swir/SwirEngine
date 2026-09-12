@@ -73,10 +73,12 @@ GUI-agnostic hierarchy/inspector model spanning classic scene objects and ECS en
 selection keys, searchable/tag-filterable hierarchy rows, immutable field snapshots and bounded
 reversible property editing with undo/redo history. ECS component inspection/editing extends that
 same contract to component public fields, with stable entity-anchored history and safe stale-component
-detection during undo/redo.
+detection during undo/redo. The editor hierarchy now also supports mixed object/entity parenting,
+deterministic sibling ordering, indexed reparenting, depth/parent/order row metadata, cycle prevention
+and automatic promotion of children when a parent disappears from the runtime scene.
 
-Next: strengthen rollback guarantees for multi-domain restore, add hierarchy parenting/reordering
-operations and continue architecture hardening for scene editing and the visual editor.
+Next: strengthen rollback guarantees for multi-domain restore, add undo/redo for structural scene
+operations and continue architecture hardening toward persistent scene-editor hierarchy state.
 
 ## 0.6 - Tools
 
