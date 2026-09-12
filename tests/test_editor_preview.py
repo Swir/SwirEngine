@@ -4,7 +4,11 @@ from types import SimpleNamespace
 import pytest
 
 from swirengine import Scene
-from swirengine.editor_preview import EditorPreviewSession, EditorViewportImage, RendererViewportBridge
+from swirengine.editor_preview import (
+    EditorPreviewSession,
+    EditorViewportImage,
+    RendererViewportBridge,
+)
 from swirengine.editor_runtime import EditorRuntimeMode, EditorRuntimeSession
 from swirengine.editor_workspace import EditorWorkspace
 from swirengine.serialization import SceneCodecRegistry, SceneSerializer
