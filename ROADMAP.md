@@ -41,7 +41,12 @@ skybox, shadows and post-processing.
 
 ## 0.5 - Architecture
 
-Components/ECS, prefabs, serialization, scene files, hot reload and plugin API.
+Early foundation landed during 0.4.8: reusable deep-copy `Prefab` blueprints, independent
+`PrefabInstance` graphs, per-instance overrides, filtered scene capture and direct scene
+instantiation/removal helpers. Deep-copying the complete graph preserves references between
+prefab members while isolating separate spawns.
+
+Next: scene/prefab serialization, components/ECS, hot reload and plugin API.
 
 ## 0.6 - Tools
 

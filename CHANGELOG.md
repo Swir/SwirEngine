@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.8 - 2026-09-12
+
+Prefab architecture foundation update.
+
+- added public `Prefab` reusable deep-copy blueprints for groups and object graphs
+- added immutable `PrefabInstance` handles with root, lookup, tag and scene-removal helpers
+- preserve internal references by deep-copying complete prefab object graphs as one unit
+- isolate source objects, stored templates, separate spawned instances and mutable override values
+- added per-instance attribute overrides targeting object indexes or unique object names
+- added explicit validation for unknown indexes, missing/ambiguous names and invalid override attributes
+- added `Prefab.from_scene(...)` with optional filtered scene capture
+- added creator-facing `Scene.prefab(...)` and `Scene.instantiate(...)` integration
+- added prefab regression coverage and a runnable prefab spawning example
+- advanced the 0.5 architecture roadmap early without declaring the unfinished 0.4 renderer milestone complete
+- bumped package version to 0.4.8
+
 ## 0.4.7 - 2026-09-12
 
 PBR-factor bridge and asset-diagnostics update.
