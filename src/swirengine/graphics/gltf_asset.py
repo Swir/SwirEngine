@@ -136,7 +136,7 @@ def _optional_texture_path(
     if texture_info is None:
         return None
     if not isinstance(texture_info, dict):
-        raise ValueError(f"glTF material {material_index}: invalid {label}")
+        raise TypeError(f"glTF material {material_index}: invalid {label}")
     return _texture_path(
         document,
         buffers,
