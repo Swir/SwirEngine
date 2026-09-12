@@ -41,7 +41,7 @@ fidelity and broaden glTF material coverage with normal, occlusion and emissive 
 
 ## 0.5 - Architecture
 
-Foundation landed during 0.4.8-0.4.18: reusable deep-copy `Prefab` blueprints,
+Foundation landed during 0.4.8-0.4.19: reusable deep-copy `Prefab` blueprints,
 independent `PrefabInstance` graphs, per-instance overrides, filtered scene capture and direct
 scene instantiation/removal helpers, versioned JSON scene/prefab serialization with a safe
 allow-list codec registry and cross-object reference preservation, a lightweight public
@@ -57,12 +57,12 @@ transactions without background threads. Named state domains let editor/game sub
 inspect, clear and selectively preserve independent state groups during manual or watcher-driven
 reloads without changing existing provider names or snapshot formats. `AssetManager` now adds a
 suffix-based loader registry, canonical-path runtime cache, watched asset invalidation, structured
-reload results and invalidation callbacks so renderer/audio/editor caches can release stale
-resources and cached assets can reload after on-disk edits without restarting the runtime.
+reload results and invalidation callbacks. `RendererAssetBridge` connects those callbacks directly
+to renderer GPU textures, releases stale ModernGL resources, automatically discovers 2D sprite
+and 3D material textures in a scene and reuses the same deterministic polling pipeline.
 
-Next: connect live asset invalidation directly to renderer/audio resource caches, strengthen
-rollback guarantees for multi-domain restore and continue architecture hardening for the visual
-editor.
+Next: integrate equivalent live invalidation into audio resources, strengthen rollback guarantees
+for multi-domain restore and continue architecture hardening for the visual editor.
 
 ## 0.6 - Tools
 
