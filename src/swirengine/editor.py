@@ -40,6 +40,7 @@ class PropertyEdit:
     property_name: str
     before: object
     after: object
+    component_type: type[object] | None = None
 
 
 class SceneInspector:
@@ -131,16 +132,31 @@ class SceneInspector:
         resolved = self._resolve_target(target)
         if resolved is None:
             return None
-        fields = tuple(
-            InspectorField(name, value, type(value).__name__, self._is_editable(resolved, name))
-            for name, value in self._public_state(resolved)
-        )
+        fields = self._snapshot_fields(resolved)
         components = (
             tuple(type(component).__name__ for component in resolved.components)
             if isinstance(resolved, Entity)
             else ()
         )
         return InspectorSnapshot(self.key_for(resolved), type(resolved).__name__, fields, components)
+
+    def inspect_component(
+        self,
+        component_type: type[object],
+        *,
+        target: object | str | None = None,
+    ) -> InspectorSnapshot | None:
+        entity = self._resolve_entity(target)
+        if entity is None:
+            return None
+        component = entity.get(component_type)
+        if component is None:
+            raise KeyError(component_type.__name__)
+        return InspectorSnapshot(
+            self.key_for(entity),
+            type(component).__name__,
+            self._snapshot_fields(component),
+        )
 
     def set_property(
         self,
@@ -152,27 +168,35 @@ class SceneInspector:
         resolved = self._resolve_target(target)
         if resolved is None:
             raise RuntimeError("no inspector target selected")
-        if name.startswith("_") or not hasattr(resolved, name):
-            raise AttributeError(name)
-        if not self._is_editable(resolved, name):
-            raise AttributeError(f"property {name!r} is read-only")
+        return self._set_property(resolved, name, value, self.key_for(resolved))
 
-        before = deepcopy(getattr(resolved, name))
-        setattr(resolved, name, value)
-        after = deepcopy(getattr(resolved, name))
-        edit = PropertyEdit(self.key_for(resolved), name, before, after)
-        if before != after:
-            self._undo.append(edit)
-            if len(self._undo) > self.history_limit:
-                del self._undo[0]
-            self._redo.clear()
-        return edit
+    def set_component_property(
+        self,
+        component_type: type[object],
+        name: str,
+        value: object,
+        *,
+        target: object | str | None = None,
+    ) -> PropertyEdit:
+        entity = self._resolve_entity(target)
+        if entity is None:
+            raise RuntimeError("no entity inspector target selected")
+        component = entity.get(component_type)
+        if component is None:
+            raise KeyError(component_type.__name__)
+        return self._set_property(
+            component,
+            name,
+            value,
+            self.key_for(entity),
+            component_type=type(component),
+        )
 
     def undo(self) -> PropertyEdit | None:
         if not self._undo:
             return None
         edit = self._undo.pop()
-        target = self.resolve(edit.target_key)
+        target = self._edit_target(edit)
         if target is None:
             self._undo.append(edit)
             raise LookupError(f"edit target no longer exists: {edit.target_key}")
@@ -184,7 +208,7 @@ class SceneInspector:
         if not self._redo:
             return None
         edit = self._redo.pop()
-        target = self.resolve(edit.target_key)
+        target = self._edit_target(edit)
         if target is None:
             self._redo.append(edit)
             raise LookupError(f"edit target no longer exists: {edit.target_key}")
@@ -206,6 +230,52 @@ class SceneInspector:
             return resolved
         self.key_for(target)
         return target
+
+    def _resolve_entity(self, target: object | str | None) -> Entity | None:
+        resolved = self._resolve_target(target)
+        if resolved is None:
+            return None
+        if not isinstance(resolved, Entity):
+            raise TypeError("component inspection requires an Entity target")
+        return resolved
+
+    def _set_property(
+        self,
+        resolved: object,
+        name: str,
+        value: object,
+        target_key: str,
+        *,
+        component_type: type[object] | None = None,
+    ) -> PropertyEdit:
+        if name.startswith("_") or not hasattr(resolved, name):
+            raise AttributeError(name)
+        if not self._is_editable(resolved, name):
+            raise AttributeError(f"property {name!r} is read-only")
+        before = deepcopy(getattr(resolved, name))
+        setattr(resolved, name, value)
+        after = deepcopy(getattr(resolved, name))
+        edit = PropertyEdit(target_key, name, before, after, component_type)
+        if before != after:
+            self._undo.append(edit)
+            if len(self._undo) > self.history_limit:
+                del self._undo[0]
+            self._redo.clear()
+        return edit
+
+    def _edit_target(self, edit: PropertyEdit) -> object | None:
+        target = self.resolve(edit.target_key)
+        if target is None or edit.component_type is None:
+            return target
+        if not isinstance(target, Entity):
+            return None
+        return target.get(edit.component_type)
+
+    def _snapshot_fields(self, target: object) -> tuple[InspectorField, ...]:
+        return tuple(
+            InspectorField(name, value, type(value).__name__, self._is_editable(target, name))
+            for name, value in self._public_state(target)
+        )
 
     def _hierarchy_item(self, target: object, kind: str) -> HierarchyItem:
         label = str(getattr(target, "name", "") or type(target).__name__)
