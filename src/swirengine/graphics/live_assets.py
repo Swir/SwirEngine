@@ -3,7 +3,10 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol, Self
+from typing import TYPE_CHECKING, Protocol
+
+if TYPE_CHECKING:
+    from typing_extensions import Self
 
 from ..assets import AssetManager, AssetReloadResult
 from .mesh import Mesh3D
