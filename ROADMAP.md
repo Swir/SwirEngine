@@ -41,7 +41,7 @@ fidelity and broaden glTF material coverage with normal, occlusion and emissive 
 
 ## 0.5 - Architecture
 
-Foundation landed during 0.4.8-0.4.19: reusable deep-copy `Prefab` blueprints,
+Foundation landed during 0.4.8-0.4.20: reusable deep-copy `Prefab` blueprints,
 independent `PrefabInstance` graphs, per-instance overrides, filtered scene capture and direct
 scene instantiation/removal helpers, versioned JSON scene/prefab serialization with a safe
 allow-list codec registry and cross-object reference preservation, a lightweight public
@@ -60,9 +60,12 @@ suffix-based loader registry, canonical-path runtime cache, watched asset invali
 reload results and invalidation callbacks. `RendererAssetBridge` connects those callbacks directly
 to renderer GPU textures, releases stale ModernGL resources, automatically discovers 2D sprite
 and 3D material textures in a scene and reuses the same deterministic polling pipeline.
+`AudioEngine` can now subscribe to that same asset invalidation stream, automatically watch active
+audio files, restart looping sounds/music in place while preserving handle identity and volume,
+optionally restart one-shots, stop deleted resources safely and expose structured reload diagnostics.
 
-Next: integrate equivalent live invalidation into audio resources, strengthen rollback guarantees
-for multi-domain restore and continue architecture hardening for the visual editor.
+Next: strengthen rollback guarantees for multi-domain restore, unify live-development diagnostics
+across plugins/assets/renderer/audio and continue architecture hardening for the visual editor.
 
 ## 0.6 - Tools
 

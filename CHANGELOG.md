@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.20 - 2026-09-12
+
+Live audio asset-reload integration update.
+
+- added public `AudioReloadEvent` diagnostics with restart, stop, skip and backend-error reporting
+- added opt-in `AudioEngine.enable_live_reload(...)` and lifecycle controls using the shared `AssetManager` invalidation stream
+- automatically watch active audio resources and newly started handles while live reload is enabled
+- restart looping sounds and music in place after file edits while preserving `AudioHandle` identity, volume, loop state and music/sound category
+- keep one-shot sound effects unchanged by default, with explicit `restart_one_shots=True` support for development workflows that want replay-on-edit
+- stop and retire active handles safely when their watched source files are deleted
+- deactivate failed restarts instead of leaving stale handles marked active and record backend failures in reload history
+- added `watch_active()`, `poll_live_reload()` and reload-history helpers without introducing background threads
+- expanded audio regression coverage to 185 total tests and added a runnable `demo_live_audio.py` example
+- advanced the 0.5 roadmap toward unified live-development diagnostics and visual-editor hardening
+- bumped package version to 0.4.20
+
 ## 0.4.19 - 2026-09-12
 
 Renderer GPU texture live-reload integration update.
