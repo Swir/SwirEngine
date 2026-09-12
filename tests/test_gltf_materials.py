@@ -11,10 +11,19 @@ _PIXEL_PNG = (
 )
 
 
-def _write_asset(tmp_path, *, alpha_mode="OPAQUE"):
+def _write_asset(tmp_path, *, alpha_mode="OPAQUE", metallic_roughness_texture=False):
     vertices = struct.pack("<9f", 0, 0, 0, 1, 0, 0, 0, 1, 0)
     uvs = struct.pack("<6f", 0, 0, 1, 0, 0, 1)
     payload = vertices + uvs
+    pbr = {
+        "baseColorFactor": [0.25, 0.5, 0.75, 1.0],
+        "baseColorTexture": {"index": 0},
+        "metallicFactor": 0.2,
+        "roughnessFactor": 0.7,
+    }
+    if metallic_roughness_texture:
+        pbr["metallicRoughnessTexture"] = {"index": 0}
+
     document = {
         "asset": {"version": "2.0"},
         "buffers": [
@@ -37,12 +46,7 @@ def _write_asset(tmp_path, *, alpha_mode="OPAQUE"):
         "materials": [
             {
                 "alphaMode": alpha_mode,
-                "pbrMetallicRoughness": {
-                    "baseColorFactor": [0.25, 0.5, 0.75, 1.0],
-                    "baseColorTexture": {"index": 0},
-                    "metallicFactor": 0.2,
-                    "roughnessFactor": 0.7,
-                },
+                "pbrMetallicRoughness": pbr,
             }
         ],
         "meshes": [
@@ -93,6 +97,30 @@ def test_load_gltf_material_reuses_renderer_ready_texture_path(tmp_path):
     assert first.texture is not None and first.texture.suffix == ".png"
     assert first.metallic == pytest.approx(0.2)
     assert first.roughness == pytest.approx(0.7)
+
+
+def test_gltf_metallic_roughness_texture_is_renderer_ready(tmp_path):
+    path = _write_asset(tmp_path, metallic_roughness_texture=True)
+    material = load_gltf_material(path)
+
+    assert material.pbr_enabled is True
+    assert material.metallic_roughness_texture is not None
+    assert material.metallic_roughness_texture.is_file()
+    assert material.metallic_roughness_texture.read_bytes() == base64.b64decode(_PIXEL_PNG)
+    assert material.metallic == pytest.approx(0.2)
+    assert material.roughness == pytest.approx(0.7)
+
+
+def test_metallic_roughness_texture_rejects_nonzero_texcoord(tmp_path):
+    path = _write_asset(tmp_path, metallic_roughness_texture=True)
+    document = json.loads(path.read_text(encoding="utf-8"))
+    document["materials"][0]["pbrMetallicRoughness"]["metallicRoughnessTexture"][
+        "texCoord"
+    ] = 1
+    path.write_text(json.dumps(document), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="TEXCOORD_0"):
+        load_gltf_material(path)
 
 
 def test_non_opaque_gltf_material_fails_explicitly(tmp_path):

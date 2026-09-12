@@ -29,7 +29,7 @@ _IMAGE_EXTENSIONS = {
 
 @dataclass(frozen=True, slots=True)
 class GltfPrimitiveAsset:
-    """One glTF primitive with its base-color material kept intact."""
+    """One glTF primitive with its material kept intact."""
 
     mesh: MeshData
     material: Material3D
@@ -100,6 +100,30 @@ def _image_path(
     return _cache_embedded_image(payload[offset : offset + length], mime_type)
 
 
+def _texture_path(
+    document: dict[str, Any],
+    buffers: list[bytes],
+    source: Path,
+    texture_info: dict[str, Any],
+    *,
+    material_index: int,
+    label: str,
+) -> Path:
+    if int(texture_info.get("texCoord", 0)) != 0:
+        raise ValueError(f"glTF material {material_index}: only TEXCOORD_0 is supported")
+    if texture_info.get("extensions"):
+        raise ValueError(
+            f"glTF material {material_index}: texture transform extensions are not supported"
+        )
+    textures = document.get("textures", [])
+    try:
+        texture = textures[int(texture_info["index"])]
+        image_index = int(texture["source"])
+    except (IndexError, KeyError, TypeError, ValueError) as exc:
+        raise ValueError(f"glTF material {material_index}: invalid {label}") from exc
+    return _image_path(document, buffers, source, image_index)
+
+
 def _material(
     document: dict[str, Any],
     buffers: list[bytes],
@@ -133,28 +157,30 @@ def _material(
     texture_path: Path | None = None
     texture_info = pbr.get("baseColorTexture")
     if texture_info is not None:
-        if int(texture_info.get("texCoord", 0)) != 0:
-            raise ValueError(f"glTF material {material_index}: only TEXCOORD_0 is supported")
-        if texture_info.get("extensions"):
-            raise ValueError(
-                f"glTF material {material_index}: texture transform extensions are not supported"
-            )
-        textures = document.get("textures", [])
-        try:
-            texture = textures[int(texture_info["index"])]
-            image_index = int(texture["source"])
-        except (IndexError, KeyError, TypeError, ValueError) as exc:
-            raise ValueError(f"glTF material {material_index}: invalid baseColorTexture") from exc
-        texture_path = _image_path(document, buffers, source, image_index)
+        texture_path = _texture_path(
+            document,
+            buffers,
+            source,
+            texture_info,
+            material_index=material_index,
+            label="baseColorTexture",
+        )
 
     metallic = float(pbr.get("metallicFactor", 1.0))
     roughness = float(pbr.get("roughnessFactor", 1.0))
     if not 0.0 <= metallic <= 1.0 or not 0.0 <= roughness <= 1.0:
         raise ValueError(f"glTF material {material_index}: metallic/roughness factors must be 0..1")
 
-    if pbr.get("metallicRoughnessTexture") is not None:
-        raise ValueError(
-            f"glTF material {material_index}: metallicRoughnessTexture is not supported yet"
+    metallic_roughness_path: Path | None = None
+    metallic_roughness_info = pbr.get("metallicRoughnessTexture")
+    if metallic_roughness_info is not None:
+        metallic_roughness_path = _texture_path(
+            document,
+            buffers,
+            source,
+            metallic_roughness_info,
+            material_index=material_index,
+            label="metallicRoughnessTexture",
         )
 
     material = Material3D(
@@ -162,6 +188,7 @@ def _material(
         tint=Color(*(float(value) for value in factor)),
         metallic=metallic,
         roughness=roughness,
+        metallic_roughness_texture=metallic_roughness_path,
     )
     return material, metallic, roughness
 
@@ -228,7 +255,7 @@ def _primitive_mesh(
 
 
 def load_gltf_material(path: str | Path, material_index: int = 0) -> Material3D:
-    """Load one glTF base-color material, including embedded GLB/data-URI images."""
+    """Load one glTF PBR material, including embedded GLB/data-URI images."""
     source = _source(path)
     document, binary_chunk = _load_document(source)
     buffers = _load_buffers(document, source, binary_chunk)

@@ -29,15 +29,15 @@ containers, binary chunks, default/custom scene selection, hierarchical node tra
 node matrices, TRS/quaternion transforms, world-space normal transformation, mirrored-winding
 preservation, glTF/GLB base-color material loading with per-primitive material boundaries,
 `baseColorFactor`, external images, data-URI images and embedded GLB `bufferView` textures,
-`DirectionalLight3D`, `PointLight3D`, `SpotLight3D`, distance/cone attenuation, Phong
+`DirectionalLight3D`, `PointLight3D`, `SpotLight3D`, distance/cone attenuation, legacy Phong
 specular/shininess material controls and simultaneous multi-light forward rendering with
-explicit per-type GPU budgets plus overflow diagnostics. glTF `metallicFactor` and
-`roughnessFactor` now reach runtime `Material3D` and use a compatibility-preserving
-metallic/roughness-to-Phong bridge so those PBR factors affect rendering instead of being
-metadata-only.
+explicit per-type GPU budgets plus overflow diagnostics. Native Cook-Torrance
+metallic/roughness shading is now available for PBR materials, including glTF 2.0
+`metallicFactor`, `roughnessFactor` and packed `metallicRoughnessTexture` support while the
+legacy Phong path remains available for existing materials.
 
-Next: native Cook-Torrance metallic/roughness shading and `metallicRoughnessTexture`, then
-skybox, shadows and post-processing.
+Next: skybox/environment lighting, shadows and post-processing. Then harden color-space/PBR
+fidelity and broaden glTF material coverage with normal, occlusion and emissive maps.
 
 ## 0.5 - Architecture
 

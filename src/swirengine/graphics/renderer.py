@@ -202,6 +202,8 @@ class Renderer:
             """,
             fragment_shader="""
                 #version 330
+                const float PI = 3.14159265359;
+
                 uniform vec4 color;
                 uniform sampler2D image;
                 uniform bool use_texture;
@@ -210,6 +212,12 @@ class Renderer:
                 uniform float specular_strength;
                 uniform float shininess;
                 uniform vec3 view_position;
+
+                uniform bool pbr_enabled;
+                uniform float metallic_factor;
+                uniform float roughness_factor;
+                uniform sampler2D metallic_roughness_image;
+                uniform bool use_metallic_roughness_texture;
 
                 uniform bool dir0_enabled;
                 uniform vec3 dir0_direction;
@@ -287,7 +295,38 @@ class Renderer:
                 in vec2 v_uv;
                 out vec4 fragColor;
 
-                vec3 illuminate(
+                float distribution_ggx(vec3 normal, vec3 halfway, float roughness) {
+                    float alpha = roughness * roughness;
+                    float alpha2 = alpha * alpha;
+                    float n_dot_h = max(dot(normal, halfway), 0.0);
+                    float n_dot_h2 = n_dot_h * n_dot_h;
+                    float denominator = n_dot_h2 * (alpha2 - 1.0) + 1.0;
+                    return alpha2 / max(PI * denominator * denominator, 0.000001);
+                }
+
+                float geometry_schlick_ggx(float n_dot_v, float roughness) {
+                    float r = roughness + 1.0;
+                    float k = (r * r) / 8.0;
+                    return n_dot_v / max(n_dot_v * (1.0 - k) + k, 0.000001);
+                }
+
+                float geometry_smith(
+                    vec3 normal,
+                    vec3 view_dir,
+                    vec3 light_dir,
+                    float roughness
+                ) {
+                    float n_dot_v = max(dot(normal, view_dir), 0.0);
+                    float n_dot_l = max(dot(normal, light_dir), 0.0);
+                    return geometry_schlick_ggx(n_dot_v, roughness)
+                        * geometry_schlick_ggx(n_dot_l, roughness);
+                }
+
+                vec3 fresnel_schlick(float cos_theta, vec3 f0) {
+                    return f0 + (1.0 - f0) * pow(clamp(1.0 - cos_theta, 0.0, 1.0), 5.0);
+                }
+
+                vec3 illuminate_phong(
                     vec3 normal,
                     vec3 view_dir,
                     vec3 light_dir,
@@ -306,6 +345,64 @@ class Renderer:
                     return (diffuse_light + specular_light) * light_color * power;
                 }
 
+                vec3 illuminate_pbr(
+                    vec3 normal,
+                    vec3 view_dir,
+                    vec3 light_dir,
+                    vec3 light_color,
+                    float power,
+                    vec3 albedo,
+                    float metallic,
+                    float roughness
+                ) {
+                    float n_dot_l = max(dot(normal, light_dir), 0.0);
+                    float n_dot_v = max(dot(normal, view_dir), 0.0);
+                    if (n_dot_l <= 0.0 || n_dot_v <= 0.0) {
+                        return vec3(0.0);
+                    }
+
+                    vec3 halfway = normalize(view_dir + light_dir);
+                    vec3 f0 = mix(vec3(0.04), albedo, metallic);
+                    vec3 fresnel = fresnel_schlick(max(dot(halfway, view_dir), 0.0), f0);
+                    float distribution = distribution_ggx(normal, halfway, roughness);
+                    float geometry = geometry_smith(normal, view_dir, light_dir, roughness);
+                    vec3 numerator = distribution * geometry * fresnel;
+                    float denominator = max(4.0 * n_dot_v * n_dot_l, 0.001);
+                    vec3 specular = numerator / denominator;
+
+                    vec3 k_s = fresnel;
+                    vec3 k_d = (vec3(1.0) - k_s) * (1.0 - metallic);
+                    vec3 radiance = light_color * power;
+                    return (k_d * albedo / PI + specular) * radiance * n_dot_l;
+                }
+
+                vec3 illuminate(
+                    vec3 normal,
+                    vec3 view_dir,
+                    vec3 light_dir,
+                    vec3 light_color,
+                    float power,
+                    vec3 surface,
+                    float metallic,
+                    float roughness
+                ) {
+                    if (pbr_enabled) {
+                        return illuminate_pbr(
+                            normal,
+                            view_dir,
+                            light_dir,
+                            light_color,
+                            power,
+                            surface,
+                            metallic,
+                            roughness
+                        );
+                    }
+                    return illuminate_phong(
+                        normal, view_dir, light_dir, light_color, power, surface
+                    );
+                }
+
                 float attenuation(float distance_to_light, float light_range) {
                     float ratio = clamp(distance_to_light / max(light_range, 0.0001), 0.0, 1.0);
                     float falloff = 1.0 - ratio * ratio;
@@ -316,12 +413,21 @@ class Renderer:
                     vec3 normal,
                     vec3 view_dir,
                     vec3 surface,
+                    float metallic,
+                    float roughness,
                     vec3 direction,
                     vec3 light_color,
                     float intensity
                 ) {
                     return illuminate(
-                        normal, view_dir, normalize(-direction), light_color, intensity, surface
+                        normal,
+                        view_dir,
+                        normalize(-direction),
+                        light_color,
+                        intensity,
+                        surface,
+                        metallic,
+                        roughness
                     );
                 }
 
@@ -329,6 +435,8 @@ class Renderer:
                     vec3 normal,
                     vec3 view_dir,
                     vec3 surface,
+                    float metallic,
+                    float roughness,
                     vec3 position,
                     vec3 light_color,
                     float intensity,
@@ -341,7 +449,14 @@ class Renderer:
                     }
                     float power = intensity * attenuation(distance_to_light, light_range);
                     return illuminate(
-                        normal, view_dir, delta / distance_to_light, light_color, power, surface
+                        normal,
+                        view_dir,
+                        delta / distance_to_light,
+                        light_color,
+                        power,
+                        surface,
+                        metallic,
+                        roughness
                     );
                 }
 
@@ -349,6 +464,8 @@ class Renderer:
                     vec3 normal,
                     vec3 view_dir,
                     vec3 surface,
+                    float metallic,
+                    float roughness,
                     vec3 position,
                     vec3 direction,
                     vec3 light_color,
@@ -367,7 +484,14 @@ class Renderer:
                     float cone = smoothstep(outer_cos, inner_cos, theta);
                     float power = intensity * cone * attenuation(distance_to_light, light_range);
                     return illuminate(
-                        normal, view_dir, light_dir, light_color, power, surface
+                        normal,
+                        view_dir,
+                        light_dir,
+                        light_color,
+                        power,
+                        surface,
+                        metallic,
+                        roughness
                     );
                 }
 
@@ -376,31 +500,41 @@ class Renderer:
                     if (use_texture) {
                         surface_rgba *= texture(image, v_uv);
                     }
+
+                    float metallic = clamp(metallic_factor, 0.0, 1.0);
+                    float roughness = clamp(roughness_factor, 0.04, 1.0);
+                    if (pbr_enabled && use_metallic_roughness_texture) {
+                        vec4 metallic_roughness = texture(metallic_roughness_image, v_uv);
+                        roughness = clamp(roughness * metallic_roughness.g, 0.04, 1.0);
+                        metallic = clamp(metallic * metallic_roughness.b, 0.0, 1.0);
+                    }
+
                     vec3 surface = surface_rgba.rgb;
                     vec3 normal = normalize(v_normal);
                     vec3 view_dir = normalize(view_position - v_world_pos);
                     vec3 lighting = surface * ambient_strength;
 
-                    if (dir0_enabled) lighting += directional_light(normal, view_dir, surface, dir0_direction, dir0_color, dir0_intensity);
-                    if (dir1_enabled) lighting += directional_light(normal, view_dir, surface, dir1_direction, dir1_color, dir1_intensity);
-                    if (dir2_enabled) lighting += directional_light(normal, view_dir, surface, dir2_direction, dir2_color, dir2_intensity);
-                    if (dir3_enabled) lighting += directional_light(normal, view_dir, surface, dir3_direction, dir3_color, dir3_intensity);
+                    if (dir0_enabled) lighting += directional_light(normal, view_dir, surface, metallic, roughness, dir0_direction, dir0_color, dir0_intensity);
+                    if (dir1_enabled) lighting += directional_light(normal, view_dir, surface, metallic, roughness, dir1_direction, dir1_color, dir1_intensity);
+                    if (dir2_enabled) lighting += directional_light(normal, view_dir, surface, metallic, roughness, dir2_direction, dir2_color, dir2_intensity);
+                    if (dir3_enabled) lighting += directional_light(normal, view_dir, surface, metallic, roughness, dir3_direction, dir3_color, dir3_intensity);
 
-                    if (point0_enabled) lighting += point_light(normal, view_dir, surface, point0_position, point0_color, point0_intensity, point0_range);
-                    if (point1_enabled) lighting += point_light(normal, view_dir, surface, point1_position, point1_color, point1_intensity, point1_range);
-                    if (point2_enabled) lighting += point_light(normal, view_dir, surface, point2_position, point2_color, point2_intensity, point2_range);
-                    if (point3_enabled) lighting += point_light(normal, view_dir, surface, point3_position, point3_color, point3_intensity, point3_range);
+                    if (point0_enabled) lighting += point_light(normal, view_dir, surface, metallic, roughness, point0_position, point0_color, point0_intensity, point0_range);
+                    if (point1_enabled) lighting += point_light(normal, view_dir, surface, metallic, roughness, point1_position, point1_color, point1_intensity, point1_range);
+                    if (point2_enabled) lighting += point_light(normal, view_dir, surface, metallic, roughness, point2_position, point2_color, point2_intensity, point2_range);
+                    if (point3_enabled) lighting += point_light(normal, view_dir, surface, metallic, roughness, point3_position, point3_color, point3_intensity, point3_range);
 
-                    if (spot0_enabled) lighting += spot_light(normal, view_dir, surface, spot0_position, spot0_direction, spot0_color, spot0_intensity, spot0_range, spot0_inner_cos, spot0_outer_cos);
-                    if (spot1_enabled) lighting += spot_light(normal, view_dir, surface, spot1_position, spot1_direction, spot1_color, spot1_intensity, spot1_range, spot1_inner_cos, spot1_outer_cos);
-                    if (spot2_enabled) lighting += spot_light(normal, view_dir, surface, spot2_position, spot2_direction, spot2_color, spot2_intensity, spot2_range, spot2_inner_cos, spot2_outer_cos);
-                    if (spot3_enabled) lighting += spot_light(normal, view_dir, surface, spot3_position, spot3_direction, spot3_color, spot3_intensity, spot3_range, spot3_inner_cos, spot3_outer_cos);
+                    if (spot0_enabled) lighting += spot_light(normal, view_dir, surface, metallic, roughness, spot0_position, spot0_direction, spot0_color, spot0_intensity, spot0_range, spot0_inner_cos, spot0_outer_cos);
+                    if (spot1_enabled) lighting += spot_light(normal, view_dir, surface, metallic, roughness, spot1_position, spot1_direction, spot1_color, spot1_intensity, spot1_range, spot1_inner_cos, spot1_outer_cos);
+                    if (spot2_enabled) lighting += spot_light(normal, view_dir, surface, metallic, roughness, spot2_position, spot2_direction, spot2_color, spot2_intensity, spot2_range, spot2_inner_cos, spot2_outer_cos);
+                    if (spot3_enabled) lighting += spot_light(normal, view_dir, surface, metallic, roughness, spot3_position, spot3_direction, spot3_color, spot3_intensity, spot3_range, spot3_inner_cos, spot3_outer_cos);
 
                     fragColor = vec4(lighting, surface_rgba.a);
                 }
             """,
         )
         self.program3d["image"].value = 0
+        self.program3d["metallic_roughness_image"].value = 1
 
         p = 0.5
         faces = (
@@ -728,11 +862,28 @@ class Renderer:
         self.program3d["specular_strength"].value = float(specular)
         self.program3d["shininess"].value = float(shininess)
 
+        pbr_enabled = material is not None and material.pbr_enabled
+        metallic = material.metallic if material is not None else None
+        roughness = material.roughness if material is not None else None
+        self.program3d["pbr_enabled"].value = pbr_enabled
+        self.program3d["metallic_factor"].value = float(0.0 if metallic is None else metallic)
+        self.program3d["roughness_factor"].value = float(0.5 if roughness is None else roughness)
+
         texture_path = material.texture if material is not None else None
         self.program3d["use_texture"].value = texture_path is not None
         if texture_path is not None:
             texture, _, _ = self._texture(texture_path)
             texture.use(location=0)
+
+        metallic_roughness_path = (
+            material.metallic_roughness_texture if material is not None else None
+        )
+        self.program3d["use_metallic_roughness_texture"].value = (
+            pbr_enabled and metallic_roughness_path is not None
+        )
+        if pbr_enabled and metallic_roughness_path is not None:
+            texture, _, _ = self._texture(metallic_roughness_path)
+            texture.use(location=1)
 
         vao.render(vertices=vertices)
         self.stats.draw_calls += 1

@@ -11,7 +11,7 @@ def test_legacy_phong_material_stays_unchanged():
     assert material.shininess == pytest.approx(24.0)
 
 
-def test_metallic_roughness_bridge_changes_forward_material_response():
+def test_metallic_roughness_bridge_keeps_legacy_fields_compatible():
     material = Material3D(diffuse=0.8, metallic=0.75, roughness=0.5)
     assert material.pbr_enabled is True
     assert material.metallic == pytest.approx(0.75)
@@ -28,8 +28,19 @@ def test_metallic_roughness_validation_is_strict():
         Material3D(roughness=-0.01)
 
 
-def test_zero_roughness_is_bounded_for_stable_highlights():
+def test_zero_roughness_is_bounded_for_legacy_bridge():
     material = Material3D(metallic=1.0, roughness=0.0)
     assert material.diffuse == pytest.approx(0.0)
     assert material.specular == pytest.approx(1.0)
     assert material.shininess == pytest.approx(256.0)
+
+
+def test_metallic_roughness_texture_enables_pbr_and_uses_gltf_factor_defaults(tmp_path):
+    texture = tmp_path / "mr.png"
+    texture.write_bytes(b"not-loaded-by-material")
+    material = Material3D(metallic_roughness_texture=texture)
+
+    assert material.pbr_enabled is True
+    assert material.metallic == pytest.approx(1.0)
+    assert material.roughness == pytest.approx(1.0)
+    assert material.metallic_roughness_texture == texture
