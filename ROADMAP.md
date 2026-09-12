@@ -75,10 +75,12 @@ reversible property editing with undo/redo history. ECS component inspection/edi
 same contract to component public fields, with stable entity-anchored history and safe stale-component
 detection during undo/redo. The editor hierarchy now also supports mixed object/entity parenting,
 deterministic sibling ordering, indexed reparenting, depth/parent/order row metadata, cycle prevention
-and automatic promotion of children when a parent disappears from the runtime scene.
+and automatic promotion of children when a parent disappears from the runtime scene. Property edits,
+component edits, reparenting and sibling moves now share one chronological bounded undo/redo history,
+with stale-target and stale-parent protection so failed structural rollback attempts leave history intact.
 
-Next: strengthen rollback guarantees for multi-domain restore, add undo/redo for structural scene
-operations and continue architecture hardening toward persistent scene-editor hierarchy state.
+Next: strengthen rollback guarantees for multi-domain restore and continue architecture hardening toward
+persistent scene-editor hierarchy state plus the first visual-editor shell.
 
 ## 0.6 - Tools
 
