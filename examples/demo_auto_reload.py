@@ -1,6 +1,4 @@
 import swirengine
-
-
 manager = swirengine.PluginManager()
 manager.load_module("my_game_plugin", enable=True)
 
