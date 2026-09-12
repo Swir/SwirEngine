@@ -4,7 +4,7 @@ Run with the optional audio extra installed and place ``theme.ogg`` in ``assets`
 Edit/replace the file while this loop is running: looping music restarts in place.
 """
 
-import time
+from time import sleep
 
 from swirengine import AssetManager, AudioEngine
 
@@ -25,7 +25,7 @@ try:
                     f"{result.kind}: {result.path} | restarted={event.restarted} "
                     f"stopped={event.stopped} skipped={event.skipped} error={event.error}"
                 )
-        time.sleep(0.1)
+        sleep(0.1)
 except KeyboardInterrupt:
     pass
 finally:
