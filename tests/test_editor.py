@@ -41,6 +41,75 @@ def test_hierarchy_combines_scene_objects_and_entities_with_filters():
     assert [row.label for row in inspector.hierarchy(include_disabled=False)] == ["Player", "Enemy"]
 
 
+def test_hierarchy_parenting_builds_depth_first_tree_across_objects_and_entities():
+    scene = Scene()
+    root = scene.add(Actor("Root"))
+    child = scene.add(Actor("Child"))
+    entity = scene.create_entity(name="EntityChild")
+    inspector = SceneInspector(scene)
+
+    inspector.set_parent(child, root)
+    inspector.set_parent(entity, child)
+
+    rows = inspector.hierarchy()
+    assert [row.label for row in rows] == ["Root", "Child", "EntityChild"]
+    assert [row.depth for row in rows] == [0, 1, 2]
+    assert rows[1].parent_key == inspector.key_for(root)
+    assert rows[2].parent_key == inspector.key_for(child)
+    assert inspector.parent(child) is root
+    assert inspector.parent(entity) is child
+    assert inspector.children(root) == (child,)
+    assert inspector.children(child) == (entity,)
+
+
+def test_hierarchy_reordering_and_reparent_index_are_deterministic():
+    scene = Scene()
+    root = scene.add(Actor("Root"))
+    first = scene.add(Actor("First"))
+    second = scene.add(Actor("Second"))
+    third = scene.add(Actor("Third"))
+    inspector = SceneInspector(scene)
+
+    inspector.set_parent(first, root)
+    inspector.set_parent(second, root)
+    inspector.set_parent(third, root, index=1)
+    assert inspector.children(root) == (first, third, second)
+
+    inspector.move(second, 0)
+    assert inspector.children(root) == (second, first, third)
+    child_rows = [row for row in inspector.hierarchy() if row.parent_key == inspector.key_for(root)]
+    assert [row.label for row in child_rows] == ["Second", "First", "Third"]
+    assert [row.order for row in child_rows] == [0, 1, 2]
+
+    with pytest.raises(IndexError):
+        inspector.move(first, 5)
+    with pytest.raises(IndexError):
+        inspector.set_parent(first, None, index=99)
+
+
+def test_hierarchy_cycle_prevention_and_stale_parent_cleanup():
+    scene = Scene()
+    parent = scene.add(Actor("Parent"))
+    child = scene.add(Actor("Child"))
+    grandchild = scene.add(Actor("Grandchild"))
+    inspector = SceneInspector(scene)
+
+    inspector.set_parent(child, parent)
+    inspector.set_parent(grandchild, child)
+
+    with pytest.raises(ValueError):
+        inspector.set_parent(parent, grandchild)
+    with pytest.raises(ValueError):
+        inspector.set_parent(parent, parent)
+
+    scene.remove(parent)
+    rows = inspector.hierarchy()
+    assert [row.label for row in rows] == ["Child", "Grandchild"]
+    assert rows[0].depth == 0
+    assert inspector.parent(child) is None
+    assert inspector.children() == (child,)
+
+
 def test_runtime_object_key_and_selection_survive_scene_reordering():
     scene = Scene()
     first = scene.add(Actor("First"))

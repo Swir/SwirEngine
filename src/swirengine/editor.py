@@ -16,6 +16,9 @@ class HierarchyItem:
     type_name: str
     enabled: bool
     tags: tuple[str, ...]
+    parent_key: str | None = None
+    depth: int = 0
+    order: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,7 +47,12 @@ class PropertyEdit:
 
 
 class SceneInspector:
-    """GUI-agnostic hierarchy/inspector model with selection and undo/redo."""
+    """GUI-agnostic hierarchy/inspector model with selection and undo/redo.
+
+    Hierarchy parenting is editor metadata only. It intentionally does not mutate object
+    transforms, ECS ownership or scene serialization yet, keeping the runtime API compatible
+    while providing a stable tree model for future visual-editor front-ends.
+    """
 
     def __init__(self, scene: Scene, *, history_limit: int = 100) -> None:
         if history_limit < 1:
@@ -54,6 +62,9 @@ class SceneInspector:
         self._selected_key: str | None = None
         self._undo: list[PropertyEdit] = []
         self._redo: list[PropertyEdit] = []
+        self._parent_by_key: dict[str, str | None] = {}
+        self._children_by_parent: dict[str | None, list[str]] = {None: []}
+        self._sync_hierarchy()
 
     @property
     def selected_key(self) -> str | None:
@@ -106,14 +117,80 @@ class SceneInspector:
         tag: str | None = None,
         include_disabled: bool = True,
     ) -> tuple[HierarchyItem, ...]:
+        self._sync_hierarchy()
         needle = query.casefold().strip()
         items: list[HierarchyItem] = []
-        for obj in (*self.scene.objects, *self.scene.entities):
-            kind = "entity" if isinstance(obj, Entity) else "object"
-            item = self._hierarchy_item(obj, kind)
+        for key, parent_key, depth, order in self._walk_hierarchy(None, 0):
+            target = self.resolve(key)
+            if target is None:
+                continue
+            kind = "entity" if isinstance(target, Entity) else "object"
+            item = self._hierarchy_item(target, kind, parent_key, depth, order)
             if self._matches(item, needle, tag, include_disabled):
                 items.append(item)
         return tuple(items)
+
+    def parent(self, target_or_key: object | str) -> object | None:
+        """Return the editor-hierarchy parent for a scene target, if any."""
+        self._sync_hierarchy()
+        key = self._hierarchy_key(target_or_key)
+        parent_key = self._parent_by_key[key]
+        return None if parent_key is None else self.resolve(parent_key)
+
+    def children(self, target_or_key: object | str | None = None) -> tuple[object, ...]:
+        """Return direct hierarchy children; ``None`` returns the root targets."""
+        self._sync_hierarchy()
+        parent_key = None if target_or_key is None else self._hierarchy_key(target_or_key)
+        return tuple(
+            target
+            for key in self._children_by_parent.get(parent_key, ())
+            if (target := self.resolve(key)) is not None
+        )
+
+    def set_parent(
+        self,
+        child: object | str,
+        parent: object | str | None,
+        *,
+        index: int | None = None,
+    ) -> None:
+        """Reparent a hierarchy target with cycle prevention and deterministic sibling order."""
+        self._sync_hierarchy()
+        child_key = self._hierarchy_key(child)
+        parent_key = None if parent is None else self._hierarchy_key(parent)
+        if child_key == parent_key:
+            raise ValueError("a hierarchy item cannot parent itself")
+
+        cursor = parent_key
+        while cursor is not None:
+            if cursor == child_key:
+                raise ValueError("hierarchy parenting would create a cycle")
+            cursor = self._parent_by_key.get(cursor)
+
+        old_parent = self._parent_by_key[child_key]
+        old_siblings = self._children_by_parent.setdefault(old_parent, [])
+        if child_key in old_siblings:
+            old_siblings.remove(child_key)
+
+        new_siblings = self._children_by_parent.setdefault(parent_key, [])
+        insert_at = self._normalize_insert_index(index, len(new_siblings))
+        new_siblings.insert(insert_at, child_key)
+        self._parent_by_key[child_key] = parent_key
+        self._children_by_parent.setdefault(child_key, [])
+
+    def move(self, target: object | str, index: int) -> None:
+        """Move a target within its current sibling list."""
+        self._sync_hierarchy()
+        key = self._hierarchy_key(target)
+        parent_key = self._parent_by_key[key]
+        siblings = self._children_by_parent[parent_key]
+        if index < 0 or index >= len(siblings):
+            raise IndexError(index)
+        current = siblings.index(key)
+        if current == index:
+            return
+        siblings.pop(current)
+        siblings.insert(index, key)
 
     def select(self, target_or_key: object | str | None) -> object | None:
         if target_or_key is None:
@@ -277,7 +354,14 @@ class SceneInspector:
             for name, value in self._public_state(target)
         )
 
-    def _hierarchy_item(self, target: object, kind: str) -> HierarchyItem:
+    def _hierarchy_item(
+        self,
+        target: object,
+        kind: str,
+        parent_key: str | None,
+        depth: int,
+        order: int,
+    ) -> HierarchyItem:
         label = str(getattr(target, "name", "") or type(target).__name__)
         tags = tuple(sorted(str(tag) for tag in getattr(target, "tags", set())))
         return HierarchyItem(
@@ -287,7 +371,67 @@ class SceneInspector:
             type(target).__name__,
             bool(getattr(target, "enabled", True)),
             tags,
+            parent_key,
+            depth,
+            order,
         )
+
+    def _hierarchy_key(self, target_or_key: object | str) -> str:
+        if isinstance(target_or_key, str):
+            if self.resolve(target_or_key) is None:
+                raise KeyError(target_or_key)
+            return target_or_key
+        return self.key_for(target_or_key)
+
+    def _sync_hierarchy(self) -> None:
+        current_keys = [self.key_for(target) for target in (*self.scene.objects, *self.scene.entities)]
+        current = set(current_keys)
+
+        for parent_key, children in tuple(self._children_by_parent.items()):
+            if parent_key is not None and parent_key not in current:
+                del self._children_by_parent[parent_key]
+                continue
+            children[:] = [key for key in children if key in current]
+
+        for key in tuple(self._parent_by_key):
+            if key not in current:
+                del self._parent_by_key[key]
+
+        roots = self._children_by_parent.setdefault(None, [])
+        for key in current_keys:
+            parent_key = self._parent_by_key.get(key)
+            if parent_key not in current:
+                parent_key = None
+                self._parent_by_key[key] = None
+            siblings = self._children_by_parent.setdefault(parent_key, [])
+            if key not in siblings:
+                siblings.append(key)
+            self._children_by_parent.setdefault(key, [])
+            if parent_key is not None and key in roots:
+                roots.remove(key)
+
+        for key, parent_key in tuple(self._parent_by_key.items()):
+            if parent_key is None and key not in roots:
+                roots.append(key)
+
+    def _walk_hierarchy(
+        self,
+        parent_key: str | None,
+        depth: int,
+    ) -> tuple[tuple[str, str | None, int, int], ...]:
+        rows: list[tuple[str, str | None, int, int]] = []
+        for order, key in enumerate(self._children_by_parent.get(parent_key, ())):
+            rows.append((key, parent_key, depth, order))
+            rows.extend(self._walk_hierarchy(key, depth + 1))
+        return tuple(rows)
+
+    @staticmethod
+    def _normalize_insert_index(index: int | None, length: int) -> int:
+        if index is None:
+            return length
+        if index < 0 or index > length:
+            raise IndexError(index)
+        return index
 
     @staticmethod
     def _matches(item: HierarchyItem, needle: str, tag: str | None, include_disabled: bool) -> bool:
