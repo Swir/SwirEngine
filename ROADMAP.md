@@ -150,10 +150,13 @@ routes mutations through `SceneInspector` so transform edits participate in the 
 selection synchronization and camera-plane pointer dragging that reuses the transform gizmo/history path.
 `EditorFrontendController` now joins those models into one toolkit-neutral interactive frame contract, and
 `TkEditorApp` provides the first dependency-free desktop visual editor with hierarchy search/selection,
-inspector edits, shared Undo/Redo, gizmo/snap controls, Assets, Console and Profiler panels.
+inspector edits, shared Undo/Redo, gizmo/snap controls, Assets, Console and Profiler panels. The new
+`EditorRuntimeSession` establishes isolated Play/Edit synchronization by cloning the authored scene through
+its configured serializer, running updates only against the preview copy, supporting pause/resume and
+single-frame stepping, then discarding runtime mutations on Stop.
 
-Next: strengthen rollback guarantees for multi-domain restore and tighten editor/runtime integration,
-including live renderer framebuffer embedding and play/edit state synchronization.
+Next: strengthen rollback guarantees for multi-domain restore and finish tighter editor/runtime integration,
+including live renderer framebuffer embedding and direct Play/Edit controls in the visual front-end.
 
 ## 0.6 - Tools
 
@@ -161,8 +164,10 @@ Visual editor foundation now includes a shared project/workspace shell, hierarch
 persistent panel layout and viewport preferences, a GUI-agnostic asset browser, reusable Console/
 Profiler panel models, toolkit-independent scene Move/Rotate/Scale gizmos with snapping and undo/redo,
 camera-aware 3D viewport picking/direct manipulation, and a real interactive Tk desktop front-end that
-connects those models without adding a mandatory GUI dependency. Next: tighter editor-runtime integration
-and an embedded live renderer viewport.
+connects those models without adding a mandatory GUI dependency. Isolated `EditorRuntimeSession` Play/Edit
+scene execution is now available as the runtime synchronization foundation. Next: bind Play/Pause/Stop to
+the front-end and embed the live renderer framebuffer so the remaining editor/runtime deliverable can be
+closed without conflating partial progress with roadmap completion.
 
 ## 0.7+ - Runtime and export
 
