@@ -41,7 +41,7 @@ fidelity and broaden glTF material coverage with normal, occlusion and emissive 
 
 ## 0.5 - Architecture
 
-Foundation landed during 0.4.8-0.4.15: reusable deep-copy `Prefab` blueprints,
+Foundation landed during 0.4.8-0.4.16: reusable deep-copy `Prefab` blueprints,
 independent `PrefabInstance` graphs, per-instance overrides, filtered scene capture and direct
 scene instantiation/removal helpers, versioned JSON scene/prefab serialization with a safe
 allow-list codec registry and cross-object reference preservation, a lightweight public
@@ -49,12 +49,14 @@ allow-list codec registry and cross-object reference preservation, a lightweight
 deterministic prioritized systems and direct `Scene` integration, version-3 scene persistence
 for ECS entity metadata/components with stable-ID restoration, automatic v1/v2 migrations and
 cyclic entity/component reference graphs, plus a public plugin runtime with deterministic
-dependency activation, lifecycle hooks and shared services. Module hot reload now has an ordered
+dependency activation, lifecycle hooks and shared services. Module hot reload has an ordered
 runtime-state registry, scene/ECS snapshot bridging, automatic state preservation and rollback
-restoration so editor/game state can survive plugin code reloads.
+restoration so editor/game state can survive plugin code reloads. A dependency-free polling
+file watcher and `PluginAutoReloader` now connect source-file edits to state-preserving plugin
+reload transactions without background threads.
 
-Next: file-watcher driven development reload, editor-owned state domains and architecture
-hardening for the visual editor.
+Next: editor-owned state domains, live asset reload/invalidation and architecture hardening for
+the visual editor.
 
 ## 0.6 - Tools
 
