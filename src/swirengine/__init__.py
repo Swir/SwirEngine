@@ -34,6 +34,7 @@ from .hotreload import (
     HotReloadStateError,
     HotReloadStateRegistry,
 )
+from .live_development import LiveDevelopmentHub, LiveDevelopmentResult
 from .math.types import Color, Transform, Vec2, Vec3
 from .particles import ParticleEmitter2D
 from .physics.collision2d import AABB, BoxCollider2D, CollisionWorld2D
@@ -85,6 +86,8 @@ __all__ = [
     "HotReloadStateError",
     "HotReloadStateRegistry",
     "LightSelection3D",
+    "LiveDevelopmentHub",
+    "LiveDevelopmentResult",
     "Material3D",
     "Mesh3D",
     "MeshData",
@@ -137,4 +140,4 @@ __all__ = [
     "skybox_mesh_data",
 ]
 
-__version__ = "0.4.21"
+__version__ = "0.4.22"

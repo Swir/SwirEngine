@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.22 - 2026-09-12
+
+Unified live-development diagnostics and polling update.
+
+- added public `LiveDevelopmentHub` and immutable `LiveDevelopmentResult` APIs
+- coordinate plugin source reloads plus one shared `AssetManager` polling transaction instead of letting renderer/audio tooling poll the same watcher independently
+- aggregate plugin reloads, generic asset reloads, renderer GPU texture invalidations and audio restart/stop diagnostics into one editor-facing result
+- added `changed`, `healthy`, `errors` and `event_count` summaries for console/editor status surfaces
+- automatically synchronize renderer scene-texture watches and active audio watches before every development poll
+- added lifecycle-safe `start()`, `stop()` and context-manager behavior that only tears down renderer/audio subscriptions activated by the hub itself
+- validate renderer/audio integrations use the same `AssetManager`, preventing split invalidation graphs and hard-to-debug duplicate polling
+- added optional transaction history plus coordinated subsystem-history clearing
+- added regression coverage for shared polling, GPU/audio fan-out, ownership-safe lifecycle, error aggregation and idle-history behavior
+- added a runnable `demo_live_development.py` example and advanced the 0.5 roadmap toward hierarchy/inspector and visual-editor tooling
+- bumped package version to 0.4.22
+
 ## 0.4.21 - 2026-09-12
 
 Skybox and environment-lighting foundation update.

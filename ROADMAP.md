@@ -44,7 +44,7 @@ color-space/PBR fidelity and broaden glTF material coverage with normal, occlusi
 
 ## 0.5 - Architecture
 
-Foundation landed during 0.4.8-0.4.20: reusable deep-copy `Prefab` blueprints,
+Foundation landed during 0.4.8-0.4.22: reusable deep-copy `Prefab` blueprints,
 independent `PrefabInstance` graphs, per-instance overrides, filtered scene capture and direct
 scene instantiation/removal helpers, versioned JSON scene/prefab serialization with a safe
 allow-list codec registry and cross-object reference preservation, a lightweight public
@@ -58,7 +58,7 @@ restoration so editor/game state can survive plugin code reloads. A dependency-f
 file watcher and `PluginAutoReloader` connect source-file edits to state-preserving reload
 transactions without background threads. Named state domains let editor/game subsystems own,
 inspect, clear and selectively preserve independent state groups during manual or watcher-driven
-reloads without changing existing provider names or snapshot formats. `AssetManager` now adds a
+reloads without changing existing provider names or snapshot formats. `AssetManager` adds a
 suffix-based loader registry, canonical-path runtime cache, watched asset invalidation, structured
 reload results and invalidation callbacks. `RendererAssetBridge` connects those callbacks directly
 to renderer GPU textures, releases stale ModernGL resources, automatically discovers 2D sprite
@@ -66,9 +66,12 @@ and 3D material textures in a scene and reuses the same deterministic polling pi
 `AudioEngine` can subscribe to that same asset invalidation stream, automatically watch active
 audio files, restart looping sounds/music in place while preserving handle identity and volume,
 optionally restart one-shots, stop deleted resources safely and expose structured reload diagnostics.
+`LiveDevelopmentHub` now coordinates plugin reloads plus one shared asset poll and aggregates
+plugin, asset, GPU-texture and audio events into one editor-facing `LiveDevelopmentResult` with
+health/error summaries and lifecycle-safe subscription management.
 
-Next: strengthen rollback guarantees for multi-domain restore, unify live-development diagnostics
-across plugins/assets/renderer/audio and continue architecture hardening for the visual editor.
+Next: strengthen rollback guarantees for multi-domain restore and continue architecture hardening
+for hierarchy/inspector tooling, scene editing and the visual editor.
 
 ## 0.6 - Tools
 
