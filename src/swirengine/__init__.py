@@ -36,6 +36,7 @@ from .editor_frontend import (
     parse_editor_value,
 )
 from .editor_gizmo import EditorTransformGizmo, GizmoApplyResult, GizmoTransformSnapshot
+from .editor_runtime import EditorRuntimeFrame, EditorRuntimeMode, EditorRuntimeSession
 from .editor_state import (
     EDITOR_HIERARCHY_FORMAT,
     EDITOR_HIERARCHY_VERSION,
@@ -141,6 +142,9 @@ __all__ = [
     "EditorProfiler",
     "EditorProfilerFrame",
     "EditorProjectState",
+    "EditorRuntimeFrame",
+    "EditorRuntimeMode",
+    "EditorRuntimeSession",
     "EditorSceneState",
     "EditorShellFrame",
     "EditorTargetRef",
