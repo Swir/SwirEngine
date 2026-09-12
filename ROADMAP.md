@@ -41,14 +41,16 @@ fidelity and broaden glTF material coverage with normal, occlusion and emissive 
 
 ## 0.5 - Architecture
 
-Foundation landed during 0.4.8-0.4.11: reusable deep-copy `Prefab` blueprints,
+Foundation landed during 0.4.8-0.4.12: reusable deep-copy `Prefab` blueprints,
 independent `PrefabInstance` graphs, per-instance overrides, filtered scene capture and direct
 scene instantiation/removal helpers, versioned JSON scene/prefab serialization with a safe
-allow-list codec registry and cross-object reference preservation, plus a lightweight public
+allow-list codec registry and cross-object reference preservation, a lightweight public
 `Entity`/`ECSWorld` runtime with arbitrary Python components, filtered queries, snapshot rows,
-deterministic prioritized systems and direct `Scene` integration.
+deterministic prioritized systems and direct `Scene` integration, plus version-2 scene
+persistence for ECS entity metadata/components with stable-ID restoration and automatic
+version-1 scene/prefab migration.
 
-Next: serializer migrations, ECS/prefab persistence decisions, hot reload and plugin API.
+Next: component-to-component/entity reference persistence, hot reload and plugin API.
 
 ## 0.6 - Tools
 
