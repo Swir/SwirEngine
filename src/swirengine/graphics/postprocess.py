@@ -58,7 +58,7 @@ class PostProcessSettings:
             raise TypeError(f"unknown post-process setting: {unknown[0]}")
         values.update(changes)
         candidate = PostProcessSettings(**values)
-        for name, value in values.items():
+        for name in values:
             setattr(self, name, getattr(candidate, name))
         return self
 
@@ -67,7 +67,7 @@ class PostProcessRenderer(Renderer):
     """Renderer variant that resolves the scene through one GPU full-screen post-process pass."""
 
     def __init__(self, *args, postprocess: PostProcessSettings | None = None, **kwargs) -> None:
-        self.postprocess = postprocess or PostProcessSettings()
+        self.postprocess = postprocess if postprocess is not None else PostProcessSettings()
         self._post_size = (0, 0)
         self._post_color = None
         self._post_depth = None
@@ -111,27 +111,56 @@ class PostProcessRenderer(Renderer):
                         return texture(scene_image, uv).rgb;
                     }
                     vec3 rgb_m = texture(scene_image, uv).rgb;
-                    vec3 rgb_nw = texture(scene_image, uv + vec2(-1.0, 1.0) * inverse_resolution).rgb;
-                    vec3 rgb_ne = texture(scene_image, uv + vec2(1.0, 1.0) * inverse_resolution).rgb;
-                    vec3 rgb_sw = texture(scene_image, uv + vec2(-1.0, -1.0) * inverse_resolution).rgb;
-                    vec3 rgb_se = texture(scene_image, uv + vec2(1.0, -1.0) * inverse_resolution).rgb;
+                    vec3 rgb_nw = texture(
+                        scene_image, uv + vec2(-1.0, 1.0) * inverse_resolution
+                    ).rgb;
+                    vec3 rgb_ne = texture(
+                        scene_image, uv + vec2(1.0, 1.0) * inverse_resolution
+                    ).rgb;
+                    vec3 rgb_sw = texture(
+                        scene_image, uv + vec2(-1.0, -1.0) * inverse_resolution
+                    ).rgb;
+                    vec3 rgb_se = texture(
+                        scene_image, uv + vec2(1.0, -1.0) * inverse_resolution
+                    ).rgb;
                     vec3 luma = vec3(0.299, 0.587, 0.114);
                     float luma_m = dot(rgb_m, luma);
-                    float luma_min = min(luma_m, min(min(dot(rgb_nw, luma), dot(rgb_ne, luma)), min(dot(rgb_sw, luma), dot(rgb_se, luma))));
-                    float luma_max = max(luma_m, max(max(dot(rgb_nw, luma), dot(rgb_ne, luma)), max(dot(rgb_sw, luma), dot(rgb_se, luma))));
+                    float luma_min = min(
+                        luma_m,
+                        min(
+                            min(dot(rgb_nw, luma), dot(rgb_ne, luma)),
+                            min(dot(rgb_sw, luma), dot(rgb_se, luma))
+                        )
+                    );
+                    float luma_max = max(
+                        luma_m,
+                        max(
+                            max(dot(rgb_nw, luma), dot(rgb_ne, luma)),
+                            max(dot(rgb_sw, luma), dot(rgb_se, luma))
+                        )
+                    );
                     vec2 dir;
-                    dir.x = -((dot(rgb_nw, luma) + dot(rgb_ne, luma)) - (dot(rgb_sw, luma) + dot(rgb_se, luma)));
-                    dir.y = ((dot(rgb_nw, luma) + dot(rgb_sw, luma)) - (dot(rgb_ne, luma) + dot(rgb_se, luma)));
-                    float reduce = max((dot(rgb_nw + rgb_ne + rgb_sw + rgb_se, luma) * 0.25) * 0.03125, 0.0078125);
+                    dir.x = -(
+                        (dot(rgb_nw, luma) + dot(rgb_ne, luma))
+                        - (dot(rgb_sw, luma) + dot(rgb_se, luma))
+                    );
+                    dir.y = (
+                        (dot(rgb_nw, luma) + dot(rgb_sw, luma))
+                        - (dot(rgb_ne, luma) + dot(rgb_se, luma))
+                    );
+                    float reduce = max(
+                        (dot(rgb_nw + rgb_ne + rgb_sw + rgb_se, luma) * 0.25) * 0.03125,
+                        0.0078125
+                    );
                     float reciprocal = 1.0 / (min(abs(dir.x), abs(dir.y)) + reduce);
                     dir = clamp(dir * reciprocal, vec2(-8.0), vec2(8.0)) * inverse_resolution;
                     vec3 rgb_a = 0.5 * (
-                        texture(scene_image, uv + dir * (1.0 / 3.0 - 0.5)).rgb +
-                        texture(scene_image, uv + dir * (2.0 / 3.0 - 0.5)).rgb
+                        texture(scene_image, uv + dir * (1.0 / 3.0 - 0.5)).rgb
+                        + texture(scene_image, uv + dir * (2.0 / 3.0 - 0.5)).rgb
                     );
                     vec3 rgb_b = rgb_a * 0.5 + 0.25 * (
-                        texture(scene_image, uv + dir * -0.5).rgb +
-                        texture(scene_image, uv + dir * 0.5).rgb
+                        texture(scene_image, uv + dir * -0.5).rgb
+                        + texture(scene_image, uv + dir * 0.5).rgb
                     );
                     float luma_b = dot(rgb_b, luma);
                     return (luma_b < luma_min || luma_b > luma_max) ? rgb_a : rgb_b;
@@ -143,7 +172,11 @@ class PostProcessRenderer(Renderer):
                     const float c = 2.43;
                     const float d = 0.59;
                     const float e = 0.14;
-                    return clamp((color * (a * color + b)) / (color * (c * color + d) + e), 0.0, 1.0);
+                    return clamp(
+                        (color * (a * color + b)) / (color * (c * color + d) + e),
+                        0.0,
+                        1.0
+                    );
                 }
 
                 void main() {
@@ -169,7 +202,6 @@ class PostProcessRenderer(Renderer):
         vertices = np.asarray((-1.0, -1.0, 3.0, -1.0, -1.0, 3.0), dtype="f4")
         self.post_vbo = self.ctx.buffer(vertices.tobytes())
         self.post_vao = self.ctx.simple_vertex_array(self.post_program, self.post_vbo, "in_pos")
-        self._ensure_post_target()
 
     def _release_post_target(self) -> None:
         for resource in (self._post_framebuffer, self._post_depth, self._post_color):
@@ -195,7 +227,7 @@ class PostProcessRenderer(Renderer):
 
     def resize(self, width: int, height: int) -> None:
         super().resize(width, height)
-        if hasattr(self, "post_program"):
+        if self._post_framebuffer is not None:
             self._ensure_post_target()
 
     def render(self, scene, *, camera=None, clear_color=(0.035, 0.045, 0.07, 1.0)) -> None:
