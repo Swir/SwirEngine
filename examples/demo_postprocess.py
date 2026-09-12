@@ -1,6 +1,5 @@
 from swirengine import Color, Game, Vec3, cube_mesh
 
-
 game = Game("SwirEngine Post-processing", 960, 540, mode="3d")
 game.camera.position = Vec3(0.0, 1.5, 6.0)
 game.camera.look_at(Vec3(0.0, 0.0, 0.0))
