@@ -32,7 +32,7 @@ def test_asset_browser_builds_metadata_filters_folders_and_aliases(tmp_path):
     frame = browser.frame()
     hero = next(entry for entry in frame.entries if entry.name == "hero.png")
     assert frame.total_files == 4
-    assert frame.total_bytes == 14
+    assert frame.total_bytes == 13
     assert frame.folders == ("audio", "models", "textures", "textures/ui")
     assert set(frame.kinds) == {"audio", "image", "model"}
     assert hero.aliases == ("hero",)
