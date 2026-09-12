@@ -78,9 +78,12 @@ deterministic sibling ordering, indexed reparenting, depth/parent/order row meta
 and automatic promotion of children when a parent disappears from the runtime scene. Property edits,
 component edits, reparenting and sibling moves now share one chronological bounded undo/redo history,
 with stale-target and stale-parent protection so failed structural rollback attempts leave history intact.
+Portable `EditorHierarchyState` snapshots now persist parenting, sibling order and selection across scene
+serialization/reload using scene-object indices and stable ECS IDs rather than process-local object keys;
+restore pre-validates all references and can leave project loading out of the user's undo history.
 
-Next: strengthen rollback guarantees for multi-domain restore and continue architecture hardening toward
-persistent scene-editor hierarchy state plus the first visual-editor shell.
+Next: strengthen rollback guarantees for multi-domain restore, add project-level editor state and begin
+the first visual-editor shell around the shared hierarchy/inspector contract.
 
 ## 0.6 - Tools
 

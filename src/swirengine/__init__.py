@@ -13,6 +13,15 @@ from .editor import (
     PropertyEdit,
     SceneInspector,
 )
+from .editor_state import (
+    EDITOR_HIERARCHY_FORMAT,
+    EDITOR_HIERARCHY_VERSION,
+    EditorHierarchyNode,
+    EditorHierarchyState,
+    EditorTargetRef,
+    capture_editor_hierarchy,
+    restore_editor_hierarchy,
+)
 from .filewatch import FileChangeEvent, PluginAutoReloader, PollingFileWatcher, ReloadResult
 from .graphics.animation import AnimatedSprite2D, AnimationClip, SpriteSheet, animated_sprite
 from .graphics.camera import Camera2D
@@ -57,6 +66,8 @@ from .ui import UIButton, UILabel, UIManager, UIPanel, UIProgressBar
 
 __all__ = [
     "AABB",
+    "EDITOR_HIERARCHY_FORMAT",
+    "EDITOR_HIERARCHY_VERSION",
     "MAX_DIRECTIONAL_LIGHTS",
     "MAX_POINT_LIGHTS",
     "MAX_SPOT_LIGHTS",
@@ -79,6 +90,9 @@ __all__ = [
     "DebugOverlay",
     "DirectionalLight3D",
     "ECSWorld",
+    "EditorHierarchyNode",
+    "EditorHierarchyState",
+    "EditorTargetRef",
     "Entity",
     "Environment3D",
     "EnvironmentInstallation",
@@ -144,12 +158,14 @@ __all__ = [
     "Vec2",
     "Vec3",
     "animated_sprite",
+    "capture_editor_hierarchy",
     "cube_mesh",
     "load_gltf",
     "load_gltf_material",
     "load_gltf_primitives",
     "load_gltf_scene",
     "load_obj",
+    "restore_editor_hierarchy",
     "select_lights",
     "skybox_mesh_data",
 ]
