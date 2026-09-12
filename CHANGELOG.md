@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.19 - 2026-09-12
+
+Renderer GPU texture live-reload integration update.
+
+- added public `RendererAssetBridge` and `GPUTextureInvalidation` APIs
+- connected `AssetManager` invalidation callbacks to renderer texture-cache eviction without coupling the generic asset layer to OpenGL
+- release stale GPU texture objects immediately when watched source images change or are deleted
+- added deterministic discovery/watching of `Sprite2D` textures plus `Material3D` albedo and metallic/roughness textures
+- reuse the existing dependency-free polling pipeline and structured `AssetReloadResult` diagnostics
+- added explicit bind/unbind lifecycle, context-manager support and invalidation history for editor diagnostics
+- added regression coverage for GPU release, scene texture discovery, file-change invalidation and lifecycle behavior
+- added a runnable `demo_renderer_asset_bridge.py` integration example
+- advanced the 0.5 roadmap toward equivalent audio-resource invalidation and editor hardening
+- bumped package version to 0.4.19
+
 ## 0.4.18 - 2026-09-12
 
 Live asset reload and runtime-cache invalidation update.
