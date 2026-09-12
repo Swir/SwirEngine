@@ -9,6 +9,7 @@ from .filewatch import FileChangeEvent, PluginAutoReloader, PollingFileWatcher, 
 from .graphics.animation import AnimatedSprite2D, AnimationClip, SpriteSheet, animated_sprite
 from .graphics.camera import Camera2D
 from .graphics.camera3d import Camera3D
+from .graphics.environment import Environment3D, EnvironmentInstallation, Skybox3D, skybox_mesh_data
 from .graphics.gltf import GltfSceneMesh, load_gltf, load_gltf_scene
 from .graphics.gltf_asset import GltfPrimitiveAsset, load_gltf_material, load_gltf_primitives
 from .graphics.lights import (
@@ -70,6 +71,8 @@ __all__ = [
     "DirectionalLight3D",
     "ECSWorld",
     "Entity",
+    "Environment3D",
+    "EnvironmentInstallation",
     "EventBus",
     "FileChangeEvent",
     "FrameProfile",
@@ -109,6 +112,7 @@ __all__ = [
     "SceneCodecRegistry",
     "SceneSerializationError",
     "SceneSerializer",
+    "Skybox3D",
     "SpotLight3D",
     "Sprite2D",
     "SpriteSheet",
@@ -130,6 +134,7 @@ __all__ = [
     "load_gltf_scene",
     "load_obj",
     "select_lights",
+    "skybox_mesh_data",
 ]
 
-__version__ = "0.4.20"
+__version__ = "0.4.21"

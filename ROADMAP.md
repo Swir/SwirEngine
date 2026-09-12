@@ -32,12 +32,15 @@ preservation, glTF/GLB base-color material loading with per-primitive material b
 `DirectionalLight3D`, `PointLight3D`, `SpotLight3D`, distance/cone attenuation, legacy Phong
 specular/shininess material controls and simultaneous multi-light forward rendering with
 explicit per-type GPU budgets plus overflow diagnostics. Native Cook-Torrance
-metallic/roughness shading is now available for PBR materials, including glTF 2.0
+metallic/roughness shading is available for PBR materials, including glTF 2.0
 `metallicFactor`, `roughnessFactor` and packed `metallicRoughnessTexture` support while the
-legacy Phong path remains available for existing materials.
+legacy Phong path remains available for existing materials. `Skybox3D` adds camera-centered
+panorama skies through the normal `Mesh3D` render/cache path, while `Environment3D` provides a
+creator-facing sky/ground fill-light rig with install/remove lifecycle helpers and an API shaped
+for a later transition to image-based lighting without breaking game code.
 
-Next: skybox/environment lighting, shadows and post-processing. Then harden color-space/PBR
-fidelity and broaden glTF material coverage with normal, occlusion and emissive maps.
+Next: true cubemap/image-based environment lighting, shadows and post-processing. Then harden
+color-space/PBR fidelity and broaden glTF material coverage with normal, occlusion and emissive maps.
 
 ## 0.5 - Architecture
 
@@ -60,7 +63,7 @@ suffix-based loader registry, canonical-path runtime cache, watched asset invali
 reload results and invalidation callbacks. `RendererAssetBridge` connects those callbacks directly
 to renderer GPU textures, releases stale ModernGL resources, automatically discovers 2D sprite
 and 3D material textures in a scene and reuses the same deterministic polling pipeline.
-`AudioEngine` can now subscribe to that same asset invalidation stream, automatically watch active
+`AudioEngine` can subscribe to that same asset invalidation stream, automatically watch active
 audio files, restart looping sounds/music in place while preserving handle identity and volume,
 optionally restart one-shots, stop deleted resources safely and expose structured reload diagnostics.
 
