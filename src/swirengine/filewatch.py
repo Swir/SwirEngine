@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -94,11 +94,17 @@ class PluginAutoReloader:
         *,
         watcher: PollingFileWatcher | None = None,
         preserve_state: bool = True,
+        state_domains: Iterable[str] | None = None,
         on_result: Callable[[ReloadResult], None] | None = None,
     ) -> None:
+        if not preserve_state and state_domains is not None:
+            raise ValueError("state_domains requires preserve_state=True")
         self.manager = manager
         self.watcher = watcher or PollingFileWatcher()
         self.preserve_state = bool(preserve_state)
+        self.state_domains = (
+            None if state_domains is None else tuple(dict.fromkeys(map(str, state_domains)))
+        )
         self.on_result = on_result
         self._plugins_by_path: dict[Path, str] = {}
 
@@ -125,7 +131,11 @@ class PluginAutoReloader:
             if plugin is None or event.kind == "deleted":
                 continue
             try:
-                self.manager.reload(plugin, preserve_state=self.preserve_state)
+                self.manager.reload(
+                    plugin,
+                    preserve_state=self.preserve_state,
+                    state_domains=self.state_domains,
+                )
             except Exception as exc:  # noqa: BLE001 - plugin code can raise arbitrary errors.
                 result = ReloadResult(plugin, event.path, False, str(exc))
             else:
