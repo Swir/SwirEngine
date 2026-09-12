@@ -29,6 +29,7 @@ from .math.types import Color, Transform, Vec2, Vec3
 from .particles import ParticleEmitter2D
 from .physics.collision2d import AABB, BoxCollider2D, CollisionWorld2D
 from .physics.rigidbody2d import PhysicsWorld2D, RigidBody2D
+from .plugins import PluginError, PluginInfo, PluginManager
 from .prefab import Prefab, PrefabInstance, PrefabOverrides, PrefabSelector
 from .profiler import FrameProfile, Profiler
 from .serialization import SceneCodecRegistry, SceneSerializationError, SceneSerializer
@@ -70,6 +71,9 @@ __all__ = [
     "MeshData",
     "ParticleEmitter2D",
     "PhysicsWorld2D",
+    "PluginError",
+    "PluginInfo",
+    "PluginManager",
     "PointLight3D",
     "Prefab",
     "PrefabInstance",
@@ -108,4 +112,4 @@ __all__ = [
     "select_lights",
 ]
 
-__version__ = "0.4.12"
+__version__ = "0.4.13"

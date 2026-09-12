@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.13 - 2026-09-12
+
+Plugin runtime and hot-reload architecture update.
+
+- added public `PluginManager`, `PluginInfo` and `PluginError` APIs
+- added deterministic plugin registration plus `on_load`, `on_enable`, `on_disable` and `on_unload` lifecycle hooks
+- added dependency-aware activation with recursive dependency enablement, missing-dependency diagnostics and cycle detection
+- prevented disabling required plugins unless cascade shutdown is explicitly requested
+- added named shared-service publishing so plugins can collaborate without direct import coupling
+- added module plugin entrypoints through `create_plugin()` or `plugin`
+- added controlled module hot reload that preserves enabled state and attempts rollback when replacement lifecycle setup fails
+- reject hot reload while enabled dependants exist so live dependency graphs are not silently invalidated
+- added reverse dependency-safe shutdown and service cleanup
+- added plugin lifecycle/dependency/service regression coverage plus a runnable plugin example
+- advanced the 0.5 roadmap toward component/entity reference persistence and deeper scene/editor hot-reload integration
+- bumped package version to 0.4.13
+
 ## 0.4.12 - 2026-09-12
 
 ECS persistence and serializer-migration update.
