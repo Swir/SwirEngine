@@ -4,6 +4,7 @@ from .core.events import EventBus
 from .core.game import Game
 from .core.scene import Scene
 from .debug import DebugOverlay
+from .ecs import ECSWorld, Entity
 from .graphics.animation import AnimatedSprite2D, AnimationClip, SpriteSheet, animated_sprite
 from .graphics.camera import Camera2D
 from .graphics.camera3d import Camera3D
@@ -56,6 +57,8 @@ __all__ = [
     "Cube3D",
     "DebugOverlay",
     "DirectionalLight3D",
+    "ECSWorld",
+    "Entity",
     "EventBus",
     "FrameProfile",
     "Game",
@@ -105,4 +108,4 @@ __all__ = [
     "select_lights",
 ]
 
-__version__ = "0.4.10"
+__version__ = "0.4.11"
