@@ -14,10 +14,10 @@ pooled particles, fixed-step arcade rigid-body physics, pluggable sound/music pl
 screen-space UI, labels, panels, buttons and progress bars.
 
 Hardening completed so far: bounded dynamic-text cache, renderer statistics, frame profiler,
-built-in debug overlay and sprite draw-call batching that preserves transparent render order.
+built-in debug overlay, sprite draw-call batching that preserves transparent render order,
+deterministic asset scanning and creator-facing asset/alias diagnostics.
 
-Remaining hardening: larger sample games, clearer resource diagnostics and creator-facing API
-polish while 3D grows in parallel.
+Remaining hardening: larger sample games and creator-facing API polish while 3D grows in parallel.
 
 ## 0.4 - Serious 3D — in progress
 
@@ -31,9 +31,13 @@ preservation, glTF/GLB base-color material loading with per-primitive material b
 `baseColorFactor`, external images, data-URI images and embedded GLB `bufferView` textures,
 `DirectionalLight3D`, `PointLight3D`, `SpotLight3D`, distance/cone attenuation, Phong
 specular/shininess material controls and simultaneous multi-light forward rendering with
-explicit per-type GPU budgets plus overflow diagnostics.
+explicit per-type GPU budgets plus overflow diagnostics. glTF `metallicFactor` and
+`roughnessFactor` now reach runtime `Material3D` and use a compatibility-preserving
+metallic/roughness-to-Phong bridge so those PBR factors affect rendering instead of being
+metadata-only.
 
-Next: richer PBR mapping from glTF metallic/roughness, skybox, shadows and post-processing.
+Next: native Cook-Torrance metallic/roughness shading and `metallicRoughnessTexture`, then
+skybox, shadows and post-processing.
 
 ## 0.5 - Architecture
 

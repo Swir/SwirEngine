@@ -1,4 +1,4 @@
-from .assets import AssetManager
+from .assets import AssetDiagnostics, AssetInfo, AssetManager
 from .audio import AudioBackend, AudioEngine, AudioHandle, PygameAudioBackend
 from .core.events import EventBus
 from .core.game import Game
@@ -40,6 +40,8 @@ __all__ = [
     "MAX_SPOT_LIGHTS",
     "AnimatedSprite2D",
     "AnimationClip",
+    "AssetDiagnostics",
+    "AssetInfo",
     "AssetManager",
     "AudioBackend",
     "AudioEngine",
@@ -94,4 +96,4 @@ __all__ = [
     "select_lights",
 ]
 
-__version__ = "0.4.6"
+__version__ = "0.4.7"

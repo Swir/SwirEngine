@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4.7 - 2026-09-12
+
+PBR-factor bridge and asset-diagnostics update.
+
+- added optional `Material3D.metallic` and `Material3D.roughness` controls with strict 0..1 validation
+- added a compatibility-preserving metallic/roughness-to-Phong bridge so existing OpenGL 3.3 forward rendering reacts to glTF PBR factors immediately
+- preserved legacy Phong behavior when metallic/roughness are not supplied
+- mapped glTF/GLB `metallicFactor` and `roughnessFactor` directly into renderer-ready `Material3D` instances instead of leaving them as metadata only
+- kept `GltfPrimitiveAsset.metallic_factor` and `roughness_factor` for backward compatibility
+- added explicit validation for unsupported `metallicRoughnessTexture` rather than silently rendering it incorrectly
+- added public `AssetInfo` and `AssetDiagnostics` snapshots
+- added deterministic recursive/non-recursive asset scanning with size and normalized suffix metadata
+- added missing-alias detection, total-byte accounting and suffix filtering without loading assets into RAM/GPU memory
+- added regression coverage for PBR mapping, legacy-material compatibility, bounds validation, asset scans and alias health
+- advanced 0.3 hardening by completing creator-facing asset diagnostics
+- advanced 0.4 toward a native Cook-Torrance metallic/roughness shader and texture-driven PBR
+- bumped package version to 0.4.7
+
 ## 0.4.6 - 2026-09-12
 
 Multi-light forward-rendering and diagnostics update.
