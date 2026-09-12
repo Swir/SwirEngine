@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.12 - 2026-09-12
+
+ECS persistence and serializer-migration update.
+
+- upgraded the scene/prefab document format to version 2 with automatic version-1 migration
+- added ECS entity persistence to scene documents, including stable IDs, names, enabled state and tags
+- added registered dataclass component persistence through the existing safe allow-list codec registry
+- preserved references from persisted ECS components to serialized scene objects
+- added explicit stable-ID restoration to `ECSWorld.create_entity(...)` while keeping automatic IDs backward compatible
+- advanced the entity allocator past restored IDs so newly created entities cannot collide after load
+- added strict validation for invalid/duplicate persisted IDs, malformed ECS metadata and target-scene ID conflicts
+- kept callable/object ECS systems runtime-only instead of serializing executable behavior
+- added ECS persistence/migration regression coverage and a runnable persistence example
+- advanced the 0.5 architecture roadmap toward richer reference persistence, hot reload and plugin APIs
+- bumped package version to 0.4.12
+
 ## 0.4.11 - 2026-09-12
 
 Entity/component/system architecture foundation update.
