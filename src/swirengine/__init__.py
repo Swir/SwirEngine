@@ -21,6 +21,7 @@ from .graphics.lights import (
     SpotLight3D,
     select_lights,
 )
+from .graphics.live_assets import GPUTextureInvalidation, RendererAssetBridge
 from .graphics.material import Material3D
 from .graphics.mesh import Mesh3D, MeshData, cube_mesh
 from .graphics.obj import load_obj
@@ -71,6 +72,7 @@ __all__ = [
     "EventBus",
     "FileChangeEvent",
     "FrameProfile",
+    "GPUTextureInvalidation",
     "Game",
     "GltfPrimitiveAsset",
     "GltfSceneMesh",
@@ -98,6 +100,7 @@ __all__ = [
     "PygameAudioBackend",
     "Rectangle2D",
     "ReloadResult",
+    "RendererAssetBridge",
     "RendererStats",
     "RigidBody2D",
     "SaveStore",
@@ -128,4 +131,4 @@ __all__ = [
     "select_lights",
 ]
 
-__version__ = "0.4.18"
+__version__ = "0.4.19"
