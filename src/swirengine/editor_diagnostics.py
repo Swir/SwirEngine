@@ -100,14 +100,16 @@ class EditorConsole:
         normalized_source = source.strip()
         if not normalized_source:
             raise ValueError("console source cannot be empty")
-        entry = EditorConsoleEntry(
-            self._next_sequence,
-            time.time() if timestamp is None else float(timestamp),
-            normalized_level,
-            str(message),
-            normalized_source,
-        )
+        entry_timestamp = time.time() if timestamp is None else float(timestamp)
+        entry_message = str(message)
         with self._lock:
+            entry = EditorConsoleEntry(
+                self._next_sequence,
+                entry_timestamp,
+                normalized_level,
+                entry_message,
+                normalized_source,
+            )
             self._next_sequence += 1
             self._entries.append(entry)
         return entry
