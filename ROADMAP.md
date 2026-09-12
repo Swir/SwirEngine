@@ -4,20 +4,20 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-74.2%25-2ea043?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-23%2F31-1f6feb?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-77.4%25-2ea043?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-24%2F31-1f6feb?style=for-the-badge">
   <img alt="Status" src="https://img.shields.io/badge/STATUS-IN%20PROGRESS-7c3aed?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-███████████████░░░░░ 74.2%
+███████████████░░░░░ 77.4%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **23** | **8** | **31** | **74.2%** |
+| **24** | **7** | **31** | **77.4%** |
 
 > **Progress rule:** the equal-weight deliverables below are the source of truth. Update `[x]/[ ]` first, then update badges, numbers, percentage and the 20-segment bar. Never estimate progress from version numbers, commit count or activity.
 
@@ -43,7 +43,7 @@
 - [x] 0.5 LiveDevelopmentHub
 - [x] 0.5 SceneInspector hierarchy, editing and unified undo/redo
 - [x] 0.5 EditorProjectState / EditorWorkspace shell foundation
-- [ ] 0.5 stronger multi-domain rollback guarantees
+- [x] 0.5 stronger multi-domain rollback guarantees
 - [x] 0.5 connect editor models to an actual interactive visual front-end
 - [x] 0.6 editor asset browser
 - [x] 0.6 editor console and profiler models
@@ -112,13 +112,16 @@ restoration so editor/game state can survive plugin code reloads. A dependency-f
 file watcher and `PluginAutoReloader` connect source-file edits to state-preserving reload
 transactions without background threads. Named state domains let editor/game subsystems own,
 inspect, clear and selectively preserve independent state groups during manual or watcher-driven
-reloads without changing existing provider names or snapshot formats. `AssetManager` adds a
-suffix-based loader registry, canonical-path runtime cache, watched asset invalidation, structured
-reload results and invalidation callbacks. `RendererAssetBridge` connects those callbacks directly
-to renderer GPU textures, releases stale ModernGL resources, automatically discovers 2D sprite
-and 3D material textures in a scene and reuses the same deterministic polling pipeline.
-`AudioEngine` can subscribe to that same asset invalidation stream, automatically watch active
-audio files, restart looping sounds/music in place while preserving handle identity and volume,
+reloads without changing existing provider names or snapshot formats. Atomic multi-provider restore
+now pre-captures rollback baselines before any mutation and reverses every touched provider when a
+restore callback fails, including partially-mutated failing providers; plugin reloads use that path
+for multi-provider/domain preservation while legacy single-provider callback behavior remains stable.
+`AssetManager` adds a suffix-based loader registry, canonical-path runtime cache, watched asset
+invalidation, structured reload results and invalidation callbacks. `RendererAssetBridge` connects
+those callbacks directly to renderer GPU textures, releases stale ModernGL resources, automatically
+discovers 2D sprite and 3D material textures in a scene and reuses the same deterministic polling
+pipeline. `AudioEngine` can subscribe to that same asset invalidation stream, automatically watch
+active audio files, restart looping sounds/music in place while preserving handle identity and volume,
 optionally restart one-shots, stop deleted resources safely and expose structured reload diagnostics.
 `LiveDevelopmentHub` now coordinates plugin reloads plus one shared asset poll and aggregates
 plugin, asset, GPU-texture and audio events into one editor-facing `LiveDevelopmentResult` with
@@ -158,8 +161,7 @@ single-frame stepping, then discarding runtime mutations on Stop. `EditorPreview
 front-end exposes Play/Pause/Stop/Step controls plus a live embedded RGB viewport while preserving Edit-mode
 scene switching and authoring-state isolation.
 
-Next: strengthen rollback guarantees for multi-domain restore, then continue hardening creator-facing APIs
-and the remaining 3D/rendering roadmap work.
+Next: continue hardening creator-facing APIs and the remaining 3D/rendering roadmap work.
 
 ## 0.6 - Tools
 
@@ -171,8 +173,7 @@ connects those models without adding a mandatory GUI dependency. Isolated `Edito
 scene execution is integrated with `RendererViewportBridge` and `EditorPreviewSession`; the editor now has
 direct Play/Pause/Stop/Step controls and can embed live frames read from the renderer framebuffer.
 
-Next: stronger multi-domain rollback guarantees, creator-facing tool polish and export/runtime work toward
-0.7.
+Next: creator-facing tool polish and export/runtime work toward 0.7.
 
 ## 0.7+ - Runtime and export
 
