@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.11 - 2026-09-12
+
+Entity/component/system architecture foundation update.
+
+- added public `Entity` and `ECSWorld` APIs with no mandatory component base class
+- added one-component-per-concrete-type storage with base-class lookup, replacement, removal and required-component helpers
+- added stable monotonic entity IDs, names, tags, enabled state, lookup, destruction and world detachment semantics
+- added filtered component queries by type, enabled state and required tags
+- added snapshot `rows(...)` queries returning `(entity, component...)` tuples in requested component order
+- added callable and object-based systems with deterministic priority + registration ordering, enabled filtering and removal
+- integrated one ECS world into every `Scene` with `create_entity(...)`, `entities`, `query_entities(...)` and scene-update execution
+- made `Scene.clear()` clear ECS entities by default while allowing `clear_entities=False` for advanced workflows
+- added seven ECS regression tests plus a runnable `demo_ecs.py`
+- advanced the 0.5 architecture roadmap while leaving unfinished 0.4 rendering goals active
+- bumped package version to 0.4.11
+
 ## 0.4.10 - 2026-09-12
 
 Native metallic/roughness PBR renderer update.

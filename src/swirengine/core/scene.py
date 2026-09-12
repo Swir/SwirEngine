@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from typing import TYPE_CHECKING, TypeVar
+
+from ..ecs import ECSWorld, Entity
 
 if TYPE_CHECKING:
     from ..prefab import Prefab, PrefabInstance, PrefabOverrides
@@ -12,10 +14,15 @@ T = TypeVar("T")
 class Scene:
     def __init__(self) -> None:
         self._objects: list[object] = []
+        self.ecs = ECSWorld()
 
     @property
     def objects(self) -> tuple[object, ...]:
         return tuple(self._objects)
+
+    @property
+    def entities(self) -> tuple[Entity, ...]:
+        return self.ecs.entities
 
     def __iter__(self) -> Iterator[object]:
         return iter(tuple(self._objects))
@@ -43,8 +50,10 @@ class Scene:
                 return True
         return False
 
-    def clear(self) -> None:
+    def clear(self, *, clear_entities: bool = True) -> None:
         self._objects.clear()
+        if clear_entities:
+            self.ecs.clear()
 
     def update(self, dt: float) -> None:
         for obj in tuple(self._objects):
@@ -53,6 +62,7 @@ class Scene:
             update = getattr(obj, "update", None)
             if callable(update):
                 update(dt)
+        self.ecs.update(dt)
 
     def by_type(self, cls: type[T]) -> tuple[T, ...]:
         return tuple(obj for obj in self._objects if isinstance(obj, cls))
@@ -65,6 +75,25 @@ class Scene:
 
     def tagged(self, tag: str) -> tuple[object, ...]:
         return tuple(obj for obj in self._objects if tag in getattr(obj, "tags", set()))
+
+    def create_entity(
+        self,
+        *,
+        name: str = "",
+        enabled: bool = True,
+        tags: Iterable[str] = (),
+    ) -> Entity:
+        """Create an ECS entity owned by this scene's world."""
+        return self.ecs.create_entity(name=name, enabled=enabled, tags=tags)
+
+    def query_entities(
+        self,
+        *component_types: type[object],
+        enabled_only: bool = True,
+        tags: Iterable[str] = (),
+    ) -> tuple[Entity, ...]:
+        """Query ECS entities without exposing world internals in common game code."""
+        return self.ecs.query(*component_types, enabled_only=enabled_only, tags=tags)
 
     def prefab(
         self,
