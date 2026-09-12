@@ -11,7 +11,13 @@ _PIXEL_PNG = (
 )
 
 
-def _write_asset(tmp_path, *, alpha_mode="OPAQUE", metallic_roughness_texture=False):
+def _write_asset(
+    tmp_path,
+    *,
+    alpha_mode="OPAQUE",
+    metallic_roughness_texture=False,
+    extended_channels=False,
+):
     vertices = struct.pack("<9f", 0, 0, 0, 1, 0, 0, 0, 1, 0)
     uvs = struct.pack("<6f", 0, 0, 1, 0, 0, 1)
     payload = vertices + uvs
@@ -23,6 +29,20 @@ def _write_asset(tmp_path, *, alpha_mode="OPAQUE", metallic_roughness_texture=Fa
     }
     if metallic_roughness_texture:
         pbr["metallicRoughnessTexture"] = {"index": 0}
+
+    material = {
+        "alphaMode": alpha_mode,
+        "pbrMetallicRoughness": pbr,
+    }
+    if extended_channels:
+        material.update(
+            {
+                "normalTexture": {"index": 0, "scale": 0.65},
+                "occlusionTexture": {"index": 0, "strength": 0.4},
+                "emissiveTexture": {"index": 0},
+                "emissiveFactor": [0.1, 0.2, 0.3],
+            }
+        )
 
     document = {
         "asset": {"version": "2.0"},
@@ -43,12 +63,7 @@ def _write_asset(tmp_path, *, alpha_mode="OPAQUE", metallic_roughness_texture=Fa
         ],
         "images": [{"uri": "data:image/png;base64," + _PIXEL_PNG}],
         "textures": [{"source": 0}],
-        "materials": [
-            {
-                "alphaMode": alpha_mode,
-                "pbrMetallicRoughness": pbr,
-            }
-        ],
+        "materials": [material],
         "meshes": [
             {
                 "primitives": [
@@ -109,6 +124,34 @@ def test_gltf_metallic_roughness_texture_is_renderer_ready(tmp_path):
     assert material.metallic_roughness_texture.read_bytes() == base64.b64decode(_PIXEL_PNG)
     assert material.metallic == pytest.approx(0.2)
     assert material.roughness == pytest.approx(0.7)
+
+
+def test_gltf_imports_normal_occlusion_and_emissive_channels(tmp_path):
+    path = _write_asset(tmp_path, extended_channels=True)
+    material = load_gltf_material(path)
+
+    expected = base64.b64decode(_PIXEL_PNG)
+    assert material.normal_texture is not None
+    assert material.normal_texture.read_bytes() == expected
+    assert material.normal_scale == pytest.approx(0.65)
+    assert material.occlusion_texture is not None
+    assert material.occlusion_texture.read_bytes() == expected
+    assert material.occlusion_strength == pytest.approx(0.4)
+    assert material.emissive_texture is not None
+    assert material.emissive_texture.read_bytes() == expected
+    assert material.emissive_factor.r == pytest.approx(0.1)
+    assert material.emissive_factor.g == pytest.approx(0.2)
+    assert material.emissive_factor.b == pytest.approx(0.3)
+
+
+def test_gltf_extended_channel_validation_is_explicit(tmp_path):
+    path = _write_asset(tmp_path, extended_channels=True)
+    document = json.loads(path.read_text(encoding="utf-8"))
+    document["materials"][0]["occlusionTexture"]["strength"] = 1.5
+    path.write_text(json.dumps(document), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="occlusionTexture strength"):
+        load_gltf_material(path)
 
 
 def test_metallic_roughness_texture_rejects_nonzero_texcoord(tmp_path):
