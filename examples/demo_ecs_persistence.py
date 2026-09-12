@@ -31,8 +31,8 @@ enemy.add(Relationship(enemy, player_position))
 serializer.dump_scene(scene, "save/player_scene.swirscene")
 restored = serializer.load_scene("save/player_scene.swirscene")
 
-loaded_player = restored.find_entity("player")
-loaded_enemy = restored.find_entity("enemy")
+loaded_player = restored.ecs.find("player")
+loaded_enemy = restored.ecs.find("enemy")
 assert loaded_player is not None
 assert loaded_enemy is not None
 print(loaded_player.require(Relationship).owner is loaded_player)
