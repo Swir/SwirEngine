@@ -365,7 +365,7 @@ class SceneSerializer:
     def loads_scene(self, text: str, *, scene: Scene | None = None, clear: bool = False) -> Scene:
         document = self._parse(text, SCENE_FORMAT)
         objects = self._decode_objects(document.get("objects"))
-        target = scene or Scene()
+        target = scene if scene is not None else Scene()
         if clear:
             target.clear()
         target.add_many(*objects)
