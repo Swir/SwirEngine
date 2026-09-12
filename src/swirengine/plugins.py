@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 from collections.abc import Iterable
+from contextlib import suppress
 from dataclasses import dataclass
 from types import ModuleType
 from typing import Any
@@ -299,15 +300,11 @@ class PluginManager:
 
     def _cleanup_failed_replacement(self, entry: _PluginEntry) -> None:
         if entry.enabled:
-            try:
+            with suppress(Exception):
                 self._call(entry.plugin, "on_disable")
-            except Exception:  # noqa: BLE001 - best-effort rollback cleanup.
-                pass
             entry.enabled = False
-        try:
+        with suppress(Exception):
             self._call(entry.plugin, "on_unload")
-        except Exception:  # noqa: BLE001 - best-effort rollback cleanup.
-            pass
 
     @staticmethod
     def _resolved_requires(plugin: object, name: str) -> tuple[str, ...]:
