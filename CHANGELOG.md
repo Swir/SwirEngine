@@ -325,6 +325,7 @@ Level-building and persistence update.
 - added `SaveStore` with defaults, dict-like helpers and UTF-8 JSON persistence
 - added atomic save writes using a same-directory temporary file and `os.replace`
 - added optional `Game.storage` autoload through `save_path=...`
+- added tilemap and save-data tests
 - bumped package version to 0.3.1
 
 ## 0.3.0 - 2026-09-11
