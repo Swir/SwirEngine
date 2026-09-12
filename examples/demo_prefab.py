@@ -1,4 +1,5 @@
-from swirengine import Color, Game, Prefab, Rectangle2D
+from swirengine import Color, Game, Rectangle2D
+from swirengine.prefab import Prefab
 
 
 game = Game("Prefab Demo", 960, 540)
