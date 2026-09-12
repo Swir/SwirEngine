@@ -248,7 +248,7 @@ class PluginManager:
             if was_enabled:
                 self.enable(name)
             if preserve_state:
-                self.state.restore_atomic(snapshot)
+                self._restore_reload_state(snapshot)
         except Exception as exc:
             self._cleanup_failed_replacement(entry)
             entry.plugin = old_plugin
@@ -260,7 +260,7 @@ class PluginManager:
                 if was_enabled:
                     self.enable(name)
                 if preserve_state:
-                    self.state.restore_atomic(snapshot)
+                    self._restore_reload_state(snapshot)
             except Exception as rollback_exc:  # noqa: BLE001 - plugin hooks are arbitrary code.
                 raise PluginError(
                     f"plugin {name!r} reload failed and rollback also failed: {rollback_exc}"
@@ -315,6 +315,15 @@ class PluginManager:
             raise PluginError(
                 f"failed to capture runtime state before reloading {name!r}: {exc}"
             ) from exc
+
+    def _restore_reload_state(self, snapshot: HotReloadSnapshot) -> None:
+        # Preserve legacy callback counts for the common single-provider case while making
+        # multi-provider/domain reloads all-or-nothing. Callers that need atomic protection for
+        # one provider can use HotReloadStateRegistry.restore_atomic() explicitly.
+        if len(snapshot.values) > 1:
+            self.state.restore_atomic(snapshot)
+        else:
+            self.state.restore(snapshot)
 
     def _cleanup_failed_replacement(self, entry: _PluginEntry) -> None:
         if entry.enabled:
