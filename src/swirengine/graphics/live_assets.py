@@ -12,6 +12,14 @@ from ..assets import AssetManager, AssetReloadResult
 from .mesh import Mesh3D
 from .primitives import Sprite2D
 
+_MATERIAL_TEXTURE_FIELDS = (
+    "texture",
+    "metallic_roughness_texture",
+    "normal_texture",
+    "occlusion_texture",
+    "emissive_texture",
+)
+
 
 class _ReleasableTexture(Protocol):
     def release(self) -> None: ...
@@ -93,10 +101,10 @@ class RendererAssetBridge:
             if not isinstance(obj, Mesh3D) or obj.material is None:
                 continue
             material = obj.material
-            if material.texture is not None:
-                paths.add(Path(material.texture).expanduser().resolve())
-            if material.metallic_roughness_texture is not None:
-                paths.add(Path(material.metallic_roughness_texture).expanduser().resolve())
+            for field_name in _MATERIAL_TEXTURE_FIELDS:
+                texture_path = getattr(material, field_name, None)
+                if texture_path is not None:
+                    paths.add(Path(texture_path).expanduser().resolve())
         for path in sorted(paths, key=lambda item: item.as_posix().lower()):
             self.assets.watcher.watch(path)
         return tuple(sorted(paths, key=lambda item: item.as_posix().lower()))
