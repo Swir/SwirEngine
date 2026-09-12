@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, Self
 
 from ..assets import AssetManager, AssetReloadResult
 from .mesh import Mesh3D
@@ -48,7 +48,7 @@ class RendererAssetBridge:
     def invalidations(self) -> tuple[GPUTextureInvalidation, ...]:
         return tuple(self._invalidations)
 
-    def bind(self) -> RendererAssetBridge:
+    def bind(self) -> Self:
         if not self._bound:
             self.assets.add_invalidator(self.invalidate_texture)
             self._bound = True
@@ -116,7 +116,7 @@ class RendererAssetBridge:
             return objects
         raise TypeError("scene_or_objects must expose .objects or be iterable")
 
-    def __enter__(self) -> RendererAssetBridge:
+    def __enter__(self) -> Self:
         return self.bind()
 
     def __exit__(self, _exc_type, _exc, _tb) -> None:
