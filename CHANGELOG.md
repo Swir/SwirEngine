@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.17 - 2026-09-12
+
+Editor-owned hot-reload state-domain architecture update.
+
+- added public `HotReloadStateDomain` scoped state facade while preserving existing provider names and snapshot formats
+- added deterministic domain metadata, `domains`, `domain_of(...)`, `names_for_domain(...)` and `remove_domain(...)` APIs
+- added domain-aware registration for arbitrary callbacks and scene/ECS state providers
+- added selective `HotReloadStateRegistry.capture(domains=...)` with validation for unknown domains and conflicting name/domain filters
+- added `PluginManager.reload(..., state_domains=...)` so manual plugin reload can preserve only editor/game-owned state groups when required
+- added `PluginAutoReloader(..., state_domains=...)` so watcher-triggered reload follows the same preservation policy
+- reject state-domain filters when state preservation is explicitly disabled instead of silently ignoring contradictory configuration
+- added regression coverage for domain ownership, ordered selective snapshots, clearing, cross-domain safety, plugin reload filtering and auto-reloader propagation
+- expanded the hot-reload example with scene/editor domains and advanced the 0.5 roadmap toward live asset invalidation and stronger multi-domain rollback
+- bumped package version to 0.4.17
+
 ## 0.4.16 - 2026-09-12
 
 Automatic plugin file-watching and development hot-reload workflow update.

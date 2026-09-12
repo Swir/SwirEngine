@@ -34,22 +34,24 @@ class HotReloadSnapshot:
 class _StateProvider:
     capture: Callable[[], object]
     restore: Callable[[object], None]
+    domain: str
 
 
-class HotReloadStateRegistry:
-    """Deterministic capture/restore registry for development hot reload.
+class HotReloadStateDomain:
+    """Scoped view over one editor/game-owned hot-reload state domain.
 
-    Providers are intentionally runtime-only. A provider decides how to serialize its state,
-    while the registry guarantees stable registration order and gives plugin reload a single
-    transaction-like snapshot to restore after code changes.
+    Domains do not change provider names or snapshot formats, so existing state APIs remain
+    compatible. They add explicit ownership and selective capture, which lets an editor keep
+    scene, viewport, selection and tool state independent without maintaining parallel registries.
     """
 
-    def __init__(self) -> None:
-        self._providers: dict[str, _StateProvider] = {}
+    def __init__(self, registry: HotReloadStateRegistry, name: str) -> None:
+        self._registry = registry
+        self.name = registry._normalize_domain(name)
 
     @property
     def names(self) -> tuple[str, ...]:
-        return tuple(self._providers)
+        return self._registry.names_for_domain(self.name)
 
     def register(
         self,
@@ -59,14 +61,13 @@ class HotReloadStateRegistry:
         *,
         replace: bool = False,
     ) -> None:
-        key = str(name).strip()
-        if not key:
-            raise HotReloadStateError("state provider name cannot be empty")
-        if not callable(capture) or not callable(restore):
-            raise TypeError("state capture and restore callbacks must be callable")
-        if key in self._providers and not replace:
-            raise HotReloadStateError(f"state provider {key!r} is already registered")
-        self._providers[key] = _StateProvider(capture, restore)
+        self._registry.register(
+            name,
+            capture,
+            restore,
+            replace=replace,
+            domain=self.name,
+        )
 
     def register_scene(
         self,
@@ -75,6 +76,109 @@ class HotReloadStateRegistry:
         *,
         serializer: SceneSerializer | None = None,
         replace: bool = False,
+    ) -> SceneSerializer:
+        return self._registry.register_scene(
+            name,
+            scene,
+            serializer=serializer,
+            replace=replace,
+            domain=self.name,
+        )
+
+    def remove(self, name: str) -> bool:
+        key = str(name)
+        if self._registry.domain_of(key) != self.name:
+            return False
+        return self._registry.remove(key)
+
+    def clear(self) -> int:
+        return self._registry.remove_domain(self.name)
+
+    def capture(self, names: Iterable[str] | None = None) -> HotReloadSnapshot:
+        if names is None:
+            return self._registry.capture(domains=(self.name,))
+        selected = tuple(dict.fromkeys(map(str, names)))
+        outside = tuple(name for name in selected if self._registry.domain_of(name) != self.name)
+        if outside:
+            raise HotReloadStateError(
+                f"state provider {outside[0]!r} does not belong to domain {self.name!r}"
+            )
+        return self._registry.capture(selected)
+
+    def restore(self, snapshot: HotReloadSnapshot, *, strict: bool = True) -> None:
+        if not isinstance(snapshot, HotReloadSnapshot):
+            raise TypeError("snapshot must be HotReloadSnapshot")
+        for name in snapshot.names:
+            provider_domain = self._registry.domain_of(name)
+            if provider_domain is None and not strict:
+                continue
+            if provider_domain != self.name:
+                raise HotReloadStateError(
+                    f"state provider {name!r} does not belong to domain {self.name!r}"
+                )
+        self._registry.restore(snapshot, strict=strict)
+
+
+class HotReloadStateRegistry:
+    """Deterministic capture/restore registry for development hot reload.
+
+    Providers are intentionally runtime-only. A provider decides how to serialize its state,
+    while the registry guarantees stable registration order and gives plugin reload a single
+    transaction-like snapshot to restore after code changes. Providers may additionally belong
+    to named domains so an editor can preserve only the state it owns for a given reload.
+    """
+
+    DEFAULT_DOMAIN = "runtime"
+
+    def __init__(self) -> None:
+        self._providers: dict[str, _StateProvider] = {}
+
+    @property
+    def names(self) -> tuple[str, ...]:
+        return tuple(self._providers)
+
+    @property
+    def domains(self) -> tuple[str, ...]:
+        return tuple(dict.fromkeys(provider.domain for provider in self._providers.values()))
+
+    def domain(self, name: str) -> HotReloadStateDomain:
+        """Return a lightweight scoped facade for registering/capturing one state domain."""
+        return HotReloadStateDomain(self, name)
+
+    def domain_of(self, name: str) -> str | None:
+        provider = self._providers.get(str(name))
+        return None if provider is None else provider.domain
+
+    def names_for_domain(self, domain: str) -> tuple[str, ...]:
+        key = self._normalize_domain(domain)
+        return tuple(name for name, provider in self._providers.items() if provider.domain == key)
+
+    def register(
+        self,
+        name: str,
+        capture: Callable[[], object],
+        restore: Callable[[object], None],
+        *,
+        replace: bool = False,
+        domain: str = DEFAULT_DOMAIN,
+    ) -> None:
+        key = str(name).strip()
+        if not key:
+            raise HotReloadStateError("state provider name cannot be empty")
+        if not callable(capture) or not callable(restore):
+            raise TypeError("state capture and restore callbacks must be callable")
+        if key in self._providers and not replace:
+            raise HotReloadStateError(f"state provider {key!r} is already registered")
+        self._providers[key] = _StateProvider(capture, restore, self._normalize_domain(domain))
+
+    def register_scene(
+        self,
+        name: str,
+        scene: Scene,
+        *,
+        serializer: SceneSerializer | None = None,
+        replace: bool = False,
+        domain: str = DEFAULT_DOMAIN,
     ) -> SceneSerializer:
         """Register a scene/ECS graph as a hot-reload state provider.
 
@@ -92,21 +196,50 @@ class HotReloadStateRegistry:
                 raise HotReloadStateError("captured scene state must be JSON text")
             codec.loads_scene(value, scene=scene, clear=True)
 
-        self.register(name, capture, restore, replace=replace)
+        self.register(name, capture, restore, replace=replace, domain=domain)
         return codec
 
     def remove(self, name: str) -> bool:
         return self._providers.pop(str(name), None) is not None
 
+    def remove_domain(self, domain: str) -> int:
+        key = self._normalize_domain(domain)
+        names = self.names_for_domain(key)
+        for name in names:
+            del self._providers[name]
+        return len(names)
+
     def clear(self) -> None:
         self._providers.clear()
 
-    def capture(self, names: Iterable[str] | None = None) -> HotReloadSnapshot:
-        selected = (
-            tuple(self._providers)
-            if names is None
-            else tuple(dict.fromkeys(map(str, names)))
-        )
+    def capture(
+        self,
+        names: Iterable[str] | None = None,
+        *,
+        domains: Iterable[str] | None = None,
+    ) -> HotReloadSnapshot:
+        if names is not None and domains is not None:
+            raise ValueError("capture accepts either names or domains, not both")
+        if domains is not None:
+            selected_domains = tuple(
+                dict.fromkeys(self._normalize_domain(domain) for domain in domains)
+            )
+            known_domains = set(self.domains)
+            for domain in selected_domains:
+                if domain not in known_domains:
+                    raise HotReloadStateError(f"state domain {domain!r} is not registered")
+            selected = tuple(
+                name
+                for name, provider in self._providers.items()
+                if provider.domain in selected_domains
+            )
+        else:
+            selected = (
+                tuple(self._providers)
+                if names is None
+                else tuple(dict.fromkeys(map(str, names)))
+            )
+
         values: list[tuple[str, object]] = []
         for name in selected:
             provider = self._providers.get(name)
@@ -132,3 +265,10 @@ class HotReloadStateRegistry:
                 provider.restore(value)
             except Exception as exc:
                 raise HotReloadStateError(f"failed to restore state {name!r}: {exc}") from exc
+
+    @classmethod
+    def _normalize_domain(cls, domain: str) -> str:
+        key = str(domain).strip()
+        if not key:
+            raise HotReloadStateError("state domain name cannot be empty")
+        return key

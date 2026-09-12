@@ -184,14 +184,24 @@ class PluginManager:
         del self._plugins[name]
         return entry.plugin
 
-    def reload(self, name: str, *, preserve_state: bool = True) -> object:
+    def reload(
+        self,
+        name: str,
+        *,
+        preserve_state: bool = True,
+        state_domains: Iterable[str] | None = None,
+    ) -> object:
         """Hot-reload a module-backed plugin while preserving activation/runtime state.
 
-        When ``preserve_state`` is true (the default), every provider in ``manager.state`` is
-        captured before old lifecycle hooks run and restored only after the replacement plugin
-        has loaded and re-enabled successfully. Lifecycle/state failures attempt a full rollback
-        to the previous plugin and the captured runtime state.
+        When ``preserve_state`` is true (the default), registered providers are captured before
+        old lifecycle hooks run and restored only after the replacement plugin has loaded and
+        re-enabled successfully. ``state_domains`` optionally limits preservation to selected
+        state domains, which is useful when an editor owns state independently from the game.
+        Lifecycle/state failures attempt a full rollback to the previous plugin and snapshot.
         """
+        if not preserve_state and state_domains is not None:
+            raise ValueError("state_domains requires preserve_state=True")
+
         entry = self._entry(name)
         if entry.module_name is None:
             raise PluginError(f"plugin {name!r} was not loaded from a module")
@@ -202,7 +212,11 @@ class PluginManager:
                 f"cannot hot-reload plugin {name!r} while enabled dependants exist: {joined}"
             )
 
-        snapshot = self._capture_reload_state(name) if preserve_state else HotReloadSnapshot()
+        snapshot = (
+            self._capture_reload_state(name, state_domains)
+            if preserve_state
+            else HotReloadSnapshot()
+        )
         module = importlib.import_module(entry.module_name)
         try:
             reloaded = importlib.reload(module)
@@ -290,9 +304,13 @@ class PluginManager:
         self._services.clear()
         self.state.clear()
 
-    def _capture_reload_state(self, name: str) -> HotReloadSnapshot:
+    def _capture_reload_state(
+        self,
+        name: str,
+        domains: Iterable[str] | None = None,
+    ) -> HotReloadSnapshot:
         try:
-            return self.state.capture()
+            return self.state.capture(domains=domains)
         except HotReloadStateError as exc:
             raise PluginError(
                 f"failed to capture runtime state before reloading {name!r}: {exc}"

@@ -6,6 +6,7 @@ from types import ModuleType
 import pytest
 
 from swirengine import (
+    HotReloadStateDomain,
     HotReloadStateError,
     HotReloadStateRegistry,
     PluginError,
@@ -69,6 +70,49 @@ def test_state_registry_validates_provider_failures_and_missing_names() -> None:
         registry.restore(object())  # type: ignore[arg-type]
 
 
+def test_state_domains_are_ordered_selectable_and_clearable() -> None:
+    registry = HotReloadStateRegistry()
+    editor = registry.domain("editor")
+    runtime = registry.domain("game")
+    assert isinstance(editor, HotReloadStateDomain)
+
+    restored: list[tuple[str, int]] = []
+    editor.register("selection", lambda: 7, lambda value: restored.append(("selection", int(value))))
+    editor.register("viewport", lambda: 9, lambda value: restored.append(("viewport", int(value))))
+    runtime.register("score", lambda: 42, lambda value: restored.append(("score", int(value))))
+
+    assert registry.domains == ("editor", "game")
+    assert editor.names == ("selection", "viewport")
+    assert registry.names_for_domain("game") == ("score",)
+    assert registry.domain_of("selection") == "editor"
+
+    snapshot = registry.capture(domains=("editor", "editor"))
+    assert snapshot.names == ("selection", "viewport")
+    editor.restore(snapshot)
+    assert restored == [("selection", 7), ("viewport", 9)]
+
+    assert editor.clear() == 2
+    assert registry.names == ("score",)
+    assert registry.domains == ("game",)
+
+
+def test_state_domain_rejects_cross_domain_snapshots_and_invalid_selection() -> None:
+    registry = HotReloadStateRegistry()
+    editor = registry.domain("editor")
+    game = registry.domain("game")
+    editor.register("selection", lambda: "player", lambda _: None)
+    game.register("score", lambda: 1, lambda _: None)
+
+    with pytest.raises(HotReloadStateError, match="does not belong to domain 'editor'"):
+        editor.capture(("score",))
+    with pytest.raises(HotReloadStateError, match="does not belong to domain 'editor'"):
+        editor.restore(game.capture())
+    with pytest.raises(HotReloadStateError, match="domain 'missing' is not registered"):
+        registry.capture(domains=("missing",))
+    with pytest.raises(ValueError, match="either names or domains"):
+        registry.capture(("selection",), domains=("editor",))
+
+
 def test_scene_provider_restores_same_scene_instance() -> None:
     scene = Scene()
     scene.add(Rectangle2D(10, 20, 30, 40, name="player"))
@@ -127,6 +171,37 @@ def test_plugin_reload_preserves_registered_runtime_state(monkeypatch: pytest.Mo
     assert replacement.events == ["load", "enable"]
 
 
+def test_plugin_reload_can_preserve_selected_state_domains(monkeypatch: pytest.MonkeyPatch) -> None:
+    manager = PluginManager()
+    original = ReloadablePlugin()
+    replacement = ReloadablePlugin(version="2.0")
+    manager.register(original, module_name="demo_plugin")
+
+    captured: list[str] = []
+    restored: list[str] = []
+    manager.state.register(
+        "selection",
+        lambda: captured.append("editor") or "player",
+        lambda _: restored.append("editor"),
+        domain="editor",
+    )
+    manager.state.register(
+        "score",
+        lambda: captured.append("game") or 42,
+        lambda _: restored.append("game"),
+        domain="game",
+    )
+
+    module = ModuleType("demo_plugin")
+    module.create_plugin = lambda: replacement  # type: ignore[attr-defined]
+    _patch_reload_module(monkeypatch, module)
+
+    manager.reload("demo", state_domains=("editor",))
+
+    assert captured == ["editor"]
+    assert restored == ["editor"]
+
+
 def test_plugin_reload_rolls_back_plugin_and_state_on_replacement_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -180,3 +255,11 @@ def test_reload_can_explicitly_skip_state_preservation(monkeypatch: pytest.Monke
 
     assert captures == 0
     assert manager.plugin("demo") is replacement
+
+
+def test_reload_rejects_state_domains_when_preservation_is_disabled() -> None:
+    manager = PluginManager()
+    manager.register(ReloadablePlugin(), module_name="demo_plugin")
+
+    with pytest.raises(ValueError, match="state_domains requires preserve_state=True"):
+        manager.reload("demo", preserve_state=False, state_domains=("editor",))
