@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4.10 - 2026-09-12
+
+Native metallic/roughness PBR renderer update.
+
+- replaced the metallic/roughness-to-Phong rendering bridge with a native Cook-Torrance GGX path for PBR-enabled `Material3D` instances
+- retained the legacy Phong shader path for materials that do not opt into metallic/roughness, preserving existing 0.4 rendering behavior
+- added glTF-compatible packed `metallicRoughnessTexture` sampling with roughness from the green channel and metallic from the blue channel
+- multiply packed texture channels by `roughnessFactor` and `metallicFactor` as required by the glTF material model
+- added `Material3D.metallic_roughness_texture` and kept the historical CPU-side Phong bridge fields for compatibility with code that inspects them
+- upgraded glTF/GLB material loading to resolve external, data-URI and embedded GLB metallic/roughness textures through the existing content-addressed image cache
+- retained strict TEXCOORD_0/texture-transform validation for both base-color and metallic/roughness maps
+- added PBR material, glTF metallic/roughness texture and invalid-UV regression coverage
+- added a standalone `demo_pbr3d.py` example comparing smooth/rough dielectric and metallic surfaces
+- fixed package-version drift where `swirengine.__version__` was 0.4.9 while `pyproject.toml` still declared 0.4.8
+- added a regression test that requires runtime and installed package metadata versions to match
+- advanced the 0.4 roadmap to skybox/environment lighting, shadows, post-processing and broader glTF material maps
+- bumped package version to 0.4.10
+
 ## 0.4.9 - 2026-09-12
 
 Scene/prefab persistence architecture update.
@@ -193,7 +211,7 @@ UI and text-rendering update.
 - added cached `Text2D` rendering through Pillow + the existing textured quad shader
 - added camera-independent `screen_space` rendering for rectangles, sprites and text
 - added `UIManager`, `UILabel`, `UIPanel`, `UIButton` and `UIProgressBar`
-- added hover/pressed/click state handling with topmost-button hit testing
+- added hover, press and click handling with topmost-button hit testing
 - added one-frame mouse pressed/released queries to `InputManager`
 - added `Game.ui`, `Game.text(...)`, `Game.label(...)`, `Game.panel(...)`, `Game.button(...)` and `Game.progress_bar(...)`
 - added automatic UI child registration and cleanup through `Game.remove(...)`
@@ -210,7 +228,6 @@ Audio foundation and lifecycle update.
 - added pluggable `AudioBackend` protocol and lazy `PygameAudioBackend`
 - added independent master, sound and music volume controls with live handle updates
 - added looping, per-handle volume, stop controls and automatic music replacement
-- added asset alias/path validation for audio through the existing `AssetManager`
 - added `Game.audio`, `Game.sound(...)` and `Game.music(...)` creator-facing APIs
 - added automatic audio shutdown when the game runtime exits
 - added optional `audio` installation extra so headless users and CI stay lightweight
