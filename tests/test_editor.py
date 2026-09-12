@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import pytest
 
 from swirengine import Scene
-from swirengine.editor import SceneInspector
+from swirengine.editor import HierarchyEdit, PropertyEdit, SceneInspector
 
 
 @dataclass
@@ -85,6 +85,105 @@ def test_hierarchy_reordering_and_reparent_index_are_deterministic():
         inspector.move(first, 5)
     with pytest.raises(IndexError):
         inspector.set_parent(first, None, index=99)
+
+
+def test_structural_reparent_and_move_share_unified_undo_redo_history():
+    scene = Scene()
+    root = scene.add(Actor("Root"))
+    first = scene.add(Actor("First"))
+    second = scene.add(Actor("Second"))
+    inspector = SceneInspector(scene)
+
+    reparent = inspector.set_parent(first, root)
+    assert isinstance(reparent, HierarchyEdit)
+    assert inspector.parent(first) is root
+
+    move_root = inspector.move(second, 0)
+    assert isinstance(move_root, HierarchyEdit)
+    assert inspector.children() == (second, root)
+
+    inspector.undo()
+    assert inspector.children() == (root, second)
+    inspector.undo()
+    assert inspector.parent(first) is None
+    assert inspector.children() == (root, first, second)
+
+    inspector.redo()
+    assert inspector.parent(first) is root
+    inspector.redo()
+    assert inspector.children() == (second, root)
+
+
+def test_property_and_hierarchy_edits_preserve_global_chronological_history():
+    scene = Scene()
+    root = scene.add(Actor("Root"))
+    child = scene.add(Actor("Child", health=100))
+    inspector = SceneInspector(scene)
+
+    inspector.set_parent(child, root)
+    inspector.set_property("health", 50, target=child)
+
+    assert isinstance(inspector.undo_history[0], HierarchyEdit)
+    assert isinstance(inspector.undo_history[1], PropertyEdit)
+
+    inspector.undo()
+    assert child.health == 100
+    assert inspector.parent(child) is root
+    inspector.undo()
+    assert inspector.parent(child) is None
+
+    inspector.redo()
+    assert inspector.parent(child) is root
+    inspector.redo()
+    assert child.health == 50
+
+
+def test_new_structural_edit_clears_redo_and_respects_shared_history_limit():
+    scene = Scene()
+    root = scene.add(Actor("Root"))
+    first = scene.add(Actor("First"))
+    second = scene.add(Actor("Second"))
+    inspector = SceneInspector(scene, history_limit=2)
+
+    inspector.set_parent(first, root)
+    inspector.set_parent(second, root)
+    inspector.move(second, 0)
+    assert len(inspector.undo_history) == 2
+
+    inspector.undo()
+    assert inspector.can_redo
+    inspector.set_parent(second, None)
+    assert not inspector.can_redo
+
+
+def test_structural_history_detects_destroyed_targets_without_corruption():
+    scene = Scene()
+    root = scene.add(Actor("Root"))
+    entity = scene.create_entity(name="Temporary")
+    inspector = SceneInspector(scene)
+    inspector.set_parent(entity, root)
+    scene.ecs.destroy(entity)
+
+    with pytest.raises(LookupError):
+        inspector.undo()
+
+    assert inspector.can_undo
+    assert not inspector.can_redo
+
+
+def test_structural_history_detects_destroyed_parent_without_corruption():
+    scene = Scene()
+    root = scene.add(Actor("Root"))
+    child = scene.add(Actor("Child"))
+    inspector = SceneInspector(scene)
+    inspector.set_parent(child, root)
+    inspector.undo()
+    scene.remove(root)
+
+    with pytest.raises(LookupError):
+        inspector.redo()
+
+    assert inspector.can_redo
 
 
 def test_hierarchy_cycle_prevention_and_stale_parent_cleanup():
