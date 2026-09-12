@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4.9 - 2026-09-12
+
+Scene/prefab persistence architecture update.
+
+- added public `SceneSerializer`, `SceneCodecRegistry` and `SceneSerializationError`
+- added versioned, deterministic JSON documents for scenes and reusable prefabs
+- added UTF-8 file helpers with automatic parent-directory creation
+- added an explicit allow-list codec registry so scene loading never dynamically imports arbitrary JSON-specified classes
+- registered core 2D primitives, `Cube3D` and all 3D light types by default
+- added custom dataclass registration for game/plugin scene-object types
+- preserved paths, tuples, sets, vectors, colors and transforms without flattening their runtime types
+- preserved cross-object references during round trips, including cyclic references between registered scene objects
+- added strict validation for document kind/version, unknown types, missing/unknown fields and invalid references
+- added scene replacement/append loading behavior and prefab name/independent-spawn round-trip coverage
+- added a runnable scene-serialization example
+- advanced the 0.5 architecture roadmap toward editor files, hot reload and serializer migrations
+- bumped package version to 0.4.9
+
 ## 0.4.8 - 2026-09-12
 
 Prefab architecture foundation update.
