@@ -107,7 +107,7 @@ def _material(
     material_index: int | None,
 ) -> tuple[Material3D, float, float]:
     if material_index is None:
-        return Material3D(metallic=1.0, roughness=1.0), 1.0, 1.0
+        return Material3D(), 1.0, 1.0
     materials = document.get("materials", [])
     try:
         spec = materials[material_index]
