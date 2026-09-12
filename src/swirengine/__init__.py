@@ -5,6 +5,7 @@ from .core.game import Game
 from .core.scene import Scene
 from .debug import DebugOverlay
 from .ecs import ECSWorld, Entity
+from .filewatch import FileChangeEvent, PluginAutoReloader, PollingFileWatcher, ReloadResult
 from .graphics.animation import AnimatedSprite2D, AnimationClip, SpriteSheet, animated_sprite
 from .graphics.camera import Camera2D
 from .graphics.camera3d import Camera3D
@@ -25,11 +26,7 @@ from .graphics.mesh import Mesh3D, MeshData, cube_mesh
 from .graphics.obj import load_obj
 from .graphics.primitives import Cube3D, Rectangle2D, Sprite2D, Text2D
 from .graphics.stats import RendererStats
-from .hotreload import (
-    HotReloadSnapshot,
-    HotReloadStateError,
-    HotReloadStateRegistry,
-)
+from .hotreload import HotReloadSnapshot, HotReloadStateError, HotReloadStateRegistry
 from .math.types import Color, Transform, Vec2, Vec3
 from .particles import ParticleEmitter2D
 from .physics.collision2d import AABB, BoxCollider2D, CollisionWorld2D
@@ -66,6 +63,7 @@ __all__ = [
     "ECSWorld",
     "Entity",
     "EventBus",
+    "FileChangeEvent",
     "FrameProfile",
     "Game",
     "GltfPrimitiveAsset",
@@ -79,10 +77,12 @@ __all__ = [
     "MeshData",
     "ParticleEmitter2D",
     "PhysicsWorld2D",
+    "PluginAutoReloader",
     "PluginError",
     "PluginInfo",
     "PluginManager",
     "PointLight3D",
+    "PollingFileWatcher",
     "Prefab",
     "PrefabInstance",
     "PrefabOverrides",
@@ -90,6 +90,7 @@ __all__ = [
     "Profiler",
     "PygameAudioBackend",
     "Rectangle2D",
+    "ReloadResult",
     "RendererStats",
     "RigidBody2D",
     "SaveStore",
@@ -120,4 +121,4 @@ __all__ = [
     "select_lights",
 ]
 
-__version__ = "0.4.15"
+__version__ = "0.4.16"
