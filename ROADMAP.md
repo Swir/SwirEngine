@@ -41,12 +41,13 @@ skybox, shadows and post-processing.
 
 ## 0.5 - Architecture
 
-Early foundation landed during 0.4.8: reusable deep-copy `Prefab` blueprints, independent
-`PrefabInstance` graphs, per-instance overrides, filtered scene capture and direct scene
-instantiation/removal helpers. Deep-copying the complete graph preserves references between
-prefab members while isolating separate spawns.
+Early foundation landed during 0.4.8-0.4.9: reusable deep-copy `Prefab` blueprints,
+independent `PrefabInstance` graphs, per-instance overrides, filtered scene capture and direct
+scene instantiation/removal helpers, plus versioned JSON scene/prefab serialization with a
+safe allow-list codec registry, custom dataclass registration, cross-object reference
+preservation and file helpers suitable for future editor/hot-reload workflows.
 
-Next: scene/prefab serialization, components/ECS, hot reload and plugin API.
+Next: components/ECS, serializer migrations, hot reload and plugin API.
 
 ## 0.6 - Tools
 

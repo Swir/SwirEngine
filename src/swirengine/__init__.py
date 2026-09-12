@@ -30,6 +30,7 @@ from .physics.collision2d import AABB, BoxCollider2D, CollisionWorld2D
 from .physics.rigidbody2d import PhysicsWorld2D, RigidBody2D
 from .prefab import Prefab, PrefabInstance, PrefabOverrides, PrefabSelector
 from .profiler import FrameProfile, Profiler
+from .serialization import SceneCodecRegistry, SceneSerializationError, SceneSerializer
 from .storage import SaveStore
 from .tilemap import TileMap2D
 from .ui import UIButton, UILabel, UIManager, UIPanel, UIProgressBar
@@ -78,6 +79,9 @@ __all__ = [
     "RigidBody2D",
     "SaveStore",
     "Scene",
+    "SceneCodecRegistry",
+    "SceneSerializationError",
+    "SceneSerializer",
     "SpotLight3D",
     "Sprite2D",
     "SpriteSheet",
@@ -101,4 +105,4 @@ __all__ = [
     "select_lights",
 ]
 
-__version__ = "0.4.8"
+__version__ = "0.4.9"
