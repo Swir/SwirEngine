@@ -8,7 +8,9 @@ from swirengine.graphics.mesh import Mesh3D, cube_mesh
 from swirengine.math.types import Vec3
 
 
-def _workspace_with_cube(position: Vec3 = Vec3(0.0, 0.0, -5.0)):
+def _workspace_with_cube(position: Vec3 | None = None):
+    if position is None:
+        position = Vec3(0.0, 0.0, -5.0)
     scene = Scene()
     cube = scene.add(Mesh3D(cube_mesh(), position=position, name="Cube"))
     workspace = EditorWorkspace(scene)
