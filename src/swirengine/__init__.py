@@ -28,6 +28,7 @@ from .math.types import Color, Transform, Vec2, Vec3
 from .particles import ParticleEmitter2D
 from .physics.collision2d import AABB, BoxCollider2D, CollisionWorld2D
 from .physics.rigidbody2d import PhysicsWorld2D, RigidBody2D
+from .prefab import Prefab, PrefabInstance, PrefabOverrides, PrefabSelector
 from .profiler import FrameProfile, Profiler
 from .storage import SaveStore
 from .tilemap import TileMap2D
@@ -66,6 +67,10 @@ __all__ = [
     "ParticleEmitter2D",
     "PhysicsWorld2D",
     "PointLight3D",
+    "Prefab",
+    "PrefabInstance",
+    "PrefabOverrides",
+    "PrefabSelector",
     "Profiler",
     "PygameAudioBackend",
     "Rectangle2D",
@@ -96,4 +101,4 @@ __all__ = [
     "select_lights",
 ]
 
-__version__ = "0.4.7"
+__version__ = "0.4.8"

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
-from typing import TypeVar
+from collections.abc import Callable, Iterator
+from typing import TYPE_CHECKING, TypeVar
+
+if TYPE_CHECKING:
+    from ..prefab import Prefab, PrefabInstance, PrefabOverrides
 
 T = TypeVar("T")
 
@@ -24,8 +27,6 @@ class Scene:
         return any(existing is obj for existing in self._objects)
 
     def add(self, obj: T) -> T:
-        # Scene membership is based on object identity, not dataclass value equality.
-        # Games routinely contain many separate entities with identical values.
         if not any(existing is obj for existing in self._objects):
             self._objects.append(obj)
         return obj
@@ -64,3 +65,23 @@ class Scene:
 
     def tagged(self, tag: str) -> tuple[object, ...]:
         return tuple(obj for obj in self._objects if tag in getattr(obj, "tags", set()))
+
+    def prefab(
+        self,
+        *,
+        name: str = "",
+        predicate: Callable[[object], bool] | None = None,
+    ) -> Prefab:
+        """Capture this scene (or a filtered subset) as an independent prefab blueprint."""
+        from ..prefab import Prefab
+
+        return Prefab.from_scene(self, name=name, predicate=predicate)
+
+    def instantiate(
+        self,
+        prefab: Prefab,
+        *,
+        overrides: PrefabOverrides | None = None,
+    ) -> PrefabInstance:
+        """Instantiate ``prefab`` directly into this scene."""
+        return prefab.instantiate(self, overrides=overrides)
