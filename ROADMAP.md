@@ -4,20 +4,20 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-77.4%25-2ea043?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-24%2F31-1f6feb?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-80.6%25-2ea043?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-25%2F31-1f6feb?style=for-the-badge">
   <img alt="Status" src="https://img.shields.io/badge/STATUS-IN%20PROGRESS-7c3aed?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-███████████████░░░░░ 77.4%
+████████████████░░░░ 80.6%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **24** | **7** | **31** | **77.4%** |
+| **25** | **6** | **31** | **80.6%** |
 
 > **Progress rule:** the equal-weight deliverables below are the source of truth. Update `[x]/[ ]` first, then update badges, numbers, percentage and the 20-segment bar. Never estimate progress from version numbers, commit count or activity.
 
@@ -35,7 +35,7 @@
 - [ ] 0.4 true cubemap / image-based environment lighting
 - [ ] 0.4 shadows
 - [ ] 0.4 post-processing
-- [ ] 0.4 color-space/PBR hardening plus normal, occlusion and emissive material maps
+- [x] 0.4 color-space/PBR hardening plus normal, occlusion and emissive material maps
 - [x] 0.5 prefab/instance and versioned scene/prefab serialization foundation
 - [x] 0.5 ECS runtime, persistence and migrations
 - [x] 0.5 plugin runtime, hot reload and state preservation/rollback foundation
@@ -91,10 +91,15 @@ metallic/roughness shading is available for PBR materials, including glTF 2.0
 legacy Phong path remains available for existing materials. `Skybox3D` adds camera-centered
 panorama skies through the normal `Mesh3D` render/cache path, while `Environment3D` provides a
 creator-facing sky/ground fill-light rig with install/remove lifecycle helpers and an API shaped
-for a later transition to image-based lighting without breaking game code.
+for a later transition to image-based lighting without breaking game code. PBR material fidelity
+now also covers glTF `normalTexture`, `occlusionTexture`, `emissiveTexture`, emissive factors,
+normal scale and occlusion strength. The forward PBR shader derives a tangent frame from position/
+UV derivatives for tangent-space normal maps, applies AO to the ambient contribution, evaluates
+emissive independently from scene lights, and performs sRGB decode/linear lighting/sRGB output for
+base-color and emissive channels while keeping data textures in linear space. Renderer live reload
+tracks every supported PBR texture channel.
 
-Next: true cubemap/image-based environment lighting, shadows and post-processing. Then harden
-color-space/PBR fidelity and broaden glTF material coverage with normal, occlusion and emissive maps.
+Next: true cubemap/image-based environment lighting, shadows and post-processing.
 
 ## 0.5 - Architecture
 
@@ -119,8 +124,8 @@ for multi-provider/domain preservation while legacy single-provider callback beh
 `AssetManager` adds a suffix-based loader registry, canonical-path runtime cache, watched asset
 invalidation, structured reload results and invalidation callbacks. `RendererAssetBridge` connects
 those callbacks directly to renderer GPU textures, releases stale ModernGL resources, automatically
-discovers 2D sprite and 3D material textures in a scene and reuses the same deterministic polling
-pipeline. `AudioEngine` can subscribe to that same asset invalidation stream, automatically watch
+discovers 2D sprite and all supported 3D material textures in a scene and reuses the same deterministic
+polling pipeline. `AudioEngine` can subscribe to that same asset invalidation stream, automatically watch
 active audio files, restart looping sounds/music in place while preserving handle identity and volume,
 optionally restart one-shots, stop deleted resources safely and expose structured reload diagnostics.
 `LiveDevelopmentHub` now coordinates plugin reloads plus one shared asset poll and aggregates
