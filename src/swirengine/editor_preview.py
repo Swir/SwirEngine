@@ -37,7 +37,7 @@ class EditorPreviewFrame:
 
 
 class RendererViewportBridge:
-    """Render editor/runtime scenes and read the active renderer framebuffer back as RGB."""
+    """Render editor/runtime scenes and read the active ModernGL framebuffer back as RGB."""
 
     def __init__(
         self,
@@ -46,10 +46,15 @@ class RendererViewportBridge:
         camera: object | None = None,
         framebuffer: object | None = None,
     ) -> None:
-        required = ("resize", "render", "read_framebuffer")
+        required = ("resize", "render")
         missing = [name for name in required if not callable(getattr(renderer, name, None))]
         if missing:
             raise TypeError(f"renderer is missing required methods: {', '.join(missing)}")
+        if framebuffer is None:
+            ctx = getattr(renderer, "ctx", None)
+            framebuffer = None if ctx is None else getattr(ctx, "screen", None)
+        if framebuffer is None or not callable(getattr(framebuffer, "read", None)):
+            raise TypeError("renderer must expose a readable screen framebuffer")
         self.renderer = renderer
         self.camera = camera
         self.framebuffer = framebuffer
@@ -61,12 +66,19 @@ class RendererViewportBridge:
         height = max(1, int(height))
         self.renderer.resize(width, height)
         self.renderer.render(scene, camera=self.camera)
-        rgb = self.renderer.read_framebuffer(
+        rgb = self.framebuffer.read(
+            viewport=(0, 0, width, height),
             components=3,
-            framebuffer=self.framebuffer,
-            flip_y=True,
+            alignment=1,
         )
-        return EditorViewportImage(width, height, rgb)
+        stride = width * 3
+        if len(rgb) != stride * height:
+            raise RuntimeError("renderer framebuffer returned an unexpected RGB payload size")
+        flipped = b"".join(
+            rgb[offset : offset + stride]
+            for offset in range((height - 1) * stride, -1, -stride)
+        )
+        return EditorViewportImage(width, height, flipped)
 
 
 class EditorPreviewSession:
