@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import ast
+import base64
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -11,6 +13,8 @@ from .editor_diagnostics import (
     EditorProfiler,
     EditorProfilerFrame,
 )
+from .editor_preview import EditorPreviewFrame, EditorPreviewSession
+from .editor_runtime import EditorRuntimeMode
 from .editor_workspace import EditorPanelState, EditorShellFrame, EditorWorkspace
 
 
@@ -44,6 +48,7 @@ class EditorFrontendFrame:
     assets: EditorAssetBrowserFrame | None
     console: EditorConsoleFrame | None
     profiler: EditorProfilerFrame | None
+    preview: EditorPreviewFrame | None = None
     status: str = "Ready"
 
 
@@ -85,7 +90,7 @@ def parse_editor_value(text: str, current: object) -> object:
 
 
 class EditorFrontendController:
-    """Interactive adapter that joins workspace, assets and diagnostics into one UI contract."""
+    """Interactive adapter joining workspace, preview, assets and diagnostics into one UI contract."""
 
     def __init__(
         self,
@@ -94,13 +99,17 @@ class EditorFrontendController:
         asset_browser: EditorAssetBrowser | None = None,
         console: EditorConsole | None = None,
         profiler: EditorProfiler | None = None,
+        preview: EditorPreviewSession | None = None,
     ) -> None:
         if not isinstance(workspace, EditorWorkspace):
             raise TypeError("workspace must be an EditorWorkspace")
+        if preview is not None and preview.workspace is not workspace:
+            raise ValueError("preview workspace must match controller workspace")
         self.workspace = workspace
         self.asset_browser = asset_browser
         self.console = console
         self.profiler = profiler
+        self.preview = preview
         self._status = "Ready"
 
     @property
@@ -141,6 +150,7 @@ class EditorFrontendController:
             None if self.asset_browser is None else self.asset_browser.frame(),
             None if self.console is None else self.console.frame(limit=250),
             None if self.profiler is None else self.profiler.frame(),
+            None if self.preview is None else self.preview.frame(),
             self._status,
         )
 
@@ -210,6 +220,44 @@ class EditorFrontendController:
         self._status = f"Assets refreshed: {frame.total_files} files"
         return frame
 
+    def play_pause(self) -> EditorRuntimeMode | None:
+        if self.preview is None:
+            self._status = "Runtime preview not attached"
+            return None
+        mode = self.preview.play_pause()
+        self._status = {
+            EditorRuntimeMode.EDIT: "Edit",
+            EditorRuntimeMode.PLAYING: "Playing",
+            EditorRuntimeMode.PAUSED: "Paused",
+        }[mode]
+        return mode
+
+    def stop(self) -> bool:
+        if self.preview is None:
+            self._status = "Runtime preview not attached"
+            return False
+        stopped = self.preview.stop()
+        self._status = "Stopped" if stopped else "Already in Edit mode"
+        return stopped
+
+    def step(self, dt: float | None = None) -> bool:
+        if self.preview is None:
+            self._status = "Runtime preview not attached"
+            return False
+        stepped = self.preview.step(dt)
+        self._status = "Stepped one runtime frame" if stepped else "Unable to step runtime"
+        return stepped
+
+    def update_runtime(self, dt: float) -> bool:
+        if self.preview is None:
+            return False
+        return self.preview.update(dt)
+
+    def capture_viewport(self, width: int, height: int) -> bool:
+        if self.preview is None:
+            return False
+        return self.preview.capture(width, height) is not None
+
     @staticmethod
     def _display_value(value: object) -> str:
         if isinstance(value, str):
@@ -218,13 +266,11 @@ class EditorFrontendController:
 
 
 class TkEditorApp:
-    """Small dependency-free desktop front-end for :class:`EditorWorkspace`.
+    """Dependency-free desktop front-end for :class:`EditorWorkspace`.
 
     Tk is imported lazily so servers and CI can use every editor model without requiring a window
-    system. The front-end wires hierarchy selection/search, inspector edits, undo/redo, viewport
-    preferences, assets, console and profiler into a real interactive window. Rendering the game
-    framebuffer inside the viewport remains a runtime-integration concern rather than a GUI-model
-    responsibility.
+    system. When an :class:`EditorPreviewSession` is attached, the editor also owns Play/Pause/Stop/
+    Step controls and embeds live RGB frames read from the engine renderer framebuffer.
     """
 
     def __init__(
@@ -257,6 +303,8 @@ class TkEditorApp:
         self._closed = False
         self._hierarchy_keys: dict[str, str] = {}
         self._field_entries: dict[str, Any] = {}
+        self._viewport_photo: Any = None
+        self._last_refresh_time = time.perf_counter()
         self._build()
         self.root.protocol("WM_DELETE_WINDOW", self.close)
         self.refresh()
@@ -273,6 +321,14 @@ class TkEditorApp:
     def refresh(self) -> None:
         if self._closed:
             return
+        now = time.perf_counter()
+        dt = max(0.0, now - self._last_refresh_time)
+        self._last_refresh_time = now
+        self.controller.update_runtime(dt)
+        if self.controller.preview is not None and self.controller.preview.viewport is not None:
+            width = max(1, self.viewport_label.winfo_width())
+            height = max(1, self.viewport_label.winfo_height())
+            self.controller.capture_viewport(width, height)
         frame = self.controller.frame()
         self._refresh_toolbar(frame)
         self._refresh_hierarchy(frame)
@@ -294,6 +350,12 @@ class TkEditorApp:
         self.undo_button.pack(side="left")
         self.redo_button = ttk.Button(toolbar, text="Redo", command=self._redo)
         self.redo_button.pack(side="left", padx=(4, 12))
+        self.play_button = ttk.Button(toolbar, text="Play", command=self._play_pause)
+        self.play_button.pack(side="left", padx=(0, 4))
+        self.stop_button = ttk.Button(toolbar, text="Stop", command=self._stop)
+        self.stop_button.pack(side="left")
+        self.step_button = ttk.Button(toolbar, text="Step", command=self._step)
+        self.step_button.pack(side="left", padx=(4, 12))
         for mode in ("translate", "rotate", "scale"):
             ttk.Button(toolbar, text=mode.title(), command=lambda value=mode: self._gizmo(value)).pack(
                 side="left", padx=2
@@ -382,6 +444,20 @@ class TkEditorApp:
         self.undo_button.configure(state="normal" if frame.shell.can_undo else "disabled")
         self.redo_button.configure(state="normal" if frame.shell.can_redo else "disabled")
         self.snap_var.set(frame.shell.viewport.snap_enabled)
+        if frame.preview is None:
+            self.play_button.configure(text="Play", state="disabled")
+            self.stop_button.configure(state="disabled")
+            self.step_button.configure(state="disabled")
+            return
+        mode = frame.preview.runtime.mode
+        self.play_button.configure(
+            text="Pause" if mode is EditorRuntimeMode.PLAYING else "Play",
+            state="normal",
+        )
+        self.stop_button.configure(
+            state="disabled" if mode is EditorRuntimeMode.EDIT else "normal"
+        )
+        self.step_button.configure(state="normal")
 
     def _refresh_hierarchy(self, frame: EditorFrontendFrame) -> None:
         selected = next((row.key for row in frame.hierarchy if row.selected), None)
@@ -435,17 +511,27 @@ class TkEditorApp:
         self.inspector_body.columnconfigure(1, weight=1)
 
     def _refresh_viewport(self, frame: EditorFrontendFrame) -> None:
+        if frame.preview is not None and frame.preview.image is not None:
+            data = base64.b64encode(frame.preview.image.to_ppm()).decode("ascii")
+            self._viewport_photo = self.tk.PhotoImage(data=data, format="PPM")
+            self.viewport_label.configure(image=self._viewport_photo, text="", compound="center")
+            return
+        self._viewport_photo = None
         selected = "No selection"
         if frame.shell.inspector is not None:
             selected = frame.shell.inspector.type_name
         vp = frame.shell.viewport
+        runtime = "Edit"
+        if frame.preview is not None:
+            runtime = frame.preview.runtime.mode.value.title()
         self.viewport_label.configure(
+            image="",
             text=(
                 f"SwirEngine Viewport ({vp.mode.upper()})\n\n"
-                f"Selected: {selected}\nGizmo: {vp.gizmo}\n"
+                f"Runtime: {runtime}\nSelected: {selected}\nGizmo: {vp.gizmo}\n"
                 f"Snap: {'on' if vp.snap_enabled else 'off'}\n\n"
-                "Runtime framebuffer embedding is the next integration layer."
-            )
+                "Attach RendererViewportBridge for live framebuffer preview."
+            ),
         )
 
     def _refresh_assets(self, frame: EditorFrontendFrame) -> None:
@@ -511,6 +597,18 @@ class TkEditorApp:
     def _redo(self) -> None:
         self.controller.redo()
 
+    def _play_pause(self) -> None:
+        self.controller.play_pause()
+
+    def _stop(self) -> None:
+        self.controller.stop()
+
+    def _step(self) -> None:
+        try:
+            self.controller.step()
+        except ValueError as exc:
+            self.status_var.set(str(exc))
+
     def _gizmo(self, mode: str) -> None:
         self.controller.set_gizmo(mode)
 
@@ -530,6 +628,7 @@ def launch_editor(
     asset_browser: EditorAssetBrowser | None = None,
     console: EditorConsole | None = None,
     profiler: EditorProfiler | None = None,
+    preview: EditorPreviewSession | None = None,
     title: str | None = None,
 ) -> None:
     """Launch the built-in Tk desktop editor for an existing workspace."""
@@ -539,5 +638,6 @@ def launch_editor(
         asset_browser=asset_browser,
         console=console,
         profiler=profiler,
+        preview=preview,
     )
     TkEditorApp(controller, title=title).run()

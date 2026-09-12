@@ -36,6 +36,12 @@ from .editor_frontend import (
     parse_editor_value,
 )
 from .editor_gizmo import EditorTransformGizmo, GizmoApplyResult, GizmoTransformSnapshot
+from .editor_preview import (
+    EditorPreviewFrame,
+    EditorPreviewSession,
+    EditorViewportImage,
+    RendererViewportBridge,
+)
 from .editor_runtime import EditorRuntimeFrame, EditorRuntimeMode, EditorRuntimeSession
 from .editor_state import (
     EDITOR_HIERARCHY_FORMAT,
@@ -139,6 +145,8 @@ __all__ = [
     "EditorHierarchyNode",
     "EditorHierarchyState",
     "EditorPanelState",
+    "EditorPreviewFrame",
+    "EditorPreviewSession",
     "EditorProfiler",
     "EditorProfilerFrame",
     "EditorProjectState",
@@ -150,6 +158,7 @@ __all__ = [
     "EditorTargetRef",
     "EditorTransformGizmo",
     "EditorViewportController",
+    "EditorViewportImage",
     "EditorViewportState",
     "EditorWorkspace",
     "Entity",
@@ -199,6 +208,7 @@ __all__ = [
     "ReloadResult",
     "RendererAssetBridge",
     "RendererStats",
+    "RendererViewportBridge",
     "RigidBody2D",
     "SaveStore",
     "Scene",

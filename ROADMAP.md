@@ -4,20 +4,20 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-71.0%25-2ea043?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-22%2F31-1f6feb?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-74.2%25-2ea043?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-23%2F31-1f6feb?style=for-the-badge">
   <img alt="Status" src="https://img.shields.io/badge/STATUS-IN%20PROGRESS-7c3aed?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-██████████████░░░░░░ 71.0%
+███████████████░░░░░ 74.2%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **22** | **9** | **31** | **71.0%** |
+| **23** | **8** | **31** | **74.2%** |
 
 > **Progress rule:** the equal-weight deliverables below are the source of truth. Update `[x]/[ ]` first, then update badges, numbers, percentage and the 20-segment bar. Never estimate progress from version numbers, commit count or activity.
 
@@ -49,7 +49,7 @@
 - [x] 0.6 editor console and profiler models
 - [x] 0.6 transform gizmo foundation
 - [x] 0.6 viewport picking and direct manipulation
-- [ ] 0.6 tighter editor/runtime integration
+- [x] 0.6 tighter editor/runtime integration
 - [ ] 0.7 networking, packaging profiles and desktop/mobile/web export targets
 - [ ] 1.0 stable documented API, tests and release tooling suitable for a first stable release
 <!-- ROADMAP-PROGRESS:END -->
@@ -150,13 +150,16 @@ routes mutations through `SceneInspector` so transform edits participate in the 
 selection synchronization and camera-plane pointer dragging that reuses the transform gizmo/history path.
 `EditorFrontendController` now joins those models into one toolkit-neutral interactive frame contract, and
 `TkEditorApp` provides the first dependency-free desktop visual editor with hierarchy search/selection,
-inspector edits, shared Undo/Redo, gizmo/snap controls, Assets, Console and Profiler panels. The new
+inspector edits, shared Undo/Redo, gizmo/snap controls, Assets, Console and Profiler panels. The
 `EditorRuntimeSession` establishes isolated Play/Edit synchronization by cloning the authored scene through
 its configured serializer, running updates only against the preview copy, supporting pause/resume and
-single-frame stepping, then discarding runtime mutations on Stop.
+single-frame stepping, then discarding runtime mutations on Stop. `EditorPreviewSession` and
+`RendererViewportBridge` now connect that isolated runtime to the active renderer framebuffer, and the Tk
+front-end exposes Play/Pause/Stop/Step controls plus a live embedded RGB viewport while preserving Edit-mode
+scene switching and authoring-state isolation.
 
-Next: strengthen rollback guarantees for multi-domain restore and finish tighter editor/runtime integration,
-including live renderer framebuffer embedding and direct Play/Edit controls in the visual front-end.
+Next: strengthen rollback guarantees for multi-domain restore, then continue hardening creator-facing APIs
+and the remaining 3D/rendering roadmap work.
 
 ## 0.6 - Tools
 
@@ -165,9 +168,11 @@ persistent panel layout and viewport preferences, a GUI-agnostic asset browser, 
 Profiler panel models, toolkit-independent scene Move/Rotate/Scale gizmos with snapping and undo/redo,
 camera-aware 3D viewport picking/direct manipulation, and a real interactive Tk desktop front-end that
 connects those models without adding a mandatory GUI dependency. Isolated `EditorRuntimeSession` Play/Edit
-scene execution is now available as the runtime synchronization foundation. Next: bind Play/Pause/Stop to
-the front-end and embed the live renderer framebuffer so the remaining editor/runtime deliverable can be
-closed without conflating partial progress with roadmap completion.
+scene execution is integrated with `RendererViewportBridge` and `EditorPreviewSession`; the editor now has
+direct Play/Pause/Stop/Step controls and can embed live frames read from the renderer framebuffer.
+
+Next: stronger multi-domain rollback guarantees, creator-facing tool polish and export/runtime work toward
+0.7.
 
 ## 0.7+ - Runtime and export
 
