@@ -1,5 +1,47 @@
 # SwirEngine Roadmap
 
+<!-- ROADMAP-PROGRESS:START -->
+## Measurable progress tracker
+
+**20 / 31 tracked roadmap deliverables complete — 64.5%**
+
+`█████████████░░░░░░░ 64.5%`
+
+This percentage is intentionally based on the explicit equal-weight deliverables below, not on a guessed version-number percentage. Mark an item `[x]` only when the capability described by that item is implemented in the repository. Whenever a tracker item changes, recalculate this block.
+
+- [x] 0.2 real 2D workflow complete
+- [x] 0.3 core 2D gameplay feature set complete
+- [x] 0.3 hardening foundation: bounded text cache, stats, profiler, debug overlay, batching and deterministic asset diagnostics
+- [ ] 0.3 larger sample games and creator-facing API polish
+- [x] 0.4 Camera3D, perspective/view matrices and local navigation
+- [x] 0.4 MeshData/Mesh3D GPU caching and mesh statistics
+- [x] 0.4 OBJ import with triangulation, normals and UV support
+- [x] 0.4 glTF/GLB scene, hierarchy and base-color material loading
+- [x] 0.4 multi-light Phong rendering
+- [x] 0.4 Cook-Torrance metallic/roughness PBR
+- [x] 0.4 Skybox3D and Environment3D baseline
+- [ ] 0.4 true cubemap / image-based environment lighting
+- [ ] 0.4 shadows
+- [ ] 0.4 post-processing
+- [ ] 0.4 color-space/PBR hardening plus normal, occlusion and emissive material maps
+- [x] 0.5 prefab/instance and versioned scene/prefab serialization foundation
+- [x] 0.5 ECS runtime, persistence and migrations
+- [x] 0.5 plugin runtime, hot reload and state preservation/rollback foundation
+- [x] 0.5 AssetManager plus renderer/audio live reload bridges
+- [x] 0.5 LiveDevelopmentHub
+- [x] 0.5 SceneInspector hierarchy, editing and unified undo/redo
+- [x] 0.5 EditorProjectState / EditorWorkspace shell foundation
+- [ ] 0.5 stronger multi-domain rollback guarantees
+- [ ] 0.5 connect editor models to an actual interactive visual front-end
+- [x] 0.6 editor asset browser
+- [x] 0.6 editor console and profiler models
+- [x] 0.6 transform gizmo foundation
+- [ ] 0.6 viewport picking and direct manipulation
+- [ ] 0.6 tighter editor/runtime integration
+- [ ] 0.7 networking, packaging profiles and desktop/mobile/web export targets
+- [ ] 1.0 stable documented API, tests and release tooling suitable for a first stable release
+<!-- ROADMAP-PROGRESS:END -->
+
 ## 0.2 - Real 2D workflow — complete
 
 Completed: textured sprites, alpha blending, texture cache, camera 2D, names/tags,
