@@ -36,6 +36,7 @@ from .editor_state import (
     capture_editor_hierarchy,
     restore_editor_hierarchy,
 )
+from .editor_viewport import EditorViewportController, ViewportPick, ViewportRay
 from .editor_workspace import (
     EDITOR_PROJECT_FORMAT,
     EDITOR_PROJECT_VERSION,
@@ -133,6 +134,7 @@ __all__ = [
     "EditorShellFrame",
     "EditorTargetRef",
     "EditorTransformGizmo",
+    "EditorViewportController",
     "EditorViewportState",
     "EditorWorkspace",
     "Entity",
@@ -201,6 +203,8 @@ __all__ = [
     "UIProgressBar",
     "Vec2",
     "Vec3",
+    "ViewportPick",
+    "ViewportRay",
     "animated_sprite",
     "capture_editor_hierarchy",
     "classify_editor_asset",
