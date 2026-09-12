@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import importlib
 from collections.abc import Iterable
+from contextlib import suppress
 from dataclasses import dataclass
 from types import ModuleType
 from typing import Any
+
+from .hotreload import HotReloadSnapshot, HotReloadStateError, HotReloadStateRegistry
 
 
 class PluginError(RuntimeError):
@@ -45,11 +48,17 @@ class PluginManager:
     ``load_module()`` accepts modules exposing either ``create_plugin()`` or ``plugin``.
     Dependencies are declared through a plugin ``requires`` iterable or ``register(...,
     requires=...)``. Enabling a plugin enables its dependencies first.
+
+    ``state`` is a :class:`HotReloadStateRegistry`. Registered state providers are captured
+    automatically before a module-backed plugin is reloaded and restored after the new plugin
+    has completed its load/enable lifecycle. This lets a game or editor preserve scene/ECS and
+    tool state while Python code changes underneath it.
     """
 
     def __init__(self) -> None:
         self._plugins: dict[str, _PluginEntry] = {}
         self._services: dict[str, object] = {}
+        self.state = HotReloadStateRegistry()
 
     @property
     def plugins(self) -> tuple[PluginInfo, ...]:
@@ -175,11 +184,13 @@ class PluginManager:
         del self._plugins[name]
         return entry.plugin
 
-    def reload(self, name: str) -> object:
-        """Hot-reload a module-backed plugin while preserving activation state.
+    def reload(self, name: str, *, preserve_state: bool = True) -> object:
+        """Hot-reload a module-backed plugin while preserving activation/runtime state.
 
-        The old plugin remains registered if importing or constructing the replacement fails.
-        Lifecycle failures after the module itself has reloaded are reported as ``PluginError``.
+        When ``preserve_state`` is true (the default), every provider in ``manager.state`` is
+        captured before old lifecycle hooks run and restored only after the replacement plugin
+        has loaded and re-enabled successfully. Lifecycle/state failures attempt a full rollback
+        to the previous plugin and the captured runtime state.
         """
         entry = self._entry(name)
         if entry.module_name is None:
@@ -191,6 +202,7 @@ class PluginManager:
                 f"cannot hot-reload plugin {name!r} while enabled dependants exist: {joined}"
             )
 
+        snapshot = self._capture_reload_state(name) if preserve_state else HotReloadSnapshot()
         module = importlib.import_module(entry.module_name)
         try:
             reloaded = importlib.reload(module)
@@ -210,21 +222,21 @@ class PluginManager:
         old_requires = entry.requires
         if was_enabled:
             self._call(old_plugin, "on_disable")
+            entry.enabled = False
         self._call(old_plugin, "on_unload")
 
-        raw_requires = getattr(replacement, "requires", ())
-        new_requires = tuple(dict.fromkeys(str(item) for item in raw_requires))
-        if name in new_requires:
-            raise PluginError(f"plugin {name!r} cannot depend on itself")
-        entry.plugin = replacement
-        entry.version = str(getattr(replacement, "version", old_version))
-        entry.requires = new_requires
-        entry.enabled = False
         try:
+            new_requires = self._resolved_requires(replacement, name)
+            entry.plugin = replacement
+            entry.version = str(getattr(replacement, "version", old_version))
+            entry.requires = new_requires
             self._call(replacement, "on_load")
             if was_enabled:
                 self.enable(name)
+            if preserve_state:
+                self.state.restore(snapshot)
         except Exception as exc:
+            self._cleanup_failed_replacement(entry)
             entry.plugin = old_plugin
             entry.version = old_version
             entry.requires = old_requires
@@ -233,11 +245,13 @@ class PluginManager:
                 self._call(old_plugin, "on_load")
                 if was_enabled:
                     self.enable(name)
+                if preserve_state:
+                    self.state.restore(snapshot)
             except Exception as rollback_exc:  # noqa: BLE001 - plugin hooks are arbitrary code.
                 raise PluginError(
                     f"plugin {name!r} reload failed and rollback also failed: {rollback_exc}"
                 ) from exc
-            raise PluginError(f"plugin {name!r} reload lifecycle failed: {exc}") from exc
+            raise PluginError(f"plugin {name!r} reload lifecycle/state failed: {exc}") from exc
         return replacement
 
     def provide(self, name: str, service: object, *, replace: bool = False) -> object:
@@ -274,6 +288,36 @@ class PluginManager:
             self._call(entry.plugin, "on_unload")
             del self._plugins[name]
         self._services.clear()
+        self.state.clear()
+
+    def _capture_reload_state(self, name: str) -> HotReloadSnapshot:
+        try:
+            return self.state.capture()
+        except HotReloadStateError as exc:
+            raise PluginError(
+                f"failed to capture runtime state before reloading {name!r}: {exc}"
+            ) from exc
+
+    def _cleanup_failed_replacement(self, entry: _PluginEntry) -> None:
+        if entry.enabled:
+            with suppress(Exception):
+                self._call(entry.plugin, "on_disable")
+            entry.enabled = False
+        with suppress(Exception):
+            self._call(entry.plugin, "on_unload")
+
+    @staticmethod
+    def _resolved_requires(plugin: object, name: str) -> tuple[str, ...]:
+        raw_requires = getattr(plugin, "requires", ())
+        try:
+            resolved = tuple(dict.fromkeys(str(item) for item in raw_requires))
+        except TypeError as exc:
+            raise PluginError("plugin requires must be an iterable of plugin names") from exc
+        if name in resolved:
+            raise PluginError(f"plugin {name!r} cannot depend on itself")
+        if any(not dependency for dependency in resolved):
+            raise PluginError("plugin dependency names cannot be empty")
+        return resolved
 
     def _topological_names(self) -> tuple[str, ...]:
         result: list[str] = []

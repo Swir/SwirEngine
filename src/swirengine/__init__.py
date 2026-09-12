@@ -25,6 +25,11 @@ from .graphics.mesh import Mesh3D, MeshData, cube_mesh
 from .graphics.obj import load_obj
 from .graphics.primitives import Cube3D, Rectangle2D, Sprite2D, Text2D
 from .graphics.stats import RendererStats
+from .hotreload import (
+    HotReloadSnapshot,
+    HotReloadStateError,
+    HotReloadStateRegistry,
+)
 from .math.types import Color, Transform, Vec2, Vec3
 from .particles import ParticleEmitter2D
 from .physics.collision2d import AABB, BoxCollider2D, CollisionWorld2D
@@ -65,6 +70,9 @@ __all__ = [
     "Game",
     "GltfPrimitiveAsset",
     "GltfSceneMesh",
+    "HotReloadSnapshot",
+    "HotReloadStateError",
+    "HotReloadStateRegistry",
     "LightSelection3D",
     "Material3D",
     "Mesh3D",
@@ -112,4 +120,4 @@ __all__ = [
     "select_lights",
 ]
 
-__version__ = "0.4.14"
+__version__ = "0.4.15"
