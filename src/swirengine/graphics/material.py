@@ -18,6 +18,10 @@ class Material3D:
     ``metallic_roughness_texture`` follows glTF 2.0 channel packing: roughness is read from
     green and metallic from blue, then multiplied by the scalar factors.
 
+    Normal, occlusion and emissive maps mirror glTF 2.0 material controls. They are stored
+    on the material even when a renderer backend does not yet consume a given channel so
+    import/export and editor workflows can preserve complete material intent.
+
     The historical Phong bridge is intentionally retained on the CPU-side fields for API
     compatibility with 0.4.7-0.4.9 code that inspects ``diffuse``, ``specular`` or
     ``shininess``. The renderer ignores those bridge values while native PBR is active.
@@ -32,17 +36,49 @@ class Material3D:
     metallic: float | None = None
     roughness: float | None = None
     metallic_roughness_texture: str | Path | None = None
+    normal_texture: str | Path | None = None
+    normal_scale: float = 1.0
+    occlusion_texture: str | Path | None = None
+    occlusion_strength: float = 1.0
+    emissive_texture: str | Path | None = None
+    emissive_factor: Color = field(default_factory=lambda: Color(0.0, 0.0, 0.0, 1.0))
 
     def __post_init__(self) -> None:
         self.ambient = max(0.0, float(self.ambient))
         self.diffuse = max(0.0, float(self.diffuse))
         self.specular = max(0.0, float(self.specular))
         self.shininess = max(1.0, float(self.shininess))
+        self.normal_scale = float(self.normal_scale)
+        self.occlusion_strength = float(self.occlusion_strength)
+        if self.normal_scale < 0.0:
+            raise ValueError("normal_scale must be >= 0")
+        if not 0.0 <= self.occlusion_strength <= 1.0:
+            raise ValueError("occlusion_strength must be within 0..1")
+        if any(
+            value < 0.0
+            for value in (
+                self.emissive_factor.r,
+                self.emissive_factor.g,
+                self.emissive_factor.b,
+            )
+        ):
+            raise ValueError("emissive_factor RGB values must be >= 0")
 
         pbr_requested = (
             self.metallic is not None
             or self.roughness is not None
             or self.metallic_roughness_texture is not None
+            or self.normal_texture is not None
+            or self.occlusion_texture is not None
+            or self.emissive_texture is not None
+            or any(
+                value > 0.0
+                for value in (
+                    self.emissive_factor.r,
+                    self.emissive_factor.g,
+                    self.emissive_factor.b,
+                )
+            )
         )
         if pbr_requested:
             metallic = 1.0 if self.metallic is None and self.metallic_roughness_texture else (
@@ -82,4 +118,15 @@ class Material3D:
             self.metallic is not None
             or self.roughness is not None
             or self.metallic_roughness_texture is not None
+            or self.normal_texture is not None
+            or self.occlusion_texture is not None
+            or self.emissive_texture is not None
+            or any(
+                value > 0.0
+                for value in (
+                    self.emissive_factor.r,
+                    self.emissive_factor.g,
+                    self.emissive_factor.b,
+                )
+            )
         )
