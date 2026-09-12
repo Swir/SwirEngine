@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-from .assets import AssetManager
+from .assets import AssetManager, AssetReloadResult
 
 
 def _clamp_volume(value: float) -> float:
@@ -120,6 +120,21 @@ class AudioHandle:
             self._engine._stop(self)
 
 
+@dataclass(frozen=True, slots=True)
+class AudioReloadEvent:
+    """Diagnostic record produced when a watched audio asset is invalidated."""
+
+    path: Path
+    restarted: int
+    stopped: int
+    skipped: int
+    error: str | None = None
+
+    @property
+    def affected(self) -> int:
+        return self.restarted + self.stopped + self.skipped
+
+
 class AudioEngine:
     """Small creator-facing audio service with pluggable playback backends."""
 
@@ -136,6 +151,9 @@ class AudioEngine:
         self._music_volume = 1.0
         self._handles: list[AudioHandle] = []
         self._music: AudioHandle | None = None
+        self._live_reload_enabled = False
+        self._restart_one_shots = False
+        self._reload_events: list[AudioReloadEvent] = []
 
     @property
     def master_volume(self) -> float:
@@ -172,6 +190,18 @@ class AudioEngine:
     def active_handles(self) -> tuple[AudioHandle, ...]:
         return tuple(handle for handle in self._handles if handle.active)
 
+    @property
+    def live_reload_enabled(self) -> bool:
+        return self._live_reload_enabled
+
+    @property
+    def restart_one_shots(self) -> bool:
+        return self._restart_one_shots
+
+    @property
+    def reload_events(self) -> tuple[AudioReloadEvent, ...]:
+        return tuple(self._reload_events)
+
     def play(self, asset: str | Path, *, volume: float = 1.0, loop: bool = False) -> AudioHandle:
         return self._start(asset, volume=volume, loop=loop, music=False)
 
@@ -193,7 +223,49 @@ class AudioEngine:
         self._handles.clear()
         self._music = None
 
+    def enable_live_reload(self, *, restart_one_shots: bool = False) -> AudioEngine:
+        """Watch active audio and react to ``AssetManager`` invalidations.
+
+        Looping sounds and music are restarted in place by default. One-shot effects are left
+        untouched unless ``restart_one_shots=True`` because replaying a short effect after an edit
+        is usually more surprising than useful.
+        """
+        self._restart_one_shots = bool(restart_one_shots)
+        if not self._live_reload_enabled:
+            self.assets.add_invalidator(self._on_asset_invalidated)
+            self._live_reload_enabled = True
+        self.watch_active()
+        return self
+
+    def disable_live_reload(self) -> bool:
+        if not self._live_reload_enabled:
+            return False
+        self.assets.remove_invalidator(self._on_asset_invalidated)
+        self._live_reload_enabled = False
+        return True
+
+    def watch_active(self) -> tuple[Path, ...]:
+        """Add all currently active audio files to the shared asset watcher."""
+        paths = sorted(
+            {handle.path.expanduser().resolve() for handle in self._handles if handle.active},
+            key=lambda path: path.as_posix().lower(),
+        )
+        for path in paths:
+            self.assets.watcher.watch(path)
+        return tuple(paths)
+
+    def poll_live_reload(self) -> tuple[AssetReloadResult, ...]:
+        """Poll the shared watcher and dispatch invalidations to audio and other subscribers."""
+        if not self._live_reload_enabled:
+            return ()
+        self.watch_active()
+        return self.assets.poll_changes(reload_cached=True)
+
+    def clear_reload_history(self) -> None:
+        self._reload_events.clear()
+
     def shutdown(self) -> None:
+        self.disable_live_reload()
         self.stop_all()
         self.backend.close()
 
@@ -215,6 +287,8 @@ class AudioEngine:
         )
         handle = AudioHandle(self, token, path, music, bool(loop), local_volume)
         self._handles.append(handle)
+        if self._live_reload_enabled:
+            self.assets.watcher.watch(path)
         return handle
 
     def _effective_volume(self, local_volume: float, music: bool) -> float:
@@ -238,3 +312,64 @@ class AudioEngine:
         if self._music is handle:
             self._music = None
         self._handles = [item for item in self._handles if item is not handle]
+
+    def _on_asset_invalidated(self, path: Path) -> None:
+        resolved = path.expanduser().resolve()
+        matching = [
+            handle
+            for handle in self._handles
+            if handle.active and handle.path.expanduser().resolve() == resolved
+        ]
+        if not matching:
+            return
+
+        restarted = 0
+        stopped = 0
+        skipped = 0
+        errors: list[str] = []
+        exists = resolved.exists()
+
+        for handle in matching:
+            should_restart = exists and (handle.is_music or handle.loop or self._restart_one_shots)
+            if exists and not should_restart:
+                skipped += 1
+                continue
+
+            try:
+                self.backend.stop(handle._token)
+            except Exception as exc:  # noqa: BLE001 - third-party audio backends may raise anything.
+                errors.append(f"stop failed: {exc}")
+                continue
+
+            if not exists:
+                handle.active = False
+                stopped += 1
+                if self._music is handle:
+                    self._music = None
+                continue
+
+            try:
+                handle._token = self.backend.play(
+                    resolved,
+                    volume=self._effective_volume(handle.volume, handle.is_music),
+                    loop=handle.loop,
+                    music=handle.is_music,
+                )
+            except Exception as exc:  # noqa: BLE001 - third-party audio backends may raise anything.
+                handle.active = False
+                errors.append(f"restart failed: {exc}")
+                if self._music is handle:
+                    self._music = None
+            else:
+                restarted += 1
+
+        self._handles = [handle for handle in self._handles if handle.active]
+        self._reload_events.append(
+            AudioReloadEvent(
+                path=resolved,
+                restarted=restarted,
+                stopped=stopped,
+                skipped=skipped,
+                error="; ".join(errors) if errors else None,
+            )
+        )
