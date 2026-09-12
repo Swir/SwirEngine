@@ -5,6 +5,7 @@ from .core.game import Game
 from .core.scene import Scene
 from .debug import DebugOverlay
 from .ecs import ECSWorld, Entity
+from .editor import HierarchyItem, InspectorField, InspectorSnapshot, PropertyEdit, SceneInspector
 from .filewatch import FileChangeEvent, PluginAutoReloader, PollingFileWatcher, ReloadResult
 from .graphics.animation import AnimatedSprite2D, AnimationClip, SpriteSheet, animated_sprite
 from .graphics.camera import Camera2D
@@ -81,10 +82,13 @@ __all__ = [
     "Game",
     "GltfPrimitiveAsset",
     "GltfSceneMesh",
+    "HierarchyItem",
     "HotReloadSnapshot",
     "HotReloadStateDomain",
     "HotReloadStateError",
     "HotReloadStateRegistry",
+    "InspectorField",
+    "InspectorSnapshot",
     "LightSelection3D",
     "LiveDevelopmentHub",
     "LiveDevelopmentResult",
@@ -104,6 +108,7 @@ __all__ = [
     "PrefabOverrides",
     "PrefabSelector",
     "Profiler",
+    "PropertyEdit",
     "PygameAudioBackend",
     "Rectangle2D",
     "ReloadResult",
@@ -113,6 +118,7 @@ __all__ = [
     "SaveStore",
     "Scene",
     "SceneCodecRegistry",
+    "SceneInspector",
     "SceneSerializationError",
     "SceneSerializer",
     "Skybox3D",
