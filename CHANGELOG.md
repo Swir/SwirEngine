@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.14 - 2026-09-12
+
+ECS reference-graph persistence update.
+
+- upgraded scene/prefab documents to format version 3 with automatic v1/v2 migration
+- added stable `$entity` references from registered ECS components to persisted entities
+- added deterministic `$component` references between persisted ECS components
+- restore cyclic component graphs by allocating every entity/component shell before field hydration
+- preserved existing component-to-scene-object `$ref` behavior and legacy document compatibility
+- added strict validation for malformed or unknown entity/component references
+- expanded ECS persistence regression coverage for cyclic graphs, invalid references and v1/v2 migration
+- expanded the persistence example to demonstrate entity and component references
+- advanced the 0.5 architecture roadmap toward deeper scene/editor hot reload
+- bumped package version to 0.4.14
+
 ## 0.4.13 - 2026-09-12
 
 Plugin runtime and hot-reload architecture update.
@@ -310,7 +325,6 @@ Level-building and persistence update.
 - added `SaveStore` with defaults, dict-like helpers and UTF-8 JSON persistence
 - added atomic save writes using a same-directory temporary file and `os.replace`
 - added optional `Game.storage` autoload through `save_path=...`
-- added tilemap and save-data tests
 - bumped package version to 0.3.1
 
 ## 0.3.0 - 2026-09-11
