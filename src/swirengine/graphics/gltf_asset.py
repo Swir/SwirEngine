@@ -124,6 +124,29 @@ def _texture_path(
     return _image_path(document, buffers, source, image_index)
 
 
+def _optional_texture_path(
+    document: dict[str, Any],
+    buffers: list[bytes],
+    source: Path,
+    texture_info: dict[str, Any] | None,
+    *,
+    material_index: int,
+    label: str,
+) -> Path | None:
+    if texture_info is None:
+        return None
+    if not isinstance(texture_info, dict):
+        raise TypeError(f"glTF material {material_index}: invalid {label}")
+    return _texture_path(
+        document,
+        buffers,
+        source,
+        texture_info,
+        material_index=material_index,
+        label=label,
+    )
+
+
 def _material(
     document: dict[str, Any],
     buffers: list[bytes],
@@ -143,9 +166,10 @@ def _material(
         raise ValueError(
             f"glTF material {material_index}: alphaMode {alpha_mode!r} is not supported yet"
         )
+
     emissive = np.asarray(spec.get("emissiveFactor", (0.0, 0.0, 0.0)), dtype="f4")
-    if emissive.shape != (3,) or np.any(np.abs(emissive) > 1e-8):
-        raise ValueError(f"glTF material {material_index}: emissive materials are not supported yet")
+    if emissive.shape != (3,) or np.any(emissive < 0.0):
+        raise ValueError(f"glTF material {material_index}: emissiveFactor must contain 3 values >= 0")
 
     pbr = spec.get("pbrMetallicRoughness", {})
     factor = np.asarray(pbr.get("baseColorFactor", (1.0, 1.0, 1.0, 1.0)), dtype="f4")
@@ -154,34 +178,65 @@ def _material(
     if np.any(factor < 0.0) or np.any(factor > 1.0):
         raise ValueError(f"glTF material {material_index}: baseColorFactor must be within 0..1")
 
-    texture_path: Path | None = None
-    texture_info = pbr.get("baseColorTexture")
-    if texture_info is not None:
-        texture_path = _texture_path(
-            document,
-            buffers,
-            source,
-            texture_info,
-            material_index=material_index,
-            label="baseColorTexture",
-        )
+    texture_path = _optional_texture_path(
+        document,
+        buffers,
+        source,
+        pbr.get("baseColorTexture"),
+        material_index=material_index,
+        label="baseColorTexture",
+    )
 
     metallic = float(pbr.get("metallicFactor", 1.0))
     roughness = float(pbr.get("roughnessFactor", 1.0))
     if not 0.0 <= metallic <= 1.0 or not 0.0 <= roughness <= 1.0:
         raise ValueError(f"glTF material {material_index}: metallic/roughness factors must be 0..1")
 
-    metallic_roughness_path: Path | None = None
-    metallic_roughness_info = pbr.get("metallicRoughnessTexture")
-    if metallic_roughness_info is not None:
-        metallic_roughness_path = _texture_path(
-            document,
-            buffers,
-            source,
-            metallic_roughness_info,
-            material_index=material_index,
-            label="metallicRoughnessTexture",
-        )
+    metallic_roughness_path = _optional_texture_path(
+        document,
+        buffers,
+        source,
+        pbr.get("metallicRoughnessTexture"),
+        material_index=material_index,
+        label="metallicRoughnessTexture",
+    )
+
+    normal_info = spec.get("normalTexture")
+    normal_path = _optional_texture_path(
+        document,
+        buffers,
+        source,
+        normal_info,
+        material_index=material_index,
+        label="normalTexture",
+    )
+    normal_scale = 1.0 if normal_info is None else float(normal_info.get("scale", 1.0))
+    if normal_scale < 0.0:
+        raise ValueError(f"glTF material {material_index}: normalTexture scale must be >= 0")
+
+    occlusion_info = spec.get("occlusionTexture")
+    occlusion_path = _optional_texture_path(
+        document,
+        buffers,
+        source,
+        occlusion_info,
+        material_index=material_index,
+        label="occlusionTexture",
+    )
+    occlusion_strength = (
+        1.0 if occlusion_info is None else float(occlusion_info.get("strength", 1.0))
+    )
+    if not 0.0 <= occlusion_strength <= 1.0:
+        raise ValueError(f"glTF material {material_index}: occlusionTexture strength must be 0..1")
+
+    emissive_path = _optional_texture_path(
+        document,
+        buffers,
+        source,
+        spec.get("emissiveTexture"),
+        material_index=material_index,
+        label="emissiveTexture",
+    )
 
     material = Material3D(
         texture=texture_path,
@@ -189,6 +244,17 @@ def _material(
         metallic=metallic,
         roughness=roughness,
         metallic_roughness_texture=metallic_roughness_path,
+        normal_texture=normal_path,
+        normal_scale=normal_scale,
+        occlusion_texture=occlusion_path,
+        occlusion_strength=occlusion_strength,
+        emissive_texture=emissive_path,
+        emissive_factor=Color(
+            float(emissive[0]),
+            float(emissive[1]),
+            float(emissive[2]),
+            1.0,
+        ),
     )
     return material, metallic, roughness
 

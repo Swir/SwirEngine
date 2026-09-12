@@ -218,6 +218,15 @@ class Renderer:
                 uniform float roughness_factor;
                 uniform sampler2D metallic_roughness_image;
                 uniform bool use_metallic_roughness_texture;
+                uniform sampler2D normal_image;
+                uniform bool use_normal_texture;
+                uniform float normal_scale;
+                uniform sampler2D occlusion_image;
+                uniform bool use_occlusion_texture;
+                uniform float occlusion_strength;
+                uniform sampler2D emissive_image;
+                uniform bool use_emissive_texture;
+                uniform vec3 emissive_factor;
 
                 uniform bool dir0_enabled;
                 uniform vec3 dir0_direction;
@@ -294,6 +303,47 @@ class Renderer:
                 in vec3 v_world_pos;
                 in vec2 v_uv;
                 out vec4 fragColor;
+
+                vec3 srgb_to_linear(vec3 value) {
+                    vec3 low = value / 12.92;
+                    vec3 high = pow((value + 0.055) / 1.055, vec3(2.4));
+                    return mix(low, high, step(vec3(0.04045), value));
+                }
+
+                vec3 linear_to_srgb(vec3 value) {
+                    value = max(value, vec3(0.0));
+                    vec3 low = value * 12.92;
+                    vec3 high = 1.055 * pow(value, vec3(1.0 / 2.4)) - 0.055;
+                    return mix(low, high, step(vec3(0.0031308), value));
+                }
+
+                vec3 mapped_normal(vec3 base_normal) {
+                    vec3 base = normalize(base_normal);
+                    if (!pbr_enabled || !use_normal_texture) {
+                        return base;
+                    }
+                    vec3 tangent_normal = texture(normal_image, v_uv).xyz * 2.0 - 1.0;
+                    tangent_normal.xy *= normal_scale;
+                    tangent_normal = normalize(tangent_normal);
+
+                    vec3 dp1 = dFdx(v_world_pos);
+                    vec3 dp2 = dFdy(v_world_pos);
+                    vec2 duv1 = dFdx(v_uv);
+                    vec2 duv2 = dFdy(v_uv);
+                    vec3 tangent = dp1 * duv2.y - dp2 * duv1.y;
+                    float tangent_length = length(tangent);
+                    float determinant = duv1.x * duv2.y - duv1.y * duv2.x;
+                    if (tangent_length <= 0.000001 || abs(determinant) <= 0.000001) {
+                        return base;
+                    }
+                    tangent = tangent / tangent_length;
+                    tangent = normalize(tangent - base * dot(base, tangent));
+                    vec3 bitangent = normalize(cross(base, tangent));
+                    if (determinant < 0.0) {
+                        bitangent = -bitangent;
+                    }
+                    return normalize(mat3(tangent, bitangent, base) * tangent_normal);
+                }
 
                 float distribution_ggx(vec3 normal, vec3 halfway, float roughness) {
                     float alpha = roughness * roughness;
@@ -498,7 +548,11 @@ class Renderer:
                 void main() {
                     vec4 surface_rgba = color;
                     if (use_texture) {
-                        surface_rgba *= texture(image, v_uv);
+                        vec4 base_sample = texture(image, v_uv);
+                        if (pbr_enabled) {
+                            base_sample.rgb = srgb_to_linear(base_sample.rgb);
+                        }
+                        surface_rgba *= base_sample;
                     }
 
                     float metallic = clamp(metallic_factor, 0.0, 1.0);
@@ -510,9 +564,14 @@ class Renderer:
                     }
 
                     vec3 surface = surface_rgba.rgb;
-                    vec3 normal = normalize(v_normal);
+                    vec3 normal = mapped_normal(v_normal);
                     vec3 view_dir = normalize(view_position - v_world_pos);
-                    vec3 lighting = surface * ambient_strength;
+                    float occlusion = 1.0;
+                    if (pbr_enabled && use_occlusion_texture) {
+                        float sampled_occlusion = texture(occlusion_image, v_uv).r;
+                        occlusion = mix(1.0, sampled_occlusion, clamp(occlusion_strength, 0.0, 1.0));
+                    }
+                    vec3 lighting = surface * ambient_strength * occlusion;
 
                     if (dir0_enabled) lighting += directional_light(normal, view_dir, surface, metallic, roughness, dir0_direction, dir0_color, dir0_intensity);
                     if (dir1_enabled) lighting += directional_light(normal, view_dir, surface, metallic, roughness, dir1_direction, dir1_color, dir1_intensity);
@@ -529,12 +588,23 @@ class Renderer:
                     if (spot2_enabled) lighting += spot_light(normal, view_dir, surface, metallic, roughness, spot2_position, spot2_direction, spot2_color, spot2_intensity, spot2_range, spot2_inner_cos, spot2_outer_cos);
                     if (spot3_enabled) lighting += spot_light(normal, view_dir, surface, metallic, roughness, spot3_position, spot3_direction, spot3_color, spot3_intensity, spot3_range, spot3_inner_cos, spot3_outer_cos);
 
+                    if (pbr_enabled) {
+                        vec3 emissive = emissive_factor;
+                        if (use_emissive_texture) {
+                            emissive *= srgb_to_linear(texture(emissive_image, v_uv).rgb);
+                        }
+                        lighting += emissive;
+                        lighting = linear_to_srgb(lighting);
+                    }
                     fragColor = vec4(lighting, surface_rgba.a);
                 }
             """,
         )
         self.program3d["image"].value = 0
         self.program3d["metallic_roughness_image"].value = 1
+        self.program3d["normal_image"].value = 2
+        self.program3d["occlusion_image"].value = 3
+        self.program3d["emissive_image"].value = 4
 
         p = 0.5
         faces = (
@@ -884,6 +954,38 @@ class Renderer:
         if pbr_enabled and metallic_roughness_path is not None:
             texture, _, _ = self._texture(metallic_roughness_path)
             texture.use(location=1)
+
+        normal_path = material.normal_texture if material is not None else None
+        self.program3d["use_normal_texture"].value = pbr_enabled and normal_path is not None
+        self.program3d["normal_scale"].value = float(
+            material.normal_scale if material is not None else 1.0
+        )
+        if pbr_enabled and normal_path is not None:
+            texture, _, _ = self._texture(normal_path)
+            texture.use(location=2)
+
+        occlusion_path = material.occlusion_texture if material is not None else None
+        self.program3d["use_occlusion_texture"].value = (
+            pbr_enabled and occlusion_path is not None
+        )
+        self.program3d["occlusion_strength"].value = float(
+            material.occlusion_strength if material is not None else 1.0
+        )
+        if pbr_enabled and occlusion_path is not None:
+            texture, _, _ = self._texture(occlusion_path)
+            texture.use(location=3)
+
+        emissive_path = material.emissive_texture if material is not None else None
+        self.program3d["use_emissive_texture"].value = pbr_enabled and emissive_path is not None
+        emissive = material.emissive_factor if material is not None else Color(0.0, 0.0, 0.0, 1.0)
+        self.program3d["emissive_factor"].value = (
+            float(emissive.r),
+            float(emissive.g),
+            float(emissive.b),
+        )
+        if pbr_enabled and emissive_path is not None:
+            texture, _, _ = self._texture(emissive_path)
+            texture.use(location=4)
 
         vao.render(vertices=vertices)
         self.stats.draw_calls += 1

@@ -43,7 +43,18 @@ def test_renderer_asset_bridge_watches_scene_2d_and_3d_textures(tmp_path):
     sprite_path = tmp_path / "sprite.png"
     albedo_path = tmp_path / "albedo.png"
     packed_path = tmp_path / "packed.png"
-    for path in (sprite_path, albedo_path, packed_path):
+    normal_path = tmp_path / "normal.png"
+    occlusion_path = tmp_path / "occlusion.png"
+    emissive_path = tmp_path / "emissive.png"
+    texture_paths = (
+        sprite_path,
+        albedo_path,
+        packed_path,
+        normal_path,
+        occlusion_path,
+        emissive_path,
+    )
+    for path in texture_paths:
         path.write_bytes(b"x")
 
     scene = Scene()
@@ -56,6 +67,9 @@ def test_renderer_asset_bridge_watches_scene_2d_and_3d_textures(tmp_path):
                 metallic=0.5,
                 roughness=0.5,
                 metallic_roughness_texture=packed_path,
+                normal_texture=normal_path,
+                occlusion_texture=occlusion_path,
+                emissive_texture=emissive_path,
             ),
         )
     )
@@ -64,7 +78,7 @@ def test_renderer_asset_bridge_watches_scene_2d_and_3d_textures(tmp_path):
     bridge = RendererAssetBridge(FakeRenderer(), assets)
     watched = bridge.watch_scene_textures(scene)
 
-    assert watched == tuple(sorted((albedo_path, packed_path, sprite_path), key=lambda p: p.as_posix()))
+    assert watched == tuple(sorted(texture_paths, key=lambda p: p.as_posix()))
     assert set(assets.watcher.paths) == {path.resolve() for path in watched}
 
 
