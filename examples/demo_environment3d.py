@@ -1,6 +1,5 @@
 from swirengine import Environment3D, Game
 
-
 game = Game(mode="3d", title="SwirEngine Environment 3D")
 installation = Environment3D().install(
     game.scene,
