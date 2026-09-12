@@ -86,6 +86,16 @@ def test_scene_provider_restores_same_scene_instance() -> None:
     assert (restored.x, restored.y, restored.width, restored.height) == (10, 20, 30, 40)
 
 
+def _patch_reload_module(
+    monkeypatch: pytest.MonkeyPatch,
+    module: ModuleType,
+) -> None:
+    # Patch reload first: replacing importlib.import_module also changes the shared stdlib module,
+    # which pytest itself uses to resolve string-based monkeypatch targets.
+    monkeypatch.setattr("swirengine.plugins.importlib.reload", lambda _: module)
+    monkeypatch.setattr("swirengine.plugins.importlib.import_module", lambda _: module)
+
+
 def test_plugin_reload_preserves_registered_runtime_state(monkeypatch: pytest.MonkeyPatch) -> None:
     manager = PluginManager()
     original = ReloadablePlugin()
@@ -103,8 +113,7 @@ def test_plugin_reload_preserves_registered_runtime_state(monkeypatch: pytest.Mo
 
     module = ModuleType("demo_plugin")
     module.create_plugin = lambda: replacement  # type: ignore[attr-defined]
-    monkeypatch.setattr("swirengine.plugins.importlib.import_module", lambda _: module)
-    monkeypatch.setattr("swirengine.plugins.importlib.reload", lambda _: module)
+    _patch_reload_module(monkeypatch, module)
 
     runtime["score"] = 99
     result = manager.reload("demo")
@@ -136,8 +145,7 @@ def test_plugin_reload_rolls_back_plugin_and_state_on_replacement_failure(
 
     module = ModuleType("demo_plugin")
     module.create_plugin = lambda: replacement  # type: ignore[attr-defined]
-    monkeypatch.setattr("swirengine.plugins.importlib.import_module", lambda _: module)
-    monkeypatch.setattr("swirengine.plugins.importlib.reload", lambda _: module)
+    _patch_reload_module(monkeypatch, module)
 
     runtime["value"] = "before-reload"
     with pytest.raises(PluginError, match="reload lifecycle/state failed"):
@@ -166,8 +174,7 @@ def test_reload_can_explicitly_skip_state_preservation(monkeypatch: pytest.Monke
     manager.state.register("runtime", capture, lambda _: None)
     module = ModuleType("demo_plugin")
     module.create_plugin = lambda: replacement  # type: ignore[attr-defined]
-    monkeypatch.setattr("swirengine.plugins.importlib.import_module", lambda _: module)
-    monkeypatch.setattr("swirengine.plugins.importlib.reload", lambda _: module)
+    _patch_reload_module(monkeypatch, module)
 
     manager.reload("demo", preserve_state=False)
 
