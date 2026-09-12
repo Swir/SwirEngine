@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from swirengine import PluginAutoReloader, PluginManager
+import swirengine
 
 
-manager = PluginManager()
+manager = swirengine.PluginManager()
 manager.load_module("my_game_plugin", enable=True)
 
-reloader = PluginAutoReloader(manager)
+reloader = swirengine.PluginAutoReloader(manager)
 reloader.watch("my_game_plugin", "my_game_plugin.py")
 
 print("Watching my_game_plugin.py. Save the file to trigger a state-preserving reload.")
