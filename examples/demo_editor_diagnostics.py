@@ -1,6 +1,7 @@
 import logging
 
-from swirengine import EditorConsole, EditorProfiler, Profiler
+from swirengine.editor_diagnostics import EditorConsole, EditorProfiler
+from swirengine.profiler import Profiler
 
 
 profiler = Profiler(history=120)
