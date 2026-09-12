@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.18 - 2026-09-12
+
+Live asset reload and runtime-cache invalidation update.
+
+- added suffix-based `AssetManager` loader registration with normalized deterministic loader lookup
+- added canonical-path runtime caching so aliases and direct paths share one loaded asset instance
+- added cache inspection, explicit invalidation, deterministic cached-path listing and bulk cache clearing
+- added renderer/audio/editor invalidation callbacks so stale external runtime resources can be released when source assets change
+- integrated the existing dependency-free `PollingFileWatcher` into `AssetManager` for watched asset creation/modification/deletion tracking
+- added `AssetReloadResult` with change kind, aliases, cache state, reload success and loader error diagnostics
+- reload previously cached assets automatically after supported file edits while leaving failed reloads uncached instead of serving stale data
+- invalidate deleted assets without attempting to reload missing files
+- added `watch_cached()` for editor/dev workflows that want to watch every currently loaded resource
+- added live-asset regression coverage and a runnable `demo_live_assets.py`
+- advanced the 0.5 roadmap toward direct renderer/audio cache bridges and visual-editor architecture hardening
+- bumped package version to 0.4.18
+
 ## 0.4.17 - 2026-09-12
 
 Editor-owned hot-reload state-domain architecture update.

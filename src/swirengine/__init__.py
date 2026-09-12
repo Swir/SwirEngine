@@ -1,4 +1,4 @@
-from .assets import AssetDiagnostics, AssetInfo, AssetManager
+from .assets import AssetDiagnostics, AssetInfo, AssetManager, AssetReloadResult
 from .audio import AudioBackend, AudioEngine, AudioHandle, PygameAudioBackend
 from .core.events import EventBus
 from .core.game import Game
@@ -54,6 +54,7 @@ __all__ = [
     "AssetDiagnostics",
     "AssetInfo",
     "AssetManager",
+    "AssetReloadResult",
     "AudioBackend",
     "AudioEngine",
     "AudioHandle",
@@ -127,4 +128,4 @@ __all__ = [
     "select_lights",
 ]
 
-__version__ = "0.4.17"
+__version__ = "0.4.18"

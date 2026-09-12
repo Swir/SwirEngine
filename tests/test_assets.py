@@ -63,3 +63,118 @@ def test_asset_scan_handles_missing_root_and_rejects_file_root(tmp_path):
     file_root.write_text("x", encoding="utf-8")
     with pytest.raises(NotADirectoryError):
         AssetManager(file_root).scan()
+
+
+def test_asset_loader_cache_is_shared_between_alias_and_path(tmp_path):
+    path = tmp_path / "config.txt"
+    path.write_text("alpha", encoding="utf-8")
+    calls = []
+    assets = AssetManager(tmp_path)
+    assets.register("config", "config.txt")
+    assets.register_loader("txt", lambda item: calls.append(item) or item.read_text(encoding="utf-8"))
+
+    first = assets.load("config")
+    second = assets.load(path)
+
+    assert first == "alpha"
+    assert second is first
+    assert calls == [path.resolve()]
+    assert assets.cached("config")
+    assert assets.cached_paths() == (path.resolve(),)
+
+
+def test_asset_invalidation_notifies_runtime_caches(tmp_path):
+    path = tmp_path / "texture.bin"
+    path.write_bytes(b"v1")
+    invalidated = []
+    assets = AssetManager(tmp_path)
+    assets.register_loader(".bin", Path.read_bytes)
+    assets.add_invalidator(invalidated.append)
+    assets.load(path)
+
+    assert assets.invalidate(path) is True
+    assert assets.invalidate(path) is False
+    assert invalidated == [path.resolve(), path.resolve()]
+
+
+def test_live_asset_reload_replaces_cached_value(tmp_path):
+    path = tmp_path / "level.txt"
+    path.write_text("one", encoding="utf-8")
+    assets = AssetManager(tmp_path)
+    assets.register("level", "level.txt")
+    assets.register_loader("txt", lambda item: item.read_text(encoding="utf-8"))
+    assets.watch("level")
+    assert assets.load("level") == "one"
+
+    path.write_text("updated-level", encoding="utf-8")
+    results = assets.poll_changes()
+
+    assert len(results) == 1
+    result = results[0]
+    assert result.kind == "modified"
+    assert result.aliases == ("level",)
+    assert result.was_cached is True
+    assert result.reloaded is True
+    assert result.error is None
+    assert assets.load("level") == "updated-level"
+
+
+def test_live_asset_reload_invalidates_deleted_file(tmp_path):
+    path = tmp_path / "gone.txt"
+    path.write_text("value", encoding="utf-8")
+    invalidated = []
+    assets = AssetManager(tmp_path)
+    assets.register_loader("txt", lambda item: item.read_text(encoding="utf-8"))
+    assets.add_invalidator(invalidated.append)
+    assets.watch(path)
+    assets.load(path)
+
+    path.unlink()
+    result = assets.poll_changes()[0]
+
+    assert result.kind == "deleted"
+    assert result.was_cached is True
+    assert result.reloaded is False
+    assert assets.cached(path) is False
+    assert invalidated == [path.resolve()]
+
+
+def test_live_asset_reload_reports_loader_failure_without_poisoning_cache(tmp_path):
+    path = tmp_path / "data.txt"
+    path.write_text("ok", encoding="utf-8")
+    assets = AssetManager(tmp_path)
+
+    def loader(item):
+        value = item.read_text(encoding="utf-8")
+        if value == "bad-data":
+            raise ValueError("bad asset")
+        return value
+
+    assets.register_loader("txt", loader)
+    assets.watch(path)
+    assert assets.load(path) == "ok"
+
+    path.write_text("bad-data", encoding="utf-8")
+    result = assets.poll_changes()[0]
+
+    assert result.was_cached is True
+    assert result.reloaded is False
+    assert result.error == "bad asset"
+    assert assets.cached(path) is False
+
+
+def test_watch_cached_and_clear_cache_are_deterministic(tmp_path):
+    a = tmp_path / "b.txt"
+    b = tmp_path / "a.txt"
+    a.write_text("b", encoding="utf-8")
+    b.write_text("a", encoding="utf-8")
+    assets = AssetManager(tmp_path)
+    assets.register_loader("txt", lambda item: item.read_text(encoding="utf-8"))
+    assets.load(a)
+    assets.load(b)
+
+    assert assets.cached_paths() == (b.resolve(), a.resolve())
+    watched = assets.watch_cached()
+    assert set(watched) == {a.resolve(), b.resolve()}
+    assert assets.clear_cache() == 2
+    assert assets.cached_paths() == ()
