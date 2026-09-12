@@ -89,17 +89,19 @@ including deterministic type classification, folder discovery, search/filtering,
 alias/cache/loader metadata and missing-alias health without forcing asset contents into RAM/GPU memory.
 `EditorConsole` and `EditorProfiler` now provide bounded, thread-safe log capture plus immutable runtime
 profiling snapshots with filtering, logging integration, averages, peaks and frame-budget health for the
-visual editor Console and Profiler panels.
+visual editor Console and Profiler panels. `EditorTransformGizmo` adds GUI-agnostic Move/Rotate/Scale
+editing for the engine's existing 2D/3D transform conventions, integrates viewport snap preferences and
+routes mutations through `SceneInspector` so transform edits participate in the same undo/redo history.
 
-Next: strengthen rollback guarantees for multi-domain restore, connect the editor workspace shell to
-an actual interactive visual front-end and add scene transform gizmos.
+Next: strengthen rollback guarantees for multi-domain restore and connect the editor workspace shell,
+asset browser, diagnostics and transform gizmo models to an actual interactive visual front-end.
 
 ## 0.6 - Tools
 
 Visual editor foundation now includes a shared project/workspace shell, hierarchy/inspector contract,
-persistent panel layout and viewport preferences, a GUI-agnostic asset browser and reusable Console/
-Profiler panel models backed by runtime diagnostics. Next: interactive visual front-end and scene
-transform gizmos.
+persistent panel layout and viewport preferences, a GUI-agnostic asset browser, reusable Console/
+Profiler panel models and toolkit-independent scene Move/Rotate/Scale gizmos with snapping and undo/redo.
+Next: interactive visual front-end, viewport picking/manipulation and tighter editor-runtime integration.
 
 ## 0.7+ - Runtime and export
 
