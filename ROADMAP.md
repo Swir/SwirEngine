@@ -87,15 +87,19 @@ filters and immutable `EditorShellFrame` snapshots are coordinated behind one GU
 shell contract. `EditorAssetBrowser` now provides the Assets-panel data model on top of `AssetManager`,
 including deterministic type classification, folder discovery, search/filtering, stable selection,
 alias/cache/loader metadata and missing-alias health without forcing asset contents into RAM/GPU memory.
+`EditorConsole` and `EditorProfiler` now provide bounded, thread-safe log capture plus immutable runtime
+profiling snapshots with filtering, logging integration, averages, peaks and frame-budget health for the
+visual editor Console and Profiler panels.
 
 Next: strengthen rollback guarantees for multi-domain restore, connect the editor workspace shell to
-an actual interactive visual front-end and add scene transform gizmos plus console/profiler integration.
+an actual interactive visual front-end and add scene transform gizmos.
 
 ## 0.6 - Tools
 
 Visual editor foundation now includes a shared project/workspace shell, hierarchy/inspector contract,
-persistent panel layout and viewport preferences plus a GUI-agnostic asset browser data model. Next:
-interactive visual front-end, console/profiler integration and scene transform gizmos.
+persistent panel layout and viewport preferences, a GUI-agnostic asset browser and reusable Console/
+Profiler panel models backed by runtime diagnostics. Next: interactive visual front-end and scene
+transform gizmos.
 
 ## 0.7+ - Runtime and export
 
