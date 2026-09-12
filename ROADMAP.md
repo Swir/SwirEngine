@@ -1,13 +1,25 @@
 # SwirEngine Roadmap
 
+<!-- SWIR-ROADMAP-STANDARD:v1 -->
 <!-- ROADMAP-PROGRESS:START -->
-## Measurable progress tracker
+<p align="center">
+  <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-64.5%25-2ea043?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-20%2F31-1f6feb?style=for-the-badge">
+  <img alt="Status" src="https://img.shields.io/badge/STATUS-IN%20PROGRESS-7c3aed?style=for-the-badge">
+</p>
 
-**20 / 31 tracked roadmap deliverables complete — 64.5%**
+## 📊 Overall progress
 
-`█████████████░░░░░░░ 64.5%`
+```text
+█████████████░░░░░░░ 64.5%
+```
 
-This percentage is intentionally based on the explicit equal-weight deliverables below, not on a guessed version-number percentage. Mark an item `[x]` only when the capability described by that item is implemented in the repository. Whenever a tracker item changes, recalculate this block.
+| ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
+|---:|---:|---:|---:|
+| **20** | **11** | **31** | **64.5%** |
+
+> **Progress rule:** the equal-weight deliverables below are the source of truth. Update `[x]/[ ]` first, then update badges, numbers, percentage and the 20-segment bar. Never estimate progress from version numbers, commit count or activity.
 
 - [x] 0.2 real 2D workflow complete
 - [x] 0.3 core 2D gameplay feature set complete
