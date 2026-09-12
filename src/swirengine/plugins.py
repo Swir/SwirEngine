@@ -248,7 +248,7 @@ class PluginManager:
             if was_enabled:
                 self.enable(name)
             if preserve_state:
-                self.state.restore(snapshot)
+                self.state.restore_atomic(snapshot)
         except Exception as exc:
             self._cleanup_failed_replacement(entry)
             entry.plugin = old_plugin
@@ -260,7 +260,7 @@ class PluginManager:
                 if was_enabled:
                     self.enable(name)
                 if preserve_state:
-                    self.state.restore(snapshot)
+                    self.state.restore_atomic(snapshot)
             except Exception as rollback_exc:  # noqa: BLE001 - plugin hooks are arbitrary code.
                 raise PluginError(
                     f"plugin {name!r} reload failed and rollback also failed: {rollback_exc}"
