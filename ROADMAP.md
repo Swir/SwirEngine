@@ -71,12 +71,12 @@ plugin, asset, GPU-texture and audio events into one editor-facing `LiveDevelopm
 health/error summaries and lifecycle-safe subscription management. `SceneInspector` now adds a
 GUI-agnostic hierarchy/inspector model spanning classic scene objects and ECS entities, runtime-stable
 selection keys, searchable/tag-filterable hierarchy rows, immutable field snapshots and bounded
-reversible property editing with undo/redo history. This gives future desktop, web or in-game editor
-front-ends one shared state/editing contract instead of coupling editor behavior to a UI toolkit.
+reversible property editing with undo/redo history. ECS component inspection/editing extends that
+same contract to component public fields, with stable entity-anchored history and safe stale-component
+detection during undo/redo.
 
-Next: strengthen rollback guarantees for multi-domain restore, add component-level inspector editing,
-hierarchy parenting/reordering operations and continue architecture hardening for scene editing and
-the visual editor.
+Next: strengthen rollback guarantees for multi-domain restore, add hierarchy parenting/reordering
+operations and continue architecture hardening for scene editing and the visual editor.
 
 ## 0.6 - Tools
 
