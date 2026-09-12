@@ -26,6 +26,7 @@ from .editor_diagnostics import (
     EditorProfiler,
     EditorProfilerFrame,
 )
+from .editor_gizmo import EditorTransformGizmo, GizmoApplyResult, GizmoTransformSnapshot
 from .editor_state import (
     EDITOR_HIERARCHY_FORMAT,
     EDITOR_HIERARCHY_VERSION,
@@ -131,6 +132,7 @@ __all__ = [
     "EditorSceneState",
     "EditorShellFrame",
     "EditorTargetRef",
+    "EditorTransformGizmo",
     "EditorViewportState",
     "EditorWorkspace",
     "Entity",
@@ -141,6 +143,8 @@ __all__ = [
     "FrameProfile",
     "GPUTextureInvalidation",
     "Game",
+    "GizmoApplyResult",
+    "GizmoTransformSnapshot",
     "GltfPrimitiveAsset",
     "GltfSceneMesh",
     "HierarchyEdit",
