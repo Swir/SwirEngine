@@ -84,16 +84,18 @@ restore pre-validates all references and can leave project loading out of the us
 `EditorProjectState` and `EditorWorkspace` now lift that foundation to project scope: per-scene hierarchy,
 selection and viewport state, validated panel layout, JSON/file persistence, scene switching, hierarchy
 filters and immutable `EditorShellFrame` snapshots are coordinated behind one GUI-agnostic visual-editor
-shell contract.
+shell contract. `EditorAssetBrowser` now provides the Assets-panel data model on top of `AssetManager`,
+including deterministic type classification, folder discovery, search/filtering, stable selection,
+alias/cache/loader metadata and missing-alias health without forcing asset contents into RAM/GPU memory.
 
-Next: strengthen rollback guarantees for multi-domain restore and connect the editor workspace shell to
-an actual interactive visual front-end, then add asset-browser data models and scene transform gizmos.
+Next: strengthen rollback guarantees for multi-domain restore, connect the editor workspace shell to
+an actual interactive visual front-end and add scene transform gizmos plus console/profiler integration.
 
 ## 0.6 - Tools
 
 Visual editor foundation now includes a shared project/workspace shell, hierarchy/inspector contract,
-persistent panel layout and viewport preferences. Next: interactive visual front-end, asset browser,
-console/profiler integration and scene transform gizmos.
+persistent panel layout and viewport preferences plus a GUI-agnostic asset browser data model. Next:
+interactive visual front-end, console/profiler integration and scene transform gizmos.
 
 ## 0.7+ - Runtime and export
 
