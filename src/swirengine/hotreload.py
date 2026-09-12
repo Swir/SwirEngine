@@ -322,7 +322,7 @@ class HotReloadStateRegistry:
                 ):
                     try:
                         rollback_provider.restore(rollback_value)
-                    except Exception as rollback_exc:
+                    except Exception as rollback_exc:  # noqa: BLE001 - callbacks are user code.
                         rollback_errors.append(f"{rollback_name!r}: {rollback_exc}")
                 if rollback_errors:
                     details = "; ".join(rollback_errors)
