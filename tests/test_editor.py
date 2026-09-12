@@ -75,6 +75,54 @@ def test_entity_snapshot_exposes_public_state_and_component_names():
     assert "_components" not in fields
 
 
+def test_component_snapshot_and_property_editing_share_entity_selection():
+    scene = Scene()
+    entity = scene.create_entity(name="Mover")
+    velocity = entity.add(Velocity(3.0, 4.0))
+    inspector = SceneInspector(scene)
+    inspector.select(entity)
+
+    snapshot = inspector.inspect_component(Velocity)
+    assert snapshot is not None
+    assert snapshot.key == f"entity:{entity.id}"
+    assert snapshot.type_name == "Velocity"
+    assert {field.name: field.value for field in snapshot.fields} == {"x": 3.0, "y": 4.0}
+
+    edit = inspector.set_component_property(Velocity, "x", 9.5)
+    assert edit.component_type is Velocity
+    assert velocity.x == 9.5
+    inspector.undo()
+    assert velocity.x == 3.0
+    inspector.redo()
+    assert velocity.x == 9.5
+
+
+def test_component_edit_history_detects_removed_component():
+    scene = Scene()
+    entity = scene.create_entity(name="Mover")
+    entity.add(Velocity(1.0, 2.0))
+    inspector = SceneInspector(scene)
+    inspector.set_component_property(Velocity, "y", 8.0, target=entity)
+    entity.remove(Velocity)
+
+    with pytest.raises(LookupError):
+        inspector.undo()
+
+    assert inspector.can_undo
+
+
+def test_component_inspection_rejects_non_entities_and_missing_components():
+    scene = Scene()
+    actor = scene.add(Actor("Player"))
+    entity = scene.create_entity(name="Empty")
+    inspector = SceneInspector(scene)
+
+    with pytest.raises(TypeError):
+        inspector.inspect_component(Velocity, target=actor)
+    with pytest.raises(KeyError):
+        inspector.inspect_component(Velocity, target=entity)
+
+
 def test_property_edits_support_undo_redo_and_clear_redo_on_new_change():
     scene = Scene()
     actor = scene.add(Actor("Player", health=100))
