@@ -8,7 +8,6 @@ from time import sleep
 
 from swirengine import AssetManager, AudioEngine
 
-
 assets = AssetManager("assets")
 audio = AudioEngine(assets).enable_live_reload()
 music = audio.music("theme.ogg", volume=0.65, loop=True)
