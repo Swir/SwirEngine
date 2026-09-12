@@ -48,16 +48,13 @@ class _EditorLoggingHandler(logging.Handler):
         self.console = console
 
     def emit(self, record: logging.LogRecord) -> None:
-        try:
-            message = self.format(record)
-            self.console.write(
-                message,
-                level=record.levelname.lower(),
-                source=record.name or "logging",
-                timestamp=record.created,
-            )
-        except Exception:
-            self.handleError(record)
+        message = self.format(record)
+        self.console.write(
+            message,
+            level=record.levelname.lower(),
+            source=record.name or "logging",
+            timestamp=record.created,
+        )
 
 
 class EditorConsole:
