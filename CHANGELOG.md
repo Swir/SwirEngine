@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.15 - 2026-09-12
+
+State-preserving plugin hot-reload architecture update.
+
+- added public `HotReloadStateRegistry`, `HotReloadSnapshot` and `HotReloadStateError` APIs
+- added deterministic named runtime-state providers with ordered capture/restore snapshots
+- added partial snapshots, explicit provider removal/replacement and strict missing-provider diagnostics
+- added `register_scene(...)` bridging versioned `SceneSerializer` snapshots into the hot-reload pipeline while preserving the same live `Scene` object
+- made module-backed `PluginManager.reload(...)` automatically preserve registered runtime state by default
+- added `preserve_state=False` for advanced reloads that intentionally discard runtime state
+- strengthened reload rollback so failed replacement lifecycle/state restoration cleans up the replacement, restores the previous plugin and reapplies the captured state
+- centralized replacement dependency validation so hot reload rejects malformed/self/empty dependencies consistently with initial registration
+- clear hot-reload state providers during manager shutdown to avoid stale editor/runtime callbacks
+- added regression coverage for ordered/partial snapshots, capture errors, scene restoration, successful stateful reload, rollback and opt-out behavior
+- added a runnable hot-reload-state example and advanced the 0.5 architecture roadmap toward watcher-driven reload/editor state domains
+- bumped package version to 0.4.15
+
 ## 0.4.14 - 2026-09-12
 
 ECS reference-graph persistence update.
