@@ -4,20 +4,20 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-67.7%25-2ea043?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-21%2F31-1f6feb?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-71.0%25-2ea043?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-22%2F31-1f6feb?style=for-the-badge">
   <img alt="Status" src="https://img.shields.io/badge/STATUS-IN%20PROGRESS-7c3aed?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-██████████████░░░░░░ 67.7%
+██████████████░░░░░░ 71.0%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **21** | **10** | **31** | **67.7%** |
+| **22** | **9** | **31** | **71.0%** |
 
 > **Progress rule:** the equal-weight deliverables below are the source of truth. Update `[x]/[ ]` first, then update badges, numbers, percentage and the 20-segment bar. Never estimate progress from version numbers, commit count or activity.
 
@@ -44,7 +44,7 @@
 - [x] 0.5 SceneInspector hierarchy, editing and unified undo/redo
 - [x] 0.5 EditorProjectState / EditorWorkspace shell foundation
 - [ ] 0.5 stronger multi-domain rollback guarantees
-- [ ] 0.5 connect editor models to an actual interactive visual front-end
+- [x] 0.5 connect editor models to an actual interactive visual front-end
 - [x] 0.6 editor asset browser
 - [x] 0.6 editor console and profiler models
 - [x] 0.6 transform gizmo foundation
@@ -148,17 +148,21 @@ editing for the engine's existing 2D/3D transform conventions, integrates viewpo
 routes mutations through `SceneInspector` so transform edits participate in the same undo/redo history.
 `EditorViewportController` now adds perspective screen-to-world rays, nearest visible `Mesh3D` picking,
 selection synchronization and camera-plane pointer dragging that reuses the transform gizmo/history path.
+`EditorFrontendController` now joins those models into one toolkit-neutral interactive frame contract, and
+`TkEditorApp` provides the first dependency-free desktop visual editor with hierarchy search/selection,
+inspector edits, shared Undo/Redo, gizmo/snap controls, Assets, Console and Profiler panels.
 
-Next: strengthen rollback guarantees for multi-domain restore and connect the editor workspace shell,
-asset browser, diagnostics and viewport interaction models to an actual interactive visual front-end.
+Next: strengthen rollback guarantees for multi-domain restore and tighten editor/runtime integration,
+including live renderer framebuffer embedding and play/edit state synchronization.
 
 ## 0.6 - Tools
 
 Visual editor foundation now includes a shared project/workspace shell, hierarchy/inspector contract,
 persistent panel layout and viewport preferences, a GUI-agnostic asset browser, reusable Console/
 Profiler panel models, toolkit-independent scene Move/Rotate/Scale gizmos with snapping and undo/redo,
-and camera-aware 3D viewport picking/direct manipulation. Next: interactive visual front-end and tighter
-editor-runtime integration.
+camera-aware 3D viewport picking/direct manipulation, and a real interactive Tk desktop front-end that
+connects those models without adding a mandatory GUI dependency. Next: tighter editor-runtime integration
+and an embedded live renderer viewport.
 
 ## 0.7+ - Runtime and export
 
