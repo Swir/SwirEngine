@@ -233,7 +233,7 @@ class PluginManager:
                 self._call(old_plugin, "on_load")
                 if was_enabled:
                     self.enable(name)
-            except Exception as rollback_exc:
+            except Exception as rollback_exc:  # noqa: BLE001 - plugin hooks are arbitrary code.
                 raise PluginError(
                     f"plugin {name!r} reload failed and rollback also failed: {rollback_exc}"
                 ) from exc
