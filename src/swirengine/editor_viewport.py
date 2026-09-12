@@ -137,7 +137,7 @@ class EditorViewportController:
         world_per_pixel = (2.0 * depth * math.tan(math.radians(camera.fov) * 0.5)) / height
         delta = camera.right * (dx * world_per_pixel) + camera.up.normalized() * (-dy * world_per_pixel)
 
-        viewport = getattr(self.workspace, "viewport")
+        viewport = self.workspace.viewport
         results: list[GizmoApplyResult] = []
         for axis, amount in (("x", delta.x), ("y", delta.y), ("z", delta.z)):
             if abs(amount) > 1e-12:
