@@ -1,32 +1,32 @@
-from swirengine import Color, Game, Material3D, Vec3, cube_mesh
+import swirengine as sw
 
 
-game = Game("SwirEngine PBR Bridge", 1100, 700, mode="3d")
+game = sw.Game("SwirEngine PBR Bridge", 1100, 700, mode="3d")
 
 rough_metal = game.mesh(
-    cube_mesh(),
-    position=Vec3(-1.6, 0.0, -5.0),
-    material=Material3D(
-        tint=Color(0.8, 0.45, 0.18, 1.0),
+    sw.cube_mesh(),
+    position=sw.Vec3(-1.6, 0.0, -5.0),
+    material=sw.Material3D(
+        tint=sw.Color(0.8, 0.45, 0.18, 1.0),
         metallic=0.9,
         roughness=0.7,
     ),
 )
 
 smooth_dielectric = game.mesh(
-    cube_mesh(),
-    position=Vec3(1.6, 0.0, -5.0),
-    material=Material3D(
-        tint=Color(0.15, 0.55, 0.95, 1.0),
+    sw.cube_mesh(),
+    position=sw.Vec3(1.6, 0.0, -5.0),
+    material=sw.Material3D(
+        tint=sw.Color(0.15, 0.55, 0.95, 1.0),
         metallic=0.0,
         roughness=0.18,
     ),
 )
 
-game.directional_light(direction=Vec3(-0.4, -1.0, -0.3), intensity=0.7)
-game.point_light(position=Vec3(0.0, 2.2, -2.5), intensity=2.0, range=8.0)
-game.camera.position = Vec3(0.0, 1.0, 2.0)
-game.camera.look_at(Vec3(0.0, 0.0, -5.0))
+game.directional_light(direction=sw.Vec3(-0.4, -1.0, -0.3), intensity=0.7)
+game.point_light(position=sw.Vec3(0.0, 2.2, -2.5), intensity=2.0, range=8.0)
+game.camera.position = sw.Vec3(0.0, 1.0, 2.0)
+game.camera.look_at(sw.Vec3(0.0, 0.0, -5.0))
 
 
 @game.update
