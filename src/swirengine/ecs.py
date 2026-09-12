@@ -9,12 +9,7 @@ SystemCallable = Callable[["ECSWorld", float], None]
 
 
 class Entity:
-    """Lightweight component container owned by an :class:`ECSWorld`.
-
-    Components can be any Python object. One component per concrete type is stored; querying
-    by a base class is supported through ``isinstance`` so creator-defined component
-    hierarchies remain ergonomic without requiring inheritance from an engine base class.
-    """
+    """Lightweight component container owned by an :class:`ECSWorld`."""
 
     __slots__ = ("_components", "_world", "enabled", "id", "name", "tags")
 
@@ -115,16 +110,27 @@ class ECSWorld:
         name: str = "",
         enabled: bool = True,
         tags: Iterable[str] = (),
+        entity_id: int | None = None,
     ) -> Entity:
+        """Create an entity, optionally restoring a specific stable ID from persistence."""
+        if entity_id is None:
+            resolved_id = self._next_entity_id
+        else:
+            resolved_id = int(entity_id)
+            if resolved_id < 1:
+                raise ValueError("entity_id must be >= 1")
+            if resolved_id in self._entities:
+                raise ValueError(f"entity id {resolved_id} already exists")
+
         entity = Entity(
-            self._next_entity_id,
+            resolved_id,
             name=name,
             enabled=enabled,
             tags=tags,
             world=self,
         )
-        self._next_entity_id += 1
         self._entities[entity.id] = entity
+        self._next_entity_id = max(self._next_entity_id, entity.id + 1)
         return entity
 
     def entity(self, entity_id: int) -> Entity | None:
