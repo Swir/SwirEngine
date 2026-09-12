@@ -106,6 +106,20 @@ class HotReloadStateDomain:
         return self._registry.capture(selected)
 
     def restore(self, snapshot: HotReloadSnapshot, *, strict: bool = True) -> None:
+        self._validate_snapshot(snapshot, strict=strict)
+        self._registry.restore(snapshot, strict=strict)
+
+    def restore_atomic(self, snapshot: HotReloadSnapshot, *, strict: bool = True) -> None:
+        """Restore this domain as an all-or-nothing transaction.
+
+        Before mutating any provider, the registry captures rollback values for every target.
+        If one restore callback fails, every provider touched by the transaction is restored to
+        its pre-transaction value in reverse order.
+        """
+        self._validate_snapshot(snapshot, strict=strict)
+        self._registry.restore_atomic(snapshot, strict=strict)
+
+    def _validate_snapshot(self, snapshot: HotReloadSnapshot, *, strict: bool) -> None:
         if not isinstance(snapshot, HotReloadSnapshot):
             raise TypeError("snapshot must be HotReloadSnapshot")
         for name in snapshot.names:
@@ -116,7 +130,6 @@ class HotReloadStateDomain:
                 raise HotReloadStateError(
                     f"state provider {name!r} does not belong to domain {self.name!r}"
                 )
-        self._registry.restore(snapshot, strict=strict)
 
 
 class HotReloadStateRegistry:
@@ -265,6 +278,60 @@ class HotReloadStateRegistry:
                 provider.restore(value)
             except Exception as exc:
                 raise HotReloadStateError(f"failed to restore state {name!r}: {exc}") from exc
+
+    def restore_atomic(self, snapshot: HotReloadSnapshot, *, strict: bool = True) -> None:
+        """Restore a snapshot transactionally across providers and domains.
+
+        The method first captures the current value of every provider that will participate.
+        Only after all rollback values are available does it begin applying the requested
+        snapshot. A failing callback triggers reverse-order restoration of every provider that
+        may already have been mutated, including the failing provider itself.
+
+        The existing :meth:`restore` method intentionally keeps its original best-effort
+        semantics for compatibility. Hot-reload transactions should prefer this method.
+        """
+        if not isinstance(snapshot, HotReloadSnapshot):
+            raise TypeError("snapshot must be HotReloadSnapshot")
+
+        targets: list[tuple[str, _StateProvider, object]] = []
+        for name, value in snapshot.values:
+            provider = self._providers.get(name)
+            if provider is None:
+                if strict:
+                    raise HotReloadStateError(f"state provider {name!r} is not registered")
+                continue
+            targets.append((name, provider, value))
+
+        rollback_values: list[tuple[str, _StateProvider, object]] = []
+        for name, provider, _ in targets:
+            try:
+                current = provider.capture()
+            except Exception as exc:
+                raise HotReloadStateError(
+                    f"failed to capture rollback state {name!r}: {exc}"
+                ) from exc
+            rollback_values.append((name, provider, current))
+
+        for index, (name, provider, value) in enumerate(targets):
+            try:
+                provider.restore(value)
+            except Exception as exc:
+                rollback_errors: list[str] = []
+                for rollback_name, rollback_provider, rollback_value in reversed(
+                    rollback_values[: index + 1]
+                ):
+                    try:
+                        rollback_provider.restore(rollback_value)
+                    except Exception as rollback_exc:
+                        rollback_errors.append(f"{rollback_name!r}: {rollback_exc}")
+                if rollback_errors:
+                    details = "; ".join(rollback_errors)
+                    raise HotReloadStateError(
+                        f"failed to restore state {name!r}: {exc}; rollback failed for {details}"
+                    ) from exc
+                raise HotReloadStateError(
+                    f"failed to restore state {name!r}: {exc}; transaction rolled back"
+                ) from exc
 
     @classmethod
     def _normalize_domain(cls, domain: str) -> str:
