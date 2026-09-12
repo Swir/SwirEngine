@@ -19,6 +19,13 @@ from .editor_assets import (
     EditorAssetEntry,
     classify_editor_asset,
 )
+from .editor_diagnostics import (
+    EditorConsole,
+    EditorConsoleEntry,
+    EditorConsoleFrame,
+    EditorProfiler,
+    EditorProfilerFrame,
+)
 from .editor_state import (
     EDITOR_HIERARCHY_FORMAT,
     EDITOR_HIERARCHY_VERSION,
@@ -112,9 +119,14 @@ __all__ = [
     "EditorAssetBrowser",
     "EditorAssetBrowserFrame",
     "EditorAssetEntry",
+    "EditorConsole",
+    "EditorConsoleEntry",
+    "EditorConsoleFrame",
     "EditorHierarchyNode",
     "EditorHierarchyState",
     "EditorPanelState",
+    "EditorProfiler",
+    "EditorProfilerFrame",
     "EditorProjectState",
     "EditorSceneState",
     "EditorShellFrame",
