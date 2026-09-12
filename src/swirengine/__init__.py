@@ -5,7 +5,14 @@ from .core.game import Game
 from .core.scene import Scene
 from .debug import DebugOverlay
 from .ecs import ECSWorld, Entity
-from .editor import HierarchyItem, InspectorField, InspectorSnapshot, PropertyEdit, SceneInspector
+from .editor import (
+    HierarchyEdit,
+    HierarchyItem,
+    InspectorField,
+    InspectorSnapshot,
+    PropertyEdit,
+    SceneInspector,
+)
 from .filewatch import FileChangeEvent, PluginAutoReloader, PollingFileWatcher, ReloadResult
 from .graphics.animation import AnimatedSprite2D, AnimationClip, SpriteSheet, animated_sprite
 from .graphics.camera import Camera2D
@@ -82,6 +89,7 @@ __all__ = [
     "Game",
     "GltfPrimitiveAsset",
     "GltfSceneMesh",
+    "HierarchyEdit",
     "HierarchyItem",
     "HotReloadSnapshot",
     "HotReloadStateDomain",

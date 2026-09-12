@@ -46,8 +46,20 @@ class PropertyEdit:
     component_type: type[object] | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class HierarchyEdit:
+    target_key: str
+    before_parent_key: str | None
+    before_index: int
+    after_parent_key: str | None
+    after_index: int
+
+
+HistoryEdit = PropertyEdit | HierarchyEdit
+
+
 class SceneInspector:
-    """GUI-agnostic hierarchy/inspector model with selection and undo/redo.
+    """GUI-agnostic hierarchy/inspector model with unified undo/redo.
 
     Hierarchy parenting is editor metadata only. It intentionally does not mutate object
     transforms, ECS ownership or scene serialization yet, keeping the runtime API compatible
@@ -60,8 +72,8 @@ class SceneInspector:
         self.scene = scene
         self.history_limit = int(history_limit)
         self._selected_key: str | None = None
-        self._undo: list[PropertyEdit] = []
-        self._redo: list[PropertyEdit] = []
+        self._undo: list[HistoryEdit] = []
+        self._redo: list[HistoryEdit] = []
         self._parent_by_key: dict[str, str | None] = {}
         self._children_by_parent: dict[str | None, list[str]] = {None: []}
         self._sync_hierarchy()
@@ -83,11 +95,11 @@ class SceneInspector:
         return bool(self._redo)
 
     @property
-    def undo_history(self) -> tuple[PropertyEdit, ...]:
+    def undo_history(self) -> tuple[HistoryEdit, ...]:
         return tuple(self._undo)
 
     @property
-    def redo_history(self) -> tuple[PropertyEdit, ...]:
+    def redo_history(self) -> tuple[HistoryEdit, ...]:
         return tuple(self._redo)
 
     def key_for(self, target: object) -> str:
@@ -153,44 +165,36 @@ class SceneInspector:
         parent: object | str | None,
         *,
         index: int | None = None,
-    ) -> None:
-        """Reparent a hierarchy target with cycle prevention and deterministic sibling order."""
+    ) -> HierarchyEdit:
+        """Reparent a hierarchy target and record the structural edit for undo/redo."""
         self._sync_hierarchy()
         child_key = self._hierarchy_key(child)
         parent_key = None if parent is None else self._hierarchy_key(parent)
-        if child_key == parent_key:
-            raise ValueError("a hierarchy item cannot parent itself")
+        before_parent = self._parent_by_key[child_key]
+        before_index = self._children_by_parent[before_parent].index(child_key)
 
-        cursor = parent_key
-        while cursor is not None:
-            if cursor == child_key:
-                raise ValueError("hierarchy parenting would create a cycle")
-            cursor = self._parent_by_key.get(cursor)
+        after_index = self._apply_hierarchy_position(child_key, parent_key, index)
+        edit = HierarchyEdit(child_key, before_parent, before_index, parent_key, after_index)
+        if (before_parent, before_index) != (parent_key, after_index):
+            self._push_history(edit)
+        return edit
 
-        old_parent = self._parent_by_key[child_key]
-        old_siblings = self._children_by_parent.setdefault(old_parent, [])
-        if child_key in old_siblings:
-            old_siblings.remove(child_key)
-
-        new_siblings = self._children_by_parent.setdefault(parent_key, [])
-        insert_at = self._normalize_insert_index(index, len(new_siblings))
-        new_siblings.insert(insert_at, child_key)
-        self._parent_by_key[child_key] = parent_key
-        self._children_by_parent.setdefault(child_key, [])
-
-    def move(self, target: object | str, index: int) -> None:
-        """Move a target within its current sibling list."""
+    def move(self, target: object | str, index: int) -> HierarchyEdit:
+        """Move a target within its sibling list and record the change for undo/redo."""
         self._sync_hierarchy()
         key = self._hierarchy_key(target)
         parent_key = self._parent_by_key[key]
         siblings = self._children_by_parent[parent_key]
         if index < 0 or index >= len(siblings):
             raise IndexError(index)
-        current = siblings.index(key)
-        if current == index:
-            return
-        siblings.pop(current)
-        siblings.insert(index, key)
+        before_index = siblings.index(key)
+        if before_index != index:
+            siblings.pop(before_index)
+            siblings.insert(index, key)
+        edit = HierarchyEdit(key, parent_key, before_index, parent_key, index)
+        if before_index != index:
+            self._push_history(edit)
+        return edit
 
     def select(self, target_or_key: object | str | None) -> object | None:
         if target_or_key is None:
@@ -269,27 +273,27 @@ class SceneInspector:
             component_type=type(component),
         )
 
-    def undo(self) -> PropertyEdit | None:
+    def undo(self) -> HistoryEdit | None:
         if not self._undo:
             return None
         edit = self._undo.pop()
-        target = self._edit_target(edit)
-        if target is None:
+        try:
+            self._apply_history_edit(edit, undo=True)
+        except (KeyError, LookupError, ValueError):
             self._undo.append(edit)
-            raise LookupError(f"edit target no longer exists: {edit.target_key}")
-        setattr(target, edit.property_name, deepcopy(edit.before))
+            raise
         self._redo.append(edit)
         return edit
 
-    def redo(self) -> PropertyEdit | None:
+    def redo(self) -> HistoryEdit | None:
         if not self._redo:
             return None
         edit = self._redo.pop()
-        target = self._edit_target(edit)
-        if target is None:
+        try:
+            self._apply_history_edit(edit, undo=False)
+        except (KeyError, LookupError, ValueError):
             self._redo.append(edit)
-            raise LookupError(f"edit target no longer exists: {edit.target_key}")
-        setattr(target, edit.property_name, deepcopy(edit.after))
+            raise
         self._undo.append(edit)
         return edit
 
@@ -334,11 +338,32 @@ class SceneInspector:
         after = deepcopy(getattr(resolved, name))
         edit = PropertyEdit(target_key, name, before, after, component_type)
         if before != after:
-            self._undo.append(edit)
-            if len(self._undo) > self.history_limit:
-                del self._undo[0]
-            self._redo.clear()
+            self._push_history(edit)
         return edit
+
+    def _push_history(self, edit: HistoryEdit) -> None:
+        self._undo.append(edit)
+        if len(self._undo) > self.history_limit:
+            del self._undo[0]
+        self._redo.clear()
+
+    def _apply_history_edit(self, edit: HistoryEdit, *, undo: bool) -> None:
+        if isinstance(edit, PropertyEdit):
+            target = self._edit_target(edit)
+            if target is None:
+                raise LookupError(f"edit target no longer exists: {edit.target_key}")
+            value = edit.before if undo else edit.after
+            setattr(target, edit.property_name, deepcopy(value))
+            return
+
+        self._sync_hierarchy()
+        if self.resolve(edit.target_key) is None:
+            raise LookupError(f"hierarchy target no longer exists: {edit.target_key}")
+        parent_key = edit.before_parent_key if undo else edit.after_parent_key
+        index = edit.before_index if undo else edit.after_index
+        if parent_key is not None and self.resolve(parent_key) is None:
+            raise LookupError(f"hierarchy parent no longer exists: {parent_key}")
+        self._apply_hierarchy_position(edit.target_key, parent_key, index)
 
     def _edit_target(self, edit: PropertyEdit) -> object | None:
         target = self.resolve(edit.target_key)
@@ -347,6 +372,33 @@ class SceneInspector:
         if not isinstance(target, Entity):
             return None
         return target.get(edit.component_type)
+
+    def _apply_hierarchy_position(
+        self,
+        child_key: str,
+        parent_key: str | None,
+        index: int | None,
+    ) -> int:
+        if child_key == parent_key:
+            raise ValueError("a hierarchy item cannot parent itself")
+
+        cursor = parent_key
+        while cursor is not None:
+            if cursor == child_key:
+                raise ValueError("hierarchy parenting would create a cycle")
+            cursor = self._parent_by_key.get(cursor)
+
+        old_parent = self._parent_by_key[child_key]
+        old_siblings = self._children_by_parent.setdefault(old_parent, [])
+        if child_key in old_siblings:
+            old_siblings.remove(child_key)
+
+        new_siblings = self._children_by_parent.setdefault(parent_key, [])
+        insert_at = self._normalize_insert_index(index, len(new_siblings))
+        new_siblings.insert(insert_at, child_key)
+        self._parent_by_key[child_key] = parent_key
+        self._children_by_parent.setdefault(child_key, [])
+        return insert_at
 
     def _snapshot_fields(self, target: object) -> tuple[InspectorField, ...]:
         return tuple(
