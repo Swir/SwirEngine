@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.21 - 2026-09-12
+
+Skybox and environment-lighting foundation update.
+
+- added public `Skybox3D`, `Environment3D` and `EnvironmentInstallation` APIs
+- added inward-facing cube mesh generation with equirectangular panorama UV coordinates
+- render skyboxes through the existing `Mesh3D` path so they reuse the current mesh/texture cache and live-asset invalidation architecture
+- added camera-follow behavior so panorama skies remain centered around a moving `Camera3D`
+- added an unlit skybox material configuration using ambient-only contribution for compatibility with the current forward renderer
+- added a creator-facing sky/ground fill-light rig using two directional slots, leaving two directional-light slots available for authored sun/moon lights
+- added explicit install/remove/follow lifecycle helpers for scene integration
+- shaped the public environment API so a future cubemap/IBL backend can replace the current fill-light implementation without breaking game code
+- added environment regression coverage and a runnable `demo_environment3d.py` example
+- advanced the 0.4 roadmap toward true image-based lighting, shadows and post-processing
+- bumped package version to 0.4.21
+
 ## 0.4.20 - 2026-09-12
 
 Live audio asset-reload integration update.
