@@ -16,7 +16,7 @@ class Entity:
     hierarchies remain ergonomic without requiring inheritance from an engine base class.
     """
 
-    __slots__ = ("id", "name", "enabled", "tags", "_components", "_world")
+    __slots__ = ("_components", "_world", "enabled", "id", "name", "tags")
 
     def __init__(
         self,
