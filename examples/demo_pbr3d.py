@@ -1,6 +1,5 @@
 import swirengine
 
-
 game = swirengine.Game("SwirEngine PBR", mode="3d", width=1100, height=700)
 
 surfaces = (
