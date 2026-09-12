@@ -4,20 +4,20 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-64.5%25-2ea043?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-20%2F31-1f6feb?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-67.7%25-2ea043?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-21%2F31-1f6feb?style=for-the-badge">
   <img alt="Status" src="https://img.shields.io/badge/STATUS-IN%20PROGRESS-7c3aed?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-█████████████░░░░░░░ 64.5%
+██████████████░░░░░░ 67.7%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **20** | **11** | **31** | **64.5%** |
+| **21** | **10** | **31** | **67.7%** |
 
 > **Progress rule:** the equal-weight deliverables below are the source of truth. Update `[x]/[ ]` first, then update badges, numbers, percentage and the 20-segment bar. Never estimate progress from version numbers, commit count or activity.
 
@@ -48,7 +48,7 @@
 - [x] 0.6 editor asset browser
 - [x] 0.6 editor console and profiler models
 - [x] 0.6 transform gizmo foundation
-- [ ] 0.6 viewport picking and direct manipulation
+- [x] 0.6 viewport picking and direct manipulation
 - [ ] 0.6 tighter editor/runtime integration
 - [ ] 0.7 networking, packaging profiles and desktop/mobile/web export targets
 - [ ] 1.0 stable documented API, tests and release tooling suitable for a first stable release
@@ -146,16 +146,19 @@ profiling snapshots with filtering, logging integration, averages, peaks and fra
 visual editor Console and Profiler panels. `EditorTransformGizmo` adds GUI-agnostic Move/Rotate/Scale
 editing for the engine's existing 2D/3D transform conventions, integrates viewport snap preferences and
 routes mutations through `SceneInspector` so transform edits participate in the same undo/redo history.
+`EditorViewportController` now adds perspective screen-to-world rays, nearest visible `Mesh3D` picking,
+selection synchronization and camera-plane pointer dragging that reuses the transform gizmo/history path.
 
 Next: strengthen rollback guarantees for multi-domain restore and connect the editor workspace shell,
-asset browser, diagnostics and transform gizmo models to an actual interactive visual front-end.
+asset browser, diagnostics and viewport interaction models to an actual interactive visual front-end.
 
 ## 0.6 - Tools
 
 Visual editor foundation now includes a shared project/workspace shell, hierarchy/inspector contract,
 persistent panel layout and viewport preferences, a GUI-agnostic asset browser, reusable Console/
-Profiler panel models and toolkit-independent scene Move/Rotate/Scale gizmos with snapping and undo/redo.
-Next: interactive visual front-end, viewport picking/manipulation and tighter editor-runtime integration.
+Profiler panel models, toolkit-independent scene Move/Rotate/Scale gizmos with snapping and undo/redo,
+and camera-aware 3D viewport picking/direct manipulation. Next: interactive visual front-end and tighter
+editor-runtime integration.
 
 ## 0.7+ - Runtime and export
 
