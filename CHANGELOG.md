@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.16 - 2026-09-12
+
+Automatic plugin file-watching and development hot-reload workflow update.
+
+- added public `PollingFileWatcher`, `FileChangeEvent`, `PluginAutoReloader` and `ReloadResult` APIs
+- added dependency-free deterministic polling for file creation, modification and deletion across Windows, Linux and macOS
+- added source-file-to-plugin mappings that automatically call `PluginManager.reload(...)` after edits
+- preserve registered runtime state by default during watcher-triggered reloads, building on the 0.4.15 scene/ECS snapshot pipeline
+- report reload success/failure as structured results and optional callbacks instead of crashing the editor/game polling loop
+- keep deleted files watched so recreating a source file can trigger a later reload
+- added regression coverage for watcher lifecycle and automatic plugin reload behavior
+- added a runnable automatic-reload example and advanced the 0.5 roadmap toward editor-owned state domains and live asset reload
+- bumped package version to 0.4.16
+
 ## 0.4.15 - 2026-09-12
 
 State-preserving plugin hot-reload architecture update.
