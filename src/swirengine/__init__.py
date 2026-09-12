@@ -13,6 +13,12 @@ from .editor import (
     PropertyEdit,
     SceneInspector,
 )
+from .editor_assets import (
+    EditorAssetBrowser,
+    EditorAssetBrowserFrame,
+    EditorAssetEntry,
+    classify_editor_asset,
+)
 from .editor_state import (
     EDITOR_HIERARCHY_FORMAT,
     EDITOR_HIERARCHY_VERSION,
@@ -103,6 +109,9 @@ __all__ = [
     "DebugOverlay",
     "DirectionalLight3D",
     "ECSWorld",
+    "EditorAssetBrowser",
+    "EditorAssetBrowserFrame",
+    "EditorAssetEntry",
     "EditorHierarchyNode",
     "EditorHierarchyState",
     "EditorPanelState",
@@ -178,6 +187,7 @@ __all__ = [
     "Vec3",
     "animated_sprite",
     "capture_editor_hierarchy",
+    "classify_editor_asset",
     "cube_mesh",
     "default_editor_panels",
     "load_gltf",
