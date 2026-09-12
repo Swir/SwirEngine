@@ -68,10 +68,15 @@ audio files, restart looping sounds/music in place while preserving handle ident
 optionally restart one-shots, stop deleted resources safely and expose structured reload diagnostics.
 `LiveDevelopmentHub` now coordinates plugin reloads plus one shared asset poll and aggregates
 plugin, asset, GPU-texture and audio events into one editor-facing `LiveDevelopmentResult` with
-health/error summaries and lifecycle-safe subscription management.
+health/error summaries and lifecycle-safe subscription management. `SceneInspector` now adds a
+GUI-agnostic hierarchy/inspector model spanning classic scene objects and ECS entities, runtime-stable
+selection keys, searchable/tag-filterable hierarchy rows, immutable field snapshots and bounded
+reversible property editing with undo/redo history. This gives future desktop, web or in-game editor
+front-ends one shared state/editing contract instead of coupling editor behavior to a UI toolkit.
 
-Next: strengthen rollback guarantees for multi-domain restore and continue architecture hardening
-for hierarchy/inspector tooling, scene editing and the visual editor.
+Next: strengthen rollback guarantees for multi-domain restore, add component-level inspector editing,
+hierarchy parenting/reordering operations and continue architecture hardening for scene editing and
+the visual editor.
 
 ## 0.6 - Tools
 
