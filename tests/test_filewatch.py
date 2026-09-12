@@ -3,12 +3,14 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import pytest
+
 from swirengine.filewatch import PluginAutoReloader, PollingFileWatcher
 
 
 class FakeManager:
     def __init__(self) -> None:
-        self.reloads: list[tuple[str, bool]] = []
+        self.reloads: list[tuple[str, bool, tuple[str, ...] | None]] = []
         self.known = {"demo"}
 
     def info(self, name: str) -> object:
@@ -16,8 +18,14 @@ class FakeManager:
             raise RuntimeError("unknown plugin")
         return object()
 
-    def reload(self, name: str, *, preserve_state: bool = True) -> object:
-        self.reloads.append((name, preserve_state))
+    def reload(
+        self,
+        name: str,
+        *,
+        preserve_state: bool = True,
+        state_domains: tuple[str, ...] | None = None,
+    ) -> object:
+        self.reloads.append((name, preserve_state, state_domains))
         return object()
 
 
@@ -58,11 +66,28 @@ def test_auto_reloader_reloads_modified_plugin_and_preserves_state(tmp_path: Pat
     _bump(path, "v2 changed")
     outcome = reloader.poll()
 
-    assert manager.reloads == [("demo", True)]
+    assert manager.reloads == [("demo", True, None)]
     assert len(outcome) == 1
     assert outcome[0].reloaded is True
     assert outcome[0].error is None
     assert results == list(outcome)
+
+
+def test_auto_reloader_can_limit_preserved_state_domains(tmp_path: Path) -> None:
+    path = tmp_path / "demo.py"
+    path.write_text("v1", encoding="utf-8")
+    manager = FakeManager()
+    reloader = PluginAutoReloader(
+        manager,  # type: ignore[arg-type]
+        state_domains=("editor", "scene", "editor"),
+    )
+    reloader.watch("demo", path)
+
+    _bump(path, "v2")
+    reloader.poll()
+
+    assert reloader.state_domains == ("editor", "scene")
+    assert manager.reloads == [("demo", True, ("editor", "scene"))]
 
 
 def test_auto_reloader_can_disable_state_preservation(tmp_path: Path) -> None:
@@ -75,7 +100,18 @@ def test_auto_reloader_can_disable_state_preservation(tmp_path: Path) -> None:
     _bump(path, "v2")
     reloader.poll()
 
-    assert manager.reloads == [("demo", False)]
+    assert manager.reloads == [("demo", False, None)]
+
+
+def test_auto_reloader_rejects_domains_when_state_preservation_is_disabled() -> None:
+    manager = FakeManager()
+
+    with pytest.raises(ValueError, match="state_domains requires preserve_state=True"):
+        PluginAutoReloader(  # type: ignore[arg-type]
+            manager,
+            preserve_state=False,
+            state_domains=("editor",),
+        )
 
 
 def test_deleted_file_does_not_attempt_reload(tmp_path: Path) -> None:
