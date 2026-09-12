@@ -461,7 +461,7 @@ class SceneSerializer:
         document = {
             "format": SCENE_FORMAT,
             "version": FORMAT_VERSION,
-            "objects": self._encode_objects(scene.objects, refs),
+            "objects": self._encode_objects(scene.objects),
             "ecs": self._encode_ecs(scene, refs),
         }
         return json.dumps(document, indent=indent, sort_keys=True) + ("\n" if indent else "")
