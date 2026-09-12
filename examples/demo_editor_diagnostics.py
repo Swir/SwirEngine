@@ -1,19 +1,11 @@
-import logging
-
-from swirengine.editor_diagnostics import EditorConsole, EditorProfiler
-from swirengine.profiler import Profiler
+from swirengine import EditorConsole, EditorProfiler, Profiler
 
 
 profiler = Profiler(history=120)
 editor_profiler = EditorProfiler(profiler, window=60, target_fps=60.0)
 console = EditorConsole(history=500)
 
-logger = logging.getLogger("swirengine.demo")
-logger.addHandler(console.logging_handler(formatter=logging.Formatter("%(message)s")))
-logger.setLevel(logging.INFO)
-logger.propagate = False
-
-logger.info("Visual editor diagnostics online")
+console.write("Visual editor diagnostics online", source="runtime")
 console.write("Asset scan complete", source="assets")
 
 for frame_seconds in (1 / 60, 1 / 58, 1 / 45):
