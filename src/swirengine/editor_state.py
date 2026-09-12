@@ -36,13 +36,13 @@ class EditorTargetRef:
     @classmethod
     def from_dict(cls, payload: object) -> EditorTargetRef:
         if not isinstance(payload, dict):
-            raise ValueError("editor target reference must be an object")
+            raise TypeError("editor target reference must be an object")
         kind = payload.get("kind")
         value = payload.get("value")
         if not isinstance(kind, str):
-            raise ValueError("editor target reference needs a string kind")
+            raise TypeError("editor target reference needs a string kind")
         if not isinstance(value, int) or isinstance(value, bool):
-            raise ValueError("editor target reference needs an integer value")
+            raise TypeError("editor target reference needs an integer value")
         return cls(kind, value)
 
 
@@ -68,13 +68,13 @@ class EditorHierarchyNode:
     @classmethod
     def from_dict(cls, payload: object) -> EditorHierarchyNode:
         if not isinstance(payload, dict):
-            raise ValueError("hierarchy node must be an object")
+            raise TypeError("hierarchy node must be an object")
         target = EditorTargetRef.from_dict(payload.get("target"))
         parent_payload = payload.get("parent")
         parent = None if parent_payload is None else EditorTargetRef.from_dict(parent_payload)
         order = payload.get("order")
         if not isinstance(order, int) or isinstance(order, bool):
-            raise ValueError("hierarchy node needs an integer order")
+            raise TypeError("hierarchy node needs an integer order")
         return cls(target, parent, order)
 
 
@@ -125,15 +125,15 @@ class EditorHierarchyState:
     @classmethod
     def from_dict(cls, payload: object) -> EditorHierarchyState:
         if not isinstance(payload, dict):
-            raise ValueError("editor hierarchy document must be an object")
+            raise TypeError("editor hierarchy document must be an object")
         if payload.get("format") != EDITOR_HIERARCHY_FORMAT:
             raise ValueError(f"expected {EDITOR_HIERARCHY_FORMAT!r} document")
         version = payload.get("version")
         if not isinstance(version, int) or isinstance(version, bool):
-            raise ValueError("editor hierarchy document needs an integer version")
+            raise TypeError("editor hierarchy document needs an integer version")
         nodes_payload = payload.get("nodes")
         if not isinstance(nodes_payload, list):
-            raise ValueError("editor hierarchy document nodes must be a list")
+            raise TypeError("editor hierarchy document nodes must be a list")
         selection_payload = payload.get("selection")
         selection = (
             None
