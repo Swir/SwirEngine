@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import logging
 
 from swirengine import EditorConsole, EditorProfiler, Profiler
