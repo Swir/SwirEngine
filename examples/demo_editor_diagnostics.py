@@ -1,6 +1,5 @@
 from swirengine import EditorConsole, EditorProfiler, Profiler
 
-
 profiler = Profiler(history=120)
 editor_profiler = EditorProfiler(profiler, window=60, target_fps=60.0)
 console = EditorConsole(history=500)
