@@ -5,7 +5,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from .editor_assets import EditorAssetBrowser, EditorAssetBrowserFrame
-from .editor_diagnostics import EditorConsole, EditorConsoleFrame, EditorProfiler, EditorProfilerFrame
+from .editor_diagnostics import (
+    EditorConsole,
+    EditorConsoleFrame,
+    EditorProfiler,
+    EditorProfilerFrame,
+)
 from .editor_workspace import EditorPanelState, EditorShellFrame, EditorWorkspace
 
 
@@ -40,7 +45,6 @@ class EditorFrontendFrame:
     console: EditorConsoleFrame | None
     profiler: EditorProfilerFrame | None
     status: str = "Ready"
-
 
 
 def parse_editor_value(text: str, current: object) -> object:
@@ -405,7 +409,9 @@ class TkEditorApp:
             self.ttk.Label(self.inspector_body, text="Nothing selected").grid(row=0, column=0)
             return
         self.ttk.Label(
-            self.inspector_body, text=frame.shell.inspector.type_name, font=("TkDefaultFont", 10, "bold")
+            self.inspector_body,
+            text=frame.shell.inspector.type_name,
+            font=("TkDefaultFont", 10, "bold"),
         ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 6))
         for row_index, field in enumerate(frame.inspector_fields, start=1):
             self.ttk.Label(self.inspector_body, text=field.name).grid(
@@ -448,7 +454,11 @@ class TkEditorApp:
             return
         for index, asset in enumerate(frame.assets.entries):
             self.assets_tree.insert(
-                "", "end", iid=f"a{index}", text=asset.relative_path, values=(asset.kind, asset.size_bytes)
+                "",
+                "end",
+                iid=f"a{index}",
+                text=asset.relative_path,
+                values=(asset.kind, asset.size_bytes),
             )
 
     def _refresh_console(self, frame: EditorFrontendFrame) -> None:
