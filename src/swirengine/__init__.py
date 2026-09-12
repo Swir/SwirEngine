@@ -1,5 +1,5 @@
 from .assets import AssetDiagnostics, AssetInfo, AssetManager, AssetReloadResult
-from .audio import AudioBackend, AudioEngine, AudioHandle, PygameAudioBackend
+from .audio import AudioBackend, AudioEngine, AudioHandle, AudioReloadEvent, PygameAudioBackend
 from .core.events import EventBus
 from .core.game import Game
 from .core.scene import Scene
@@ -59,6 +59,7 @@ __all__ = [
     "AudioBackend",
     "AudioEngine",
     "AudioHandle",
+    "AudioReloadEvent",
     "BoxCollider2D",
     "Camera2D",
     "Camera3D",
@@ -131,4 +132,4 @@ __all__ = [
     "select_lights",
 ]
 
-__version__ = "0.4.19"
+__version__ = "0.4.20"
