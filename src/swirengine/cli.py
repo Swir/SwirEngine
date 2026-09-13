@@ -51,7 +51,7 @@ def new_project(name: str, mode: str) -> Path:
     template = TEMPLATE_3D if mode == "3d" else TEMPLATE_2D
     (root / "main.py").write_text(template.format(name=name), encoding="utf-8")
     (root / "swirproject.toml").write_text(
-        f'name = "{name}"\nmode = "{mode}"\nengine = ">=0.4,<0.5"\n', encoding="utf-8"
+        f'name = "{name}"\nmode = "{mode}"\nengine = ">=1.0,<2.0"\n', encoding="utf-8"
     )
     (root / ".gitignore").write_text("__pycache__/\n.venv/\nbuild/\ndist/\n", encoding="utf-8")
     return root
