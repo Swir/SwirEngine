@@ -118,9 +118,9 @@ class ImageBasedPostProcessRenderer(PostProcessRenderer):
                     float metallic = clamp(metallic_factor, 0.0, 1.0);
                     float roughness = clamp(roughness_factor, 0.04, 1.0);
                     if (use_metallic_roughness_texture) {
-                        vec4 packed = texture(metallic_roughness_image, v_uv);
-                        roughness = clamp(roughness * packed.g, 0.04, 1.0);
-                        metallic = clamp(metallic * packed.b, 0.0, 1.0);
+                        vec4 material_sample = texture(metallic_roughness_image, v_uv);
+                        roughness = clamp(roughness * material_sample.g, 0.04, 1.0);
+                        metallic = clamp(metallic * material_sample.b, 0.0, 1.0);
                     }
                     float occlusion = 1.0;
                     if (use_occlusion_texture) {
