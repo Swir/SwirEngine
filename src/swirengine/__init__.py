@@ -69,9 +69,19 @@ from .filewatch import FileChangeEvent, PluginAutoReloader, PollingFileWatcher, 
 from .graphics.animation import AnimatedSprite2D, AnimationClip, SpriteSheet, animated_sprite
 from .graphics.camera import Camera2D
 from .graphics.camera3d import Camera3D
+from .graphics.cubemap import (
+    CubemapFaces,
+    CubemapGPUTexture,
+    CubemapImageData,
+    ImageBasedEnvironment3D,
+    cubemap_asset_paths,
+    load_cubemap_faces,
+    upload_cubemap,
+)
 from .graphics.environment import Environment3D, EnvironmentInstallation, Skybox3D, skybox_mesh_data
 from .graphics.gltf import GltfSceneMesh, load_gltf, load_gltf_scene
 from .graphics.gltf_asset import GltfPrimitiveAsset, load_gltf_material, load_gltf_primitives
+from .graphics.ibl_renderer import ImageBasedPostProcessRenderer
 from .graphics.lights import (
     MAX_DIRECTIONAL_LIGHTS,
     MAX_POINT_LIGHTS,
@@ -141,6 +151,9 @@ __all__ = [
     "CollisionWorld2D",
     "Color",
     "Cube3D",
+    "CubemapFaces",
+    "CubemapGPUTexture",
+    "CubemapImageData",
     "DebugOverlay",
     "DirectionalLight3D",
     "ECSWorld",
@@ -194,6 +207,8 @@ __all__ = [
     "HotReloadStateDomain",
     "HotReloadStateError",
     "HotReloadStateRegistry",
+    "ImageBasedEnvironment3D",
+    "ImageBasedPostProcessRenderer",
     "InspectorField",
     "InspectorSnapshot",
     "LightSelection3D",
@@ -261,8 +276,10 @@ __all__ = [
     "capture_editor_hierarchy",
     "classify_editor_asset",
     "cube_mesh",
+    "cubemap_asset_paths",
     "default_editor_panels",
     "launch_editor",
+    "load_cubemap_faces",
     "load_gltf",
     "load_gltf_material",
     "load_gltf_primitives",
@@ -272,6 +289,7 @@ __all__ = [
     "restore_editor_hierarchy",
     "select_lights",
     "skybox_mesh_data",
+    "upload_cubemap",
 ]
 
 __version__ = "0.4.22"
