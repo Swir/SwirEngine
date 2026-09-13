@@ -1,9 +1,9 @@
-# SwirEngine 1.0.2
+# SwirEngine 1.0.3
 
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://pypi.org/project/swirengine/"><img alt="PyPI" src="https://img.shields.io/pypi/v/swirengine?style=flat-square"></a>
-  <img alt="Python" src="https://img.shields.io/badge/Python-3.10--3.13-3776AB?style=flat-square&logo=python&logoColor=white">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.10--3.14-3776AB?style=flat-square&logo=python&logoColor=white">
   <img alt="Status" src="https://img.shields.io/badge/status-stable-2ea043?style=flat-square">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square">
 </p>
@@ -18,16 +18,16 @@ The 1.0 roadmap is complete at **31/31 deliverables**.
 
 ## Install
 
-SwirEngine currently supports **Python 3.10-3.13**.
+SwirEngine currently supports **Python 3.10-3.14**.
 
 ```bash
 python -m pip install -U swirengine
 ```
 
-On Windows, Python 3.13 is the recommended interpreter for the current release:
+On 64-bit Windows, Python 3.14 is supported directly by SwirEngine 1.0.3:
 
 ```powershell
-py -3.13 -m pip install -U swirengine
+py -3.14 -m pip install -U swirengine
 ```
 
 Optional audio support:
@@ -36,13 +36,18 @@ Optional audio support:
 python -m pip install -U "swirengine[audio]"
 ```
 
-### Python 3.14
+### Python 3.14 native renderer support
 
-Python 3.14 is not declared as supported yet. SwirEngine depends on native OpenGL packages
-(`moderngl` and `glcontext`) whose current stable releases do not provide prebuilt CPython 3.14
-Windows wheels. Without that wheel, `pip` attempts a local C/C++ build and may ask for Microsoft
-Visual C++ Build Tools. SwirEngine 1.0.2 declares `Python >=3.10,<3.14` so installers fail early
-with a clear compatibility message instead of entering that native build path.
+The upstream stable `moderngl 5.12.0` and `glcontext 3.0.0` releases do not currently publish
+CPython 3.14 Windows x86-64 wheels. SwirEngine 1.0.3 closes that installation gap by publishing a
+separate `cp314-cp314-win_amd64` SwirEngine wheel. That platform wheel contains verified private
+copies of the native renderer backend under `swirengine/_vendor_native`, so a normal
+`pip install swirengine` on 64-bit Windows + Python 3.14 does **not** require Microsoft Visual C++
+Build Tools.
+
+The native backend is built from the same upstream source versions in GitHub Actions, installed
+into a clean Python 3.14 environment, imported there, checked by `twine`, and only then allowed
+into the release pipeline. Python 3.10-3.13 continue using the normal upstream dependencies.
 
 ## Quick 2D game
 
@@ -110,6 +115,7 @@ game.run()
 - JSON save data through `SaveStore`
 - keyboard and mouse held/pressed/released queries
 - adjacent compatible sprite batching
+- single-pass render-run construction with cached canonical texture keys
 
 ### 3D runtime
 
@@ -125,6 +131,16 @@ game.run()
 - true cubemap image-based lighting
 - directional GPU shadows, post-processing, ACES/Reinhard tone mapping and FXAA
 - sRGB/linear color-space handling for PBR material channels
+- bounded transform-matrix caching for repeated static object transforms
+
+### Smoother frame workloads in 1.0.3
+
+SwirEngine 1.0.3 reduces avoidable per-frame CPU work without changing the public game API.
+Sprite batching no longer resolves the same texture filesystem path over and over each frame, and
+it no longer creates a second visible-object tuple before forming render runs. Static 3D
+transforms reuse bounded cached matrix calculations while callers still receive independent
+mutable matrix results. These changes target steadier CPU frame times in sprite-heavy 2D scenes
+and 3D scenes containing repeated static geometry.
 
 ### Architecture and game systems
 
@@ -174,7 +190,7 @@ swirengine new MyGame --mode 2d
 swirengine new My3DGame --mode 3d
 ```
 
-Projects created by SwirEngine 1.0.2 declare compatibility with the stable engine line:
+Projects created by SwirEngine 1.0.3 declare compatibility with the stable engine line:
 
 ```toml
 engine = ">=1.0,<2.0"
@@ -251,23 +267,24 @@ runtime so missing native libraries are caught before a release is published.
 ```bash
 python -m pip install -e ".[dev]"
 pytest
-ruff check src tests examples demo_projects
-python -m compileall -q src examples demo_projects
+ruff check src tests examples demo_projects tools
+python -m compileall -q src examples demo_projects tools
 ```
 
 CI validates SwirEngine on:
 
 - Windows, Linux and macOS
-- Python 3.10, 3.11, 3.12 and 3.13
+- Python 3.10, 3.11, 3.12, 3.13 and 3.14
 - wheel/sdist packaging and metadata
 - clean-wheel installation
+- a dedicated CPython 3.14 Windows platform-wheel build and native import test
 - selected real OpenGL demo paths
 
 ## Versioning and API stability
 
 SwirEngine follows semantic versioning for the stable 1.x public API. The exported
 `swirengine.__all__` surface is treated as the stable compatibility contract. Patch releases fix
-bugs and packaging/documentation problems without intentionally breaking that API.
+bugs, compatibility and performance problems without intentionally breaking that API.
 
 `README.md` is also the long description published to PyPI. Release-contract tests therefore
 verify that the README release number and supported Python window stay synchronized with package
