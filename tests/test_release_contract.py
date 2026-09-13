@@ -14,8 +14,8 @@ def test_public_api_exports_are_unique_and_resolvable():
     assert missing == []
 
 
-def test_stable_patch_release_version():
-    assert swirengine.__version__ == "1.0.3"
+def test_stable_minor_release_version():
+    assert swirengine.__version__ == "1.1.0"
 
 
 def test_supported_python_range_is_explicit():
@@ -28,5 +28,6 @@ def test_readme_tracks_current_release_and_support_window():
     assert f"# SwirEngine {swirengine.__version__}" in readme
     assert "Python 3.10-3.13" in readme
     assert "Python 3.14 on Windows x86-64" in readme
+    assert "gamepad" in readme.lower()
     assert "shadows, post-processing" in readme
     assert "remain roadmap work" not in readme
