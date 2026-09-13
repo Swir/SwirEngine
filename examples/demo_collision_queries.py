@@ -1,20 +1,22 @@
-import swirengine as swir
+import swirengine
 
 
-world = swir.CollisionWorld2D(cell_size=64)
+world = swirengine.CollisionWorld2D(cell_size=64)
 player = world.add(
-    swir.BoxCollider2D(swir.Rectangle2D(0, 0, 32, 32), tag="player", layer=1)
+    swirengine.BoxCollider2D(
+        swirengine.Rectangle2D(0, 0, 32, 32), tag="player", layer=1
+    )
 )
 for index in range(40):
     world.add(
-        swir.BoxCollider2D(
-            swir.Rectangle2D(80 + index * 48, 0, 24, 24),
+        swirengine.BoxCollider2D(
+            swirengine.Rectangle2D(80 + index * 48, 0, 24, 24),
             tag="enemy",
             layer=2,
         )
     )
 
-nearby = world.overlap_aabb(swir.AABB(240, 0, 320, 120), layer_mask=2)
+nearby = world.overlap_aabb(swirengine.AABB(240, 0, 320, 120), layer_mask=2)
 ray_hits = world.raycast(0, 0, 1, 0, max_distance=1000, layer_mask=2)
 
 print(f"nearby enemies: {len(nearby)}")
