@@ -50,6 +50,26 @@ class Scene:
                 return True
         return False
 
+    def remove_many(self, *objects: object) -> tuple[object, ...]:
+        """Remove every matching object and return the objects actually removed.
+
+        Identity semantics match :meth:`remove`, duplicate arguments are harmless, and the
+        return value preserves the caller's order. This is intentionally scene-level: games
+        with registered physics/UI resources should continue using ``Game.remove`` for those
+        individual managed objects so subsystem cleanup can run.
+        """
+        removed: list[object] = []
+        for obj in objects:
+            if self.remove(obj):
+                removed.append(obj)
+        return tuple(removed)
+
+    def remove_tagged(self, tag: str) -> tuple[object, ...]:
+        """Remove and return a stable snapshot of every object carrying ``tag``."""
+        matches = self.tagged(tag)
+        self.remove_many(*matches)
+        return matches
+
     def clear(self, *, clear_entities: bool = True) -> None:
         self._objects.clear()
         if clear_entities:
@@ -69,6 +89,13 @@ class Scene:
 
     def find(self, name: str) -> object | None:
         return next((obj for obj in self._objects if getattr(obj, "name", None) == name), None)
+
+    def require(self, name: str) -> object:
+        """Return the first named object or raise a clear creator-facing ``LookupError``."""
+        obj = self.find(name)
+        if obj is None:
+            raise LookupError(f"scene object not found: {name!r}")
+        return obj
 
     def find_all(self, name: str) -> tuple[object, ...]:
         return tuple(obj for obj in self._objects if getattr(obj, "name", None) == name)
