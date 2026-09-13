@@ -1,19 +1,14 @@
-from swirengine import (
-    Color,
-    Game,
-    UIAnchor,
-    UILayout,
-)
+import swirengine
 
 
-game = Game("SwirEngine Responsive UI", 1280, 720)
+game = swirengine.Game("SwirEngine Responsive UI", 1280, 720)
 
 status = game.label(
     "Keyboard: arrows/Tab + Enter | Gamepad: D-pad + A",
     0,
     0,
     font_size=18,
-    color=Color(0.72, 0.86, 1.0, 1.0),
+    color=swirengine.Color(0.72, 0.86, 1.0, 1.0),
 )
 progress = game.progress_bar(0, 0, 320, 24, value=0.35)
 
@@ -40,8 +35,8 @@ game.ui.container(
     play,
     reset,
     spacing=22,
-    layout=UILayout(
-        anchor=UIAnchor.CENTER,
+    layout=swirengine.UILayout(
+        anchor=swirengine.UIAnchor.CENTER,
         scale_with_viewport=True,
         reference_width=1280,
         reference_height=720,
