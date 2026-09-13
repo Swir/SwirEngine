@@ -4,13 +4,24 @@ build-backend = "hatchling.build"
 
 [project]
 name = "swirengine"
-version = "0.4.22"
+version = "1.0.0"
 description = "Modern Python-first 2D/3D game engine with a unified API."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [{name = "SwirEngine contributors"}]
 keywords = ["game-engine", "2d", "3d", "opengl", "moderngl", "python", "games"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Games/Entertainment",
+  "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
 dependencies = [
   "numpy>=2.0",
   "moderngl>=5.12,<6",
@@ -24,6 +35,12 @@ dev = ["pytest>=8,<10", "ruff>=0.16,<0.17"]
 
 [project.scripts]
 swirengine = "swirengine.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/Swir/SwirEngine"
+Repository = "https://github.com/Swir/SwirEngine"
+Changelog = "https://github.com/Swir/SwirEngine/blob/main/CHANGELOG.md"
+Roadmap = "https://github.com/Swir/SwirEngine/blob/main/ROADMAP.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/swirengine"]
