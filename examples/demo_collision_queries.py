@@ -1,6 +1,5 @@
 import swirengine
 
-
 world = swirengine.CollisionWorld2D(cell_size=64)
 player = world.add(
     swirengine.BoxCollider2D(
