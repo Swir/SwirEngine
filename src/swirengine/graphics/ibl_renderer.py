@@ -11,6 +11,15 @@ from .mesh import Mesh3D
 from .postprocess import PostProcessRenderer
 
 
+def _read_context_state(context: object, name: str, default: object) -> object:
+    """Read optional ModernGL state while tolerating write-only context properties."""
+
+    try:
+        return getattr(context, name)
+    except (AttributeError, NotImplementedError):
+        return default
+
+
 class ImageBasedPostProcessRenderer(PostProcessRenderer):
     """Post-process renderer with an additive cubemap IBL pass for PBR meshes.
 
@@ -264,15 +273,13 @@ class ImageBasedPostProcessRenderer(PostProcessRenderer):
             float(camera.far),
         )
         view_projection = projection @ camera.view_matrix()
-        previous_depth_func = getattr(self.ctx, "depth_func", None)
-        previous_depth_mask = getattr(self.ctx, "depth_mask", None)
+        previous_depth_func = _read_context_state(self.ctx, "depth_func", "<")
+        previous_depth_mask = _read_context_state(self.ctx, "depth_mask", True)
         self.ctx.enable(self.ctx.DEPTH_TEST)
         self.ctx.enable(self.ctx.BLEND)
         self.ctx.blend_func = self.ctx.ONE, self.ctx.ONE
-        if previous_depth_func is not None:
-            self.ctx.depth_func = "<="
-        if previous_depth_mask is not None:
-            self.ctx.depth_mask = False
+        self.ctx.depth_func = "<="
+        self.ctx.depth_mask = False
         try:
             for obj in meshes:
                 material = obj.material
@@ -286,10 +293,8 @@ class ImageBasedPostProcessRenderer(PostProcessRenderer):
                 self.stats.draw_calls += 1
                 self.stats.triangles += count // 3
         finally:
-            if previous_depth_mask is not None:
-                self.ctx.depth_mask = previous_depth_mask
-            if previous_depth_func is not None:
-                self.ctx.depth_func = previous_depth_func
+            self.ctx.depth_mask = previous_depth_mask
+            self.ctx.depth_func = previous_depth_func
             self.ctx.disable(self.ctx.BLEND)
             self.ctx.disable(self.ctx.DEPTH_TEST)
 
