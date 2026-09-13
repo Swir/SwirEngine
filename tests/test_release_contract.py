@@ -26,7 +26,7 @@ def test_supported_python_range_is_explicit():
 def test_readme_tracks_current_release_and_support_window():
     readme = Path("README.md").read_text(encoding="utf-8")
     assert f"# SwirEngine {swirengine.__version__}" in readme
-    assert "Python 3.10-3.14" in readme
+    assert "Python 3.10-3.13" in readme
+    assert "Python 3.14 on Windows x86-64" in readme
     assert "shadows, post-processing" in readme
-    assert "Python 3.14" in readme
     assert "remain roadmap work" not in readme
