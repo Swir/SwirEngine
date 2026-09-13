@@ -134,6 +134,8 @@ from .serialization import SceneCodecRegistry, SceneSerializationError, SceneSer
 from .storage import SaveStore
 from .tilemap import TileMap2D
 from .ui import UIButton, UILabel, UIManager, UIPanel, UIProgressBar
+from .ui_layout import UIAnchor, UIContainer, UILayout, UILayoutDirection, place_control
+from .ui_navigation import UIFocusManager
 
 __all__ = [
     "AABB",
@@ -276,8 +278,13 @@ __all__ = [
     "TkEditorApp",
     "ToneMapping",
     "Transform",
+    "UIAnchor",
     "UIButton",
+    "UIContainer",
+    "UIFocusManager",
     "UILabel",
+    "UILayout",
+    "UILayoutDirection",
     "UIManager",
     "UIPanel",
     "UIProgressBar",
@@ -302,6 +309,7 @@ __all__ = [
     "normalize_gamepad_axis",
     "normalize_gamepad_button",
     "parse_editor_value",
+    "place_control",
     "restore_editor_hierarchy",
     "select_lights",
     "skybox_mesh_data",
