@@ -23,9 +23,9 @@ def _show_windows_error(message: str) -> None:
         import ctypes
 
         ctypes.windll.user32.MessageBoxW(None, message, "Neon Cube Hunt 3D", 0x10)
-    except Exception:
+    except (AttributeError, OSError) as exc:
         # Never let a diagnostic popup hide the original startup failure.
-        pass
+        print(f"Could not show Windows error dialog: {exc}", file=sys.stderr)
 
 
 def _runtime_probe() -> int:
@@ -53,13 +53,13 @@ def run() -> int:
 
         main()
         return 0
-    except Exception:
+    except Exception:  # noqa: BLE001 - top-level crash reporter must catch startup failures
         details = traceback.format_exc()
         log_path = _error_log_path()
         try:
             log_path.write_text(details, encoding="utf-8")
-        except OSError:
-            pass
+        except OSError as exc:
+            print(f"Could not write diagnostic log: {exc}", file=sys.stderr)
         print(details, file=sys.stderr)
         _show_windows_error(
             "Neon Cube Hunt 3D could not start.\n\n"
