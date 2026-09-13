@@ -1,11 +1,23 @@
-# SwirEngine 0.4.22
+# SwirEngine 1.0.1
 
-SwirEngine is a Python-first 2D/3D game engine built around one approachable API.
+SwirEngine is a modern Python-first 2D/3D game engine built around one approachable API.
 Its goal is to let people create real games in Python without learning OpenGL before
 they can put a character or 3D model on screen.
 
-> SwirEngine is still pre-1.0. The public API is growing quickly, but the project is
-> already being kept testable and cross-platform from the start.
+> SwirEngine 1.0.1 is the current stable release, with a tested cross-platform core,
+> unified 2D/3D API, rendering, input, physics, audio, assets, scenes and developer tooling.
+
+## Install
+
+```bash
+python -m pip install swirengine
+```
+
+Optional audio support:
+
+```bash
+python -m pip install "swirengine[audio]"
+```
 
 ## What works now
 
@@ -358,4 +370,4 @@ swirengine new MyGame --mode 2d
 swirengine new My3DGame --mode 3d
 ```
 
-See `ROADMAP.md` for the path to the stable 1.0 SDK and visual editor.
+See `ROADMAP.md` for future SwirEngine development plans and upcoming engine/editor features.
