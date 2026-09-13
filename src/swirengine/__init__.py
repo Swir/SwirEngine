@@ -64,6 +64,7 @@ from .editor_workspace import (
     EditorWorkspace,
     default_editor_panels,
 )
+from .exporting import ExportPlan, ExportResult, ExportTarget, PackagingProfile, ProjectExporter
 from .filewatch import FileChangeEvent, PluginAutoReloader, PollingFileWatcher, ReloadResult
 from .graphics.animation import AnimatedSprite2D, AnimationClip, SpriteSheet, animated_sprite
 from .graphics.camera import Camera2D
@@ -96,6 +97,7 @@ from .hotreload import (
 )
 from .live_development import LiveDevelopmentHub, LiveDevelopmentResult
 from .math.types import Color, Transform, Vec2, Vec3
+from .networking import NetworkAddress, NetworkPacket, PacketStreamDecoder, TCPClient, TCPPeer, TCPServer
 from .particles import ParticleEmitter2D
 from .physics.collision2d import AABB, BoxCollider2D, CollisionWorld2D
 from .physics.rigidbody2d import PhysicsWorld2D, RigidBody2D
@@ -166,6 +168,9 @@ __all__ = [
     "Environment3D",
     "EnvironmentInstallation",
     "EventBus",
+    "ExportPlan",
+    "ExportResult",
+    "ExportTarget",
     "FileChangeEvent",
     "FrameProfile",
     "FrontendHierarchyRow",
@@ -190,6 +195,10 @@ __all__ = [
     "Material3D",
     "Mesh3D",
     "MeshData",
+    "NetworkAddress",
+    "NetworkPacket",
+    "PackagingProfile",
+    "PacketStreamDecoder",
     "ParticleEmitter2D",
     "PhysicsWorld2D",
     "PluginAutoReloader",
@@ -205,6 +214,7 @@ __all__ = [
     "PrefabOverrides",
     "PrefabSelector",
     "Profiler",
+    "ProjectExporter",
     "PropertyEdit",
     "PygameAudioBackend",
     "Rectangle2D",
@@ -223,6 +233,9 @@ __all__ = [
     "SpotLight3D",
     "Sprite2D",
     "SpriteSheet",
+    "TCPClient",
+    "TCPPeer",
+    "TCPServer",
     "Text2D",
     "TileMap2D",
     "TkEditorApp",
