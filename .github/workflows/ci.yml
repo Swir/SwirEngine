@@ -64,9 +64,10 @@ jobs:
           $moderngl = (Get-ChildItem native-wheels\moderngl-*.whl).FullName
           $glcontext = (Get-ChildItem native-wheels\glcontext-*.whl).FullName
           python tools/build_vendored_wheel.py --base $base --vendor $moderngl --vendor $glcontext --tag cp314-cp314-win_amd64 --output-dir dist
-      - name: Check platform wheel metadata
+          Copy-Item $base dist\
+      - name: Check both candidate wheel metadata files
         run: python -m twine check dist/*.whl
-      - name: Install and import native backend in clean Python 3.14 environment
+      - name: Prove pip selects the native wheel from normal candidates
         shell: pwsh
         run: |
           python -m venv .verify314
@@ -76,5 +77,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: swirengine-cp314-windows-wheel
-          path: dist/*.whl
+          path: dist/*cp314*.whl
           if-no-files-found: error
