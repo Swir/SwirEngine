@@ -3,10 +3,10 @@ from __future__ import annotations
 import json
 import os
 import shutil
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Iterable
 
 
 class ExportTarget(str, Enum):
@@ -109,7 +109,7 @@ class PackagingProfile:
     def load(cls, path: str | Path) -> PackagingProfile:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
         if not isinstance(data, dict):
-            raise ValueError("packaging profile must contain a JSON object")
+            raise TypeError("packaging profile must contain a JSON object")
         return cls.from_dict(data)
 
 
@@ -187,9 +187,7 @@ class ProjectExporter:
             if path.is_file():
                 candidates.add(Path(optional))
 
-        filtered = [
-            path for path in candidates if not self._is_excluded(path, profile.exclude)
-        ]
+        filtered = [path for path in candidates if not self._is_excluded(path, profile.exclude)]
         return tuple(sorted(filtered, key=lambda path: path.as_posix().casefold()))
 
     @staticmethod
@@ -241,9 +239,11 @@ class ProjectExporter:
         clean: bool = True,
     ) -> ExportResult:
         plan = self.plan(profile, output_dir)
-        if plan.output_dir == self.project_root or self.project_root in plan.output_dir.parents:
-            if plan.output_dir.parent != self.project_root / "dist":
-                raise ValueError("output directory must not overlap project source")
+        overlaps_source = (
+            plan.output_dir == self.project_root or self.project_root in plan.output_dir.parents
+        )
+        if overlaps_source and plan.output_dir.parent != self.project_root / "dist":
+            raise ValueError("output directory must not overlap project source")
 
         if clean and plan.output_dir.exists():
             shutil.rmtree(plan.output_dir)
