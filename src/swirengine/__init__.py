@@ -85,6 +85,7 @@ from .graphics.live_assets import GPUTextureInvalidation, RendererAssetBridge
 from .graphics.material import Material3D
 from .graphics.mesh import Mesh3D, MeshData, cube_mesh
 from .graphics.obj import load_obj
+from .graphics.postprocess import PostProcessRenderer, PostProcessSettings, ToneMapping
 from .graphics.primitives import Cube3D, Rectangle2D, Sprite2D, Text2D
 from .graphics.stats import RendererStats
 from .hotreload import (
@@ -197,6 +198,8 @@ __all__ = [
     "PluginManager",
     "PointLight3D",
     "PollingFileWatcher",
+    "PostProcessRenderer",
+    "PostProcessSettings",
     "Prefab",
     "PrefabInstance",
     "PrefabOverrides",
@@ -223,6 +226,7 @@ __all__ = [
     "Text2D",
     "TileMap2D",
     "TkEditorApp",
+    "ToneMapping",
     "Transform",
     "UIButton",
     "UILabel",

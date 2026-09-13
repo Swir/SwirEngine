@@ -14,6 +14,7 @@ from ..graphics.gltf import load_gltf
 from ..graphics.lights import DirectionalLight3D, PointLight3D, SpotLight3D
 from ..graphics.mesh import Mesh3D, MeshData
 from ..graphics.obj import load_obj
+from ..graphics.postprocess import PostProcessRenderer, PostProcessSettings
 from ..graphics.primitives import Sprite2D, Text2D
 from ..input.manager import InputManager
 from ..particles import ParticleEmitter2D
@@ -65,6 +66,7 @@ class Game:
         self.ui = UIManager(self.scene)
         self.profiler = Profiler()
         self.debug_overlay = DebugOverlay(self.scene, self.profiler)
+        self.postprocess = PostProcessSettings()
         self.running = False
 
         self._update_callbacks: list[Callable[[float], None]] = []
@@ -235,6 +237,10 @@ class Game:
         """Show or hide the built-in FPS/timing/render-statistics overlay."""
         return self.debug_overlay.set_enabled(enabled)
 
+    def configure_postprocess(self, **settings: object) -> PostProcessSettings:
+        """Configure the optional GPU full-screen post-processing pass."""
+        return self.postprocess.update(**settings)
+
     def key(self, name: str) -> bool:
         """Beginner-friendly shorthand for ``game.input.key(name)``."""
         return self.input.key(name)
@@ -279,9 +285,13 @@ class Game:
         glfw.make_context_current(window)
         glfw.swap_interval(1 if self.vsync else 0)
         ctx = moderngl.create_context()
-        from ..graphics.renderer import Renderer
-
-        renderer = Renderer(ctx, self.width, self.height, self.mode)
+        renderer = PostProcessRenderer(
+            ctx,
+            self.width,
+            self.height,
+            self.mode,
+            postprocess=self.postprocess,
+        )
 
         glfw.set_key_callback(
             window, lambda _w, key, _sc, action, _mods: self.input._on_key(key, action)

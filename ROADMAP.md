@@ -4,20 +4,20 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-80.6%25-2ea043?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-25%2F31-1f6feb?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-83.9%25-2ea043?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-26%2F31-1f6feb?style=for-the-badge">
   <img alt="Status" src="https://img.shields.io/badge/STATUS-IN%20PROGRESS-7c3aed?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-████████████████░░░░ 80.6%
+█████████████████░░░ 83.9%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **25** | **6** | **31** | **80.6%** |
+| **26** | **5** | **31** | **83.9%** |
 
 > **Progress rule:** the equal-weight deliverables below are the source of truth. Update `[x]/[ ]` first, then update badges, numbers, percentage and the 20-segment bar. Never estimate progress from version numbers, commit count or activity.
 
@@ -34,7 +34,7 @@
 - [x] 0.4 Skybox3D and Environment3D baseline
 - [ ] 0.4 true cubemap / image-based environment lighting
 - [ ] 0.4 shadows
-- [ ] 0.4 post-processing
+- [x] 0.4 post-processing
 - [x] 0.4 color-space/PBR hardening plus normal, occlusion and emissive material maps
 - [x] 0.5 prefab/instance and versioned scene/prefab serialization foundation
 - [x] 0.5 ECS runtime, persistence and migrations
@@ -97,9 +97,12 @@ normal scale and occlusion strength. The forward PBR shader derives a tangent fr
 UV derivatives for tangent-space normal maps, applies AO to the ambient contribution, evaluates
 emissive independently from scene lights, and performs sRGB decode/linear lighting/sRGB output for
 base-color and emissive channels while keeping data textures in linear space. Renderer live reload
-tracks every supported PBR texture channel.
+tracks every supported PBR texture channel. `PostProcessRenderer` now adds an optional off-screen
+GPU resolve with ACES/Reinhard tone mapping, exposure/gamma control, contrast/saturation grading,
+vignette and FXAA. `Game.configure_postprocess(...)` keeps that pass disabled by default so existing
+projects retain their rendering behavior until creators opt in.
 
-Next: true cubemap/image-based environment lighting, shadows and post-processing.
+Next: true cubemap/image-based environment lighting and shadows.
 
 ## 0.5 - Architecture
 
