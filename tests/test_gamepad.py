@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 from types import SimpleNamespace
 
 import pytest
@@ -18,10 +17,6 @@ class FakeGLFW:
         self.names: dict[int, str] = {}
         self.guids: dict[int, str] = {}
         self.non_gamepads: set[int] = set()
-        self.current_context: object | None = object()
-
-    def get_current_context(self):
-        return self.current_context
 
     def joystick_present(self, gamepad_id: int) -> bool:
         return gamepad_id in self.states
@@ -74,15 +69,15 @@ def test_deadzone_rescales_remaining_range():
     assert apply_deadzone(-0.6, 0.2) == pytest.approx(-0.5)
 
 
-def test_begin_frame_tracks_hotplug_and_button_edges(monkeypatch):
+def test_frame_poll_tracks_hotplug_and_button_edges():
     glfw = FakeGLFW()
-    monkeypatch.setitem(sys.modules, "glfw", glfw)
     manager = InputManager(gamepad_deadzone=0.2)
     glfw.states[0] = ((0.6, -0.4, 0.0, 0.0, -1.0, 0.0), buttons(0))
     glfw.names[0] = "Test Pad"
     glfw.guids[0] = "guid-0"
 
     manager.begin_frame()
+    manager.poll_gamepads(glfw)
 
     assert manager.gamepads() == (0,)
     assert manager.gamepad_connected(0)
@@ -95,6 +90,7 @@ def test_begin_frame_tracks_hotplug_and_button_edges(monkeypatch):
 
     glfw.states[0] = ((0.0, 0.0, 0.0, 0.0, 1.0, -1.0), buttons(1))
     manager.begin_frame()
+    manager.poll_gamepads(glfw)
 
     assert not manager.gamepad_button("A", 0)
     assert manager.gamepad_button("B", 0)
@@ -106,22 +102,27 @@ def test_begin_frame_tracks_hotplug_and_button_edges(monkeypatch):
 
     del glfw.states[0]
     manager.begin_frame()
+    manager.poll_gamepads(glfw)
 
     assert not manager.gamepad_connected(0)
     assert manager.gamepad_just_disconnected(0)
     assert manager.gamepads() == ()
 
 
-def test_runtime_refresh_waits_for_a_real_glfw_context(monkeypatch):
+def test_begin_frame_only_resets_edges_and_keeps_snapshot():
     glfw = FakeGLFW()
-    glfw.current_context = None
     glfw.states[0] = ((0.0,) * 6, buttons(0))
-    monkeypatch.setitem(sys.modules, "glfw", glfw)
     manager = InputManager()
+    manager.poll_gamepads(glfw)
+
+    assert manager.gamepad_just_connected(0)
+    assert manager.gamepad_button_pressed("A", 0)
 
     manager.begin_frame()
 
-    assert manager.gamepads() == ()
+    assert manager.gamepad_connected(0)
+    assert not manager.gamepad_just_connected(0)
+    assert not manager.gamepad_button_pressed("A", 0)
 
 
 def test_poll_ignores_non_gamepad_joysticks():
