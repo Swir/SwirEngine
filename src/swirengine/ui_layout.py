@@ -23,6 +23,8 @@ class UILayoutDirection(str, Enum):
 
 @dataclass(slots=True)
 class UILayout:
+    """Viewport-relative placement and scaling policy for game UI."""
+
     anchor: UIAnchor = UIAnchor.CENTER
     offset_x: float = 0.0
     offset_y: float = 0.0
@@ -58,7 +60,17 @@ class UILayout:
         return (x + self.offset_x * scale, y + self.offset_y * scale, scale)
 
 
+def _scale_text_object(text_object: object, scale: float) -> None:
+    if text_object is None or not hasattr(text_object, "scale"):
+        return
+    if not hasattr(text_object, "_layout_base_scale"):
+        setattr(text_object, "_layout_base_scale", float(getattr(text_object, "scale")))
+    setattr(text_object, "scale", float(getattr(text_object, "_layout_base_scale")) * float(scale))
+
+
 def place_control(control: object, x: float, y: float, scale: float = 1.0) -> None:
+    """Place a supported control while preserving its creator-authored base size."""
+
     if hasattr(control, "x"):
         control.x = float(x)
     if hasattr(control, "y"):
@@ -70,12 +82,22 @@ def place_control(control: object, x: float, y: float, scale: float = 1.0) -> No
         if not hasattr(control, base_attr):
             setattr(control, base_attr, float(getattr(control, attr)))
         setattr(control, attr, max(1.0, float(getattr(control, base_attr)) * float(scale)))
+
+    _scale_text_object(getattr(control, "text_object", None), scale)
+    _scale_text_object(getattr(control, "label", None), scale)
+
     sync = getattr(control, "_sync", None)
     if callable(sync):
         sync()
 
 
 class UIContainer:
+    """Simple deterministic row/column layout container.
+
+    Existing controls remain regular SwirEngine controls; the container only owns placement. This
+    keeps the 1.x API compatible while eliminating per-resolution coordinate rewrites.
+    """
+
     def __init__(
         self,
         *controls: object,
@@ -101,6 +123,13 @@ class UIContainer:
             self.controls.append(control)
         return control
 
+    def remove(self, control: object) -> bool:
+        for index, existing in enumerate(self.controls):
+            if existing is control:
+                del self.controls[index]
+                return True
+        return False
+
     def arrange(self, width: int, height: int) -> None:
         origin_x = self.x
         origin_y = self.y
@@ -118,14 +147,14 @@ class UIContainer:
         ]
         gap = self.spacing * scale
         if self.direction is UILayoutDirection.VERTICAL:
-            total = sum(height for _, height in sizes) + gap * max(0, len(sizes) - 1)
+            total = sum(item_height for _, item_height in sizes) + gap * max(0, len(sizes) - 1)
             cursor = origin_y + total * 0.5
             for control, (_, control_height) in zip(self.controls, sizes):
                 cursor -= control_height * 0.5
                 place_control(control, origin_x, cursor, scale)
                 cursor -= control_height * 0.5 + gap
         else:
-            total = sum(width for width, _ in sizes) + gap * max(0, len(sizes) - 1)
+            total = sum(item_width for item_width, _ in sizes) + gap * max(0, len(sizes) - 1)
             cursor = origin_x - total * 0.5
             for control, (control_width, _) in zip(self.controls, sizes):
                 cursor += control_width * 0.5
