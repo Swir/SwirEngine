@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "swirengine"
-version = "1.0.3"
+version = "1.1.0"
 description = "Modern Python-first 2D/3D game engine with a unified API."
 readme = "README.md"
 requires-python = ">=3.10,<3.15"
 license = {text = "MIT"}
 authors = [{name = "SwirEngine contributors"}]
-keywords = ["game-engine", "2d", "3d", "opengl", "moderngl", "python", "games"]
+keywords = ["game-engine", "2d", "3d", "opengl", "moderngl", "python", "games", "gamepad", "controller"]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "License :: OSI Approved :: MIT License",
