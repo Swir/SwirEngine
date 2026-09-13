@@ -4,20 +4,20 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-87.1%25-2ea043?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-27%2F31-1f6feb?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-90.3%25-2ea043?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-28%2F31-1f6feb?style=for-the-badge">
   <img alt="Status" src="https://img.shields.io/badge/STATUS-IN%20PROGRESS-7c3aed?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-█████████████████░░░ 87.1%
+██████████████████░░ 90.3%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **27** | **4** | **31** | **87.1%** |
+| **28** | **3** | **31** | **90.3%** |
 
 > **Progress rule:** the equal-weight deliverables below are the source of truth. Update `[x]/[ ]` first, then update badges, numbers, percentage and the 20-segment bar. Never estimate progress from version numbers, commit count or activity.
 
@@ -50,7 +50,7 @@
 - [x] 0.6 transform gizmo foundation
 - [x] 0.6 viewport picking and direct manipulation
 - [x] 0.6 tighter editor/runtime integration
-- [ ] 0.7 networking, packaging profiles and desktop/mobile/web export targets
+- [x] 0.7 networking, packaging profiles and desktop/mobile/web export targets
 - [ ] 1.0 stable documented API, tests and release tooling suitable for a first stable release
 <!-- ROADMAP-PROGRESS:END -->
 
@@ -183,11 +183,17 @@ connects those models without adding a mandatory GUI dependency. Isolated `Edito
 scene execution is integrated with `RendererViewportBridge` and `EditorPreviewSession`; the editor now has
 direct Play/Pause/Stop/Step controls and can embed live frames read from the renderer framebuffer.
 
-Next: creator-facing tool polish and export/runtime work toward 0.7.
+Next: creator-facing tool polish and remaining 3D work toward 1.0.
 
-## 0.7+ - Runtime and export
+## 0.7+ - Runtime and export — foundation complete
 
-Networking, packaging profiles, Windows/Linux/macOS exporters, Android/Web research targets.
+Completed: deterministic length-prefixed JSON networking primitives, incremental packet decoding,
+non-blocking poll-driven TCP client/server peers, serializable packaging profiles and deterministic
+project staging. Windows, Linux and macOS profiles expose ready-to-run PyInstaller build commands without
+silently invoking third-party tooling; Android and Web are explicit experimental staging/research targets
+with machine-readable export manifests. The `swirengine export` CLI exposes all targets through the same
+profile/export pipeline, and newly generated projects now declare the current `>=0.4,<0.5` compatibility
+range while excluding build artifacts from source control.
 
 ## 1.0
 
