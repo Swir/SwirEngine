@@ -1,6 +1,5 @@
 import swirengine
 
-
 game = swirengine.Game("SwirEngine Responsive UI", 1280, 720)
 
 status = game.label(
