@@ -6,6 +6,9 @@ they can put a character or 3D model on screen.
 
 > SwirEngine 1.0.1 is the current stable release, with a tested cross-platform core,
 > unified 2D/3D API, rendering, input, physics, audio, assets, scenes and developer tooling.
+>
+> PyPI package revision `1.0.1.post1` refreshes documentation and package metadata only;
+> runtime behavior and the public API remain the same as 1.0.1.
 
 ## Install
 
