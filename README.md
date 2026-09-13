@@ -159,7 +159,6 @@ with AssetPreloader(assets, max_workers=4) as preloader:
         "missions/chapter1.txt",
         "config/vehicles.txt",
     ])
-    # Keep menu/loading-screen work responsive while CPU/file loading runs.
     report = future.result()
 
 print(report.loaded, report.failed, report.cache_hits)
@@ -205,6 +204,39 @@ Keyboard `Tab`/arrows and gamepad D-pad move focus; `Enter`/`Space` or standardi
 activate the focused button. Mouse hover hands focus back to the pointer. Button/label text, panels
 and progress geometry resize from their original authored values without compounded scaling. See
 [`docs/RESPONSIVE_UI.md`](docs/RESPONSIVE_UI.md) and `examples/demo_responsive_ui.py`.
+
+### Expanded audio mixer
+
+Audio can now be organized into creator-defined buses such as weapons, dialogue, ambience or vehicles,
+with independent gain/mute controls composed with the existing master/sound/music volumes. Handles
+support deterministic fade-in/fade-out/fade-to transitions driven by `AudioEngine.update(dt)` and
+optional stop-on-fade behavior.
+
+```python
+from swirengine import AudioEngine, Vec3
+
+
+audio = AudioEngine("assets")
+audio.ensure_bus("vehicles", volume=0.8)
+audio.set_listener_position(Vec3(0.0, 0.0, 0.0))
+engine = audio.play(
+    "audio/engine.wav",
+    loop=True,
+    bus="vehicles",
+    position=Vec3(8.0, 0.0, 0.0),
+    min_distance=2.0,
+    max_distance=45.0,
+    fade_in=0.5,
+)
+
+# In the gameplay update loop:
+audio.update(dt)
+```
+
+Spatial handles use listener-relative distance attenuation and optional stereo panning on capable
+backends, while scalar-only custom backends remain compatible. `audio.diagnostics()` reports active,
+music, spatial and fading handle counts together with bus/mute state. See
+[`docs/AUDIO_MIXER.md`](docs/AUDIO_MIXER.md).
 
 ## Quick 2D game
 
@@ -315,6 +347,7 @@ an end-to-end FPS claim.
 - asset hot reload bridges for renderer and audio
 - bounded asynchronous asset preload with deterministic diagnostics and in-flight deduplication
 - responsive UI containers with keyboard/gamepad focus navigation
+- audio buses/groups, deterministic fades, spatial attenuation/pan and runtime diagnostics
 - `LiveDevelopmentHub`
 - pluggable sound effects and music backend
 
