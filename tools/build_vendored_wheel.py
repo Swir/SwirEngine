@@ -57,7 +57,7 @@ def _replace_wheel_metadata(original: bytes, tag: str) -> bytes:
     if not saw_root:
         rewritten.append("Root-Is-Purelib: false")
     rewritten.append(f"Tag: {tag}")
-    return ("\n".join(rewritten).rstrip() + "\n").encode("utf-8")
+    return ("\n".join(rewritten).rstrip() + "\n").encode()
 
 
 def _vendor_dependency(
@@ -90,7 +90,7 @@ def _record_bytes(files: dict[str, bytes], record_path: str) -> bytes:
         data = files[name]
         writer.writerow((name, _hash_record(data), str(len(data))))
     writer.writerow((record_path, "", ""))
-    return stream.getvalue().encode("utf-8")
+    return stream.getvalue().encode()
 
 
 def build_vendored_wheel(
@@ -118,12 +118,12 @@ def build_vendored_wheel(
     for vendor_wheel in vendor_wheels:
         vendored.append(_vendor_dependency(files, Path(vendor_wheel), dist_info))
 
-    files[_PTH_NAME] = f"{_VENDOR_ROOT}\n".encode("utf-8")
+    files[_PTH_NAME] = f"{_VENDOR_ROOT}\n".encode()
     files[f"{_VENDOR_ROOT}/VENDORED-WHEELS.txt"] = (
         "Bundled by SwirEngine for a platform where upstream binary wheels were unavailable.\n"
         + "\n".join(sorted(vendored))
         + "\n"
-    ).encode("utf-8")
+    ).encode()
     files[record_path] = _record_bytes(files, record_path)
 
     output = Path(output_dir)
