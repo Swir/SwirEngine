@@ -138,6 +138,8 @@ class DirectionalShadowMap:
         self.depth_texture = self.ctx.depth_texture((resolution, resolution))
         self.depth_texture.repeat_x = False
         self.depth_texture.repeat_y = False
+        if hasattr(self.depth_texture, "compare_func"):
+            self.depth_texture.compare_func = ""
         self.framebuffer = self.ctx.framebuffer(depth_attachment=self.depth_texture)
 
     def _gpu_mesh(self, obj: Mesh3D) -> tuple[object, int]:

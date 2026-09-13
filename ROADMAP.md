@@ -4,20 +4,20 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-93.5%25-2ea043?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-29%2F31-1f6feb?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-96.8%25-2ea043?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-30%2F31-1f6feb?style=for-the-badge">
   <img alt="Status" src="https://img.shields.io/badge/STATUS-IN%20PROGRESS-7c3aed?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-███████████████████░ 93.5%
+███████████████████░ 96.8%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **29** | **2** | **31** | **93.5%** |
+| **30** | **1** | **31** | **96.8%** |
 
 > **Progress rule:** the equal-weight deliverables below are the source of truth. Update `[x]/[ ]` first, then update badges, numbers, percentage and the 20-segment bar. Never estimate progress from version numbers, commit count or activity.
 
@@ -33,7 +33,7 @@
 - [x] 0.4 Cook-Torrance metallic/roughness PBR
 - [x] 0.4 Skybox3D and Environment3D baseline
 - [x] 0.4 true cubemap / image-based environment lighting
-- [ ] 0.4 shadows
+- [x] 0.4 shadows
 - [x] 0.4 post-processing
 - [x] 0.4 color-space/PBR hardening plus normal, occlusion and emissive material maps
 - [x] 0.5 prefab/instance and versioned scene/prefab serialization foundation
@@ -75,7 +75,7 @@ progression, procedural spawning and scene cleanup. Additive `Scene.require(...)
 `Scene.remove_many(...)` and `Scene.remove_tagged(...)` helpers round out common creator workflows
 without changing existing lookup/removal semantics.
 
-## 0.4 - Serious 3D — in progress
+## 0.4 - Serious 3D — complete
 
 Completed: real `Camera3D`, perspective/view matrices, local camera navigation, `MeshData`,
 `Mesh3D`, lazy GPU mesh caching, mesh render statistics, Wavefront OBJ import with polygon
@@ -107,9 +107,12 @@ the runtime PBR renderer through real GPU cubemap sampling: diffuse environment 
 low-frequency mip, specular reflections select mip LOD from material roughness, AO participates in the
 environment contribution, cubemap resources are cached/released deterministically, and all six faces
 participate in asset live reload. The cubemap/IBL types and helpers are also exposed through the public
-package API.
+package API. Directional shadows now complete the 0.4 renderer path with an opt-in reusable GPU depth
+map, raw depth sampling, camera-focused orthographic light framing, configurable depth/normal bias and a
+3x3 PCF resolve applied before additive IBL. `Game.configure_shadows(...)` keeps legacy rendering
+unchanged until creators explicitly enable the pass.
 
-Next: shadows.
+Next: stable API documentation, release tooling and final 1.0 verification.
 
 ## 0.5 - Architecture
 
@@ -176,7 +179,7 @@ single-frame stepping, then discarding runtime mutations on Stop. `EditorPreview
 front-end exposes Play/Pause/Stop/Step controls plus a live embedded RGB viewport while preserving Edit-mode
 scene switching and authoring-state isolation.
 
-Next: continue hardening creator-facing APIs and the remaining 3D/rendering roadmap work.
+Next: continue hardening creator-facing APIs toward the stable 1.0 contract.
 
 ## 0.6 - Tools
 
@@ -188,7 +191,7 @@ connects those models without adding a mandatory GUI dependency. Isolated `Edito
 scene execution is integrated with `RendererViewportBridge` and `EditorPreviewSession`; the editor now has
 direct Play/Pause/Stop/Step controls and can embed live frames read from the renderer framebuffer.
 
-Next: creator-facing tool polish and remaining 3D work toward 1.0.
+Next: creator-facing tool polish and final 1.0 stabilization.
 
 ## 0.7+ - Runtime and export — foundation complete
 
