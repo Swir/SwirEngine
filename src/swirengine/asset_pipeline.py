@@ -110,12 +110,15 @@ class AssetPreloader:
         path = self.assets.require(asset).expanduser().resolve()
         with self._lock:
             existing = self._inflight.get(path)
-            if existing is not None and not existing.done():
+            if existing is not None:
                 return existing
             future = self._executor.submit(self._load_one, str(asset), path, cache)
             self._inflight[path] = future
-            future.add_done_callback(lambda done, key=path: self._forget(key, done))
-            return future
+
+        # Register outside the lock: add_done_callback executes synchronously when a very fast
+        # Future is already complete, and the callback itself needs the same lock for cleanup.
+        future.add_done_callback(lambda done, key=path: self._forget(key, done))
+        return future
 
     def preload(self, assets: Iterable[str | Path], *, cache: bool = True) -> AssetPreloadReport:
         """Load a batch concurrently and return results in input order."""
