@@ -1,376 +1,299 @@
-# SwirEngine 1.0.1
+# SwirEngine 1.0.2
 
-SwirEngine is a modern Python-first 2D/3D game engine built around one approachable API.
-Its goal is to let people create real games in Python without learning OpenGL before
-they can put a character or 3D model on screen.
+<p align="center">
+  <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://pypi.org/project/swirengine/"><img alt="PyPI" src="https://img.shields.io/pypi/v/swirengine?style=flat-square"></a>
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.10--3.13-3776AB?style=flat-square&logo=python&logoColor=white">
+  <img alt="Status" src="https://img.shields.io/badge/status-stable-2ea043?style=flat-square">
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square">
+</p>
 
-> SwirEngine 1.0.1 is the current stable release, with a tested cross-platform core,
-> unified 2D/3D API, rendering, input, physics, audio, assets, scenes and developer tooling.
->
-> PyPI package revision `1.0.1.post1` refreshes documentation and package metadata only;
-> runtime behavior and the public API remain the same as 1.0.1.
+**SwirEngine** is a modern Python-first 2D/3D game engine built around one approachable API.
+It is designed to let Python developers create real games without having to learn raw OpenGL
+before putting gameplay on screen.
+
+SwirEngine 1.0 is a stable line with a tested cross-platform runtime, GPU rendering, input,
+physics, audio, assets, scenes, prefabs/ECS, editor tooling, networking and project export.
+The 1.0 roadmap is complete at **31/31 deliverables**.
 
 ## Install
 
+SwirEngine currently supports **Python 3.10-3.13**.
+
 ```bash
-python -m pip install swirengine
+python -m pip install -U swirengine
+```
+
+On Windows, Python 3.13 is the recommended interpreter for the current release:
+
+```powershell
+py -3.13 -m pip install -U swirengine
 ```
 
 Optional audio support:
 
 ```bash
-python -m pip install "swirengine[audio]"
+python -m pip install -U "swirengine[audio]"
 ```
 
-## What works now
+### Python 3.14
 
-- one `Game` API for 2D and 3D
-- GPU rendering with ModernGL / OpenGL 3.3
-- GLFW keyboard + mouse input with held/pressed/released queries
-- colored 2D primitives, render layers and camera-independent screen-space objects
-- textured `Sprite2D` rendering with alpha blending
-- adjacent compatible sprite batching to reduce draw calls without changing render order
-- renderer statistics for draw calls, batches, sprites, meshes, triangles, lights and cache usage
-- frame profiler with update/physics/render timings and history averages
-- built-in live debug overlay through `game.show_debug()`
-- bounded LRU text-texture cache for changing HUD/debug text
-- cached `Text2D` rendering with custom fonts/sizes/colors
-- built-in UI labels, panels, buttons and progress bars
-- sprite-sheet UV regions and named `AnimatedSprite2D` animations
-- reusable `TileMap2D` grids backed by pooled sprites
-- lazy GPU texture cache
-- movable/zoomable `Camera2D`
-- real perspective `Camera3D` with look-at and local-space movement
-- reusable `MeshData` / `Mesh3D` geometry with lazy GPU mesh caching
-- Wavefront OBJ plus static glTF/GLB mesh and scene import
-- material-aware glTF/GLB base-color and packed metallic/roughness texture loading
-- `DirectionalLight3D`, `PointLight3D` and `SpotLight3D`
-- multiple simultaneous lights with explicit 4/4/4 directional/point/spot GPU budgets
-- legacy Phong materials plus native Cook-Torrance GGX metallic/roughness PBR
-- project `AssetManager` with aliases, scanning and diagnostics
-- sound effects and background music through a pluggable audio service
-- AABB collision detection plus fixed-step arcade rigid-body physics
-- pooled particle effects
-- JSON `SaveStore` with atomic persistence
-- reusable prefabs with per-instance overrides
-- versioned scene/prefab JSON serialization with a safe codec registry
-- scene lifecycle, names and tags
-- creator-friendly factories for gameplay, UI and 3D objects
-- variable update + deterministic fixed-update loop
-- vectors, colors and transforms
-- CLI project generator
-- tests + multi-platform GitHub Actions CI
+Python 3.14 is not declared as supported yet. SwirEngine depends on native OpenGL packages
+(`moderngl` and `glcontext`) whose current stable releases do not provide prebuilt CPython 3.14
+Windows wheels. Without that wheel, `pip` attempts a local C/C++ build and may ask for Microsoft
+Visual C++ Build Tools. SwirEngine 1.0.2 declares `Python >=3.10,<3.14` so installers fail early
+with a clear compatibility message instead of entering that native build path.
 
-## Install for development
-
-```bash
-python -m pip install -e ".[dev]"
-pytest
-ruff check src tests examples
-python -m compileall -q src examples
-```
-
-Audio playback is optional so headless development remains lightweight:
-
-```bash
-python -m pip install -e ".[audio]"
-```
-
-## Tiny 2D game
-
-Put `player.png` in `assets/`, then:
-
-```python
-from swirengine import Game
-
-game = Game("My Game")
-player = game.sprite("player.png", x=0, y=0, width=96, height=96, name="player")
-
-@game.update
-def update(dt):
-    speed = 300
-    if game.key("A"):
-        player.x -= speed * dt
-    if game.key("D"):
-        player.x += speed * dt
-
-    game.camera.follow(player)
-
-game.run()
-```
-
-## Performance profiler and debug overlay
-
-Enable the built-in diagnostics HUD before `game.run()`:
-
-```python
-from swirengine import Game
-
-game = Game("Profile Me")
-game.show_debug()
-game.run()
-```
-
-The overlay displays FPS, frame/CPU time, update/physics/render timings, draw calls,
-sprite count, sprite batches, triangle count and 3D directional/point/spot light usage.
-It also reports lights dropped when a scene exceeds the forward renderer's per-type GPU
-budget. Programmatic data is available through `game.profiler.latest`,
-`game.profiler.samples` and `game.profiler.average(...)`.
-
-The 2D renderer automatically merges adjacent sprites that share the same texture, layer
-and screen/world-space mode into a single GPU draw call. Batching deliberately preserves
-render order, which keeps alpha-blended scenes predictable.
-
-## UI and text
-
-UI elements are screen-space objects, so they stay fixed while the world camera moves.
-Buttons include hover, press and click handling, and overlapping buttons only activate the
-topmost control.
-
-```python
-from swirengine import Game
-
-game = Game("Menu")
-game.panel(0, 0, 420, 260)
-game.label("Main Menu", 0, 85, font_size=32)
-progress = game.progress_bar(0, 20, 280, 24, value=0.4)
-
-
-def play(_button):
-    progress.value = min(1.0, progress.value + 0.1)
-
-
-game.button("Play", 0, -70, 180, 52, on_click=play)
-game.run()
-```
-
-Use `game.text(...)` for world-space text that follows the camera, and `game.label(...)`
-for HUD/menu text. `Text2D` supports a custom TrueType font path, size, color and scale.
-Dynamic text textures are kept in a bounded LRU cache so changing counters/debug labels do
-not grow GPU memory forever.
-
-## Audio and music
-
-Put supported audio files under `assets/`, install the audio extra, then use the same
-asset resolution rules as sprites and tilemaps:
-
-```python
-from swirengine import Game
-
-game = Game("Audio Demo")
-game.audio.master_volume = 0.8
-game.audio.music_volume = 0.6
-music = game.music("music/theme.ogg")
-
-@game.update
-def update(_dt):
-    if game.key_pressed("SPACE"):
-        shot = game.sound("sfx/laser.wav", volume=0.7)
-        shot.set_volume(0.9)
-    if game.key_pressed("M"):
-        music.stop()
-
-game.run()
-```
-
-`Game.music(...)` replaces the previous music track and loops by default. Sound effects can
-loop independently. `AudioHandle` exposes `stop()`, `set_volume(...)`, `active`, `loop` and
-`path`. The backend protocol is public, so future platform targets can provide another
-implementation without changing game code.
-
-## Tilemaps
-
-A tile atlas is addressed row-major from its top-left tile. The tilemap owns a fixed pool
-of sprites, so editing cells does not continuously allocate scene objects. Because pooled
-tiles usually share one atlas texture, they also benefit strongly from sprite batching.
-
-```python
-from swirengine import Game
-
-game = Game("Tile World")
-world = game.tilemap(
-    "tiles.png",
-    width=20,
-    height=12,
-    tile_width=32,
-    tile_height=32,
-    atlas_columns=8,
-    atlas_rows=4,
-    layer=-10,
-)
-
-world.fill(0)
-world.set_tile(3, 2, 7)
-world.set_tile(4, 2, 7)
-world.set_tile(5, 2, None)
-
-game.run()
-```
-
-Use `world.world_to_cell(x, y)` for picking and `world.cell_to_world(column, row)` when
-placing actors on grid centers.
-
-## Save data
-
-Pass `save_path` to autoload an existing JSON save file. Writes are atomic.
-
-```python
-from swirengine import Game
-
-game = Game("Persistent Game", save_path="saves/profile.json")
-score = game.storage.get("score", 0)
-game.storage.set("score", score + 100).save()
-```
-
-`SaveStore` can also be used directly when a game needs multiple save slots.
-
-## Sprite-sheet animation
-
-```python
-from swirengine import AnimatedSprite2D, Game, SpriteSheet
-
-game = Game("Animated Hero")
-sheet = SpriteSheet(columns=6, rows=2)
-hero = AnimatedSprite2D(game.assets.resolve("hero_sheet.png"), width=96, height=96)
-hero.add_animation("idle", sheet.row(0), fps=6)
-hero.add_animation("walk", sheet.row(1), fps=12)
-game.add(hero)
-
-@game.update
-def update(dt):
-    moving = game.key("A") or game.key("D")
-    hero.play("walk" if moving else "idle")
-
-game.run()
-```
-
-Animations advance automatically because `AnimatedSprite2D` participates in normal scene
-updates. Clips can loop or stop on their final frame.
-
-## Collision and physics
+## Quick 2D game
 
 ```python
 from swirengine import Color, Game, Rectangle2D
 
-game = Game("Physics")
-player = game.add(Rectangle2D(0, 0, 64, 64, Color(0.2, 0.7, 1.0, 1.0)))
-body = game.rigidbody(player, restitution=0.1)
-body.apply_impulse(220, 420)
+
+game = Game("My 2D Game", 1280, 720, mode="2d")
+player = game.add(
+    Rectangle2D(0, 0, 120, 70, Color(0.1, 0.75, 1.0, 1.0), name="player")
+)
+
+
+@game.update
+def update(dt):
+    speed = 380
+    if game.key("A"):
+        player.x -= speed * dt
+    if game.key("D"):
+        player.x += speed * dt
+    if game.key("W"):
+        player.y += speed * dt
+    if game.key("S"):
+        player.y -= speed * dt
+
 
 game.run()
 ```
 
-The collision layer also supports lightweight AABB queries when full rigid-body response
-is unnecessary.
-
-## Asset aliases and diagnostics
-
-```python
-game.assets.register("hero", "characters/hero.png")
-hero_path = game.assets.require("hero")
-report = game.assets.diagnostics()
-```
-
-Aliases work for audio too, because the audio service shares the game's `AssetManager`.
-Asset diagnostics can scan the project tree, summarize sizes/types and identify aliases
-whose targets no longer exist without loading the assets into RAM or GPU memory.
-
-## 3D camera, meshes and import
-
-`Game(mode="3d")` creates a `Camera3D`. Its default view looks down the negative Z axis,
-so older `Cube3D` scenes remain compatible. You can move in camera-local axes and point it
-at any world position:
+## Quick 3D game
 
 ```python
 from swirengine import Color, Cube3D, Game, Vec3
 
-game = Game("My 3D Game", mode="3d")
-cube = game.add(Cube3D(position=Vec3(0, 0, -4), color=Color(0.8, 0.2, 0.5, 1)))
-game.camera.move(0, 1, 2).look_at(cube.position)
+
+game = Game("My 3D Game", 1280, 720, mode="3d")
+cube = game.add(
+    Cube3D(position=Vec3(0, 0, -4), color=Color(0.2, 0.7, 1.0, 1.0))
+)
+
 
 @game.update
-def spin(dt):
-    cube.rotation.y += 45 * dt
+def update(dt):
+    cube.rotation.y += 50 * dt
+    cube.rotation.x += 25 * dt
+
 
 game.run()
 ```
 
-For imported geometry, put an OBJ, glTF or GLB asset below `assets/`. OBJ files can be
-loaded with `game.obj(...)`, while static glTF meshes can be loaded with `game.gltf(...)`.
-Lower-level glTF APIs preserve scene hierarchies and per-primitive materials when needed.
+## What is included
 
-## 3D lighting and materials
+### 2D runtime
 
-Explicit lights are scene objects and can be created directly from `Game`. When a scene
-contains no explicit light, the renderer keeps the historical default directional light so
-older 3D projects continue to render as expected.
+- textured `Sprite2D` rendering with alpha blending
+- colored primitives and render layers
+- `Camera2D` movement, zoom and follow workflows
+- sprite sheets and named `AnimatedSprite2D` clips
+- tilemaps backed by pooled sprites
+- cached text rendering and bounded LRU text-texture cache
+- labels, panels, buttons and progress bars
+- particles
+- AABB collision queries
+- deterministic fixed-step arcade rigid-body physics
+- JSON save data through `SaveStore`
+- keyboard and mouse held/pressed/released queries
+- adjacent compatible sprite batching
 
-Legacy Phong materials remain supported:
+### 3D runtime
+
+- perspective `Camera3D`
+- `MeshData`, `Mesh3D` and lazy GPU mesh caching
+- OBJ import with triangulation, normals and UVs
+- static glTF/GLB scene and material import
+- Phong and Cook-Torrance GGX metallic/roughness PBR
+- base-color, metallic/roughness, normal, occlusion and emissive material channels
+- directional, point and spot lights
+- deterministic per-light GPU budgets and diagnostics
+- skybox/environment support
+- true cubemap image-based lighting
+- directional GPU shadows, post-processing, ACES/Reinhard tone mapping and FXAA
+- sRGB/linear color-space handling for PBR material channels
+
+### Architecture and game systems
+
+- scene names, tags and creator-friendly lookup/removal helpers
+- reusable prefabs and per-instance overrides
+- versioned scene/prefab JSON serialization
+- safe codec registry and cyclic reference preservation
+- lightweight ECS with entities, components, queries and prioritized systems
+- plugin runtime
+- polling file watcher and plugin hot reload
+- transactional multi-domain state restore/rollback
+- asset hot reload bridges for renderer and audio
+- `LiveDevelopmentHub`
+- pluggable sound effects and music backend
+
+### Visual editor foundation
+
+- project/workspace state
+- hierarchy and inspector
+- unified undo/redo
+- component editing
+- mixed object/entity parenting and reordering
+- persistent hierarchy state
+- asset browser
+- console and profiler panels
+- move/rotate/scale gizmos with snapping
+- viewport picking and direct manipulation
+- interactive Tk editor frontend
+- isolated Play/Edit runtime session
+- embedded live renderer preview
+
+### Networking and export
+
+- deterministic length-prefixed JSON packets
+- non-blocking TCP client/server peers
+- packaging profiles
+- Windows, Linux and macOS PyInstaller build plans
+- Android and Web experimental staging targets
+- machine-readable export manifests
+
+## Project generator
+
+Create a project directly from the installed package:
+
+```bash
+swirengine new MyGame --mode 2d
+swirengine new My3DGame --mode 3d
+```
+
+Projects created by SwirEngine 1.0.2 declare compatibility with the stable engine line:
+
+```toml
+engine = ">=1.0,<2.0"
+```
+
+Check the installed engine:
+
+```bash
+swirengine info
+```
+
+## Export
+
+Create a deterministic export/staging directory:
+
+```bash
+swirengine export . --target windows --name MyGame --onefile --windowed
+```
+
+Desktop targets expose the native PyInstaller command instead of silently invoking third-party
+build tools. Linux and macOS use the same profile system. Android and Web are intentionally
+reported as experimental staging/research targets.
+
+## PBR example
 
 ```python
 from swirengine import Color, Game, Material3D, Vec3, cube_mesh
 
-game = Game("Lighting", mode="3d")
-material = Material3D(
-    tint=Color(0.6, 0.8, 1.0, 1.0),
-    ambient=0.12,
-    diffuse=0.8,
-    specular=0.6,
-    shininess=48.0,
-)
-model = game.mesh(cube_mesh(), material=material)
-model.position = Vec3(0.0, 0.0, -4.0)
 
-game.directional_light(direction=Vec3(-0.4, -1.0, -0.3), intensity=0.7)
-game.point_light(position=Vec3(2.0, 2.0, -2.0), range=8.0, intensity=2.0)
-game.camera.look_at(model.position)
-game.run()
-```
-
-For physically based metallic/roughness shading, set either PBR factor. SwirEngine then
-uses a Cook-Torrance BRDF with GGX normal distribution, Schlick-GGX geometry and
-Fresnel-Schlick reflection instead of the legacy Phong path:
-
-```python
+game = Game("PBR", mode="3d")
 material = Material3D(
     tint=Color(0.82, 0.35, 0.12, 1.0),
     ambient=0.04,
     metallic=0.9,
     roughness=0.18,
 )
+model = game.mesh(cube_mesh(), material=material)
+model.position = Vec3(0.0, 0.0, -4.0)
+
+game.directional_light(direction=Vec3(-0.4, -1.0, -0.3), intensity=0.9)
+game.camera.look_at(model.position)
+game.run()
 ```
 
-`metallic_roughness_texture` is also supported. It follows glTF 2.0 packing: roughness is
-read from the green channel and metallic from the blue channel, then multiplied by the
-scalar `roughness` and `metallic` factors. glTF/GLB `metallicRoughnessTexture` assets are
-resolved automatically alongside base-color textures, including external files, data URIs
-and images embedded in GLB buffer views.
+The PBR path supports glTF-style packed metallic/roughness maps, normal maps, AO and emissive
+textures. Cubemap IBL, shadows and post-processing are complete runtime features rather than
+future roadmap placeholders.
 
-`DirectionalLight3D` models distant sun/moon lighting. `PointLight3D` uses smooth distance
-attenuation, while `SpotLight3D` combines distance attenuation with smooth inner/outer cone
-cutoffs. The OpenGL 3.3 forward pass currently accepts up to four active lights of each
-type at once. Selection is deterministic in scene order, and any lights above the budget
-are reported through `RendererStats.lights_dropped`, `FrameProfile.lights_dropped` and the
-debug overlay instead of being silently ignored. `MAX_DIRECTIONAL_LIGHTS`,
-`MAX_POINT_LIGHTS` and `MAX_SPOT_LIGHTS` expose the current budgets.
+## Diagnostics
 
-Skybox/environment lighting, shadows, post-processing and broader glTF normal/occlusion/
-emissive map support remain roadmap work. Color-space fidelity will also be hardened as the
-PBR renderer grows.
+Enable the built-in debug overlay before `game.run()`:
 
-## Prefabs and scene persistence
+```python
+game.show_debug()
+```
 
-Reusable groups can be captured as prefabs, instantiated independently and overridden per
-instance. Scene/prefab JSON serialization uses a versioned format and an explicit safe codec
-registry rather than dynamically importing arbitrary classes named by a file. This is the
-foundation for later editor files, hot reload and plugin workflows.
+It exposes FPS, frame/CPU timings, update/physics/render timings, draw calls, batches, sprites,
+triangles, light usage and dropped-light counts. Programmatic profiling is available through
+`game.profiler`.
 
-## CLI
+## Official demo projects
+
+The repository contains complete games built with the public SwirEngine API:
+
+- **Neon Cube Hunt 3D** — 3D collection arena used for real OpenGL and packaged-runtime testing
+- **Neon Snake 3D** — complete 3D Snake with growth, food, collision, score, PBR and post-processing
+- larger asset-free 2D sample games under `examples/`
+
+The Windows demo build pipeline does more than create an `.exe`: it probes the packaged GLFW
+runtime so missing native libraries are caught before a release is published.
+
+## Development
 
 ```bash
-swirengine info
-swirengine new MyGame --mode 2d
-swirengine new My3DGame --mode 3d
+python -m pip install -e ".[dev]"
+pytest
+ruff check src tests examples demo_projects
+python -m compileall -q src examples demo_projects
 ```
 
-See `ROADMAP.md` for future SwirEngine development plans and upcoming engine/editor features.
+CI validates SwirEngine on:
+
+- Windows, Linux and macOS
+- Python 3.10, 3.11, 3.12 and 3.13
+- wheel/sdist packaging and metadata
+- clean-wheel installation
+- selected real OpenGL demo paths
+
+## Versioning and API stability
+
+SwirEngine follows semantic versioning for the stable 1.x public API. The exported
+`swirengine.__all__` surface is treated as the stable compatibility contract. Patch releases fix
+bugs and packaging/documentation problems without intentionally breaking that API.
+
+`README.md` is also the long description published to PyPI. Release-contract tests therefore
+verify that the README release number and supported Python window stay synchronized with package
+metadata. User-visible fixes should update code, tests, changelog and README together.
+
+See [`docs/API_STABILITY.md`](docs/API_STABILITY.md) for the compatibility policy.
+
+## Roadmap
+
+The original SwirEngine 1.0 roadmap is complete:
+
+```text
+████████████████████ 100.0%
+31 / 31 deliverables complete
+```
+
+See [`ROADMAP.md`](ROADMAP.md) for the verified 1.0 milestone history and future planning.
+
+## Links
+
+- PyPI: https://pypi.org/project/swirengine/
+- Repository: https://github.com/Swir/SwirEngine
+- Releases: https://github.com/Swir/SwirEngine/releases
+- Roadmap: https://github.com/Swir/SwirEngine/blob/main/ROADMAP.md
+- Changelog: https://github.com/Swir/SwirEngine/blob/main/CHANGELOG.md
+
+## License
+
+MIT
