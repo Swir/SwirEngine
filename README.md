@@ -3,7 +3,7 @@
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://pypi.org/project/swirengine/"><img alt="PyPI" src="https://img.shields.io/pypi/v/swirengine?style=flat-square"></a>
-  <img alt="Python" src="https://img.shields.io/badge/Python-3.10--3.14-3776AB?style=flat-square&logo=python&logoColor=white">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.10--3.13%20cross--platform%20%7C%203.14%20Windows-3776AB?style=flat-square&logo=python&logoColor=white">
   <img alt="Status" src="https://img.shields.io/badge/status-stable-2ea043?style=flat-square">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square">
 </p>
@@ -18,7 +18,7 @@ The 1.0 roadmap is complete at **31/31 deliverables**.
 
 ## Install
 
-SwirEngine currently supports **Python 3.10-3.14**.
+SwirEngine supports **Python 3.10-3.13** on Windows, Linux and macOS, plus **Python 3.14 on Windows x86-64**.
 
 ```bash
 python -m pip install -U swirengine
@@ -48,6 +48,8 @@ Build Tools.
 The native backend is built from the same upstream source versions in GitHub Actions, installed
 into a clean Python 3.14 environment, imported there, checked by `twine`, and only then allowed
 into the release pipeline. Python 3.10-3.13 continue using the normal upstream dependencies.
+Linux and macOS remain on the fully verified 3.10-3.13 cross-platform support window for this
+patch release; 3.14 support there will be declared only after equally reliable binary wheels exist.
 
 ## Quick 2D game
 
@@ -273,11 +275,11 @@ python -m compileall -q src examples demo_projects tools
 
 CI validates SwirEngine on:
 
-- Windows, Linux and macOS
-- Python 3.10, 3.11, 3.12, 3.13 and 3.14
+- Windows, Linux and macOS with Python 3.10, 3.11, 3.12 and 3.13
+- Windows x86-64 with Python 3.14
 - wheel/sdist packaging and metadata
 - clean-wheel installation
-- a dedicated CPython 3.14 Windows platform-wheel build and native import test
+- a dedicated CPython 3.14 Windows platform-wheel build, pip-selection and native import test
 - selected real OpenGL demo paths
 
 ## Versioning and API stability
