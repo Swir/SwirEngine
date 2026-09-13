@@ -70,8 +70,11 @@ def test_axis_binding_supports_direction_threshold_and_analog_value():
     backend = StubInput()
     actions = InputActions(backend)
     actions.gamepad_axis("move_left", "left_x", direction=-1, threshold=0.35)
-    backend.axes[(0, "left_x")] = -0.75
 
+    backend.axes[(0, "left_x")] = -0.2
+    assert actions.value("move_left") == 0.0
+
+    backend.axes[(0, "left_x")] = -0.75
     assert actions.value("move_left") == pytest.approx(0.75)
     assert actions.down("move_left", threshold=0.35)
 
