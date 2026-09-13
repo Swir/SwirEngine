@@ -1,6 +1,5 @@
 from swirengine import Color, Game, Rectangle2D
 
-
 game = Game("SwirEngine Gamepad Demo", 960, 540, mode="2d")
 player = game.add(Rectangle2D(-40, -40, 80, 80, Color(0.15, 0.75, 1.0, 1.0)))
 status = game.label("Connect a mapped gamepad or use WASD", 24, 24)
