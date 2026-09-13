@@ -60,12 +60,13 @@ class UILayout:
         return (x + self.offset_x * scale, y + self.offset_y * scale, scale)
 
 
-def _scale_text_object(text_object: object, scale: float) -> None:
+def _scale_control_text(control: object, text_object: object, scale: float) -> None:
     if text_object is None or not hasattr(text_object, "scale"):
         return
-    if not hasattr(text_object, "_layout_base_scale"):
-        setattr(text_object, "_layout_base_scale", float(getattr(text_object, "scale")))
-    setattr(text_object, "scale", float(getattr(text_object, "_layout_base_scale")) * float(scale))
+    base_attr = "_layout_base_text_scale"
+    if not hasattr(control, base_attr):
+        setattr(control, base_attr, float(getattr(text_object, "scale")))
+    setattr(text_object, "scale", float(getattr(control, base_attr)) * float(scale))
 
 
 def place_control(control: object, x: float, y: float, scale: float = 1.0) -> None:
@@ -83,8 +84,10 @@ def place_control(control: object, x: float, y: float, scale: float = 1.0) -> No
             setattr(control, base_attr, float(getattr(control, attr)))
         setattr(control, attr, max(1.0, float(getattr(control, base_attr)) * float(scale)))
 
-    _scale_text_object(getattr(control, "text_object", None), scale)
-    _scale_text_object(getattr(control, "label", None), scale)
+    text_object = getattr(control, "text_object", None)
+    if text_object is None:
+        text_object = getattr(control, "label", None)
+    _scale_control_text(control, text_object, scale)
 
     sync = getattr(control, "_sync", None)
     if callable(sync):
