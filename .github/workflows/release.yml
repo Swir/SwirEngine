@@ -1,4 +1,4 @@
-# PyPI release workflow for SwirEngine.
+# PyPI and GitHub release workflow for SwirEngine.
 name: Release
 
 on:
@@ -85,8 +85,8 @@ jobs:
         run: |
           python -m venv .verify314
           .\.verify314\Scripts\python.exe -m pip install --upgrade pip
-          .\.verify314\Scripts\python.exe -m pip install --find-links dist-cp314 "swirengine==1.0.3"
-          .\.verify314\Scripts\python.exe -c "import sys, swirengine, moderngl, glcontext; assert sys.version_info[:2] == (3, 14); assert swirengine.__version__ == '1.0.3'; assert '_vendor_native' in moderngl.__file__; assert '_vendor_native' in glcontext.__file__; print(sys.version); print(moderngl.__file__); print(glcontext.__file__)"
+          .\.verify314\Scripts\python.exe -m pip install --find-links dist-cp314 "swirengine==1.1.0"
+          .\.verify314\Scripts\python.exe -c "import sys, swirengine, moderngl, glcontext; assert sys.version_info[:2] == (3, 14); assert swirengine.__version__ == '1.1.0'; assert '_vendor_native' in moderngl.__file__; assert '_vendor_native' in glcontext.__file__; print(sys.version); print(moderngl.__file__); print(glcontext.__file__)"
       - uses: actions/upload-artifact@v4
         with:
           name: swirengine-dist-cp314
@@ -119,12 +119,13 @@ jobs:
 
   github-release:
     name: Create GitHub release
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build-release, build-windows-cp314]
+    if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[publish-pypi]'))
+    needs: [build-release, build-windows-cp314, pypi-publish]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v7
       - name: Download portable distributions
         uses: actions/download-artifact@v4
         with:
@@ -135,7 +136,26 @@ jobs:
         with:
           name: swirengine-dist-cp314
           path: dist
-      - name: Create release with every distribution
+      - name: Resolve release tag
+        id: release
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          else
+            VERSION=$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
+            echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Create release with every verified distribution
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.ref_name }}" dist/* --generate-notes --verify-tag --repo "${{ github.repository }}"
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        shell: bash
+        run: |
+          if gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; leaving it unchanged."
+          elif [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            gh release create "$RELEASE_TAG" dist/* --generate-notes --verify-tag --repo "${{ github.repository }}"
+          else
+            gh release create "$RELEASE_TAG" dist/* --title "SwirEngine ${RELEASE_TAG#v}" --generate-notes --target "$GITHUB_SHA" --repo "${{ github.repository }}"
+          fi

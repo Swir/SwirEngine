@@ -1,4 +1,4 @@
-# SwirEngine 1.0.3
+# SwirEngine 1.1.0
 
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
@@ -8,13 +8,13 @@
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square">
 </p>
 
-**SwirEngine** is a modern Python-first 2D/3D game engine built around one approachable API.
-It is designed to let Python developers create real games without having to learn raw OpenGL
-before putting gameplay on screen.
+**SwirEngine** is a Python-first 2D/3D game engine built around one approachable API. It combines
+creator-friendly Python gameplay code with a real OpenGL renderer, scenes, prefabs/ECS, physics,
+audio, editor tooling, networking, export and complete game demos.
 
-SwirEngine 1.0 is a stable line with a tested cross-platform runtime, GPU rendering, input,
-physics, audio, assets, scenes, prefabs/ECS, editor tooling, networking and project export.
-The 1.0 roadmap is complete at **31/31 deliverables**.
+The original 1.0 roadmap is complete at **31/31 deliverables**. SwirEngine 1.1 starts the next
+stage: making complete games easier to control, profile, package and ship without turning the
+engine into a thin wrapper around another framework.
 
 ## Install
 
@@ -24,7 +24,7 @@ SwirEngine supports **Python 3.10-3.13** on Windows, Linux and macOS, plus **Pyt
 python -m pip install -U swirengine
 ```
 
-On 64-bit Windows, Python 3.14 is supported directly by SwirEngine 1.0.3:
+On 64-bit Windows with Python 3.14:
 
 ```powershell
 py -3.14 -m pip install -U swirengine
@@ -38,18 +38,71 @@ python -m pip install -U "swirengine[audio]"
 
 ### Python 3.14 native renderer support
 
-The upstream stable `moderngl 5.12.0` and `glcontext 3.0.0` releases do not currently publish
-CPython 3.14 Windows x86-64 wheels. SwirEngine 1.0.3 closes that installation gap by publishing a
-separate `cp314-cp314-win_amd64` SwirEngine wheel. That platform wheel contains verified private
-copies of the native renderer backend under `swirengine/_vendor_native`, so a normal
-`pip install swirengine` on 64-bit Windows + Python 3.14 does **not** require Microsoft Visual C++
-Build Tools.
+The stable upstream `moderngl 5.12.0` and `glcontext 3.0.0` releases do not currently publish
+CPython 3.14 Windows x86-64 wheels. SwirEngine publishes a dedicated
+`cp314-cp314-win_amd64` wheel containing verified private copies of those native renderer
+components under `swirengine/_vendor_native`. A normal `pip install swirengine` on Windows x64 +
+Python 3.14 therefore does **not** require Microsoft Visual C++ Build Tools.
 
-The native backend is built from the same upstream source versions in GitHub Actions, installed
-into a clean Python 3.14 environment, imported there, checked by `twine`, and only then allowed
-into the release pipeline. Python 3.10-3.13 continue using the normal upstream dependencies.
-Linux and macOS remain on the fully verified 3.10-3.13 cross-platform support window for this
-patch release; 3.14 support there will be declared only after equally reliable binary wheels exist.
+The platform wheel is rebuilt from upstream source in GitHub Actions, checked with `twine`,
+installed into a clean Python 3.14 environment and imported before Trusted Publishing is allowed
+to upload it. Python 3.10-3.13 continue using normal upstream dependencies. Linux and macOS remain
+on the verified 3.10-3.13 support window until equally reliable Python 3.14 binary dependencies
+exist there.
+
+## What is new in 1.1.0
+
+### Standardized gamepad/controller input
+
+SwirEngine now has a creator-facing controller layer on top of GLFW's standard gamepad mapping.
+Mapped Xbox, PlayStation and compatible controllers expose the same names instead of forcing game
+code to depend on platform-specific joystick indexes.
+
+The input layer now provides:
+
+- deterministic discovery of connected standardized gamepads
+- controller name and GUID snapshots
+- held, pressed and released button queries
+- aliases such as `LB`, `RB`, `L1`, `R1`, `L2`, `R2`, `L3`, `R3`, `START` and D-pad directions
+- left/right analog stick helpers
+- configurable stick/axis deadzone with range rescaling
+- trigger helpers normalized to `0.0 .. 1.0`
+- hot-plug connection/disconnection edge queries
+- automatic per-frame refresh while a normal `Game.run()` window is active
+- keyboard fallback remains fully compatible
+
+Example:
+
+```python
+from swirengine import Color, Game, Rectangle2D
+
+
+game = Game("Controller demo", 960, 540, mode="2d")
+player = game.add(Rectangle2D(-40, -40, 80, 80, Color(0.1, 0.75, 1.0, 1.0)))
+
+
+@game.update
+def update(dt):
+    x, y = game.input.gamepad_stick("left")
+
+    if not game.input.gamepad_connected():
+        x = float(game.key("D")) - float(game.key("A"))
+        y = float(game.key("S")) - float(game.key("W"))
+
+    speed = 520 if game.input.gamepad_button("A") else 300
+    player.x += x * speed * dt
+    player.y += y * speed * dt
+
+    if game.input.gamepad_button_pressed("START"):
+        player.x = player.y = -40
+
+
+game.run()
+```
+
+For lower-level access, `GamepadSnapshot`, `GAMEPAD_BUTTONS`, `GAMEPAD_AXES`,
+`apply_deadzone(...)`, `normalize_gamepad_button(...)` and `normalize_gamepad_axis(...)` are public
+1.x APIs.
 
 ## Quick 2D game
 
@@ -58,9 +111,7 @@ from swirengine import Color, Game, Rectangle2D
 
 
 game = Game("My 2D Game", 1280, 720, mode="2d")
-player = game.add(
-    Rectangle2D(0, 0, 120, 70, Color(0.1, 0.75, 1.0, 1.0), name="player")
-)
+player = game.add(Rectangle2D(0, 0, 120, 70, Color(0.1, 0.75, 1.0, 1.0), name="player"))
 
 
 @game.update
@@ -86,9 +137,7 @@ from swirengine import Color, Cube3D, Game, Vec3
 
 
 game = Game("My 3D Game", 1280, 720, mode="3d")
-cube = game.add(
-    Cube3D(position=Vec3(0, 0, -4), color=Color(0.2, 0.7, 1.0, 1.0))
-)
+cube = game.add(Cube3D(position=Vec3(0, 0, -4), color=Color(0.2, 0.7, 1.0, 1.0)))
 
 
 @game.update
@@ -100,7 +149,7 @@ def update(dt):
 game.run()
 ```
 
-## What is included
+## Engine capabilities
 
 ### 2D runtime
 
@@ -115,7 +164,7 @@ game.run()
 - AABB collision queries
 - deterministic fixed-step arcade rigid-body physics
 - JSON save data through `SaveStore`
-- keyboard and mouse held/pressed/released queries
+- keyboard, mouse and standardized gamepad input
 - adjacent compatible sprite batching
 - single-pass render-run construction with cached canonical texture keys
 
@@ -135,14 +184,12 @@ game.run()
 - sRGB/linear color-space handling for PBR material channels
 - bounded transform-matrix caching for repeated static object transforms
 
-### Smoother frame workloads in 1.0.3
+### Performance foundation
 
-SwirEngine 1.0.3 reduces avoidable per-frame CPU work without changing the public game API.
-Sprite batching no longer resolves the same texture filesystem path over and over each frame, and
-it no longer creates a second visible-object tuple before forming render runs. Static 3D
-transforms reuse bounded cached matrix calculations while callers still receive independent
-mutable matrix results. These changes target steadier CPU frame times in sprite-heavy 2D scenes
-and 3D scenes containing repeated static geometry.
+The renderer already avoids repeated texture path resolution in steady-state 2D batching and
+builds render runs in one pass instead of allocating a second visible-object tuple. Repeated static
+3D transforms use a bounded matrix cache while callers still receive independent mutable matrix
+results. The 1.1 roadmap continues with larger GPU-side batching/instancing and frame-time work.
 
 ### Architecture and game systems
 
@@ -192,7 +239,7 @@ swirengine new MyGame --mode 2d
 swirengine new My3DGame --mode 3d
 ```
 
-Projects created by SwirEngine 1.0.3 declare compatibility with the stable engine line:
+Generated projects declare compatibility with the stable engine line:
 
 ```toml
 engine = ">=1.0,<2.0"
@@ -213,8 +260,7 @@ swirengine export . --target windows --name MyGame --onefile --windowed
 ```
 
 Desktop targets expose the native PyInstaller command instead of silently invoking third-party
-build tools. Linux and macOS use the same profile system. Android and Web are intentionally
-reported as experimental staging/research targets.
+build tools. Android and Web remain experimental staging/research targets.
 
 ## PBR example
 
@@ -238,8 +284,7 @@ game.run()
 ```
 
 The PBR path supports glTF-style packed metallic/roughness maps, normal maps, AO and emissive
-textures. Cubemap IBL, shadows and post-processing are complete runtime features rather than
-future roadmap placeholders.
+textures. Cubemap IBL, shadows, post-processing and tone mapping are complete runtime features.
 
 ## Diagnostics
 
@@ -259,12 +304,13 @@ The repository contains complete games built with the public SwirEngine API:
 
 - **Neon Cube Hunt 3D** — 3D collection arena used for real OpenGL and packaged-runtime testing
 - **Neon Snake 3D** — complete 3D Snake with growth, food, collision, score, PBR and post-processing
-- larger asset-free 2D sample games under `examples/`
+- `examples/demo_gamepad.py` — controller + keyboard-fallback input example
+- larger asset-free 2D samples under `examples/`
 
-The Windows demo build pipeline does more than create an `.exe`: it probes the packaged GLFW
-runtime so missing native libraries are caught before a release is published.
+The Windows demo build pipeline also probes the final packaged GLFW runtime so missing native
+libraries are caught before demo publication.
 
-## Development
+## Development and verification
 
 ```bash
 python -m pip install -e ".[dev]"
@@ -280,37 +326,39 @@ CI validates SwirEngine on:
 - wheel/sdist packaging and metadata
 - clean-wheel installation
 - a dedicated CPython 3.14 Windows platform-wheel build, pip-selection and native import test
-- selected real OpenGL demo paths
+- real OpenGL paths through the official 3D demo workflows
 
 ## Versioning and API stability
 
 SwirEngine follows semantic versioning for the stable 1.x public API. The exported
-`swirengine.__all__` surface is treated as the stable compatibility contract. Patch releases fix
-bugs, compatibility and performance problems without intentionally breaking that API.
+`swirengine.__all__` surface is treated as a compatibility contract. Patch releases fix bugs,
+compatibility and performance issues; minor releases add backwards-compatible creator features.
 
-`README.md` is also the long description published to PyPI. Release-contract tests therefore
-verify that the README release number and supported Python window stay synchronized with package
-metadata. User-visible fixes should update code, tests, changelog and README together.
+`README.md` is also the long description published to PyPI. Release-contract tests verify that
+README version/support claims stay synchronized with package metadata. User-visible changes are
+expected to update code, tests, README and changelog together before publication.
 
 See [`docs/API_STABILITY.md`](docs/API_STABILITY.md) for the compatibility policy.
 
 ## Roadmap
 
-The original SwirEngine 1.0 roadmap is complete:
+The original SwirEngine 1.0 roadmap remains complete and historical:
 
 ```text
 ████████████████████ 100.0%
 31 / 31 deliverables complete
 ```
 
-See [`ROADMAP.md`](ROADMAP.md) for the verified 1.0 milestone history and future planning.
+The active expansion plan lives in [`ROADMAP_1_1.md`](ROADMAP_1_1.md). The historical 1.0 dashboard
+is kept in [`ROADMAP.md`](ROADMAP.md) and is not artificially increased beyond 100%.
 
 ## Links
 
 - PyPI: https://pypi.org/project/swirengine/
 - Repository: https://github.com/Swir/SwirEngine
 - Releases: https://github.com/Swir/SwirEngine/releases
-- Roadmap: https://github.com/Swir/SwirEngine/blob/main/ROADMAP.md
+- 1.0 roadmap: https://github.com/Swir/SwirEngine/blob/main/ROADMAP.md
+- 1.1 roadmap: https://github.com/Swir/SwirEngine/blob/main/ROADMAP_1_1.md
 - Changelog: https://github.com/Swir/SwirEngine/blob/main/CHANGELOG.md
 
 ## License

@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "swirengine"
-version = "1.0.3"
+version = "1.1.0"
 description = "Modern Python-first 2D/3D game engine with a unified API."
 readme = "README.md"
 requires-python = ">=3.10,<3.15"
 license = {text = "MIT"}
 authors = [{name = "SwirEngine contributors"}]
-keywords = ["game-engine", "2d", "3d", "opengl", "moderngl", "python", "games"]
+keywords = ["game-engine", "2d", "3d", "opengl", "moderngl", "python", "games", "gamepad", "controller"]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "License :: OSI Approved :: MIT License",
@@ -41,7 +41,8 @@ swirengine = "swirengine.cli:main"
 Homepage = "https://github.com/Swir/SwirEngine"
 Repository = "https://github.com/Swir/SwirEngine"
 Changelog = "https://github.com/Swir/SwirEngine/blob/main/CHANGELOG.md"
-Roadmap = "https://github.com/Swir/SwirEngine/blob/main/ROADMAP.md"
+Roadmap = "https://github.com/Swir/SwirEngine/blob/main/ROADMAP_1_1.md"
+"1.0 Roadmap" = "https://github.com/Swir/SwirEngine/blob/main/ROADMAP.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/swirengine"]
