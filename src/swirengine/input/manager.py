@@ -33,21 +33,6 @@ class InputManager:
         self._gamepads_connected.clear()
         self._gamepads_disconnected.clear()
         self.mouse_dx = self.mouse_dy = 0.0
-        self._poll_runtime_gamepads()
-
-    def _poll_runtime_gamepads(self) -> None:
-        """Refresh gamepad state when running inside an initialized GLFW game window."""
-        try:
-            import glfw
-        except ImportError:
-            return
-        try:
-            get_context = getattr(glfw, "get_current_context", None)
-            if get_context is not None and get_context() is None:
-                return
-        except (AttributeError, RuntimeError):
-            return
-        self.poll_gamepads(glfw)
 
     @staticmethod
     def _named_key(name: str) -> int | None:
@@ -182,11 +167,10 @@ class InputManager:
         )
 
     def poll_gamepads(self, glfw_module: Any | None = None) -> None:
-        """Poll GLFW's standardized gamepad mapping exactly once for the current frame.
+        """Poll GLFW's standardized gamepad mapping once for the current frame.
 
-        This intentionally ignores non-gamepad joysticks. Standardized mapping gives the same
-        button/axis names across Xbox, PlayStation and compatible controllers when GLFW has a
-        mapping for the device.
+        ``Game.run()`` calls this automatically after GLFW event processing. Advanced users may
+        pass a GLFW-compatible backend explicitly for custom loops and tests.
         """
         if glfw_module is None:
             try:
