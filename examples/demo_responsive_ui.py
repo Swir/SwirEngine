@@ -1,4 +1,9 @@
-from swirengine import Color, Game, UIAnchor, UILayout
+from swirengine import (
+    Color,
+    Game,
+    UIAnchor,
+    UILayout,
+)
 
 
 game = Game("SwirEngine Responsive UI", 1280, 720)
