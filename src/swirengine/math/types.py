@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from functools import lru_cache
 
 import numpy as np
 
@@ -71,6 +72,47 @@ class Color:
         return Color(clamp(self.r), clamp(self.g), clamp(self.b), clamp(self.a))
 
 
+@lru_cache(maxsize=8192)
+def _cached_transform_matrix(
+    px: float,
+    py: float,
+    pz: float,
+    rx_deg: float,
+    ry_deg: float,
+    rz_deg: float,
+    sx: float,
+    sy: float,
+    sz: float,
+) -> np.ndarray:
+    """Build and retain a read-only transform matrix for repeated static transforms."""
+    rx, ry, rz = map(math.radians, (rx_deg, ry_deg, rz_deg))
+    cx, sxn = math.cos(rx), math.sin(rx)
+    cy, syn = math.cos(ry), math.sin(ry)
+    cz, szn = math.cos(rz), math.sin(rz)
+
+    rxm = np.array(
+        [[1, 0, 0, 0], [0, cx, -sxn, 0], [0, sxn, cx, 0], [0, 0, 0, 1]],
+        dtype="f4",
+    )
+    rym = np.array(
+        [[cy, 0, syn, 0], [0, 1, 0, 0], [-syn, 0, cy, 0], [0, 0, 0, 1]],
+        dtype="f4",
+    )
+    rzm = np.array(
+        [[cz, -szn, 0, 0], [szn, cz, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]],
+        dtype="f4",
+    )
+    scale_matrix = np.diag([sx, sy, sz, 1.0]).astype("f4")
+    translation = np.eye(4, dtype="f4")
+    translation[:3, 3] = [px, py, pz]
+    matrix = np.ascontiguousarray(
+        translation @ rzm @ rym @ rxm @ scale_matrix,
+        dtype="f4",
+    )
+    matrix.setflags(write=False)
+    return matrix
+
+
 @dataclass(slots=True)
 class Transform:
     position: Vec3 = field(default_factory=Vec3)
@@ -78,30 +120,19 @@ class Transform:
     scale: Vec3 = field(default_factory=lambda: Vec3(1.0, 1.0, 1.0))
 
     def matrix(self) -> np.ndarray:
-        px, py, pz = self.position.x, self.position.y, self.position.z
-        sx, sy, sz = self.scale.x, self.scale.y, self.scale.z
-        rx, ry, rz = map(math.radians, (self.rotation.x, self.rotation.y, self.rotation.z))
-
-        cx, sxn = math.cos(rx), math.sin(rx)
-        cy, syn = math.cos(ry), math.sin(ry)
-        cz, szn = math.cos(rz), math.sin(rz)
-
-        rxm = np.array(
-            [[1, 0, 0, 0], [0, cx, -sxn, 0], [0, sxn, cx, 0], [0, 0, 0, 1]],
-            dtype="f4",
+        cached = _cached_transform_matrix(
+            float(self.position.x),
+            float(self.position.y),
+            float(self.position.z),
+            float(self.rotation.x),
+            float(self.rotation.y),
+            float(self.rotation.z),
+            float(self.scale.x),
+            float(self.scale.y),
+            float(self.scale.z),
         )
-        rym = np.array(
-            [[cy, 0, syn, 0], [0, 1, 0, 0], [-syn, 0, cy, 0], [0, 0, 0, 1]],
-            dtype="f4",
-        )
-        rzm = np.array(
-            [[cz, -szn, 0, 0], [szn, cz, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]],
-            dtype="f4",
-        )
-        sm = np.diag([sx, sy, sz, 1.0]).astype("f4")
-        tm = np.eye(4, dtype="f4")
-        tm[:3, 3] = [px, py, pz]
-        return tm @ rzm @ rym @ rxm @ sm
+        # Preserve the historical API contract: callers receive their own mutable matrix.
+        return cached.copy()
 
 
 def perspective(fov_deg: float, aspect: float, near: float, far: float) -> np.ndarray:

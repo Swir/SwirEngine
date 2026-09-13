@@ -1,5 +1,13 @@
 name: CI
-on: [push, pull_request]
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -8,6 +16,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.10", "3.11", "3.12", "3.13"]
+        include:
+          - os: windows-latest
+            python-version: "3.14"
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -17,8 +28,8 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e ".[dev]"
       - run: pytest
-      - run: ruff check src tests examples demo_projects
-      - run: python -m compileall -q src examples demo_projects
+      - run: ruff check src tests examples demo_projects tools
+      - run: python -m compileall -q src examples demo_projects tools
 
   package:
     runs-on: ubuntu-latest
@@ -37,3 +48,41 @@ jobs:
           .release-venv/bin/python -m pip install --upgrade pip
           .release-venv/bin/python -m pip install dist/*.whl
           .release-venv/bin/python -c "import swirengine; print(swirengine.__version__)"
+
+  package-windows-cp314:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: Install build tooling
+        run: python -m pip install --upgrade pip setuptools wheel build twine
+      - name: Build base SwirEngine wheel
+        run: python -m build --wheel --outdir dist-base
+      - name: Build native renderer dependencies
+        run: |
+          python -m pip wheel --no-deps --no-binary=:all: moderngl==5.12.0 -w native-wheels
+          python -m pip wheel --no-deps --no-binary=:all: glcontext==3.0.0 -w native-wheels
+      - name: Build CPython 3.14 Windows platform wheel
+        shell: pwsh
+        run: |
+          $base = (Get-ChildItem dist-base\swirengine-*.whl).FullName
+          $moderngl = (Get-ChildItem native-wheels\moderngl-*.whl).FullName
+          $glcontext = (Get-ChildItem native-wheels\glcontext-*.whl).FullName
+          python tools/build_vendored_wheel.py --base $base --vendor $moderngl --vendor $glcontext --tag cp314-cp314-win_amd64 --output-dir dist
+          Copy-Item $base dist\
+      - name: Check both candidate wheel metadata files
+        run: python -m twine check dist/*.whl
+      - name: Prove pip selects the native wheel from normal candidates
+        shell: pwsh
+        run: |
+          python -m venv .verify314
+          .\.verify314\Scripts\python.exe -m pip install --upgrade pip
+          .\.verify314\Scripts\python.exe -m pip install --find-links dist "swirengine==1.0.3"
+          .\.verify314\Scripts\python.exe -c "import sys, swirengine, moderngl, glcontext; assert sys.version_info[:2] == (3, 14); assert swirengine.__version__ == '1.0.3'; assert '_vendor_native' in moderngl.__file__; assert '_vendor_native' in glcontext.__file__; print(sys.version); print(moderngl.__file__); print(glcontext.__file__)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: swirengine-cp314-windows-wheel
+          path: dist/*cp314*.whl
+          if-no-files-found: error
