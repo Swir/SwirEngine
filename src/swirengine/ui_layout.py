@@ -65,8 +65,8 @@ def _scale_control_text(control: object, text_object: object, scale: float) -> N
         return
     base_attr = "_layout_base_text_scale"
     if not hasattr(control, base_attr):
-        setattr(control, base_attr, float(getattr(text_object, "scale")))
-    setattr(text_object, "scale", float(getattr(control, base_attr)) * float(scale))
+        setattr(control, base_attr, float(text_object.scale))
+    text_object.scale = float(getattr(control, base_attr)) * float(scale)
 
 
 def place_control(control: object, x: float, y: float, scale: float = 1.0) -> None:
