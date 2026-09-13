@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
 from ..assets import AssetManager, AssetReloadResult
+from .cubemap import ImageBasedEnvironment3D
 from .mesh import Mesh3D
 from .primitives import Sprite2D
 
@@ -38,12 +39,7 @@ class GPUTextureInvalidation:
 
 
 class RendererAssetBridge:
-    """Connect :class:`AssetManager` live reload to the renderer GPU texture cache.
-
-    The bridge deliberately lives in the graphics package instead of ``AssetManager`` so the
-    generic asset layer stays independent from OpenGL/ModernGL. It can be polled from an editor
-    or game update loop and owns no background threads.
-    """
+    """Connect :class:`AssetManager` live reload to renderer GPU texture caches."""
 
     def __init__(self, renderer: _RendererTextureCache, assets: AssetManager) -> None:
         self.renderer = renderer
@@ -83,6 +79,9 @@ class RendererAssetBridge:
         if cached is not None:
             texture, _, _ = cached
             texture.release()
+        invalidate_cubemap = getattr(self.renderer, "invalidate_cubemap", None)
+        if callable(invalidate_cubemap):
+            released = bool(invalidate_cubemap(resolved)) or released
         self._invalidations.append(GPUTextureInvalidation(resolved, released))
         return released
 
@@ -91,12 +90,15 @@ class RendererAssetBridge:
         return tuple(watched)
 
     def watch_scene_textures(self, scene_or_objects: object) -> tuple[Path, ...]:
-        """Watch renderer-visible texture files from a scene or arbitrary object iterable."""
+        """Watch renderer-visible 2D, material and cubemap texture files."""
         objects = self._objects(scene_or_objects)
         paths: set[Path] = set()
         for obj in objects:
             if isinstance(obj, Sprite2D):
                 paths.add(Path(obj.texture).expanduser().resolve())
+                continue
+            if isinstance(obj, ImageBasedEnvironment3D) and obj.enabled:
+                paths.update(path.resolve() for path in obj.cubemap.paths())
                 continue
             if not isinstance(obj, Mesh3D) or obj.material is None:
                 continue
@@ -105,9 +107,10 @@ class RendererAssetBridge:
                 texture_path = getattr(material, field_name, None)
                 if texture_path is not None:
                     paths.add(Path(texture_path).expanduser().resolve())
-        for path in sorted(paths, key=lambda item: item.as_posix().lower()):
+        ordered = tuple(sorted(paths, key=lambda item: item.as_posix().lower()))
+        for path in ordered:
             self.assets.watcher.watch(path)
-        return tuple(sorted(paths, key=lambda item: item.as_posix().lower()))
+        return ordered
 
     def poll(
         self,
