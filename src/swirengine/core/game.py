@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
+from dataclasses import asdict
 from pathlib import Path
 from typing import Literal, TypeVar
 
@@ -11,12 +12,13 @@ from ..debug import DebugOverlay
 from ..graphics.camera import Camera2D
 from ..graphics.camera3d import Camera3D
 from ..graphics.gltf import load_gltf
-from ..graphics.ibl_renderer import ImageBasedPostProcessRenderer
 from ..graphics.lights import DirectionalLight3D, PointLight3D, SpotLight3D
 from ..graphics.mesh import Mesh3D, MeshData
 from ..graphics.obj import load_obj
 from ..graphics.postprocess import PostProcessSettings
 from ..graphics.primitives import Sprite2D, Text2D
+from ..graphics.shadow_renderer import ShadowedImageBasedPostProcessRenderer
+from ..graphics.shadows import DirectionalShadowSettings
 from ..input.manager import InputManager
 from ..particles import ParticleEmitter2D
 from ..physics.collision2d import BoxCollider2D, CollisionWorld2D
@@ -68,6 +70,8 @@ class Game:
         self.profiler = Profiler()
         self.debug_overlay = DebugOverlay(self.scene, self.profiler)
         self.postprocess = PostProcessSettings()
+        self.shadows_enabled = False
+        self.shadow_settings = DirectionalShadowSettings()
         self.running = False
 
         self._update_callbacks: list[Callable[[float], None]] = []
@@ -242,6 +246,24 @@ class Game:
         """Configure the optional GPU full-screen post-processing pass."""
         return self.postprocess.update(**settings)
 
+    def configure_shadows(
+        self,
+        enabled: bool = True,
+        **settings: object,
+    ) -> DirectionalShadowSettings:
+        """Configure opt-in directional GPU shadows for a 3D game."""
+        if self.mode != "3d":
+            raise RuntimeError("Game.configure_shadows(...) requires mode='3d'")
+        values = asdict(self.shadow_settings)
+        unknown = sorted(set(settings) - set(values))
+        if unknown:
+            raise TypeError(f"unknown shadow setting: {unknown[0]}")
+        values.update(settings)
+        candidate = DirectionalShadowSettings(**values)
+        self.shadow_settings = candidate
+        self.shadows_enabled = bool(enabled)
+        return candidate
+
     def key(self, name: str) -> bool:
         """Beginner-friendly shorthand for ``game.input.key(name)``."""
         return self.input.key(name)
@@ -286,12 +308,14 @@ class Game:
         glfw.make_context_current(window)
         glfw.swap_interval(1 if self.vsync else 0)
         ctx = moderngl.create_context()
-        renderer = ImageBasedPostProcessRenderer(
+        renderer = ShadowedImageBasedPostProcessRenderer(
             ctx,
             self.width,
             self.height,
             self.mode,
             postprocess=self.postprocess,
+            shadows_enabled=self.shadows_enabled,
+            shadow_settings=self.shadow_settings,
         )
 
         glfw.set_key_callback(
