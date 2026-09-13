@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Lock
 from time import perf_counter_ns
-from typing import Any, Iterable
+from typing import Any
 
 from .assets import AssetManager
 
@@ -90,7 +91,10 @@ class AssetPreloader:
             raise ValueError("max_workers must be >= 1")
         self.assets = assets
         self.max_workers = int(max_workers)
-        self._executor = ThreadPoolExecutor(max_workers=self.max_workers, thread_name_prefix="swir-assets")
+        self._executor = ThreadPoolExecutor(
+            max_workers=self.max_workers,
+            thread_name_prefix="swir-assets",
+        )
         self._coordinator = ThreadPoolExecutor(max_workers=1, thread_name_prefix="swir-preload")
         self._inflight: dict[Path, Future[AssetLoadResult]] = {}
         self._lock = Lock()
@@ -135,7 +139,8 @@ class AssetPreloader:
 
     def pending_paths(self) -> tuple[Path, ...]:
         with self._lock:
-            return tuple(sorted((path for path, future in self._inflight.items() if not future.done()), key=str))
+            pending = (path for path, future in self._inflight.items() if not future.done())
+            return tuple(sorted(pending, key=str))
 
     def shutdown(self, *, wait: bool = True, cancel_futures: bool = False) -> None:
         if self._closed:
@@ -144,7 +149,7 @@ class AssetPreloader:
         self._coordinator.shutdown(wait=wait, cancel_futures=cancel_futures)
         self._executor.shutdown(wait=wait, cancel_futures=cancel_futures)
 
-    def __enter__(self) -> AssetPreloader:
+    def __enter__(self) -> AssetPreloader:  # noqa: PYI034 - Self is Python 3.11+, engine supports 3.10.
         self._ensure_open()
         return self
 
@@ -156,7 +161,7 @@ class AssetPreloader:
         started = perf_counter_ns()
         try:
             value = self.assets.load(path, cache=cache)
-        except Exception as exc:  # noqa: BLE001 - asset loaders intentionally may raise arbitrary errors.
+        except Exception as exc:  # noqa: BLE001 - user asset loaders may raise arbitrary errors.
             return AssetLoadResult(
                 asset=asset,
                 path=path,
