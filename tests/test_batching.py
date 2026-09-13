@@ -1,5 +1,5 @@
-import swirengine.graphics.batching as batching
 from swirengine import Rectangle2D, Sprite2D
+from swirengine.graphics import batching
 from swirengine.graphics.batching import SpriteBatch, build_render_runs
 
 
