@@ -13,5 +13,5 @@ def test_public_api_exports_are_unique_and_resolvable():
     assert missing == []
 
 
-def test_first_stable_release_version():
-    assert swirengine.__version__ == "1.0.0"
+def test_stable_patch_release_version():
+    assert swirengine.__version__ == "1.0.1"
