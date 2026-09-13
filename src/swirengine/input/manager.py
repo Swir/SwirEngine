@@ -33,6 +33,21 @@ class InputManager:
         self._gamepads_connected.clear()
         self._gamepads_disconnected.clear()
         self.mouse_dx = self.mouse_dy = 0.0
+        self._poll_runtime_gamepads()
+
+    def _poll_runtime_gamepads(self) -> None:
+        """Refresh gamepad state when running inside an initialized GLFW game window."""
+        try:
+            import glfw
+        except ImportError:
+            return
+        try:
+            get_context = getattr(glfw, "get_current_context", None)
+            if get_context is not None and get_context() is None:
+                return
+        except (AttributeError, RuntimeError):
+            return
+        self.poll_gamepads(glfw)
 
     @staticmethod
     def _named_key(name: str) -> int | None:
