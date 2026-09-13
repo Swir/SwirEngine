@@ -1,0 +1,51 @@
+name: Python 3.14 native renderer wheels
+
+on:
+  push:
+    branches:
+      - "compat/python314-native"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows-cp314:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: Upgrade build tooling
+        run: python -m pip install --upgrade pip setuptools wheel
+      - name: Build ModernGL and glcontext wheels
+        run: |
+          python -m pip wheel --no-deps --no-binary=:all: moderngl==5.12.0 -w wheelhouse
+          python -m pip wheel --no-deps --no-binary=:all: glcontext==3.0.0 -w wheelhouse
+      - name: Verify native wheels in a clean Python 3.14 environment
+        shell: pwsh
+        run: |
+          python -m venv .verify314
+          .\.verify314\Scripts\python.exe -m pip install --upgrade pip
+          .\.verify314\Scripts\python.exe -m pip install (Get-ChildItem wheelhouse\glcontext-*.whl).FullName
+          .\.verify314\Scripts\python.exe -m pip install --no-deps (Get-ChildItem wheelhouse\moderngl-*.whl).FullName
+          .\.verify314\Scripts\python.exe -c "import moderngl, glcontext, sys; print(sys.version); print('ModernGL', moderngl.__version__); print('glcontext OK')"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: swirengine-cp314-windows-native
+          path: wheelhouse/*.whl
+          if-no-files-found: error
+      - name: Publish verified CPython 3.14 wheels as GitHub release assets
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NATIVE_TAG: swirengine-native-cp314-v1
+        run: |
+          $assets = Get-ChildItem wheelhouse\*.whl | ForEach-Object { $_.FullName }
+          gh release view $env:NATIVE_TAG --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:NATIVE_TAG $assets --clobber --repo $env:GITHUB_REPOSITORY
+          } else {
+            gh release create $env:NATIVE_TAG $assets --target $env:GITHUB_SHA --title "SwirEngine Python 3.14 native renderer wheels" --notes "Verified Windows x86-64 CPython 3.14 builds of ModernGL 5.12.0 and glcontext 3.0.0 for SwirEngine. Built from upstream source on GitHub Actions and intended only to bridge the upstream CPython 3.14 wheel gap." --repo $env:GITHUB_REPOSITORY
+          }
