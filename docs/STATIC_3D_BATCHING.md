@@ -27,4 +27,15 @@ The batch builder ignores disabled and hidden cubes. Different colors become sep
 
 The result reports deterministic metrics: source object count, output batch count, draw calls before/after and reduction ratio. For 1,000 visible cubes sharing one color, the renderer-facing draw count changes from 1,000 object draws to one combined mesh draw. The trade-off is a one-time CPU geometry build and higher combined vertex-buffer size, which is appropriate for static scenery rather than continuously animated objects.
 
+The CI benchmark `tools/benchmark_static_3d_batch.py` also measures the CPU frame-preparation component after the one-time bake. On the verified Ubuntu / Python 3.13 runner for 1,000 same-color cubes it measured:
+
+```text
+draw_calls=1000->1
+cpu_frame_prep_ns=1940573->1950
+cpu_frame_prep_reduction=99.90%
+cpu_frame_prep_speedup=995.35x
+```
+
+This measurement covers model-matrix/frame-submission preparation only; it is deliberately **not** presented as an end-to-end FPS claim. Real OpenGL demo smoke tests remain responsible for catching renderer/runtime regressions.
+
 A future fully dynamic GPU-instancing path can reuse the same creator-level grouping concepts without breaking the stable 1.x API.
