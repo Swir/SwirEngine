@@ -1,15 +1,10 @@
-import tomllib
-from pathlib import Path
+from importlib.metadata import version
 
 import swirengine
 
 
-ROOT = Path(__file__).resolve().parents[1]
-
-
-def test_package_version_matches_project_metadata():
-    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
-    assert swirengine.__version__ == project["version"]
+def test_package_version_matches_installed_metadata():
+    assert swirengine.__version__ == version("swirengine")
 
 
 def test_public_api_exports_are_unique_and_resolvable():
