@@ -53,11 +53,9 @@ def main() -> int:
     print(f"preload_wait_ns={parallel_ns}")
     print(f"wait_reduction={improvement:.2%}")
 
-    if args.assert_win and args.assets >= 2 and args.workers >= 2 and args.delay_ms >= 2.0:
-        # Deliberately loose gate: we only need proof that overlapped I/O-like work beats serialized
-        # loading, not a machine-specific speedup promise.
-        if parallel_ns >= serial_ns * 0.85:
-            raise SystemExit("async preload did not demonstrate the expected wait reduction")
+    should_assert = args.assert_win and args.assets >= 2 and args.workers >= 2 and args.delay_ms >= 2.0
+    if should_assert and parallel_ns >= serial_ns * 0.85:
+        raise SystemExit("async preload did not demonstrate the expected wait reduction")
     return 0
 
 
