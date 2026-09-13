@@ -1,9 +1,5 @@
-from swirengine import (
-    AABB,
-    BoxCollider2D,
-    CollisionWorld2D,
-    Rectangle2D,
-)
+from swirengine import Rectangle2D
+from swirengine.physics import AABB, BoxCollider2D, CollisionWorld2D
 
 
 world = CollisionWorld2D(cell_size=64)
