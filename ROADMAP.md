@@ -4,27 +4,27 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-83.9%25-2ea043?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-26%2F31-1f6feb?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-87.1%25-2ea043?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-27%2F31-1f6feb?style=for-the-badge">
   <img alt="Status" src="https://img.shields.io/badge/STATUS-IN%20PROGRESS-7c3aed?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-█████████████████░░░ 83.9%
+█████████████████░░░ 87.1%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **26** | **5** | **31** | **83.9%** |
+| **27** | **4** | **31** | **87.1%** |
 
 > **Progress rule:** the equal-weight deliverables below are the source of truth. Update `[x]/[ ]` first, then update badges, numbers, percentage and the 20-segment bar. Never estimate progress from version numbers, commit count or activity.
 
 - [x] 0.2 real 2D workflow complete
 - [x] 0.3 core 2D gameplay feature set complete
 - [x] 0.3 hardening foundation: bounded text cache, stats, profiler, debug overlay, batching and deterministic asset diagnostics
-- [ ] 0.3 larger sample games and creator-facing API polish
+- [x] 0.3 larger sample games and creator-facing API polish
 - [x] 0.4 Camera3D, perspective/view matrices and local navigation
 - [x] 0.4 MeshData/Mesh3D GPU caching and mesh statistics
 - [x] 0.4 OBJ import with triangulation, normals and UV support
@@ -60,18 +60,20 @@ Completed: textured sprites, alpha blending, texture cache, camera 2D, names/tag
 creator-friendly scene/input shortcuts, render layers, cached text rendering,
 adjacent-texture GPU sprite batching and frame/render profiling.
 
-## 0.3 - 2D gameplay systems — feature complete, hardening in progress
+## 0.3 - 2D gameplay systems — complete and hardened
 
 Completed: sprite sheets, named animation clips, asset manager, AABB box collisions,
 collision layers/masks, one-shot keyboard and mouse input, tilemaps, JSON save data,
 pooled particles, fixed-step arcade rigid-body physics, pluggable sound/music playback,
 screen-space UI, labels, panels, buttons and progress bars.
 
-Hardening completed so far: bounded dynamic-text cache, renderer statistics, frame profiler,
+Hardening completed: bounded dynamic-text cache, renderer statistics, frame profiler,
 built-in debug overlay, sprite draw-call batching that preserves transparent render order,
-deterministic asset scanning and creator-facing asset/alias diagnostics.
-
-Remaining hardening: larger sample games and creator-facing API polish while 3D grows in parallel.
+deterministic asset scanning and creator-facing asset/alias diagnostics. Two larger asset-free
+sample games now exercise complete gameplay loops across input, UI, tags, collision logic,
+progression, procedural spawning and scene cleanup. Additive `Scene.require(...)`,
+`Scene.remove_many(...)` and `Scene.remove_tagged(...)` helpers round out common creator workflows
+without changing existing lookup/removal semantics.
 
 ## 0.4 - Serious 3D — in progress
 
