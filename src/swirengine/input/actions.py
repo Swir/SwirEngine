@@ -163,7 +163,7 @@ class InputActions:
             ) * binding.scale
         axis = self.input.gamepad_axis(str(binding.control), gamepad_id=binding.gamepad_id)
         directed = axis * binding.direction
-        if directed <= 0.0:
+        if directed < binding.threshold:
             return 0.0
         return min(1.0, directed) * binding.scale
 
