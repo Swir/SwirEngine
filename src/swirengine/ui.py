@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 from .core.scene import Scene
 from .graphics.primitives import Rectangle2D, Text2D
 from .input.manager import InputManager
 from .math.types import Color
+
+if TYPE_CHECKING:
+    from .ui_layout import UIContainer, UILayout
+    from .ui_navigation import UIFocusManager
 
 T = TypeVar("T")
 
@@ -80,11 +84,15 @@ class UIPanel:
         color: Color | None = None,
         layer: int = 900,
     ) -> None:
+        self.x = float(x)
+        self.y = float(y)
+        self.width = max(1.0, float(width))
+        self.height = max(1.0, float(height))
         self.background = Rectangle2D(
-            x,
-            y,
-            width,
-            height,
+            self.x,
+            self.y,
+            self.width,
+            self.height,
             _color_or(color, (0.08, 0.10, 0.16, 0.94)),
             layer=layer,
             screen_space=True,
@@ -93,6 +101,12 @@ class UIPanel:
     @property
     def children(self) -> tuple[object, ...]:
         return (self.background,)
+
+    def _sync(self) -> None:
+        self.background.x = self.x
+        self.background.y = self.y
+        self.background.width = self.width
+        self.background.height = self.height
 
 
 class UIButton:
@@ -108,8 +122,10 @@ class UIButton:
         color: Color | None = None,
         hover_color: Color | None = None,
         pressed_color: Color | None = None,
+        focused_color: Color | None = None,
         text_color: Color | None = None,
         font_size: int = 22,
+        focusable: bool = True,
         layer: int = 1000,
     ) -> None:
         self.x = float(x)
@@ -119,12 +135,15 @@ class UIButton:
         self.enabled = True
         self.visible = True
         self.hovered = False
+        self.focused = False
+        self.focusable = bool(focusable)
         self.pressed = False
         self._armed = False
         self.on_click = on_click
         self.color = _color_or(color, (0.14, 0.20, 0.32, 1.0))
         self.hover_color = _color_or(hover_color, (0.20, 0.32, 0.52, 1.0))
         self.pressed_color = _color_or(pressed_color, (0.10, 0.16, 0.28, 1.0))
+        self.focused_color = _color_or(focused_color, (0.24, 0.42, 0.68, 1.0))
         self.background = Rectangle2D(
             self.x,
             self.y,
@@ -176,6 +195,8 @@ class UIButton:
             self.background.color = self.pressed_color
         elif self.hovered:
             self.background.color = self.hover_color
+        elif self.focused:
+            self.background.color = self.focused_color
         else:
             self.background.color = self.color
 
@@ -229,8 +250,16 @@ class UIProgressBar:
     @value.setter
     def value(self, value: float) -> None:
         self._value = max(0.0, min(1.0, float(value)))
+        self._sync()
+
+    def _sync(self) -> None:
+        self.background.x = self.x
+        self.background.y = self.y
+        self.background.width = self.width
+        self.background.height = self.height
         fill_width = self.width * self._value
         self.fill.width = max(0.001, fill_width)
+        self.fill.height = self.height
         self.fill.x = self.x - self.width * 0.5 + fill_width * 0.5
         self.fill.y = self.y
         self.fill.visible = self._value > 0.0
@@ -240,18 +269,30 @@ UIControl = UILabel | UIPanel | UIButton | UIProgressBar
 
 
 class UIManager:
+    """Creator-facing UI registry with mouse, focus and responsive layout support."""
+
     def __init__(self, scene: Scene) -> None:
+        from .ui_navigation import UIFocusManager
+
         self.scene = scene
         self._controls: list[UIControl] = []
+        self._containers: list[UIContainer] = []
+        self.focus: UIFocusManager = UIFocusManager()
 
     @property
     def controls(self) -> tuple[UIControl, ...]:
         return tuple(self._controls)
 
+    @property
+    def containers(self) -> tuple[UIContainer, ...]:
+        return tuple(self._containers)
+
     def add(self, control: T) -> T:
         if not any(existing is control for existing in self._controls):
             self._controls.append(control)
             self.scene.add_many(*control.children)
+            if isinstance(control, UIButton):
+                self.focus.add(control)
         return control
 
     def remove(self, control: object) -> bool:
@@ -260,12 +301,17 @@ class UIManager:
                 del self._controls[index]
                 for child in existing.children:
                     self.scene.remove(child)
+                if isinstance(existing, UIButton):
+                    self.focus.remove(existing)
+                for container in self._containers:
+                    container.remove(existing)
                 return True
         return False
 
     def clear(self) -> None:
         for control in tuple(self._controls):
             self.remove(control)
+        self._containers.clear()
 
     def label(self, text: str, x: float = 0.0, y: float = 0.0, **kwargs: object) -> UILabel:
         return self.add(UILabel(text, x, y, **kwargs))
@@ -294,7 +340,31 @@ class UIManager:
     ) -> UIProgressBar:
         return self.add(UIProgressBar(x, y, width, height, **kwargs))
 
-    def update(self, input_manager: InputManager, width: int, height: int) -> None:
+    def container(
+        self,
+        *controls: UIControl,
+        x: float = 0.0,
+        y: float = 0.0,
+        direction: str = "vertical",
+        spacing: float = 12.0,
+        layout: UILayout | None = None,
+    ) -> UIContainer:
+        from .ui_layout import UIContainer
+
+        for control in controls:
+            self.add(control)
+        container = UIContainer(
+            *controls,
+            x=x,
+            y=y,
+            direction=direction,
+            spacing=spacing,
+            layout=layout,
+        )
+        self._containers.append(container)
+        return container
+
+    def _update_pointer(self, input_manager: InputManager, width: int, height: int) -> None:
         pointer_x = input_manager.mouse_x - width * 0.5
         pointer_y = height * 0.5 - input_manager.mouse_y
         just_pressed = input_manager.mouse_button_pressed(0)
@@ -306,6 +376,9 @@ class UIManager:
             if button.enabled and button.visible and button.contains(pointer_x, pointer_y):
                 active_hover = button
                 break
+
+        if active_hover is not None:
+            self.focus.focus(active_hover)
 
         for button in buttons:
             button.hovered = button is active_hover
@@ -320,4 +393,19 @@ class UIManager:
                 button.pressed = False
                 if clicked and button.on_click is not None:
                     button.on_click(button)
-            button._sync()
+
+    def update(self, input_manager: InputManager, width: int, height: int) -> None:
+        for container in self._containers:
+            container.arrange(width, height)
+
+        self._update_pointer(input_manager, width, height)
+        focused = self.focus.update(input_manager)
+
+        for control in self._controls:
+            if isinstance(control, UIButton):
+                control.focused = control is focused
+                control._sync()
+            else:
+                sync = getattr(control, "_sync", None)
+                if callable(sync):
+                    sync()

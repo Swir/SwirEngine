@@ -171,6 +171,41 @@ not discard successful results from the same batch. GPU/context-owned uploads st
 render thread; background loading targets file I/O, parsing, decompression and thread-safe CPU-side
 decoding. Full guidance is in [`docs/ASYNC_ASSET_PIPELINE.md`](docs/ASYNC_ASSET_PIPELINE.md).
 
+### Responsive UI layout and focus navigation
+
+Menus and HUDs can now opt into viewport anchors, reference-resolution scaling and vertical or
+horizontal containers instead of maintaining separate hard-coded coordinates for every resolution.
+`UIManager` integrates the layout pass with deterministic keyboard/gamepad focus and preserves
+existing pointer behavior.
+
+```python
+from swirengine import Game, UIAnchor, UILayout
+
+
+game = Game("Responsive menu", 1280, 720)
+play = game.button("Play", 0, 0, 260, 58)
+options = game.button("Options", 0, 0, 260, 58)
+
+game.ui.container(
+    play,
+    options,
+    spacing=18,
+    layout=UILayout(
+        anchor=UIAnchor.CENTER,
+        scale_with_viewport=True,
+        reference_width=1280,
+        reference_height=720,
+    ),
+)
+
+game.run()
+```
+
+Keyboard `Tab`/arrows and gamepad D-pad move focus; `Enter`/`Space` or standardized gamepad `A`
+activate the focused button. Mouse hover hands focus back to the pointer. Button/label text, panels
+and progress geometry resize from their original authored values without compounded scaling. See
+[`docs/RESPONSIVE_UI.md`](docs/RESPONSIVE_UI.md) and `examples/demo_responsive_ui.py`.
+
 ## Quick 2D game
 
 ```python
@@ -226,7 +261,8 @@ game.run()
 - sprite sheets and named `AnimatedSprite2D` clips
 - tilemaps backed by pooled sprites
 - cached text rendering and bounded LRU text-texture cache
-- labels, panels, buttons and progress bars
+- responsive labels, panels, buttons and progress bars with anchors/containers/reference scaling
+- keyboard/mouse/gamepad focus navigation and UI activation
 - particles
 - AABB collision queries
 - deterministic fixed-step arcade rigid-body physics
@@ -278,6 +314,7 @@ an end-to-end FPS claim.
 - transactional multi-domain state restore/rollback
 - asset hot reload bridges for renderer and audio
 - bounded asynchronous asset preload with deterministic diagnostics and in-flight deduplication
+- responsive UI containers with keyboard/gamepad focus navigation
 - `LiveDevelopmentHub`
 - pluggable sound effects and music backend
 
@@ -374,6 +411,7 @@ triangles, light usage and dropped-light counts. Programmatic profiling is avail
 - `examples/demo_gamepad.py` — controller + keyboard-fallback input example
 - `examples/demo_static_3d_batching.py` — 200-cube static larger-batch rendering example
 - `examples/demo_async_assets.py` — background/preload loading workflow with timing diagnostics
+- `examples/demo_responsive_ui.py` — resize-aware menu with keyboard/gamepad focus navigation
 - larger asset-free 2D samples under `examples/`
 
 The Windows demo build pipeline also probes the final packaged GLFW runtime so missing native
