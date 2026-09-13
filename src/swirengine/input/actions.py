@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from .manager import InputManager
 
@@ -214,12 +215,12 @@ class InputActions:
             raise ValueError(f"Unsupported input profile version: {version}")
         actions = data.get("actions")
         if not isinstance(actions, dict):
-            raise ValueError("input profile must contain an 'actions' object")
+            raise TypeError("input profile must contain an 'actions' object")
         if replace:
             self.clear()
         for action, raw_bindings in actions.items():
             if not isinstance(raw_bindings, list):
-                raise ValueError(f"bindings for {action!r} must be a list")
+                raise TypeError(f"bindings for {action!r} must be a list")
             self.bind_many(
                 str(action),
                 (InputBinding.from_dict(item) for item in raw_bindings),
@@ -234,5 +235,5 @@ class InputActions:
     def load(self, path: str | Path, *, replace: bool = True) -> None:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
         if not isinstance(data, dict):
-            raise ValueError("input profile root must be an object")
+            raise TypeError("input profile root must be an object")
         self.load_dict(data, replace=replace)
