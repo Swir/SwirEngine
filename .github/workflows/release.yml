@@ -1,4 +1,5 @@
 # PyPI and GitHub release workflow for SwirEngine.
+# Publication is hard-gated by ROADMAP_1_1.md: no PyPI/GitHub Release before 10/10 = 100%.
 name: Release
 
 on:
@@ -17,6 +18,32 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
+      - name: Enforce 100% roadmap release gate
+        shell: python
+        run: |
+          import re
+          from pathlib import Path
+
+          roadmap = Path("ROADMAP_1_1.md")
+          if not roadmap.exists():
+              raise SystemExit("Release frozen: ROADMAP_1_1.md is missing.")
+
+          text = roadmap.read_text(encoding="utf-8")
+          checked = len(re.findall(r"^- \[x\] ", text, flags=re.MULTILINE | re.IGNORECASE))
+          unchecked = len(re.findall(r"^- \[ \] ", text, flags=re.MULTILINE))
+          total = checked + unchecked
+
+          expected_total = 10
+          expected_bar = "████████████████████ 100.0%"
+          if checked != expected_total or unchecked != 0 or total != expected_total:
+              raise SystemExit(
+                  f"Release frozen: SwirEngine 1.1 roadmap is {checked}/{total}; "
+                  "publication requires exactly 10/10 = 100.0%."
+              )
+          if expected_bar not in text:
+              raise SystemExit("Release frozen: ROADMAP_1_1.md dashboard is not at 100.0%.")
+
+          print("Release gate passed: ROADMAP_1_1.md is exactly 10/10 = 100.0%.")
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
