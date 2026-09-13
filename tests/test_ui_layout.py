@@ -75,15 +75,15 @@ def test_vertical_container_arranges_and_scales_buttons_and_text() -> None:
     assert first.height == 80
     assert first.label.scale == 2.0
     assert second.width == 400
-    assert first.y == 100
-    assert second.y == -100
+    assert first.y == 60
+    assert second.y == -60
 
     container.arrange(800, 600)
     assert first.width == 200
     assert first.height == 40
     assert first.label.scale == 1.0
-    assert first.y == 50
-    assert second.y == -50
+    assert first.y == 30
+    assert second.y == -30
 
 
 def test_horizontal_container_preserves_creator_order() -> None:
