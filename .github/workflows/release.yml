@@ -85,8 +85,8 @@ jobs:
         run: |
           python -m venv .verify314
           .\.verify314\Scripts\python.exe -m pip install --upgrade pip
-          .\.verify314\Scripts\python.exe -m pip install --find-links dist-cp314 "swirengine==1.0.3"
-          .\.verify314\Scripts\python.exe -c "import sys, swirengine, moderngl, glcontext; assert sys.version_info[:2] == (3, 14); assert swirengine.__version__ == '1.0.3'; assert '_vendor_native' in moderngl.__file__; assert '_vendor_native' in glcontext.__file__; print(sys.version); print(moderngl.__file__); print(glcontext.__file__)"
+          .\.verify314\Scripts\python.exe -m pip install --find-links dist-cp314 "swirengine==1.1.0"
+          .\.verify314\Scripts\python.exe -c "import sys, swirengine, moderngl, glcontext; assert sys.version_info[:2] == (3, 14); assert swirengine.__version__ == '1.1.0'; assert '_vendor_native' in moderngl.__file__; assert '_vendor_native' in glcontext.__file__; print(sys.version); print(moderngl.__file__); print(glcontext.__file__)"
       - uses: actions/upload-artifact@v4
         with:
           name: swirengine-dist-cp314
