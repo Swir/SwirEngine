@@ -1,8 +1,6 @@
 from swirengine import Color, Cube3D, Game, Vec3
 from swirengine.graphics.static_batch import build_static_cube_batches
 
-
-
 game = Game("Static 3D batching", 1280, 720, mode="3d")
 
 cubes = [
