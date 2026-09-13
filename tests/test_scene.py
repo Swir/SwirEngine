@@ -1,3 +1,5 @@
+import pytest
+
 from swirengine import Rectangle2D, Scene
 
 
@@ -40,8 +42,41 @@ def test_scene_find_and_tags():
 
     assert scene.find("player") is player
     assert scene.find("missing") is None
+    assert scene.require("player") is player
     assert scene.tagged("hero") == (player,)
     assert scene.tagged("actor") == (player, enemy)
+
+    with pytest.raises(LookupError, match="missing"):
+        scene.require("missing")
+
+
+def test_scene_remove_many_preserves_argument_order_and_identity():
+    scene = Scene()
+    first = Rectangle2D(0, 0, 10, 10)
+    equal_but_distinct = Rectangle2D(0, 0, 10, 10)
+    third = Rectangle2D(20, 0, 10, 10)
+    scene.add_many(first, equal_but_distinct, third)
+
+    removed = scene.remove_many(third, first, third)
+
+    assert removed == (third, first)
+    assert equal_but_distinct in scene
+    assert first not in scene
+    assert third not in scene
+
+
+def test_scene_remove_tagged_uses_stable_snapshot():
+    scene = Scene()
+    player = Rectangle2D(0, 0, 10, 10, tags={"actor"})
+    enemy_a = Rectangle2D(20, 0, 10, 10, tags={"actor", "enemy"})
+    enemy_b = Rectangle2D(40, 0, 10, 10, tags={"actor", "enemy"})
+    scene.add_many(player, enemy_a, enemy_b)
+
+    removed = scene.remove_tagged("enemy")
+
+    assert removed == (enemy_a, enemy_b)
+    assert scene.objects == (player,)
+    assert scene.remove_tagged("missing") == ()
 
 
 def test_scene_allows_distinct_equal_objects():
