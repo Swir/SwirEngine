@@ -1,9 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
-
 
 _FACE_NAMES = ("positive_x", "negative_x", "positive_y", "negative_y", "positive_z", "negative_z")
 
