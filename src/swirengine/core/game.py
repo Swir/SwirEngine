@@ -11,10 +11,11 @@ from ..debug import DebugOverlay
 from ..graphics.camera import Camera2D
 from ..graphics.camera3d import Camera3D
 from ..graphics.gltf import load_gltf
+from ..graphics.ibl_renderer import ImageBasedPostProcessRenderer
 from ..graphics.lights import DirectionalLight3D, PointLight3D, SpotLight3D
 from ..graphics.mesh import Mesh3D, MeshData
 from ..graphics.obj import load_obj
-from ..graphics.postprocess import PostProcessRenderer, PostProcessSettings
+from ..graphics.postprocess import PostProcessSettings
 from ..graphics.primitives import Sprite2D, Text2D
 from ..input.manager import InputManager
 from ..particles import ParticleEmitter2D
@@ -285,7 +286,7 @@ class Game:
         glfw.make_context_current(window)
         glfw.swap_interval(1 if self.vsync else 0)
         ctx = moderngl.create_context()
-        renderer = PostProcessRenderer(
+        renderer = ImageBasedPostProcessRenderer(
             ctx,
             self.width,
             self.height,
