@@ -6,7 +6,6 @@ import struct
 from dataclasses import dataclass
 from typing import Any
 
-
 _HEADER = struct.Struct("!I")
 _DEFAULT_MAX_PACKET = 1024 * 1024
 
@@ -36,11 +35,11 @@ class NetworkPacket:
     def from_body(cls, body: bytes) -> NetworkPacket:
         decoded = json.loads(body.decode("utf-8"))
         if not isinstance(decoded, dict):
-            raise ValueError("network packet must decode to an object")
+            raise TypeError("network packet must decode to an object")
         kind = decoded.get("kind")
         payload = decoded.get("payload")
         if not isinstance(kind, str) or not isinstance(payload, dict):
-            raise ValueError("network packet requires string kind and object payload")
+            raise TypeError("network packet requires string kind and object payload")
         return cls(kind=kind, payload=payload)
 
 
@@ -164,12 +163,6 @@ class TCPPeer:
             self.decoder.reset()
             self._send_buffer.clear()
 
-    def __enter__(self) -> TCPPeer:
-        return self
-
-    def __exit__(self, exc_type, exc, tb) -> None:
-        self.close()
-
 
 class TCPClient:
     """Creator-facing TCP client that returns a :class:`TCPPeer`."""
@@ -190,12 +183,12 @@ class TCPServer:
 
     def __init__(
         self,
-        address: NetworkAddress = NetworkAddress(),
+        address: NetworkAddress | None = None,
         *,
         backlog: int = 16,
         max_packet_size: int = _DEFAULT_MAX_PACKET,
     ) -> None:
-        self.address = address
+        self.address = address or NetworkAddress()
         self.backlog = max(1, int(backlog))
         self.max_packet_size = max(1, int(max_packet_size))
         self.socket: socket.socket | None = None
@@ -233,10 +226,3 @@ class TCPServer:
             return
         self.socket.close()
         self.socket = None
-
-    def __enter__(self) -> TCPServer:
-        self.start()
-        return self
-
-    def __exit__(self, exc_type, exc, tb) -> None:
-        self.close()
