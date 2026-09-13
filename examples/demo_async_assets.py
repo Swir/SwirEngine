@@ -4,8 +4,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from time import sleep
 
-from swirengine.assets import AssetManager
 from swirengine.asset_pipeline import AssetPreloader
+from swirengine.assets import AssetManager
 
 
 with TemporaryDirectory(prefix="swir-assets-") as temp_dir:
