@@ -139,6 +139,38 @@ normals are baked correctly. The path is intended for static walls, floors, buil
 level props; rebuild the batch when source transforms or colors change. Full guidance is in
 [`docs/STATIC_3D_BATCHING.md`](docs/STATIC_3D_BATCHING.md).
 
+### Async/preload asset pipeline
+
+Large scene transitions can preload filesystem/CPU asset work through a bounded worker pool rather
+than decoding every resource serially on the gameplay thread. `AssetPreloader` supports individual
+`load_async(...)` calls, whole-batch `preload(...)` / `preload_async(...)`, in-flight deduplication
+and deterministic timing/cache/error diagnostics.
+
+```python
+from swirengine.asset_pipeline import AssetPreloader
+from swirengine.assets import AssetManager
+
+assets = AssetManager("assets")
+assets.register_loader("txt", lambda path: path.read_text(encoding="utf-8"))
+
+with AssetPreloader(assets, max_workers=4) as preloader:
+    future = preloader.preload_async([
+        "levels/city.txt",
+        "missions/chapter1.txt",
+        "config/vehicles.txt",
+    ])
+    # Keep menu/loading-screen work responsive while CPU/file loading runs.
+    report = future.result()
+
+print(report.loaded, report.failed, report.cache_hits)
+print(f"preload wall time: {report.wall_time_ms:.2f} ms")
+```
+
+Duplicate requests for one canonical path share a single in-flight load and one broken resource does
+not discard successful results from the same batch. GPU/context-owned uploads still belong on the
+render thread; background loading targets file I/O, parsing, decompression and thread-safe CPU-side
+decoding. Full guidance is in [`docs/ASYNC_ASSET_PIPELINE.md`](docs/ASYNC_ASSET_PIPELINE.md).
+
 ## Quick 2D game
 
 ```python
@@ -230,6 +262,11 @@ suite verifies that 100 same-color cubes map from 100 object draws to one combin
 GPU instancing remains a future extension; the current path deliberately targets scenery that can
 be baked once and rendered cheaply across many frames.
 
+The async asset pipeline moves thread-safe file/CPU decoding work out of serial scene-transition
+loading and reports the measured wait component separately. CI includes a reproducible synthetic
+I/O-like benchmark that must demonstrate a real overlap win without turning that measurement into
+an end-to-end FPS claim.
+
 ### Architecture and game systems
 
 - scene names, tags and creator-friendly lookup/removal helpers
@@ -240,6 +277,7 @@ be baked once and rendered cheaply across many frames.
 - plugin runtime and polling file watcher/plugin hot reload
 - transactional multi-domain state restore/rollback
 - asset hot reload bridges for renderer and audio
+- bounded asynchronous asset preload with deterministic diagnostics and in-flight deduplication
 - `LiveDevelopmentHub`
 - pluggable sound effects and music backend
 
@@ -335,6 +373,7 @@ triangles, light usage and dropped-light counts. Programmatic profiling is avail
 - **Neon Snake 3D** — complete 3D Snake with growth, food, collision, score, PBR and post-processing
 - `examples/demo_gamepad.py` — controller + keyboard-fallback input example
 - `examples/demo_static_3d_batching.py` — 200-cube static larger-batch rendering example
+- `examples/demo_async_assets.py` — background/preload loading workflow with timing diagnostics
 - larger asset-free 2D samples under `examples/`
 
 The Windows demo build pipeline also probes the final packaged GLFW runtime so missing native
@@ -356,6 +395,7 @@ CI validates SwirEngine on:
 - wheel/sdist packaging and metadata
 - clean-wheel installation
 - a dedicated CPython 3.14 Windows platform-wheel build, pip-selection and native import test
+- reproducible performance gates for static 3D frame preparation and async preload wait reduction
 - real OpenGL paths through the official 3D demo workflows
 
 ## Versioning and API stability
