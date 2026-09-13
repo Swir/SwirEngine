@@ -353,6 +353,7 @@ class Game:
                 with self.profiler.measure("update"):
                     self.input.begin_frame()
                     glfw.poll_events()
+                    self.input.poll_gamepads(glfw)
                     self.ui.update(self.input, self.width, self.height)
 
                     for callback in tuple(self._update_callbacks):
