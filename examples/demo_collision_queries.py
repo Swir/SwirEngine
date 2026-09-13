@@ -1,4 +1,4 @@
-from swirengine import Rectangle2D
+from swirengine.graphics.primitives import Rectangle2D
 from swirengine.physics import AABB, BoxCollider2D, CollisionWorld2D
 
 
