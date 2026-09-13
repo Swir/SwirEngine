@@ -1,3 +1,4 @@
+import swirengine.graphics.batching as batching
 from swirengine import Rectangle2D, Sprite2D
 from swirengine.graphics.batching import SpriteBatch, build_render_runs
 
@@ -63,3 +64,33 @@ def test_non_renderable_scene_objects_are_ignored(tmp_path):
     assert len(runs) == 1
     assert isinstance(runs[0], SpriteBatch)
     assert runs[0].sprites == (sprite,)
+
+
+def test_texture_path_normalization_is_cached_between_frames(tmp_path):
+    texture = tmp_path / "atlas.png"
+    sprite = Sprite2D(texture)
+    batching._canonical_texture_key.cache_clear()
+
+    first = batching.sprite_batch_key(sprite)
+    after_first = batching._canonical_texture_key.cache_info()
+    second = batching.sprite_batch_key(sprite)
+    after_second = batching._canonical_texture_key.cache_info()
+
+    assert first == second
+    assert after_first.misses == 1
+    assert after_second.misses == 1
+    assert after_second.hits == 1
+
+
+def test_streaming_batches_accept_generators_without_reordering(tmp_path):
+    texture = tmp_path / "atlas.png"
+    first = Sprite2D(texture, x=1)
+    second = Sprite2D(texture, x=2)
+    marker = Rectangle2D(0, 0, 5, 5)
+
+    runs = build_render_runs(item for item in (first, second, marker))
+
+    assert len(runs) == 2
+    assert isinstance(runs[0], SpriteBatch)
+    assert runs[0].sprites == (first, second)
+    assert runs[1] is marker
