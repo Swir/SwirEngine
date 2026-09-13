@@ -105,6 +105,15 @@ from .hotreload import (
     HotReloadStateError,
     HotReloadStateRegistry,
 )
+from .input import (
+    GAMEPAD_AXES,
+    GAMEPAD_BUTTONS,
+    GamepadSnapshot,
+    InputManager,
+    apply_deadzone,
+    normalize_gamepad_axis,
+    normalize_gamepad_button,
+)
 from .live_development import LiveDevelopmentHub, LiveDevelopmentResult
 from .math.types import Color, Transform, Vec2, Vec3
 from .networking import (
@@ -132,6 +141,8 @@ __all__ = [
     "EDITOR_HIERARCHY_VERSION",
     "EDITOR_PROJECT_FORMAT",
     "EDITOR_PROJECT_VERSION",
+    "GAMEPAD_AXES",
+    "GAMEPAD_BUTTONS",
     "MAX_DIRECTIONAL_LIGHTS",
     "MAX_POINT_LIGHTS",
     "MAX_SPOT_LIGHTS",
@@ -197,6 +208,7 @@ __all__ = [
     "FrontendInspectorRow",
     "GPUTextureInvalidation",
     "Game",
+    "GamepadSnapshot",
     "GizmoApplyResult",
     "GizmoTransformSnapshot",
     "GltfPrimitiveAsset",
@@ -209,6 +221,7 @@ __all__ = [
     "HotReloadStateRegistry",
     "ImageBasedEnvironment3D",
     "ImageBasedPostProcessRenderer",
+    "InputManager",
     "InspectorField",
     "InspectorSnapshot",
     "LightSelection3D",
@@ -273,6 +286,7 @@ __all__ = [
     "ViewportPick",
     "ViewportRay",
     "animated_sprite",
+    "apply_deadzone",
     "capture_editor_hierarchy",
     "classify_editor_asset",
     "cube_mesh",
@@ -285,6 +299,8 @@ __all__ = [
     "load_gltf_primitives",
     "load_gltf_scene",
     "load_obj",
+    "normalize_gamepad_axis",
+    "normalize_gamepad_button",
     "parse_editor_value",
     "restore_editor_hierarchy",
     "select_lights",
@@ -292,4 +308,4 @@ __all__ = [
     "upload_cubemap",
 ]
 
-__version__ = "1.0.3"
+__version__ = "1.1.0"
