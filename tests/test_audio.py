@@ -27,6 +27,7 @@ class FakeAudioBackend:
 
     def set_volume(self, token: object, volume: float) -> None:
         self.volumes.append((token, volume))
+        self.stereo.append((token, volume, volume))
 
     def set_stereo(self, token: object, left: float, right: float) -> None:
         self.stereo.append((token, left, right))
