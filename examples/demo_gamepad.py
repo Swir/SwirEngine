@@ -14,9 +14,9 @@ def update(dt: float) -> None:
     if not game.input.gamepad_connected():
         x = float(game.key("D")) - float(game.key("A"))
         y = float(game.key("S")) - float(game.key("W"))
-        status.value = "Keyboard fallback: WASD"
+        status.text = "Keyboard fallback: WASD"
     else:
-        status.value = f"Gamepad: {game.input.gamepad_name()} | A = boost"
+        status.text = f"Gamepad: {game.input.gamepad_name()} | A = boost"
 
     speed = 520.0 if game.input.gamepad_button("A") else 300.0
     player.x += x * speed * dt
