@@ -12,9 +12,12 @@
 creator-friendly Python gameplay code with a real OpenGL renderer, scenes, prefabs/ECS, physics,
 audio, editor tooling, networking, export and complete game demos.
 
-The original 1.0 roadmap is complete at **31/31 deliverables**. SwirEngine 1.1 starts the next
-stage: making complete games easier to control, profile, package and ship without turning the
+The original 1.0 roadmap is complete at **31/31 deliverables**. SwirEngine 1.1 is the next stage:
+making complete games easier to control, profile, optimize, package and ship without turning the
 engine into a thin wrapper around another framework.
+
+> **Development policy:** the active 1.1 line is developed on `main`, but PyPI/GitHub Release
+> publication is frozen until [`ROADMAP_1_1.md`](ROADMAP_1_1.md) reaches a verified 10/10 = 100%.
 
 ## Install
 
@@ -39,10 +42,10 @@ python -m pip install -U "swirengine[audio]"
 ### Python 3.14 native renderer support
 
 The stable upstream `moderngl 5.12.0` and `glcontext 3.0.0` releases do not currently publish
-CPython 3.14 Windows x86-64 wheels. SwirEngine publishes a dedicated
-`cp314-cp314-win_amd64` wheel containing verified private copies of those native renderer
-components under `swirengine/_vendor_native`. A normal `pip install swirengine` on Windows x64 +
-Python 3.14 therefore does **not** require Microsoft Visual C++ Build Tools.
+CPython 3.14 Windows x86-64 wheels. SwirEngine publishes a dedicated `cp314-cp314-win_amd64` wheel
+containing verified private copies of those native renderer components under
+`swirengine/_vendor_native`. A normal `pip install swirengine` on Windows x64 + Python 3.14
+therefore does **not** require Microsoft Visual C++ Build Tools.
 
 The platform wheel is rebuilt from upstream source in GitHub Actions, checked with `twine`,
 installed into a clean Python 3.14 environment and imported before Trusted Publishing is allowed
@@ -50,28 +53,17 @@ to upload it. Python 3.10-3.13 continue using normal upstream dependencies. Linu
 on the verified 3.10-3.13 support window until equally reliable Python 3.14 binary dependencies
 exist there.
 
-## What is new in 1.1.0
+## SwirEngine 1.1 development
 
 ### Standardized gamepad/controller input
 
-SwirEngine now has a creator-facing controller layer on top of GLFW's standard gamepad mapping.
-Mapped Xbox, PlayStation and compatible controllers expose the same names instead of forcing game
+SwirEngine has a creator-facing controller layer on top of GLFW's standard gamepad mapping.
+Mapped Xbox, PlayStation and compatible controllers expose consistent names instead of forcing game
 code to depend on platform-specific joystick indexes.
 
-The input layer now provides:
-
-- deterministic discovery of connected standardized gamepads
-- controller name and GUID snapshots
-- held, pressed and released button queries
-- aliases such as `LB`, `RB`, `L1`, `R1`, `L2`, `R2`, `L3`, `R3`, `START` and D-pad directions
-- left/right analog stick helpers
-- configurable stick/axis deadzone with range rescaling
-- trigger helpers normalized to `0.0 .. 1.0`
-- hot-plug connection/disconnection edge queries
-- automatic per-frame refresh while a normal `Game.run()` window is active
-- keyboard fallback remains fully compatible
-
-Example:
+The input layer provides deterministic discovery, controller name/GUID snapshots, held/pressed/
+released button queries, common aliases, left/right stick helpers, configurable deadzones,
+normalized triggers, hot-plug edges and automatic refresh in `Game.run()`.
 
 ```python
 from swirengine import Color, Game, Rectangle2D
@@ -84,32 +76,22 @@ player = game.add(Rectangle2D(-40, -40, 80, 80, Color(0.1, 0.75, 1.0, 1.0)))
 @game.update
 def update(dt):
     x, y = game.input.gamepad_stick("left")
-
     if not game.input.gamepad_connected():
         x = float(game.key("D")) - float(game.key("A"))
         y = float(game.key("S")) - float(game.key("W"))
-
     speed = 520 if game.input.gamepad_button("A") else 300
     player.x += x * speed * dt
     player.y += y * speed * dt
-
-    if game.input.gamepad_button_pressed("START"):
-        player.x = player.y = -40
 
 
 game.run()
 ```
 
-For lower-level access, `GamepadSnapshot`, `GAMEPAD_BUTTONS`, `GAMEPAD_AXES`,
-`apply_deadzone(...)`, `normalize_gamepad_button(...)` and `normalize_gamepad_axis(...)` are public
-1.x APIs.
-
 ### Semantic input actions, rebinding and control profiles
 
-SwirEngine 1.1 development also includes a creator-facing semantic action layer. Games can bind
-keyboard, mouse, standardized gamepad buttons and directional analog axes to names such as
-`jump`, `fire` or `move_left`, then change those bindings from an in-game controls menu without
-rewriting gameplay code.
+Games can bind keyboard, mouse, standardized gamepad buttons and directional analog axes to names
+such as `jump`, `fire` or `move_left`, then change those bindings from an in-game controls menu
+without rewriting gameplay code.
 
 ```python
 from swirengine.input import InputActions
@@ -123,14 +105,39 @@ controls.gamepad_axis("move_left", "left_x", direction=-1, threshold=0.25)
 if controls.pressed("jump"):
     player.jump()
 
-move_left = controls.value("move_left")
 controls.save("settings/controls.json")
 ```
 
 Bindings support held/pressed/released queries, analog values, duplicate-safe multi-binding,
-runtime replacement/removal and versioned JSON profiles. Persisted axis thresholds are enforced at
-runtime so controller profiles behave consistently after reload. See
-[`docs/INPUT_ACTIONS.md`](docs/INPUT_ACTIONS.md) for the full API and rebinding workflow.
+runtime replacement/removal and versioned JSON profiles. See
+[`docs/INPUT_ACTIONS.md`](docs/INPUT_ACTIONS.md).
+
+### Static 3D larger-batch rendering
+
+Static cube-heavy scenery can now be baked into combined `Mesh3D` batches with
+`build_static_cube_batches(...)`. Compatible cubes are grouped by color, their transforms are
+baked once into combined geometry, and the existing renderer submits one mesh draw per batch.
+
+```python
+from swirengine import Cube3D, Vec3
+from swirengine.graphics.static_batch import build_static_cube_batches
+
+walls = [Cube3D(position=Vec3(x * 2.0, 0.0, -12.0)) for x in range(100)]
+batch = build_static_cube_batches(walls)
+
+for mesh in batch.meshes:
+    game.add(mesh)
+
+print(batch.metrics.draw_calls_before)   # 100
+print(batch.metrics.draw_calls_after)    # 1
+print(batch.metrics.draw_call_reduction) # 0.99
+```
+
+The 100-cube regression case therefore reduces renderer-facing object draws from **100 to 1
+(99%)** without claiming an unmeasured FPS number. Translation, rotation, scale, UVs and transformed
+normals are baked correctly. The path is intended for static walls, floors, buildings and repeated
+level props; rebuild the batch when source transforms or colors change. Full guidance is in
+[`docs/STATIC_3D_BATCHING.md`](docs/STATIC_3D_BATCHING.md).
 
 ## Quick 2D game
 
@@ -204,20 +211,24 @@ game.run()
 - static glTF/GLB scene and material import
 - Phong and Cook-Torrance GGX metallic/roughness PBR
 - base-color, metallic/roughness, normal, occlusion and emissive material channels
-- directional, point and spot lights
-- deterministic per-light GPU budgets and diagnostics
-- skybox/environment support
-- true cubemap image-based lighting
+- directional, point and spot lights with deterministic GPU budgets and diagnostics
+- skybox/environment support and true cubemap image-based lighting
 - directional GPU shadows, post-processing, ACES/Reinhard tone mapping and FXAA
 - sRGB/linear color-space handling for PBR material channels
 - bounded transform-matrix caching for repeated static object transforms
+- static cube larger-batch path with explicit draw-call reduction metrics
 
 ### Performance foundation
 
-The renderer already avoids repeated texture path resolution in steady-state 2D batching and
-builds render runs in one pass instead of allocating a second visible-object tuple. Repeated static
-3D transforms use a bounded matrix cache while callers still receive independent mutable matrix
-results. The 1.1 roadmap continues with larger GPU-side batching/instancing and frame-time work.
+The renderer avoids repeated texture-path resolution in steady-state 2D batching and builds render
+runs in one pass instead of allocating a second visible-object tuple. Repeated static 3D transforms
+use a bounded matrix cache while callers still receive independent mutable matrix results.
+
+For repeated level geometry, `build_static_cube_batches(...)` moves transform work out of the frame
+loop and combines compatible static cubes into renderer-native `Mesh3D` batches. The regression
+suite verifies that 100 same-color cubes map from 100 object draws to one combined draw. Dynamic
+GPU instancing remains a future extension; the current path deliberately targets scenery that can
+be baked once and rendered cheaply across many frames.
 
 ### Architecture and game systems
 
@@ -226,8 +237,7 @@ results. The 1.1 roadmap continues with larger GPU-side batching/instancing and 
 - versioned scene/prefab JSON serialization
 - safe codec registry and cyclic reference preservation
 - lightweight ECS with entities, components, queries and prioritized systems
-- plugin runtime
-- polling file watcher and plugin hot reload
+- plugin runtime and polling file watcher/plugin hot reload
 - transactional multi-domain state restore/rollback
 - asset hot reload bridges for renderer and audio
 - `LiveDevelopmentHub`
@@ -260,23 +270,16 @@ results. The 1.1 roadmap continues with larger GPU-side batching/instancing and 
 
 ## Project generator
 
-Create a project directly from the installed package:
-
 ```bash
 swirengine new MyGame --mode 2d
 swirengine new My3DGame --mode 3d
+swirengine info
 ```
 
 Generated projects declare compatibility with the stable engine line:
 
 ```toml
 engine = ">=1.0,<2.0"
-```
-
-Check the installed engine:
-
-```bash
-swirengine info
 ```
 
 ## Export
@@ -326,13 +329,12 @@ It exposes FPS, frame/CPU timings, update/physics/render timings, draw calls, ba
 triangles, light usage and dropped-light counts. Programmatic profiling is available through
 `game.profiler`.
 
-## Official demo projects
-
-The repository contains complete games built with the public SwirEngine API:
+## Official demo projects and examples
 
 - **Neon Cube Hunt 3D** — 3D collection arena used for real OpenGL and packaged-runtime testing
 - **Neon Snake 3D** — complete 3D Snake with growth, food, collision, score, PBR and post-processing
 - `examples/demo_gamepad.py` — controller + keyboard-fallback input example
+- `examples/demo_static_3d_batching.py` — 200-cube static larger-batch rendering example
 - larger asset-free 2D samples under `examples/`
 
 The Windows demo build pipeline also probes the final packaged GLFW runtime so missing native
@@ -359,12 +361,9 @@ CI validates SwirEngine on:
 ## Versioning and API stability
 
 SwirEngine follows semantic versioning for the stable 1.x public API. The exported
-`swirengine.__all__` surface is treated as a compatibility contract. Patch releases fix bugs,
-compatibility and performance issues; minor releases add backwards-compatible creator features.
-
-`README.md` is also the long description published to PyPI. Release-contract tests verify that
-README version/support claims stay synchronized with package metadata. User-visible changes are
-expected to update code, tests, README and changelog together before publication.
+`swirengine.__all__` surface is treated as a compatibility contract. User-visible changes are
+expected to update code, tests, README and changelog together. PyPI/GitHub Release publication for
+the active 1.1 roadmap remains frozen until all 10 deliverables are verified complete.
 
 See [`docs/API_STABILITY.md`](docs/API_STABILITY.md) for the compatibility policy.
 
