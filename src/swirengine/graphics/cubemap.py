@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 _FACE_NAMES = ("positive_x", "negative_x", "positive_y", "negative_y", "positive_z", "negative_z")
 
@@ -50,6 +51,60 @@ class CubemapImageData:
     def total_size_bytes(self) -> int:
         return self.face_size_bytes * 6
 
+    def validate(self) -> None:
+        if self.width <= 0 or self.height <= 0:
+            raise ValueError("cubemap dimensions must be greater than zero")
+        if self.components not in (1, 2, 3, 4):
+            raise ValueError("cubemap components must be between 1 and 4")
+        expected = self.face_size_bytes
+        if len(self.faces) != 6:
+            raise ValueError("cubemap requires exactly six faces")
+        for index, payload in enumerate(self.faces):
+            if len(payload) != expected:
+                raise ValueError(
+                    f"cubemap face {index} has {len(payload)} bytes; expected {expected}"
+                )
+
+
+@dataclass(slots=True)
+class CubemapGPUTexture:
+    """Owned GPU cubemap resource with deterministic replacement semantics."""
+
+    texture: Any
+    width: int
+    height: int
+    components: int
+    mipmapped: bool = False
+    released: bool = False
+
+    def use(self, location: int = 0) -> None:
+        if self.released:
+            raise RuntimeError("cubemap texture has been released")
+        self.texture.use(location=location)
+
+    def replace(self, data: CubemapImageData, *, build_mipmaps: bool = True) -> None:
+        if self.released:
+            raise RuntimeError("cubemap texture has been released")
+        data.validate()
+        if (data.width, data.height, data.components) != (
+            self.width,
+            self.height,
+            self.components,
+        ):
+            raise ValueError("replacement cubemap dimensions/components must match GPU texture")
+        for face, payload in enumerate(data.faces):
+            self.texture.write(face, payload, alignment=1)
+        self.mipmapped = False
+        if build_mipmaps:
+            self.texture.build_mipmaps()
+            self.mipmapped = True
+
+    def release(self) -> None:
+        if self.released:
+            return
+        self.texture.release()
+        self.released = True
+
 
 @dataclass(slots=True)
 class ImageBasedEnvironment3D:
@@ -80,6 +135,10 @@ class ImageBasedEnvironment3D:
 
     def load(self, *, flip_y: bool = False) -> CubemapImageData:
         return load_cubemap_faces(self.cubemap, flip_y=flip_y)
+
+    def upload(self, ctx: Any, *, flip_y: bool = False, build_mipmaps: bool = True) -> CubemapGPUTexture:
+        """Load and upload this environment to a GPU texture cube."""
+        return upload_cubemap(ctx, self.load(flip_y=flip_y), build_mipmaps=build_mipmaps)
 
 
 def _non_negative(name: str, value: float) -> float:
@@ -126,12 +185,43 @@ def load_cubemap_faces(faces: CubemapFaces, *, flip_y: bool = False) -> CubemapI
     packed = tuple(payloads)
     if len(packed) != 6:
         raise ValueError("cubemap requires exactly six faces")
-    return CubemapImageData(
+    result = CubemapImageData(
         width=size[0],
         height=size[1],
         components=3,
         faces=packed,  # type: ignore[arg-type]
     )
+    result.validate()
+    return result
+
+
+def upload_cubemap(
+    ctx: Any,
+    data: CubemapImageData,
+    *,
+    build_mipmaps: bool = True,
+) -> CubemapGPUTexture:
+    """Upload validated face data to a ModernGL-compatible ``TextureCube``.
+
+    Face indices intentionally match OpenGL/ModernGL ordering. Uploading each face
+    explicitly keeps the contract easy to fake in tests and enables later hot reloads
+    without reallocating the texture when dimensions stay unchanged.
+    """
+
+    data.validate()
+    texture = ctx.texture_cube(
+        (data.width, data.height),
+        data.components,
+        alignment=1,
+        dtype="f1",
+    )
+    resource = CubemapGPUTexture(texture, data.width, data.height, data.components)
+    try:
+        resource.replace(data, build_mipmaps=build_mipmaps)
+    except Exception:
+        resource.release()
+        raise
+    return resource
 
 
 def cubemap_asset_paths(objects: Iterable[object]) -> tuple[Path, ...]:
