@@ -60,9 +60,9 @@ def test_demo_movement_collection_damage_and_reset_are_deterministic() -> None:
     assert collectible.visible is False
     assert demo.progress_markers[0].visible is True
 
+    demo.reset_round()
     hazard = demo.hazards[0]
     demo.player.position = sw.Vec3(hazard.position.x, hazard.position.y, hazard.position.z)
-    demo.damage_cooldown = 0.0
     demo.step(0.0, no_keys)
     assert demo.lives == 2
     assert demo.player.position == sw.Vec3()
