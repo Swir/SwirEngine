@@ -4,20 +4,20 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-96.8%25-2ea043?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-30%2F31-1f6feb?style=for-the-badge">
-  <img alt="Status" src="https://img.shields.io/badge/STATUS-IN%20PROGRESS-7c3aed?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-100.0%25-2ea043?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-31%2F31-1f6feb?style=for-the-badge">
+  <img alt="Status" src="https://img.shields.io/badge/STATUS-COMPLETE-2ea043?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-███████████████████░ 96.8%
+████████████████████ 100.0%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **30** | **1** | **31** | **96.8%** |
+| **31** | **0** | **31** | **100.0%** |
 
 > **Progress rule:** the equal-weight deliverables below are the source of truth. Update `[x]/[ ]` first, then update badges, numbers, percentage and the 20-segment bar. Never estimate progress from version numbers, commit count or activity.
 
@@ -51,7 +51,7 @@
 - [x] 0.6 viewport picking and direct manipulation
 - [x] 0.6 tighter editor/runtime integration
 - [x] 0.7 networking, packaging profiles and desktop/mobile/web export targets
-- [ ] 1.0 stable documented API, tests and release tooling suitable for a first stable release
+- [x] 1.0 stable documented API, tests and release tooling suitable for a first stable release
 <!-- ROADMAP-PROGRESS:END -->
 
 ## 0.2 - Real 2D workflow — complete
@@ -112,9 +112,7 @@ map, raw depth sampling, camera-focused orthographic light framing, configurable
 3x3 PCF resolve applied before additive IBL. `Game.configure_shadows(...)` keeps legacy rendering
 unchanged until creators explicitly enable the pass.
 
-Next: stable API documentation, release tooling and final 1.0 verification.
-
-## 0.5 - Architecture
+## 0.5 - Architecture — complete for 1.0
 
 Foundation landed during 0.4.8-0.4.22: reusable deep-copy `Prefab` blueprints,
 independent `PrefabInstance` graphs, per-instance overrides, filtered scene capture and direct
@@ -179,19 +177,15 @@ single-frame stepping, then discarding runtime mutations on Stop. `EditorPreview
 front-end exposes Play/Pause/Stop/Step controls plus a live embedded RGB viewport while preserving Edit-mode
 scene switching and authoring-state isolation.
 
-Next: continue hardening creator-facing APIs toward the stable 1.0 contract.
+## 0.6 - Tools — complete for 1.0
 
-## 0.6 - Tools
-
-Visual editor foundation now includes a shared project/workspace shell, hierarchy/inspector contract,
+Visual editor foundation includes a shared project/workspace shell, hierarchy/inspector contract,
 persistent panel layout and viewport preferences, a GUI-agnostic asset browser, reusable Console/
 Profiler panel models, toolkit-independent scene Move/Rotate/Scale gizmos with snapping and undo/redo,
 camera-aware 3D viewport picking/direct manipulation, and a real interactive Tk desktop front-end that
 connects those models without adding a mandatory GUI dependency. Isolated `EditorRuntimeSession` Play/Edit
-scene execution is integrated with `RendererViewportBridge` and `EditorPreviewSession`; the editor now has
+scene execution is integrated with `RendererViewportBridge` and `EditorPreviewSession`; the editor has
 direct Play/Pause/Stop/Step controls and can embed live frames read from the renderer framebuffer.
-
-Next: creator-facing tool polish and final 1.0 stabilization.
 
 ## 0.7+ - Runtime and export — foundation complete
 
@@ -200,10 +194,13 @@ non-blocking poll-driven TCP client/server peers, serializable packaging profile
 project staging. Windows, Linux and macOS profiles expose ready-to-run PyInstaller build commands without
 silently invoking third-party tooling; Android and Web are explicit experimental staging/research targets
 with machine-readable export manifests. The `swirengine export` CLI exposes all targets through the same
-profile/export pipeline, and newly generated projects now declare the current `>=0.4,<0.5` compatibility
-range while excluding build artifacts from source control.
+profile/export pipeline.
 
-## 1.0
+## 1.0 - stable release complete
 
-Stable documented API with editor, 2D/3D rendering, physics, audio, assets, scene/prefab
-workflow, tests and release tooling.
+SwirEngine 1.0.0 defines the `swirengine.__all__` surface as the stable 1.x public API and documents its
+semantic-versioning and deprecation policy in `docs/API_STABILITY.md`. Runtime and package metadata are
+locked together by regression tests. CI verifies the engine across Windows, Linux and macOS on Python
+3.10-3.13, while a dedicated packaging job builds wheel/sdist artifacts, validates metadata with Twine and
+installs the built wheel in a clean environment before importing it. A tag-driven release workflow verifies
+that `vX.Y.Z` matches package metadata before creating distribution artifacts and the GitHub Release.

@@ -292,4 +292,4 @@ __all__ = [
     "upload_cubemap",
 ]
 
-__version__ = "0.4.22"
+__version__ = "1.0.0"
