@@ -34,6 +34,7 @@ score_label = game.label("Score: 0", -HALF_W + 100, HALF_H - 35, font_size=22)
 lives_label = game.label("Lives: 3", HALF_W - 100, HALF_H - 35, font_size=22)
 message_label = game.label("Survive! Move with A/D or arrows", 0, 0, font_size=25)
 
+enemy_speeds: dict[int, float] = {}
 score = 0.0
 lives = 3
 spawn_timer = 0.0
@@ -51,22 +52,28 @@ def spawn_enemy() -> None:
     size = rng.uniform(24.0, 58.0)
     x = rng.uniform(-HALF_W + size, HALF_W - size)
     speed = rng.uniform(170.0, 280.0) + min(score * 0.12, 190.0)
-    enemy = Rectangle2D(
-        x,
-        HALF_H + size,
-        size,
-        size,
-        Color(1.0, rng.uniform(0.2, 0.55), 0.25, 1.0),
-        name="hazard",
-        tags={"enemy", "hazard"},
+    enemy = game.add(
+        Rectangle2D(
+            x,
+            HALF_H + size,
+            size,
+            size,
+            Color(1.0, rng.uniform(0.2, 0.55), 0.25, 1.0),
+            name="hazard",
+            tags={"enemy", "hazard"},
+        )
     )
-    enemy.fall_speed = speed  # type: ignore[attr-defined]
-    game.add(enemy)
+    enemy_speeds[id(enemy)] = speed
+
+
+def clear_enemies() -> None:
+    for enemy in game.scene.remove_tagged("enemy"):
+        enemy_speeds.pop(id(enemy), None)
 
 
 def reset_round() -> None:
     global invulnerable
-    game.scene.remove_tagged("enemy")
+    clear_enemies()
     player.x = 0
     invulnerable = 1.5
 
@@ -99,8 +106,7 @@ def update(dt: float) -> None:
     for obj in game.scene.tagged("enemy"):
         if not isinstance(obj, Rectangle2D):
             continue
-        speed = float(getattr(obj, "fall_speed", 220.0))
-        obj.y -= speed * dt
+        obj.y -= enemy_speeds.get(id(obj), 220.0) * dt
         if obj.y < -HALF_H - obj.height:
             offscreen.append(obj)
         elif invulnerable <= 0.0 and overlaps(player, obj):
@@ -108,6 +114,8 @@ def update(dt: float) -> None:
 
     if offscreen:
         game.scene.remove_many(*offscreen)
+        for enemy in offscreen:
+            enemy_speeds.pop(id(enemy), None)
 
     if hit:
         lives -= 1
