@@ -120,8 +120,13 @@ class GamepadSnapshot:
         side_name = str(side).strip().upper()
         if side_name not in {"LEFT", "RIGHT"}:
             raise ValueError("side must be 'left' or 'right'")
-        raw = self.axis(f"{side_name}_TRIGGER", deadzone=0.0)
-        value = (raw + 1.0) * 0.5
-        if value <= deadzone:
+        axis_name = f"{side_name}_TRIGGER"
+        index = GAMEPAD_AXES[axis_name]
+        if index >= len(self.axes):
             return 0.0
-        return min(1.0, (value - deadzone) / (1.0 - deadzone))
+        raw = max(-1.0, min(1.0, float(self.axes[index])))
+        value = (raw + 1.0) * 0.5
+        zone = max(0.0, min(0.95, float(deadzone)))
+        if value <= zone:
+            return 0.0
+        return min(1.0, (value - zone) / (1.0 - zone))
