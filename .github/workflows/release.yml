@@ -1,3 +1,4 @@
+# PyPI release workflow for SwirEngine.
 name: Release
 
 on:
