@@ -8,16 +8,11 @@
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square">
 </p>
 
-**SwirEngine** is a Python-first 2D/3D game engine built around one approachable API. It combines
-creator-friendly Python gameplay code with a real OpenGL renderer, scenes, prefabs/ECS, physics,
-audio, editor tooling, networking, export and complete game demos.
+**SwirEngine** is a Python-first 2D/3D game engine built around one approachable API. It combines creator-friendly Python gameplay code with a real OpenGL renderer, scenes, prefabs/ECS, physics, animation, audio, editor tooling, networking, export and complete game demos.
 
-The original 1.0 roadmap is complete at **31/31 deliverables**. SwirEngine 1.1 is the next stage:
-making complete games easier to control, profile, optimize, package and ship without turning the
-engine into a thin wrapper around another framework.
+The original 1.0 roadmap is complete at **31/31 deliverables**. SwirEngine 1.1 is the next stage: making complete games easier to control, animate, profile, optimize, package and ship without turning the engine into a thin wrapper around another framework.
 
-> **Development policy:** the active 1.1 line is developed on `main`, but PyPI/GitHub Release
-> publication is frozen until [`ROADMAP_1_1.md`](ROADMAP_1_1.md) reaches a verified 10/10 = 100%.
+> **Development policy:** the active 1.1 line is developed on `main`, but PyPI/GitHub Release publication is frozen until [`ROADMAP_1_1.md`](ROADMAP_1_1.md) reaches a verified 10/10 = 100%.
 
 ## Install
 
@@ -41,57 +36,21 @@ python -m pip install -U "swirengine[audio]"
 
 ### Python 3.14 native renderer support
 
-The stable upstream `moderngl 5.12.0` and `glcontext 3.0.0` releases do not currently publish
-CPython 3.14 Windows x86-64 wheels. SwirEngine publishes a dedicated `cp314-cp314-win_amd64` wheel
-containing verified private copies of those native renderer components under
-`swirengine/_vendor_native`. A normal `pip install swirengine` on Windows x64 + Python 3.14
-therefore does **not** require Microsoft Visual C++ Build Tools.
+The stable upstream `moderngl 5.12.0` and `glcontext 3.0.0` releases do not currently publish CPython 3.14 Windows x86-64 wheels. SwirEngine publishes a dedicated `cp314-cp314-win_amd64` wheel containing verified private copies of those native renderer components under `swirengine/_vendor_native`. A normal `pip install swirengine` on Windows x64 + Python 3.14 therefore does **not** require Microsoft Visual C++ Build Tools.
 
-The platform wheel is rebuilt from upstream source in GitHub Actions, checked with `twine`,
-installed into a clean Python 3.14 environment and imported before Trusted Publishing is allowed
-to upload it. Python 3.10-3.13 continue using normal upstream dependencies. Linux and macOS remain
-on the verified 3.10-3.13 support window until equally reliable Python 3.14 binary dependencies
-exist there.
+The platform wheel is rebuilt from upstream source in GitHub Actions, checked with `twine`, installed into a clean Python 3.14 environment and imported before Trusted Publishing is allowed to upload it. Python 3.10-3.13 continue using normal upstream dependencies. Linux and macOS remain on the verified 3.10-3.13 support window until equally reliable Python 3.14 binary dependencies exist there.
 
 ## SwirEngine 1.1 development
 
 ### Standardized gamepad/controller input
 
-SwirEngine has a creator-facing controller layer on top of GLFW's standard gamepad mapping.
-Mapped Xbox, PlayStation and compatible controllers expose consistent names instead of forcing game
-code to depend on platform-specific joystick indexes.
+SwirEngine has a creator-facing controller layer on top of GLFW's standard gamepad mapping. Mapped Xbox, PlayStation and compatible controllers expose consistent names instead of forcing game code to depend on platform-specific joystick indexes.
 
-The input layer provides deterministic discovery, controller name/GUID snapshots, held/pressed/
-released button queries, common aliases, left/right stick helpers, configurable deadzones,
-normalized triggers, hot-plug edges and automatic refresh in `Game.run()`.
-
-```python
-from swirengine import Color, Game, Rectangle2D
-
-
-game = Game("Controller demo", 960, 540, mode="2d")
-player = game.add(Rectangle2D(-40, -40, 80, 80, Color(0.1, 0.75, 1.0, 1.0)))
-
-
-@game.update
-def update(dt):
-    x, y = game.input.gamepad_stick("left")
-    if not game.input.gamepad_connected():
-        x = float(game.key("D")) - float(game.key("A"))
-        y = float(game.key("S")) - float(game.key("W"))
-    speed = 520 if game.input.gamepad_button("A") else 300
-    player.x += x * speed * dt
-    player.y += y * speed * dt
-
-
-game.run()
-```
+The input layer provides deterministic discovery, controller name/GUID snapshots, held/pressed/released button queries, common aliases, left/right stick helpers, configurable deadzones, normalized triggers, hot-plug edges and automatic refresh in `Game.run()`.
 
 ### Semantic input actions, rebinding and control profiles
 
-Games can bind keyboard, mouse, standardized gamepad buttons and directional analog axes to names
-such as `jump`, `fire` or `move_left`, then change those bindings from an in-game controls menu
-without rewriting gameplay code.
+Games can bind keyboard, mouse, standardized gamepad buttons and directional analog axes to names such as `jump`, `fire` or `move_left`, then change those bindings from an in-game controls menu without rewriting gameplay code.
 
 ```python
 from swirengine.input import InputActions
@@ -108,15 +67,11 @@ if controls.pressed("jump"):
 controls.save("settings/controls.json")
 ```
 
-Bindings support held/pressed/released queries, analog values, duplicate-safe multi-binding,
-runtime replacement/removal and versioned JSON profiles. See
-[`docs/INPUT_ACTIONS.md`](docs/INPUT_ACTIONS.md).
+Bindings support held/pressed/released queries, analog values, duplicate-safe multi-binding, runtime replacement/removal and versioned JSON profiles. See [`docs/INPUT_ACTIONS.md`](docs/INPUT_ACTIONS.md).
 
 ### Static 3D larger-batch rendering
 
-Static cube-heavy scenery can now be baked into combined `Mesh3D` batches with
-`build_static_cube_batches(...)`. Compatible cubes are grouped by color, their transforms are
-baked once into combined geometry, and the existing renderer submits one mesh draw per batch.
+Static cube-heavy scenery can be baked into combined `Mesh3D` batches with `build_static_cube_batches(...)`. Compatible cubes are grouped by color, transforms are baked once into combined geometry, and the existing renderer submits one mesh draw per batch.
 
 ```python
 from swirengine import Cube3D, Vec3
@@ -124,27 +79,15 @@ from swirengine.graphics.static_batch import build_static_cube_batches
 
 walls = [Cube3D(position=Vec3(x * 2.0, 0.0, -12.0)) for x in range(100)]
 batch = build_static_cube_batches(walls)
-
 for mesh in batch.meshes:
     game.add(mesh)
-
-print(batch.metrics.draw_calls_before)   # 100
-print(batch.metrics.draw_calls_after)    # 1
-print(batch.metrics.draw_call_reduction) # 0.99
 ```
 
-The 100-cube regression case therefore reduces renderer-facing object draws from **100 to 1
-(99%)** without claiming an unmeasured FPS number. Translation, rotation, scale, UVs and transformed
-normals are baked correctly. The path is intended for static walls, floors, buildings and repeated
-level props; rebuild the batch when source transforms or colors change. Full guidance is in
-[`docs/STATIC_3D_BATCHING.md`](docs/STATIC_3D_BATCHING.md).
+The 100-cube regression case reduces renderer-facing object draws from **100 to 1 (99%)** without claiming an unmeasured FPS number. Translation, rotation, scale, UVs and transformed normals are baked correctly. See [`docs/STATIC_3D_BATCHING.md`](docs/STATIC_3D_BATCHING.md).
 
 ### Async/preload asset pipeline
 
-Large scene transitions can preload filesystem/CPU asset work through a bounded worker pool rather
-than decoding every resource serially on the gameplay thread. `AssetPreloader` supports individual
-`load_async(...)` calls, whole-batch `preload(...)` / `preload_async(...)`, in-flight deduplication
-and deterministic timing/cache/error diagnostics.
+Large scene transitions can preload filesystem/CPU asset work through a bounded worker pool rather than decoding every resource serially on the gameplay thread. `AssetPreloader` supports individual `load_async(...)` calls, whole-batch `preload(...)` / `preload_async(...)`, in-flight deduplication and deterministic timing/cache/error diagnostics.
 
 ```python
 from swirengine.asset_pipeline import AssetPreloader
@@ -154,28 +97,18 @@ assets = AssetManager("assets")
 assets.register_loader("txt", lambda path: path.read_text(encoding="utf-8"))
 
 with AssetPreloader(assets, max_workers=4) as preloader:
-    future = preloader.preload_async([
+    report = preloader.preload([
         "levels/city.txt",
         "missions/chapter1.txt",
         "config/vehicles.txt",
     ])
-    report = future.result()
-
-print(report.loaded, report.failed, report.cache_hits)
-print(f"preload wall time: {report.wall_time_ms:.2f} ms")
 ```
 
-Duplicate requests for one canonical path share a single in-flight load and one broken resource does
-not discard successful results from the same batch. GPU/context-owned uploads still belong on the
-render thread; background loading targets file I/O, parsing, decompression and thread-safe CPU-side
-decoding. Full guidance is in [`docs/ASYNC_ASSET_PIPELINE.md`](docs/ASYNC_ASSET_PIPELINE.md).
+GPU/context-owned uploads still belong on the render thread; background loading targets file I/O, parsing, decompression and thread-safe CPU-side decoding. See [`docs/ASYNC_ASSET_PIPELINE.md`](docs/ASYNC_ASSET_PIPELINE.md).
 
 ### Responsive UI layout and focus navigation
 
-Menus and HUDs can now opt into viewport anchors, reference-resolution scaling and vertical or
-horizontal containers instead of maintaining separate hard-coded coordinates for every resolution.
-`UIManager` integrates the layout pass with deterministic keyboard/gamepad focus and preserves
-existing pointer behavior.
+Menus and HUDs can opt into viewport anchors, reference-resolution scaling and vertical or horizontal containers instead of maintaining separate hard-coded coordinates for every resolution. `UIManager` integrates the layout pass with deterministic keyboard/gamepad focus and preserves existing pointer behavior.
 
 ```python
 from swirengine import Game, UIAnchor, UILayout
@@ -184,59 +117,46 @@ from swirengine import Game, UIAnchor, UILayout
 game = Game("Responsive menu", 1280, 720)
 play = game.button("Play", 0, 0, 260, 58)
 options = game.button("Options", 0, 0, 260, 58)
-
 game.ui.container(
     play,
     options,
     spacing=18,
-    layout=UILayout(
-        anchor=UIAnchor.CENTER,
-        scale_with_viewport=True,
-        reference_width=1280,
-        reference_height=720,
-    ),
+    layout=UILayout(anchor=UIAnchor.CENTER, scale_with_viewport=True,
+                    reference_width=1280, reference_height=720),
 )
-
 game.run()
 ```
 
-Keyboard `Tab`/arrows and gamepad D-pad move focus; `Enter`/`Space` or standardized gamepad `A`
-activate the focused button. Mouse hover hands focus back to the pointer. Button/label text, panels
-and progress geometry resize from their original authored values without compounded scaling. See
-[`docs/RESPONSIVE_UI.md`](docs/RESPONSIVE_UI.md) and `examples/demo_responsive_ui.py`.
+Keyboard `Tab`/arrows and gamepad D-pad move focus; `Enter`/`Space` or standardized gamepad `A` activate the focused button. See [`docs/RESPONSIVE_UI.md`](docs/RESPONSIVE_UI.md).
 
 ### Expanded audio mixer
 
-Audio can now be organized into creator-defined buses such as weapons, dialogue, ambience or vehicles,
-with independent gain/mute controls composed with the existing master/sound/music volumes. Handles
-support deterministic fade-in/fade-out/fade-to transitions driven by `AudioEngine.update(dt)` and
-optional stop-on-fade behavior.
+Audio can be organized into creator-defined buses such as weapons, dialogue, ambience or vehicles, with independent gain/mute controls composed with the existing master/sound/music volumes. Handles support deterministic fade-in/fade-out/fade-to transitions driven by `AudioEngine.update(dt)` and optional stop-on-fade behavior.
+
+Spatial handles use listener-relative distance attenuation and optional stereo panning on capable backends, while scalar-only custom backends remain compatible. `audio.diagnostics()` reports active, music, spatial and fading handle counts together with bus/mute state. See [`docs/AUDIO_MIXER.md`](docs/AUDIO_MIXER.md).
+
+### Animation, tweens, timelines and gameplay state machines
+
+SwirEngine 1.1 includes one deterministic animation runtime shared by 2D, 3D, UI and gameplay code instead of forcing each subsystem to invent its own interpolation/update loop.
+
+`Tween` interpolates numeric values and common engine value types through property paths, with delay, easing, repeat and yoyo behavior. `TweenSequence` chains motion or UI beats, while `AnimationTimeline` runs tracks in parallel, exposes deterministic event markers for gameplay/VFX/audio synchronization and supports seeking. `StateMachine` adds prioritized transitions, wildcard transitions, enter/update/exit callbacks and `time_in_state` for explicit gameplay state flow. `AnimationSystem` owns and updates these pieces through one creator-facing surface.
 
 ```python
-from swirengine import AudioEngine, Vec3
+from swirengine.animation import AnimationSystem, Tween, TweenSequence, ease_in_out_quad
 
-
-audio = AudioEngine("assets")
-audio.ensure_bus("vehicles", volume=0.8)
-audio.set_listener_position(Vec3(0.0, 0.0, 0.0))
-engine = audio.play(
-    "audio/engine.wav",
-    loop=True,
-    bus="vehicles",
-    position=Vec3(8.0, 0.0, 0.0),
-    min_distance=2.0,
-    max_distance=45.0,
-    fade_in=0.5,
+animations = AnimationSystem()
+animations.add(
+    TweenSequence(
+        Tween(player, "position.x", 8.0, 0.6, easing=ease_in_out_quad),
+        Tween(player, "rotation.y", 180.0, 0.35),
+    )
 )
 
 # In the gameplay update loop:
-audio.update(dt)
+animations.update(dt)
 ```
 
-Spatial handles use listener-relative distance attenuation and optional stereo panning on capable
-backends, while scalar-only custom backends remain compatible. `audio.diagnostics()` reports active,
-music, spatial and fading handle counts together with bus/mute state. See
-[`docs/AUDIO_MIXER.md`](docs/AUDIO_MIXER.md).
+This layer is designed for camera moves, UI transitions, scripted sequences, enemy/player states and ordinary 2D/3D object animation while keeping the stable 1.x API additive. See [`docs/ANIMATION_RUNTIME.md`](docs/ANIMATION_RUNTIME.md) and `examples/demo_animation_runtime.py`.
 
 ## Quick 2D game
 
@@ -246,7 +166,6 @@ from swirengine import Color, Game, Rectangle2D
 
 game = Game("My 2D Game", 1280, 720, mode="2d")
 player = game.add(Rectangle2D(0, 0, 120, 70, Color(0.1, 0.75, 1.0, 1.0), name="player"))
-
 
 @game.update
 def update(dt):
@@ -260,7 +179,6 @@ def update(dt):
     if game.key("S"):
         player.y -= speed * dt
 
-
 game.run()
 ```
 
@@ -273,12 +191,10 @@ from swirengine import Color, Cube3D, Game, Vec3
 game = Game("My 3D Game", 1280, 720, mode="3d")
 cube = game.add(Cube3D(position=Vec3(0, 0, -4), color=Color(0.2, 0.7, 1.0, 1.0)))
 
-
 @game.update
 def update(dt):
     cube.rotation.y += 50 * dt
     cube.rotation.x += 25 * dt
-
 
 game.run()
 ```
@@ -302,6 +218,7 @@ game.run()
 - keyboard, mouse, standardized gamepad input, semantic actions and persistent rebinding profiles
 - adjacent compatible sprite batching
 - single-pass render-run construction with cached canonical texture keys
+- shared tween/timeline/state-machine animation runtime
 
 ### 3D runtime
 
@@ -317,23 +234,15 @@ game.run()
 - sRGB/linear color-space handling for PBR material channels
 - bounded transform-matrix caching for repeated static object transforms
 - static cube larger-batch path with explicit draw-call reduction metrics
+- shared tween/timeline/state-machine animation runtime
 
 ### Performance foundation
 
-The renderer avoids repeated texture-path resolution in steady-state 2D batching and builds render
-runs in one pass instead of allocating a second visible-object tuple. Repeated static 3D transforms
-use a bounded matrix cache while callers still receive independent mutable matrix results.
+The renderer avoids repeated texture-path resolution in steady-state 2D batching and builds render runs in one pass instead of allocating a second visible-object tuple. Repeated static 3D transforms use a bounded matrix cache while callers still receive independent mutable matrix results.
 
-For repeated level geometry, `build_static_cube_batches(...)` moves transform work out of the frame
-loop and combines compatible static cubes into renderer-native `Mesh3D` batches. The regression
-suite verifies that 100 same-color cubes map from 100 object draws to one combined draw. Dynamic
-GPU instancing remains a future extension; the current path deliberately targets scenery that can
-be baked once and rendered cheaply across many frames.
+For repeated level geometry, `build_static_cube_batches(...)` moves transform work out of the frame loop and combines compatible static cubes into renderer-native `Mesh3D` batches. The regression suite verifies that 100 same-color cubes map from 100 object draws to one combined draw.
 
-The async asset pipeline moves thread-safe file/CPU decoding work out of serial scene-transition
-loading and reports the measured wait component separately. CI includes a reproducible synthetic
-I/O-like benchmark that must demonstrate a real overlap win without turning that measurement into
-an end-to-end FPS claim.
+The async asset pipeline moves thread-safe file/CPU decoding work out of serial scene-transition loading and reports the measured wait component separately. CI includes a reproducible synthetic I/O-like benchmark that must demonstrate a real overlap win without turning that measurement into an end-to-end FPS claim.
 
 ### Architecture and game systems
 
@@ -348,6 +257,7 @@ an end-to-end FPS claim.
 - bounded asynchronous asset preload with deterministic diagnostics and in-flight deduplication
 - responsive UI containers with keyboard/gamepad focus navigation
 - audio buses/groups, deterministic fades, spatial attenuation/pan and runtime diagnostics
+- deterministic tweens, sequences, parallel timelines, event markers and gameplay state machines
 - `LiveDevelopmentHub`
 - pluggable sound effects and music backend
 
@@ -398,32 +308,7 @@ Create a deterministic export/staging directory:
 swirengine export . --target windows --name MyGame --onefile --windowed
 ```
 
-Desktop targets expose the native PyInstaller command instead of silently invoking third-party
-build tools. Android and Web remain experimental staging/research targets.
-
-## PBR example
-
-```python
-from swirengine import Color, Game, Material3D, Vec3, cube_mesh
-
-
-game = Game("PBR", mode="3d")
-material = Material3D(
-    tint=Color(0.82, 0.35, 0.12, 1.0),
-    ambient=0.04,
-    metallic=0.9,
-    roughness=0.18,
-)
-model = game.mesh(cube_mesh(), material=material)
-model.position = Vec3(0.0, 0.0, -4.0)
-
-game.directional_light(direction=Vec3(-0.4, -1.0, -0.3), intensity=0.9)
-game.camera.look_at(model.position)
-game.run()
-```
-
-The PBR path supports glTF-style packed metallic/roughness maps, normal maps, AO and emissive
-textures. Cubemap IBL, shadows, post-processing and tone mapping are complete runtime features.
+Desktop targets expose the native PyInstaller command instead of silently invoking third-party build tools. Android and Web remain experimental staging/research targets.
 
 ## Diagnostics
 
@@ -433,9 +318,7 @@ Enable the built-in debug overlay before `game.run()`:
 game.show_debug()
 ```
 
-It exposes FPS, frame/CPU timings, update/physics/render timings, draw calls, batches, sprites,
-triangles, light usage and dropped-light counts. Programmatic profiling is available through
-`game.profiler`.
+It exposes FPS, frame/CPU timings, update/physics/render timings, draw calls, batches, sprites, triangles, light usage and dropped-light counts. Programmatic profiling is available through `game.profiler`.
 
 ## Official demo projects and examples
 
@@ -445,10 +328,10 @@ triangles, light usage and dropped-light counts. Programmatic profiling is avail
 - `examples/demo_static_3d_batching.py` — 200-cube static larger-batch rendering example
 - `examples/demo_async_assets.py` — background/preload loading workflow with timing diagnostics
 - `examples/demo_responsive_ui.py` — resize-aware menu with keyboard/gamepad focus navigation
+- `examples/demo_animation_runtime.py` — tween/sequence/timeline/state-machine runtime example
 - larger asset-free 2D samples under `examples/`
 
-The Windows demo build pipeline also probes the final packaged GLFW runtime so missing native
-libraries are caught before demo publication.
+The Windows demo build pipeline also probes the final packaged GLFW runtime so missing native libraries are caught before demo publication.
 
 ## Development and verification
 
@@ -471,10 +354,7 @@ CI validates SwirEngine on:
 
 ## Versioning and API stability
 
-SwirEngine follows semantic versioning for the stable 1.x public API. The exported
-`swirengine.__all__` surface is treated as a compatibility contract. User-visible changes are
-expected to update code, tests, README and changelog together. PyPI/GitHub Release publication for
-the active 1.1 roadmap remains frozen until all 10 deliverables are verified complete.
+SwirEngine follows semantic versioning for the stable 1.x public API. The exported `swirengine.__all__` surface is treated as a compatibility contract. User-visible changes are expected to update code, tests, README and changelog together. PyPI/GitHub Release publication for the active 1.1 roadmap remains frozen until all 10 deliverables are verified complete.
 
 See [`docs/API_STABILITY.md`](docs/API_STABILITY.md) for the compatibility policy.
 
@@ -487,8 +367,7 @@ The original SwirEngine 1.0 roadmap remains complete and historical:
 31 / 31 deliverables complete
 ```
 
-The active expansion plan lives in [`ROADMAP_1_1.md`](ROADMAP_1_1.md). The historical 1.0 dashboard
-is kept in [`ROADMAP.md`](ROADMAP.md) and is not artificially increased beyond 100%.
+The active expansion plan lives in [`ROADMAP_1_1.md`](ROADMAP_1_1.md). The historical 1.0 dashboard is kept in [`ROADMAP.md`](ROADMAP.md) and is not artificially increased beyond 100%.
 
 ## Links
 
