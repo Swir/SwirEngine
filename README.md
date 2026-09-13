@@ -104,6 +104,34 @@ For lower-level access, `GamepadSnapshot`, `GAMEPAD_BUTTONS`, `GAMEPAD_AXES`,
 `apply_deadzone(...)`, `normalize_gamepad_button(...)` and `normalize_gamepad_axis(...)` are public
 1.x APIs.
 
+### Semantic input actions, rebinding and control profiles
+
+SwirEngine 1.1 development also includes a creator-facing semantic action layer. Games can bind
+keyboard, mouse, standardized gamepad buttons and directional analog axes to names such as
+`jump`, `fire` or `move_left`, then change those bindings from an in-game controls menu without
+rewriting gameplay code.
+
+```python
+from swirengine.input import InputActions
+
+controls = InputActions(game.input)
+controls.key("jump", "SPACE")
+controls.gamepad_button("jump", "A")
+controls.mouse_button("fire", 0)
+controls.gamepad_axis("move_left", "left_x", direction=-1, threshold=0.25)
+
+if controls.pressed("jump"):
+    player.jump()
+
+move_left = controls.value("move_left")
+controls.save("settings/controls.json")
+```
+
+Bindings support held/pressed/released queries, analog values, duplicate-safe multi-binding,
+runtime replacement/removal and versioned JSON profiles. Persisted axis thresholds are enforced at
+runtime so controller profiles behave consistently after reload. See
+[`docs/INPUT_ACTIONS.md`](docs/INPUT_ACTIONS.md) for the full API and rebinding workflow.
+
 ## Quick 2D game
 
 ```python
@@ -164,7 +192,7 @@ game.run()
 - AABB collision queries
 - deterministic fixed-step arcade rigid-body physics
 - JSON save data through `SaveStore`
-- keyboard, mouse and standardized gamepad input
+- keyboard, mouse, standardized gamepad input, semantic actions and persistent rebinding profiles
 - adjacent compatible sprite batching
 - single-pass render-run construction with cached canonical texture keys
 

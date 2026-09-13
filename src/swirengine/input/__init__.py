@@ -1,3 +1,4 @@
+from .actions import InputActions, InputBinding
 from .gamepad import (
     GAMEPAD_AXES,
     GAMEPAD_BUTTONS,
@@ -12,6 +13,8 @@ __all__ = [
     "GAMEPAD_AXES",
     "GAMEPAD_BUTTONS",
     "GamepadSnapshot",
+    "InputActions",
+    "InputBinding",
     "InputManager",
     "apply_deadzone",
     "normalize_gamepad_axis",
