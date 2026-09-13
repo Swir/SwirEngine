@@ -38,7 +38,7 @@ jobs:
       - name: Install software OpenGL/Xvfb runtime
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0
+          sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 libgl-dev libegl-dev
       - name: Boot and render real 3D game
         env:
           LIBGL_ALWAYS_SOFTWARE: "1"
