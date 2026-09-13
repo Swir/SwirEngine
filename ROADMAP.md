@@ -4,20 +4,20 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-90.3%25-2ea043?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-28%2F31-1f6feb?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-93.5%25-2ea043?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-29%2F31-1f6feb?style=for-the-badge">
   <img alt="Status" src="https://img.shields.io/badge/STATUS-IN%20PROGRESS-7c3aed?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-██████████████████░░ 90.3%
+███████████████████░ 93.5%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **28** | **3** | **31** | **90.3%** |
+| **29** | **2** | **31** | **93.5%** |
 
 > **Progress rule:** the equal-weight deliverables below are the source of truth. Update `[x]/[ ]` first, then update badges, numbers, percentage and the 20-segment bar. Never estimate progress from version numbers, commit count or activity.
 
@@ -32,7 +32,7 @@
 - [x] 0.4 multi-light Phong rendering
 - [x] 0.4 Cook-Torrance metallic/roughness PBR
 - [x] 0.4 Skybox3D and Environment3D baseline
-- [ ] 0.4 true cubemap / image-based environment lighting
+- [x] 0.4 true cubemap / image-based environment lighting
 - [ ] 0.4 shadows
 - [x] 0.4 post-processing
 - [x] 0.4 color-space/PBR hardening plus normal, occlusion and emissive material maps
@@ -102,9 +102,14 @@ base-color and emissive channels while keeping data textures in linear space. Re
 tracks every supported PBR texture channel. `PostProcessRenderer` now adds an optional off-screen
 GPU resolve with ACES/Reinhard tone mapping, exposure/gamma control, contrast/saturation grading,
 vignette and FXAA. `Game.configure_postprocess(...)` keeps that pass disabled by default so existing
-projects retain their rendering behavior until creators opt in.
+projects retain their rendering behavior until creators opt in. `ImageBasedEnvironment3D` now reaches
+the runtime PBR renderer through real GPU cubemap sampling: diffuse environment light uses the
+low-frequency mip, specular reflections select mip LOD from material roughness, AO participates in the
+environment contribution, cubemap resources are cached/released deterministically, and all six faces
+participate in asset live reload. The cubemap/IBL types and helpers are also exposed through the public
+package API.
 
-Next: true cubemap/image-based environment lighting and shadows.
+Next: shadows.
 
 ## 0.5 - Architecture
 
