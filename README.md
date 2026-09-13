@@ -1,4 +1,4 @@
-# SwirEngine 0.4.10
+# SwirEngine 0.4.22
 
 SwirEngine is a Python-first 2D/3D game engine built around one approachable API.
 Its goal is to let people create real games in Python without learning OpenGL before
