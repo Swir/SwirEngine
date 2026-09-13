@@ -62,7 +62,18 @@ jobs:
       - name: Build one-file demo
         run: >-
           python -m PyInstaller --noconfirm --clean --onefile
+          --collect-all glfw --collect-all glcontext
           --name NeonCubeHunt3D demo_projects/neon_cube_hunt_3d/run_game.py
+      - name: Probe packaged Windows runtime
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          SWIR_DEMO_RUNTIME_PROBE: "1"
+        run: |
+          & .\dist\NeonCubeHunt3D.exe
+          if ($LASTEXITCODE -ne 0) {
+            throw "Packaged Windows runtime probe failed with exit code $LASTEXITCODE"
+          }
       - name: Give binary an OS-specific release name
         shell: python
         run: |
@@ -82,7 +93,7 @@ jobs:
           if-no-files-found: error
 
   engine-release:
-    name: Publish SwirEngine 1.0 GitHub Release
+    name: Publish SwirEngine GitHub Release
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: smoke
     runs-on: ubuntu-latest
@@ -148,13 +159,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          TAG="demo-neon-cube-hunt-3d-v1.0.0"
+          TAG="demo-neon-cube-hunt-3d-v1.0.1"
           ASSETS=$(find release-assets -type f -print)
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" $ASSETS --clobber
           else
             gh release create "$TAG" $ASSETS \
               --target "$GITHUB_SHA" \
-              --title "Neon Cube Hunt 3D v1.0.0" \
-              --notes "Official SwirEngine 1.0 validation game. Includes the complete source project and one-file Windows, Linux, and macOS builds."
+              --title "Neon Cube Hunt 3D v1.0.1" \
+              --notes "Windows packaging fix: GLFW/glcontext runtime binaries are now collected explicitly and the final Windows EXE is runtime-probed before publication. Includes complete source plus Windows, Linux, and macOS builds."
           fi
