@@ -19,7 +19,8 @@ def test_stable_patch_release_version():
 
 
 def test_supported_python_range_is_explicit():
-    assert metadata("swirengine")["Requires-Python"] == ">=3.10,<3.14"
+    requires_python = metadata("swirengine")["Requires-Python"]
+    assert {item.strip() for item in requires_python.split(",")} == {">=3.10", "<3.14"}
 
 
 def test_readme_tracks_current_release_and_support_window():
