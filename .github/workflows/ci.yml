@@ -33,6 +33,9 @@ jobs:
       - name: Verify static 3D batching CPU frame-preparation win
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
         run: python tools/benchmark_static_3d_batch.py --cubes 1000 --rounds 9 --frames 30 --assert-win
+      - name: Verify async asset preload wait reduction
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
+        run: python tools/benchmark_asset_preload.py --assets 16 --delay-ms 10 --workers 4 --assert-win
 
   package:
     runs-on: ubuntu-latest
