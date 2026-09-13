@@ -97,7 +97,14 @@ from .hotreload import (
 )
 from .live_development import LiveDevelopmentHub, LiveDevelopmentResult
 from .math.types import Color, Transform, Vec2, Vec3
-from .networking import NetworkAddress, NetworkPacket, PacketStreamDecoder, TCPClient, TCPPeer, TCPServer
+from .networking import (
+    NetworkAddress,
+    NetworkPacket,
+    PacketStreamDecoder,
+    TCPClient,
+    TCPPeer,
+    TCPServer,
+)
 from .particles import ParticleEmitter2D
 from .physics.collision2d import AABB, BoxCollider2D, CollisionWorld2D
 from .physics.rigidbody2d import PhysicsWorld2D, RigidBody2D
