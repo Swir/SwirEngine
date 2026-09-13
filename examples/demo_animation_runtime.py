@@ -1,6 +1,13 @@
 from dataclasses import dataclass, field
 
-from swirengine.animation_runtime import AnimationSystem, AnimationTimeline, Ease, State, StateMachine, Tween
+from swirengine.animation_runtime import (
+    AnimationSystem,
+    AnimationTimeline,
+    Ease,
+    State,
+    StateMachine,
+    Tween,
+)
 
 
 @dataclass
