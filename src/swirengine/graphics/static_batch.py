@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from collections.abc import Iterable
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -35,6 +35,16 @@ def _color_key(color: Color) -> tuple[float, float, float, float]:
     return (value.r, value.g, value.b, value.a)
 
 
+def _normal_matrix(model: np.ndarray) -> np.ndarray:
+    linear = model[:3, :3]
+    try:
+        return np.linalg.inv(linear).T
+    except np.linalg.LinAlgError:
+        # Degenerate static transforms (for example a zero scale axis) should not make
+        # level batching crash. A pseudo-inverse gives deterministic best-effort normals.
+        return np.linalg.pinv(linear).T
+
+
 def _bake_cube_group(cubes: list[Cube3D], color: Color) -> Mesh3D:
     source = cube_mesh()
     count = len(cubes)
@@ -50,8 +60,7 @@ def _bake_cube_group(cubes: list[Cube3D], color: Color) -> Mesh3D:
         end = start + source.vertex_count
         vertices[start:end] = (model @ homogeneous.T).T[:, :3]
 
-        normal_matrix = np.linalg.inv(model[:3, :3]).T
-        transformed_normals = (normal_matrix @ source.normals.T).T
+        transformed_normals = (_normal_matrix(model) @ source.normals.T).T
         lengths = np.linalg.norm(transformed_normals, axis=1, keepdims=True)
         normals[start:end] = transformed_normals / np.maximum(lengths, 1e-8)
         uvs[start:end] = source.uvs
