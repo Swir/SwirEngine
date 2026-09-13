@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "swirengine-neon-cube-hunt-3d"
+version = "1.0.0"
+description = "Official asset-free 3D validation game for SwirEngine 1.0."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = ["swirengine>=1.0,<2.0"]
+
+[project.scripts]
+neon-cube-hunt-3d = "neon_cube_hunt.game:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["neon_cube_hunt"]
