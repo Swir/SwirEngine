@@ -1,6 +1,7 @@
 import pytest
 
 from swirengine.core.game import Game
+from swirengine.graphics.ibl_renderer import _read_context_state
 from swirengine.graphics.lights import DirectionalLight3D, PointLight3D
 from swirengine.graphics.shadow_renderer import ShadowedImageBasedPostProcessRenderer
 
@@ -58,3 +59,19 @@ def test_shadow_renderer_handles_scene_without_directional_light():
     scene = type("SceneStub", (), {"objects": [PointLight3D()]})()
 
     assert ShadowedImageBasedPostProcessRenderer._shadow_light(scene) is None
+
+
+def test_renderer_state_reader_tolerates_write_only_moderngl_properties():
+    class WriteOnlyContext:
+        @property
+        def depth_func(self):
+            raise NotImplementedError
+
+        @property
+        def depth_mask(self):
+            raise AttributeError
+
+    context = WriteOnlyContext()
+
+    assert _read_context_state(context, "depth_func", "<") == "<"
+    assert _read_context_state(context, "depth_mask", True) is True

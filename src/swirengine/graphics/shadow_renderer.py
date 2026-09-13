@@ -5,7 +5,7 @@ from typing import Any
 import numpy as np
 
 from .camera3d import Camera3D
-from .ibl_renderer import ImageBasedPostProcessRenderer
+from .ibl_renderer import ImageBasedPostProcessRenderer, _read_context_state
 from .lights import DirectionalLight3D, select_lights
 from .mesh import Mesh3D
 from .renderer import Renderer
@@ -156,15 +156,13 @@ class ShadowedImageBasedPostProcessRenderer(ImageBasedPostProcessRenderer):
 
         projection = self._shadow_projection(camera)
         view_projection = projection @ camera.view_matrix()
-        previous_depth_func = getattr(self.ctx, "depth_func", None)
-        previous_depth_mask = getattr(self.ctx, "depth_mask", None)
+        previous_depth_func = _read_context_state(self.ctx, "depth_func", "<")
+        previous_depth_mask = _read_context_state(self.ctx, "depth_mask", True)
         self.ctx.enable(self.ctx.DEPTH_TEST)
         self.ctx.enable(self.ctx.BLEND)
         self.ctx.blend_func = self.ctx.DST_COLOR, self.ctx.ZERO
-        if previous_depth_func is not None:
-            self.ctx.depth_func = "<="
-        if previous_depth_mask is not None:
-            self.ctx.depth_mask = False
+        self.ctx.depth_func = "<="
+        self.ctx.depth_mask = False
         try:
             for obj in getattr(scene, "objects", ()):
                 if not isinstance(obj, Mesh3D) or not obj.enabled or not obj.visible:
@@ -180,10 +178,8 @@ class ShadowedImageBasedPostProcessRenderer(ImageBasedPostProcessRenderer):
                 self.stats.draw_calls += 1
                 self.stats.triangles += count // 3
         finally:
-            if previous_depth_mask is not None:
-                self.ctx.depth_mask = previous_depth_mask
-            if previous_depth_func is not None:
-                self.ctx.depth_func = previous_depth_func
+            self.ctx.depth_mask = previous_depth_mask
+            self.ctx.depth_func = previous_depth_func
             self.ctx.disable(self.ctx.BLEND)
             self.ctx.disable(self.ctx.DEPTH_TEST)
 
