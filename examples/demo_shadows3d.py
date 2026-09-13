@@ -1,6 +1,5 @@
 import swirengine
 
-
 game = swirengine.Game("SwirEngine directional shadows", mode="3d", width=1100, height=700)
 game.configure_shadows(resolution=2048, extent=14.0, distance=24.0)
 
