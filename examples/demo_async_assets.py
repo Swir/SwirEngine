@@ -7,7 +7,6 @@ from time import sleep
 from swirengine.asset_pipeline import AssetPreloader
 from swirengine.assets import AssetManager
 
-
 with TemporaryDirectory(prefix="swir-assets-") as temp_dir:
     root = Path(temp_dir)
     for index in range(6):
