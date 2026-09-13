@@ -3,8 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-
 from ..math.types import Color, perspective
 from .camera3d import Camera3D
 from .cubemap import CubemapGPUTexture, ImageBasedEnvironment3D
