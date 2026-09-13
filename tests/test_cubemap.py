@@ -12,6 +12,7 @@ from swirengine.graphics.cubemap import (
 
 
 def _faces(tmp_path: Path, *, mismatched: bool = False) -> CubemapFaces:
+    tmp_path.mkdir(parents=True, exist_ok=True)
     paths: list[Path] = []
     for index, name in enumerate(("px", "nx", "py", "ny", "pz", "nz")):
         size = (4, 2) if mismatched and index == 5 else (4, 4)
@@ -36,7 +37,7 @@ def test_cubemap_loader_normalizes_rgb_and_preserves_face_order(tmp_path: Path) 
 
 def test_cubemap_loader_rejects_missing_and_mismatched_faces(tmp_path: Path) -> None:
     faces = _faces(tmp_path)
-    faces.negative_z.unlink()
+    Path(faces.negative_z).unlink()
     with pytest.raises(FileNotFoundError, match="negative_z"):
         load_cubemap_faces(faces)
 
