@@ -108,7 +108,9 @@ def update(dt: float) -> None:
     if game.key("D") or game.key("RIGHT"):
         direction += 1
     paddle.x += direction * 520.0 * dt
-    paddle.x = max(-HALF_W + paddle.width / 2, min(HALF_W - paddle.width / 2, paddle.x))
+    min_paddle_x = -HALF_W + paddle.width / 2
+    max_paddle_x = HALF_W - paddle.width / 2
+    paddle.x = max(min_paddle_x, min(max_paddle_x, paddle.x))
 
     previous_y = ball.y
     ball.x += velocity[0] * dt
@@ -116,7 +118,9 @@ def update(dt: float) -> None:
 
     if ball.x - ball.width / 2 <= -HALF_W or ball.x + ball.width / 2 >= HALF_W:
         velocity[0] *= -1.0
-        ball.x = max(-HALF_W + ball.width / 2, min(HALF_W - ball.width / 2, ball.x))
+        min_ball_x = -HALF_W + ball.width / 2
+        max_ball_x = HALF_W - ball.width / 2
+        ball.x = max(min_ball_x, min(max_ball_x, ball.x))
     if ball.y + ball.height / 2 >= HALF_H:
         velocity[1] = -abs(velocity[1])
 
@@ -126,7 +130,8 @@ def update(dt: float) -> None:
         velocity[1] = abs(velocity[1])
         ball.y = paddle.y + paddle.height / 2 + ball.height / 2 + 1
 
-    hit = next((brick for brick in game.scene.tagged("brick") if overlaps(ball, brick)), None)
+    bricks = game.scene.tagged("brick")
+    hit = next((brick for brick in bricks if overlaps(ball, brick)), None)
     if isinstance(hit, Rectangle2D):
         game.remove(hit)
         velocity[1] *= -1.0
