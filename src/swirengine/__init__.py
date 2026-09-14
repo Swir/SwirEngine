@@ -116,6 +116,17 @@ from .input import (
 )
 from .live_development import LiveDevelopmentHub, LiveDevelopmentResult
 from .math.types import Color, Transform, Vec2, Vec3
+from .network_gameplay import (
+    ConnectionState,
+    GameplayMessage,
+    GameplaySession,
+    MessageKind,
+    MessageRouter,
+    NetworkDiagnostics,
+    RPCError,
+    RPCRegistry,
+    RPCResult,
+)
 from .networking import (
     NetworkAddress,
     NetworkPacket,
@@ -163,6 +174,7 @@ __all__ = [
     "Camera3D",
     "CollisionWorld2D",
     "Color",
+    "ConnectionState",
     "Cube3D",
     "CubemapFaces",
     "CubemapGPUTexture",
@@ -211,6 +223,8 @@ __all__ = [
     "GPUTextureInvalidation",
     "Game",
     "GamepadSnapshot",
+    "GameplayMessage",
+    "GameplaySession",
     "GizmoApplyResult",
     "GizmoTransformSnapshot",
     "GltfPrimitiveAsset",
@@ -232,7 +246,10 @@ __all__ = [
     "Material3D",
     "Mesh3D",
     "MeshData",
+    "MessageKind",
+    "MessageRouter",
     "NetworkAddress",
+    "NetworkDiagnostics",
     "NetworkPacket",
     "PackagingProfile",
     "PacketStreamDecoder",
@@ -254,6 +271,9 @@ __all__ = [
     "ProjectExporter",
     "PropertyEdit",
     "PygameAudioBackend",
+    "RPCError",
+    "RPCRegistry",
+    "RPCResult",
     "Rectangle2D",
     "ReloadResult",
     "RendererAssetBridge",

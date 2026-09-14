@@ -144,6 +144,24 @@ profile.save_slot("slot-1", autoload=False).update({"level": 8}).save()
 
 Future-version settings files are rejected instead of silently losing data; missing migration steps fail explicitly. Profile/slot tokens reject path traversal. See [`docs/SAVE_CONFIG_1_2.md`](docs/SAVE_CONFIG_1_2.md) and `examples/demo_save_config.py`.
 
+### Gameplay networking
+
+The existing framed `NetworkPacket`/`TCPPeer` transport remains compatible. SwirEngine 1.2 adds `GameplaySession` for deterministic game-loop networking, named `GameplayMessage` events, ordered `MessageRouter` dispatch, an explicit `RPCRegistry`, bounded RPC result buffering, connection lifecycle state and deterministic `NetworkDiagnostics` counters.
+
+```python
+from swirengine import GameplaySession
+
+session = GameplaySession(peer)
+session.router.on("player.spawn", lambda message: print(message.payload))
+session.rpc.register("score.add", lambda payload: payload["current"] + payload["points"])
+
+session.send("player.spawn", {"player_id": 7})
+request_id = session.call_rpc("score.add", {"current": 100, "points": 25})
+session.update()
+```
+
+RPC methods must be registered explicitly: remote data is never used for arbitrary Python attribute/global lookup. Networking remains polling-based and thread-free, so handler execution stays ordered relative to the simulation loop. See [`docs/NETWORK_GAMEPLAY_1_2.md`](docs/NETWORK_GAMEPLAY_1_2.md) and `examples/demo_network_gameplay.py`.
+
 ## Engine capabilities
 
 ### 2D
@@ -183,7 +201,7 @@ Future-version settings files are rejected instead of silently losing data; miss
 - font fallback registry and cached text-layout diagnostics
 - typed settings, deterministic migrations and profile-oriented save layout
 - project-oriented editor workflow with reversible playtest state
-- deterministic networking packet foundation and TCP client/server peers
+- deterministic TCP transport plus gameplay messages, explicit RPC and session diagnostics
 - packaging profiles, export manifests, debug overlay and programmatic profiler
 
 ## Performance regression gates
@@ -230,6 +248,7 @@ Desktop targets expose deterministic staging/build plans. Android and Web remain
 - `examples/demo_text_layout.py` — fallback, wrapping, alignment and cache diagnostics
 - `examples/demo_camera_systems.py` — camera rail/smoothing/shake workflow
 - `examples/demo_save_config.py` — typed settings, profile layout and save slots
+- `examples/demo_network_gameplay.py` — deterministic messages, RPC and diagnostics
 
 ## Development and verification
 
@@ -259,7 +278,7 @@ PyPI/GitHub Release publication for active 1.2 remains frozen until all 10 roadm
 
 - SwirEngine 1.0: [`ROADMAP.md`](ROADMAP.md) — **31/31 = 100%**, historical and locked
 - SwirEngine 1.1: [`ROADMAP_1_1.md`](ROADMAP_1_1.md) — **10/10 = 100%**, released
-- SwirEngine 1.2: [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **4/10 = 40.0%**, active development roadmap
+- SwirEngine 1.2: [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **5/10 = 50.0%**, active development roadmap
 
 ## Links
 
