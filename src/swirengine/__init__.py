@@ -2,9 +2,9 @@ from .assets import AssetDiagnostics, AssetInfo, AssetManager, AssetReloadResult
 from .audio import AudioBackend, AudioEngine, AudioHandle, AudioReloadEvent, PygameAudioBackend
 from .core.events import EventBus
 from .core.game import Game
-from .core.scene import Scene
+from .core.scene import Scene, SceneDiagnostics, SceneMount
 from .debug import DebugOverlay
-from .ecs import ECSWorld, Entity
+from .ecs import ECSDiagnostics, ECSWorld, Entity
 from .editor import (
     HierarchyEdit,
     HierarchyItem,
@@ -181,6 +181,7 @@ __all__ = [
     "CubemapImageData",
     "DebugOverlay",
     "DirectionalLight3D",
+    "ECSDiagnostics",
     "ECSWorld",
     "EditorAssetBrowser",
     "EditorAssetBrowserFrame",
@@ -283,7 +284,9 @@ __all__ = [
     "SaveStore",
     "Scene",
     "SceneCodecRegistry",
+    "SceneDiagnostics",
     "SceneInspector",
+    "SceneMount",
     "SceneSerializationError",
     "SceneSerializer",
     "Skybox3D",
