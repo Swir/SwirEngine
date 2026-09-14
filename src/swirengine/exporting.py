@@ -250,11 +250,9 @@ class ProjectExporter:
 
     @staticmethod
     def _data_files(files: Sequence[Path], entrypoint: Path) -> tuple[Path, ...]:
-        return tuple(
-            path
-            for path in files
-            if path != entrypoint and path.suffix.casefold() not in {".py", ".pyw", ".pyc"}
-        )
+        # Keep dynamically loaded project scripts as data. Only the entrypoint is consumed directly
+        # by PyInstaller; .pyc files remain excluded because source scripts are the portable form.
+        return tuple(path for path in files if path != entrypoint and path.suffix.casefold() != ".pyc")
 
     @classmethod
     def _render_pyinstaller_spec(cls, plan: ExportPlan) -> str:
