@@ -158,6 +158,23 @@ animations.update(dt)
 
 This layer is designed for camera moves, UI transitions, scripted sequences, enemy/player states and ordinary 2D/3D object animation while keeping the stable 1.x API additive. See [`docs/ANIMATION_RUNTIME.md`](docs/ANIMATION_RUNTIME.md) and `examples/demo_animation_runtime.py`.
 
+### Spatial collision broad phase and richer queries
+
+`CollisionWorld2D` now uses a tunable spatial-hash broad phase before AABB narrow-phase checks, so sparse worlds no longer need to test every possible collider pair. The index is rebuilt from live bounds before public queries, which preserves existing 1.x behavior for moving targets without requiring manual synchronization.
+
+```python
+from swirengine import AABB, BoxCollider2D, CollisionWorld2D, Rectangle2D
+
+world = CollisionWorld2D(cell_size=64)
+player = world.add(BoxCollider2D(Rectangle2D(0, 0, 32, 32), tag="player"))
+world.add(BoxCollider2D(Rectangle2D(24, 0, 32, 32), tag="enemy"))
+
+nearby = world.overlap_aabb(AABB(0, 0, 256, 256), tag="enemy")
+hits = world.raycast(0, 0, 1, 0, max_distance=1000)
+```
+
+The collision API also exposes point queries, region overlap queries, nearest-first ray hits and operation diagnostics with broad-phase candidate and actual narrow-phase-test counts. The deterministic 1,000-collider regression case requires at least a **100x candidate reduction** versus all-pairs enumeration; this is a workload reduction measurement, not an FPS claim. See [`docs/PHYSICS_BROADPHASE.md`](docs/PHYSICS_BROADPHASE.md) and `examples/demo_collision_queries.py`.
+
 ## Quick 2D game
 
 ```python
@@ -212,7 +229,7 @@ game.run()
 - responsive labels, panels, buttons and progress bars with anchors/containers/reference scaling
 - keyboard/mouse/gamepad focus navigation and UI activation
 - particles
-- AABB collision queries
+- spatial-hash AABB collision broad phase with overlap, point and ray queries
 - deterministic fixed-step arcade rigid-body physics
 - JSON save data through `SaveStore`
 - keyboard, mouse, standardized gamepad input, semantic actions and persistent rebinding profiles
@@ -244,6 +261,8 @@ For repeated level geometry, `build_static_cube_batches(...)` moves transform wo
 
 The async asset pipeline moves thread-safe file/CPU decoding work out of serial scene-transition loading and reports the measured wait component separately. CI includes a reproducible synthetic I/O-like benchmark that must demonstrate a real overlap win without turning that measurement into an end-to-end FPS claim.
 
+The 2D collision world uses a spatial hash to reduce pair and local-overlap candidate sets before narrow-phase intersection tests. A deterministic sparse-world regression with 1,000 colliders guards against accidentally returning to brute-force all-pairs scaling.
+
 ### Architecture and game systems
 
 - scene names, tags and creator-friendly lookup/removal helpers
@@ -258,6 +277,7 @@ The async asset pipeline moves thread-safe file/CPU decoding work out of serial 
 - responsive UI containers with keyboard/gamepad focus navigation
 - audio buses/groups, deterministic fades, spatial attenuation/pan and runtime diagnostics
 - deterministic tweens, sequences, parallel timelines, event markers and gameplay state machines
+- spatial-hash collision diagnostics, overlap/point/raycast queries and layer/tag filters
 - `LiveDevelopmentHub`
 - pluggable sound effects and music backend
 
@@ -329,6 +349,7 @@ It exposes FPS, frame/CPU timings, update/physics/render timings, draw calls, ba
 - `examples/demo_async_assets.py` — background/preload loading workflow with timing diagnostics
 - `examples/demo_responsive_ui.py` — resize-aware menu with keyboard/gamepad focus navigation
 - `examples/demo_animation_runtime.py` — tween/sequence/timeline/state-machine runtime example
+- `examples/demo_collision_queries.py` — spatial collision overlap, point/raycast and diagnostics example
 - larger asset-free 2D samples under `examples/`
 
 The Windows demo build pipeline also probes the final packaged GLFW runtime so missing native libraries are caught before demo publication.
