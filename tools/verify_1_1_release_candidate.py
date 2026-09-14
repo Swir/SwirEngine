@@ -5,7 +5,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-EXPECTED_VERSION = "1.1.0"
+EXPECTED_VERSION = "1.1.1"
 EXPECTED_TOTAL = 10
 EXPECTED_PYTHON_RANGE = ">=3.10,<3.15"
 
@@ -104,7 +104,7 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         )
 
     readme = _read(root, "README.md")
-    _require(f"# SwirEngine {EXPECTED_VERSION}" in readme, "README target version matches", checks)
+    _require("# SwirEngine 1.1" in readme, "README targets the stable 1.1 line", checks)
     _require("Python 3.10-3.13" in readme, "README documents cross-platform Python support", checks)
     _require("Python 3.14 on Windows" in readme, "README documents verified Python 3.14 scope", checks)
     _require("10/10 = 100%" in readme, "README documents the release freeze", checks)
