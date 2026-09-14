@@ -4,6 +4,8 @@ from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, TypeVar
 
+from typing_extensions import Self
+
 from ..ecs import ECSDiagnostics, ECSWorld, Entity
 
 if TYPE_CHECKING:
@@ -42,7 +44,7 @@ class SceneMount:
         self.active = False
         return removed_objects, removed_entities
 
-    def __enter__(self) -> SceneMount:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *_exc: object) -> None:
