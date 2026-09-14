@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -35,26 +35,16 @@ def sprite_batch_key(sprite: Sprite2D) -> SpriteBatchKey:
     )
 
 
-def build_render_runs(objects: Iterable[object]) -> tuple[object | SpriteBatch, ...]:
-    """Preserve visible render order while merging adjacent compatible sprites.
+def iter_render_runs(objects: Iterable[object]) -> Iterator[object | SpriteBatch]:
+    """Yield visible render runs in order without materializing an outer frame tuple.
 
-    The implementation is deliberately single-pass. It avoids building a second visible-object
-    tuple and computes each sprite's canonical texture key at most once per pass. Combined with
-    the bounded path cache this removes filesystem path normalization from the steady-state frame
-    loop for unchanged assets.
+    This is the hot-path form used by the renderer. Only the currently pending compatible
+    sprite run is retained, so scenes with many rectangles/text objects do not allocate a
+    second frame-sized list/tuple merely to iterate it once.
     """
     renderable_types = (Rectangle2D, Sprite2D, Text2D)
-    runs: list[object | SpriteBatch] = []
     pending_key: SpriteBatchKey | None = None
     pending_sprites: list[Sprite2D] = []
-
-    def flush_sprites() -> None:
-        nonlocal pending_key
-        if pending_key is None:
-            return
-        runs.append(SpriteBatch(pending_key, tuple(pending_sprites)))
-        pending_sprites.clear()
-        pending_key = None
 
     for obj in objects:
         if (
@@ -69,13 +59,23 @@ def build_render_runs(objects: Iterable[object]) -> tuple[object | SpriteBatch, 
             if pending_key == key:
                 pending_sprites.append(obj)
                 continue
-            flush_sprites()
+            if pending_key is not None:
+                yield SpriteBatch(pending_key, tuple(pending_sprites))
+                pending_sprites.clear()
             pending_key = key
             pending_sprites.append(obj)
             continue
 
-        flush_sprites()
-        runs.append(obj)
+        if pending_key is not None:
+            yield SpriteBatch(pending_key, tuple(pending_sprites))
+            pending_sprites.clear()
+            pending_key = None
+        yield obj
 
-    flush_sprites()
-    return tuple(runs)
+    if pending_key is not None:
+        yield SpriteBatch(pending_key, tuple(pending_sprites))
+
+
+def build_render_runs(objects: Iterable[object]) -> tuple[object | SpriteBatch, ...]:
+    """Compatibility wrapper returning the historical materialized tuple of render runs."""
+    return tuple(iter_render_runs(objects))
