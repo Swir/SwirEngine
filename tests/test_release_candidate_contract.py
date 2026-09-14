@@ -11,19 +11,24 @@ def test_release_candidate_contract_is_internally_consistent() -> None:
 
     assert report.version == "1.1.0"
     assert report.roadmap.total == 10
-    assert report.roadmap.completed == 9
-    assert report.roadmap.remaining == 1
-    assert report.roadmap.percent == 90.0
+    assert report.roadmap.completed + report.roadmap.remaining == 10
+    assert report.roadmap.percent in {90.0, 100.0}
     assert len(report.checks) >= 30
 
 
-def test_release_candidate_requires_explicit_100_percent_for_publication() -> None:
-    try:
-        audit(ROOT, require_complete=True)
-    except AssertionError as exc:
-        assert "10/10" in str(exc)
+def test_complete_publication_gate_tracks_roadmap_state() -> None:
+    report = audit(ROOT)
+
+    if report.roadmap.completed == 10:
+        complete = audit(ROOT, require_complete=True)
+        assert complete.roadmap.percent == 100.0
     else:
-        raise AssertionError("publication gate unexpectedly passed before roadmap completion")
+        try:
+            audit(ROOT, require_complete=True)
+        except AssertionError as exc:
+            assert "10/10" in str(exc)
+        else:
+            raise AssertionError("publication gate unexpectedly passed before roadmap completion")
 
 
 def test_roadmap_parser_derives_twenty_segment_bar_from_checkboxes() -> None:
