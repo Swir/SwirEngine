@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
-from collections.abc import Iterable
+import subprocess
+import sys
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 
 class ExportTarget(str, Enum):
@@ -21,6 +25,10 @@ class ExportTarget(str, Enum):
     @property
     def desktop(self) -> bool:
         return self in {ExportTarget.WINDOWS, ExportTarget.LINUX, ExportTarget.MACOS}
+
+
+class NativeBuildError(RuntimeError):
+    """Raised when an explicit native desktop build cannot be completed safely."""
 
 
 @dataclass(slots=True, frozen=True)
@@ -136,21 +144,48 @@ class ExportResult:
     copied_files: tuple[Path, ...]
     native_build_command: tuple[str, ...] | None
     experimental: bool
+    native_spec: Path | None = None
+
+
+@dataclass(slots=True, frozen=True)
+class NativeBuildResult:
+    """Result of an explicitly requested host-native desktop build."""
+
+    export: ExportResult
+    command: tuple[str, ...]
+    artifacts: tuple[Path, ...]
+    returncode: int
+
+
+Runner = Callable[..., Any]
 
 
 class ProjectExporter:
-    """Create portable export staging directories for desktop/mobile/web targets.
+    """Create portable staging directories and explicit host-native desktop builds.
 
-    Desktop profiles include a ready-to-run PyInstaller command but do not execute third-party
-    build tools implicitly. Android and Web exports are intentionally marked experimental and emit
-    a machine-readable manifest describing the target so external toolchains can consume the same
-    staged project without changing game source code.
+    ``export()`` remains side-effect-light: it stages project files, writes a deterministic manifest
+    and generates a portable PyInstaller spec for desktop targets. ``build_native()`` is an explicit
+    opt-in that executes PyInstaller only when the requested desktop target matches the current host.
+    Android and Web exports remain experimental staging targets.
     """
+
+    _DESKTOP_HOSTS = {
+        ExportTarget.WINDOWS: "win32",
+        ExportTarget.LINUX: "linux",
+        ExportTarget.MACOS: "darwin",
+    }
 
     def __init__(self, project_root: str | Path) -> None:
         self.project_root = Path(project_root).expanduser().resolve()
         if not self.project_root.is_dir():
             raise FileNotFoundError(f"project directory does not exist: {self.project_root}")
+
+    @staticmethod
+    def _safe_relative(value: str | Path, *, label: str) -> Path:
+        relative = Path(value)
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ValueError(f"{label} must stay inside the project: {value}")
+        return relative
 
     @staticmethod
     def _is_excluded(relative: Path, patterns: Iterable[str]) -> bool:
@@ -164,7 +199,7 @@ class ProjectExporter:
         return False
 
     def _collect_files(self, profile: PackagingProfile) -> tuple[Path, ...]:
-        entrypoint = Path(profile.entrypoint)
+        entrypoint = self._safe_relative(profile.entrypoint, label="entrypoint")
         candidates: set[Path] = set()
         entrypoint_path = self.project_root / entrypoint
         if not entrypoint_path.is_file():
@@ -172,7 +207,7 @@ class ProjectExporter:
         candidates.add(entrypoint)
 
         for value in profile.include:
-            relative = Path(value)
+            relative = self._safe_relative(value, label="include path")
             source = self.project_root / relative
             if source.is_file():
                 candidates.add(relative)
@@ -181,6 +216,12 @@ class ProjectExporter:
                 for child in source.rglob("*"):
                     if child.is_file():
                         candidates.add(child.relative_to(self.project_root))
+
+        if profile.icon:
+            icon = self._safe_relative(profile.icon, label="icon path")
+            if not (self.project_root / icon).is_file():
+                raise FileNotFoundError(f"icon does not exist: {self.project_root / icon}")
+            candidates.add(icon)
 
         for optional in ("swirproject.toml", "requirements.txt", "pyproject.toml"):
             path = self.project_root / optional
@@ -194,23 +235,77 @@ class ProjectExporter:
     def _native_command(profile: PackagingProfile) -> tuple[str, ...] | None:
         if not profile.target.desktop:
             return None
-        command = [
+        return (
             "python",
             "-m",
             "PyInstaller",
             "--noconfirm",
             "--clean",
-            "--name",
-            profile.effective_app_name,
+            "--distpath",
+            "native-dist",
+            "--workpath",
+            "native-build",
+            "swirengine-build.spec",
+        )
+
+    @staticmethod
+    def _data_files(files: Sequence[Path], entrypoint: Path) -> tuple[Path, ...]:
+        return tuple(
+            path
+            for path in files
+            if path != entrypoint and path.suffix.casefold() not in {".py", ".pyw", ".pyc"}
+        )
+
+    @classmethod
+    def _render_pyinstaller_spec(cls, plan: ExportPlan) -> str:
+        profile = plan.profile
+        entrypoint = cls._safe_relative(profile.entrypoint, label="entrypoint")
+        datas = [
+            (path.as_posix(), path.parent.as_posix() if path.parent != Path(".") else ".")
+            for path in cls._data_files(plan.files, entrypoint)
         ]
+        icon_expr = "None" if profile.icon is None else repr(Path(profile.icon).as_posix())
+        common = (
+            "# Generated by SwirEngine; portable across matching desktop hosts.\n"
+            "a = Analysis(\n"
+            f"    [{entrypoint.as_posix()!r}],\n"
+            "    pathex=['.'],\n"
+            "    binaries=[],\n"
+            f"    datas={datas!r},\n"
+            "    hiddenimports=[],\n"
+            "    hookspath=[],\n"
+            "    hooksconfig={},\n"
+            "    runtime_hooks=[],\n"
+            "    excludes=[],\n"
+            "    noarchive=False,\n"
+            ")\n"
+            "pyz = PYZ(a.pure)\n"
+        )
         if profile.onefile:
-            command.append("--onefile")
-        if not profile.console:
-            command.append("--windowed")
-        if profile.icon:
-            command.extend(("--icon", profile.icon))
-        command.append(profile.entrypoint)
-        return tuple(command)
+            return common + (
+                "exe = EXE(\n"
+                "    pyz, a.scripts, a.binaries, a.datas, [],\n"
+                f"    name={profile.effective_app_name!r}, console={profile.console!r}, icon={icon_expr},\n"
+                ")\n"
+            )
+        return common + (
+            "exe = EXE(\n"
+            "    pyz, a.scripts, [], exclude_binaries=True,\n"
+            f"    name={profile.effective_app_name!r}, console={profile.console!r}, icon={icon_expr},\n"
+            ")\n"
+            "coll = COLLECT(\n"
+            "    exe, a.binaries, a.datas,\n"
+            f"    name={profile.effective_app_name!r},\n"
+            ")\n"
+        )
+
+    @staticmethod
+    def _sha256(path: Path) -> str:
+        digest = hashlib.sha256()
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
 
     def plan(
         self,
@@ -250,22 +345,31 @@ class ProjectExporter:
         plan.output_dir.mkdir(parents=True, exist_ok=True)
 
         copied: list[Path] = []
+        checksums: dict[str, str] = {}
         for relative in plan.files:
             source = self.project_root / relative
             destination = plan.output_dir / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, destination)
             copied.append(destination)
+            checksums[relative.as_posix()] = self._sha256(destination)
+
+        native_spec: Path | None = None
+        if profile.target.desktop:
+            native_spec = plan.output_dir / "swirengine-build.spec"
+            native_spec.write_text(self._render_pyinstaller_spec(plan), encoding="utf-8")
 
         manifest_payload = {
             "format": "swirengine-export",
-            "version": 1,
+            "version": 2,
             "target": profile.target.value,
             "experimental": plan.experimental,
             "entrypoint": profile.entrypoint,
             "app_name": profile.effective_app_name,
             "files": [path.as_posix() for path in plan.files],
+            "sha256": checksums,
             "native_build_command": list(plan.native_build_command or ()),
+            "native_spec": None if native_spec is None else native_spec.name,
             "metadata": dict(profile.metadata),
             "host": os.name,
         }
@@ -278,4 +382,63 @@ class ProjectExporter:
             copied_files=tuple(copied),
             native_build_command=plan.native_build_command,
             experimental=plan.experimental,
+            native_spec=native_spec,
+        )
+
+    @classmethod
+    def _validate_native_host(cls, target: ExportTarget) -> None:
+        if not target.desktop:
+            raise NativeBuildError(f"native build is not available for {target.value}")
+        expected = cls._DESKTOP_HOSTS[target]
+        if sys.platform != expected:
+            raise NativeBuildError(
+                f"{target.value} builds must run on a matching host; current platform is {sys.platform}"
+            )
+
+    def build_native(
+        self,
+        profile: PackagingProfile,
+        output_dir: str | Path | None = None,
+        *,
+        clean: bool = True,
+        runner: Runner = subprocess.run,
+    ) -> NativeBuildResult:
+        """Stage and execute a host-native desktop build using the generated portable spec.
+
+        SwirEngine deliberately does not cross-compile desktop games. Windows builds run on Windows,
+        Linux builds on Linux and macOS builds on macOS. The caller must install PyInstaller in the
+        selected build environment; no dependency installation is performed implicitly.
+        """
+
+        self._validate_native_host(profile.target)
+        exported = self.export(profile, output_dir, clean=clean)
+        if exported.native_build_command is None or exported.native_spec is None:
+            raise NativeBuildError("desktop export did not produce a native build plan")
+
+        command = (sys.executable, *exported.native_build_command[1:])
+        completed = runner(
+            command,
+            cwd=exported.output_dir,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        returncode = int(completed.returncode)
+        if returncode != 0:
+            stderr = str(getattr(completed, "stderr", "")).strip()
+            tail = stderr[-2000:] if stderr else "no stderr was captured"
+            raise NativeBuildError(f"native build failed with exit code {returncode}: {tail}")
+
+        native_dist = exported.output_dir / "native-dist"
+        if not native_dist.is_dir():
+            raise NativeBuildError("native build succeeded but native-dist was not created")
+        artifacts = tuple(sorted(native_dist.iterdir(), key=lambda path: path.name.casefold()))
+        if not artifacts:
+            raise NativeBuildError("native build succeeded but produced no artifacts")
+
+        return NativeBuildResult(
+            export=exported,
+            command=command,
+            artifacts=artifacts,
+            returncode=returncode,
         )
