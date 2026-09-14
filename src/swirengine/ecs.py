@@ -113,18 +113,20 @@ class _SystemEntry:
 class ECSWorld:
     """Deterministic entity/component/system runtime with indexed component queries.
 
-    Exact component membership is indexed as entities change. Queries use the smallest
-    compatible component index as their candidate set, while preserving the public
-    subclass-aware component semantics and deterministic entity insertion order.
+    Exact component membership is indexed as entities change. Queries use compatible
+    component indexes to visit only candidate entities, while preserving subclass-aware
+    component semantics and deterministic entity insertion order.
     """
 
     def __init__(self) -> None:
         self._entities: dict[int, Entity] = {}
+        self._entity_order: dict[int, int] = {}
         self._component_index: dict[type[object], set[int]] = {}
         self._systems: list[_SystemEntry] = []
         self._ordered_system_cache: tuple[_SystemEntry, ...] = ()
         self._systems_dirty = False
         self._next_entity_id = 1
+        self._next_entity_order = 0
         self._next_system_order = 0
         self.diagnostics = ECSDiagnostics()
 
@@ -173,6 +175,8 @@ class ECSWorld:
             world=self,
         )
         self._entities[entity.id] = entity
+        self._entity_order[entity.id] = self._next_entity_order
+        self._next_entity_order += 1
         self._next_entity_id = max(self._next_entity_id, entity.id + 1)
         return entity
 
@@ -209,6 +213,7 @@ class ECSWorld:
         for component_type in tuple(existing._components):
             self._unindex_component(entity_id, component_type)
         del self._entities[entity_id]
+        self._entity_order.pop(entity_id, None)
         existing._world = None
         return True
 
@@ -216,6 +221,7 @@ class ECSWorld:
         for entity in self._entities.values():
             entity._world = None
         self._entities.clear()
+        self._entity_order.clear()
         self._component_index.clear()
 
     def _candidate_ids(self, component_types: tuple[type[object], ...]) -> set[int] | None:
@@ -247,20 +253,23 @@ class ECSWorld:
         required_tags = frozenset(tags)
         candidates = self._candidate_ids(component_types)
         self.diagnostics.query_calls += 1
+
         if candidates is None:
+            candidate_entities: Iterable[Entity] = self._entities.values()
             candidate_count = len(self._entities)
         else:
-            candidate_count = len(candidates)
+            candidate_ids = sorted(candidates, key=self._entity_order.__getitem__)
+            candidate_entities = (self._entities[entity_id] for entity_id in candidate_ids)
+            candidate_count = len(candidate_ids)
+
         self.diagnostics.query_candidates += candidate_count
         if not candidate_count:
             return ()
 
         result = tuple(
             entity
-            for entity in self._entities.values()
-            if (candidates is None or entity.id in candidates)
-            and (entity.enabled or not enabled_only)
-            and required_tags.issubset(entity.tags)
+            for entity in candidate_entities
+            if (entity.enabled or not enabled_only) and required_tags.issubset(entity.tags)
         )
         self.diagnostics.query_matches += len(result)
         return result
