@@ -1,6 +1,5 @@
 from swirengine import Color, Game, InstancedCube3D, Material3D, Vec3
 
-
 game = Game(
     "SwirEngine GPU instancing smoke",
     640,

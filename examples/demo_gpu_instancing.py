@@ -1,6 +1,5 @@
 from swirengine import Color, Game, InstancedCube3D, Material3D, Vec3
 
-
 game = Game("SwirEngine 1.3 - GPU Instancing", 1280, 720, mode="3d")
 game.camera.position = Vec3(0.0, 18.0, 32.0)
 game.camera.look_at(Vec3(0.0, 0.0, -24.0))
