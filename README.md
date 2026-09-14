@@ -10,9 +10,9 @@
 
 **SwirEngine** is a Python-first 2D/3D game engine built around an approachable API. It combines Python gameplay code with a real OpenGL renderer, scenes, prefabs/ECS, physics, animation, audio, responsive UI, input rebinding, gameplay networking, asset streaming, native desktop export and complete 3D validation demos.
 
-SwirEngine **1.2.0** is the current stable release candidate for the final publication gate. The historical 1.0 roadmap is locked at **31/31 = 100%**, the released 1.1 roadmap is locked at **10/10 = 100%**, and the 1.2 roadmap is now verified at **10/10 = 100%** in [`ROADMAP_1_2.md`](ROADMAP_1_2.md). Publication remains gated by the final exact-head CI/runtime/demo/packaging checks and public-artifact post-release verification.
+SwirEngine **1.2.0 is the current stable release** published on PyPI and GitHub. The historical 1.0 roadmap is locked at **31/31 = 100%**, 1.1 is locked at **10/10 = 100%**, and the published 1.2 roadmap is locked at **10/10 = 100%**. Development after the stable release is tracked separately in [`ROADMAP_1_3.md`](ROADMAP_1_3.md); unfinished 1.3 work is **not** published as an intermediate package.
 
-## Install
+## Install stable 1.2.0
 
 Verified support covers **Python 3.10-3.13** on Windows, Linux and macOS, plus **Python 3.14 on Windows x86-64**.
 
@@ -71,86 +71,34 @@ def update(dt):
 game.run()
 ```
 
-## What 1.2 adds
+## Active 1.3 development — Gameplay & Creator Power
+
+The package version intentionally remains **1.2.0** while the 1.3 roadmap is developed. No 1.3 PyPI package, tag or GitHub Release is created until the whole roadmap reaches 10/10 and passes the final release gate.
+
+### GPU instancing + frustum culling — milestone 1/10
+
+The first verified 1.3 milestone adds a native dynamic-instancing path alongside the existing CPU-baked static batching system:
+
+- additive `Instance3D`, `InstancedMesh3D`, `InstancedCube3D` and `Frustum3D` APIs
+- real ModernGL per-instance attributes with one `vao.render(..., instances=N)` submission for a visible batch
+- reusable grow-on-demand GPU instance buffers and a reusable float32 CPU staging array
+- direct transform packing without allocating a separate 4x4 NumPy transform matrix for every instance
+- conservative CPU frustum rejection using scale-aware mesh bounding spheres
+- per-instance RGBA variation plus existing `Material3D` forward Phong/PBR channels
+- directional, point and spot lights under the existing deterministic light budgets
+- renderer diagnostics for instance candidates, culled instances, submitted instances and instance batches
+
+The deterministic regression contract requires **1,000 visible compatible instances to map from a 1,000-draw baseline to one instanced draw**, and a separate 1,000-instance culling case requires exactly **100 visible / 900 culled**. `tools/benchmark_gpu_instancing.py` measures host-dependent CPU cull+pack work for 10,000 instances without converting that timing into an FPS claim.
+
+A real Xvfb/software-OpenGL CI gate compiles and executes the production instanced draw path. `examples/demo_gpu_instancing.py` builds a **6,400-instance** PBR-lit field for creator testing.
+
+Current boundary: the 1.3 milestone integrates instanced objects into the direct forward pass. Existing shadow-map overlay and additive cubemap-IBL auxiliary passes still operate on regular `Mesh3D` objects; SwirEngine does not silently fall back to one draw per instance for those passes.
+
+See [`docs/GPU_INSTANCING_1_3.md`](docs/GPU_INSTANCING_1_3.md) and [`ROADMAP_1_3.md`](ROADMAP_1_3.md).
+
+## Stable 1.2 feature set
 
 SwirEngine 1.2 is additive and preserves compatibility-sensitive 1.x behavior while filling major engine-level gaps beyond a low-level game library.
-
-### Particle/VFX runtime
-
-`ParticleEmitter2D` adds point/box/circle/ring emission, lifetime color/size curves, drag, rotation/angular velocity and deterministic diagnostics. Sparse active-index updates avoid scanning a full particle pool every frame. The regression case uses capacity **10,000** with **8 live particles** and requires exactly **8 update visits** per measured frame.
-
-See [`docs/PARTICLES_VFX_1_2.md`](docs/PARTICLES_VFX_1_2.md) and `examples/demo_particles_vfx.py`.
-
-### Font assets and cached text layout
-
-`FontAsset`, `FontFamily`, `FontRegistry`, `TextStyle` and `TextLayoutEngine` provide fallback families, wrapping, long-word splitting, alignment, line spacing and bounded LRU diagnostics. After the first layout, **1,000 identical requests** must be cache hits with zero extra measurement calls.
-
-See [`docs/TEXT_FONT_PIPELINE_1_2.md`](docs/TEXT_FONT_PIPELINE_1_2.md) and `examples/demo_text_layout.py`.
-
-### Shared 2D/3D camera systems
-
-`CameraRig2D` and `CameraRig3D` provide world bounds, time-step-aware smoothing, deterministic decaying shake and multi-segment rails. The 2D rig adds dead-zone follow; the 3D rig preserves active view direction while moving the camera.
-
-See [`docs/CAMERA_SYSTEMS_1_2.md`](docs/CAMERA_SYSTEMS_1_2.md) and `examples/demo_camera_systems.py`.
-
-### Typed settings, migrations and profile saves
-
-The stable `SaveStore` API remains compatible. The opt-in 1.2 storage layer adds `SettingSpec`, `SettingsSchema`, versioned `SettingsStore`, deterministic `MigrationRegistry`, traversal-safe `ProfileStore` / `ProfilePaths`, independent save slots and stronger atomic writes using same-directory temporary files, `fsync` and `os.replace`.
-
-See [`docs/SAVE_CONFIG_1_2.md`](docs/SAVE_CONFIG_1_2.md) and `examples/demo_save_config.py`.
-
-### Gameplay networking
-
-The existing framed `NetworkPacket`/`TCPPeer` transport remains compatible. `GameplaySession` adds named gameplay messages, ordered routing, explicit RPC registration, bounded RPC results, connection lifecycle state and deterministic diagnostics. RPC never resolves arbitrary Python attributes or globals from remote input.
-
-See [`docs/NETWORK_GAMEPLAY_1_2.md`](docs/NETWORK_GAMEPLAY_1_2.md) and `examples/demo_network_gameplay.py`.
-
-### Scene, prefab and ECS ergonomics
-
-Scenes gain lifecycle hooks, cached update snapshots and grouped mounts. `Scene.compose_entity()` creates component bundles in one call; indexed `ECSWorld.query()` narrows iteration while retaining deterministic insertion order and subclass-aware lookup; system order is cached until registration changes; `Prefab.instantiate_many()` adds deterministic batch spawning.
-
-The regression case creates **1,000 `Position`-only entities plus one `Position + Velocity` entity** and requires the mixed query to visit exactly **one indexed candidate**.
-
-See [`docs/SCENE_ECS_ERGONOMICS_1_2.md`](docs/SCENE_ECS_ERGONOMICS_1_2.md) and `examples/demo_scene_ecs_ergonomics.py`.
-
-### Budgeted asset streaming
-
-`AssetStreamingManager` and `AssetStreamingBudget` add staged background file/decode work, game-thread finalization through nonblocking `pump()`, deterministic LRU residency, count/byte budgets, pin/unpin/touch/evict controls and hitch/residency diagnostics. Resident-byte totals are maintained incrementally, so diagnostics and budget checks are **O(1)** with respect to resident asset count.
-
-GPU/context-owned uploads remain on the owning render thread.
-
-See [`docs/ASSET_STREAMING_1_2.md`](docs/ASSET_STREAMING_1_2.md) and `examples/demo_asset_streaming.py`.
-
-### Renderer and VFX frame-work reduction
-
-The renderer performance pass reduces repeated Python work without changing draw order or claiming an unmeasured FPS uplift. Repeatable 2D scene lists stream render runs instead of allocating a second frame-sized outer tuple, stable sprite batch keys use a bounded cache, valid immutable colors reuse identity, and particle range sampling avoids temporary sorted lists.
-
-Regression coverage checks a **512-sprite** streamed run and **1,000 repeated stable state/color operations** for cache/identity reuse. Host-dependent timings remain diagnostic rather than fixed FPS claims.
-
-See [`docs/RENDERER_VFX_PERFORMANCE_1_2.md`](docs/RENDERER_VFX_PERFORMANCE_1_2.md) and `tools/benchmark_renderer_vfx_framework.py`.
-
-### Native desktop build/export hardening
-
-Desktop staging produces deterministic manifest v2 integrity hashes and a generated `swirengine-build.spec`. `ProjectExporter.build_native()` explicitly runs PyInstaller only when host and requested Windows/Linux/macOS target match. Entrypoints/includes/icons reject absolute or parent-traversal paths, while assets, scenes and dynamically loaded scripts remain bundled.
-
-The shipping workflow builds and launches **one-file and one-directory executables on Windows, Linux and macOS** and validates packaged resource access.
-
-```bash
-swirengine export . --target windows --name MyGame --onefile --windowed
-swirengine export . --target windows --name MyGame --onefile --windowed --build-native
-```
-
-See [`docs/BUILD_EXPORT_1_2.md`](docs/BUILD_EXPORT_1_2.md), `examples/demo_export_pipeline.py` and `tools/verify_desktop_export.py`.
-
-### Creator hardening and release contract
-
-The final 1.2 gate cross-checks roadmap math, package metadata, Python support, public API anchors, documentation, complete demo projects, performance gates and publication safety. Normal CI runs the active 1.2 contract; the release workflow additionally requires exactly **10/10 = 100%** and version **1.2.0** before any package can be published.
-
-PyPI uses GitHub OIDC Trusted Publishing. After publication, a separate matrix waits for the public PyPI metadata, installs `swirengine==1.2.0` from `https://pypi.org/simple` rather than the checkout, validates version/core API, then runs representative runtime smoke on Linux and Windows CPython 3.14.
-
-See [`docs/CREATOR_HARDENING_1_2.md`](docs/CREATOR_HARDENING_1_2.md).
-
-## Engine capabilities
 
 ### 2D
 
@@ -164,6 +112,7 @@ See [`docs/CREATOR_HARDENING_1_2.md`](docs/CREATOR_HARDENING_1_2.md).
 - spatial-hash AABB broad phase, overlap/point/ray queries and fixed-step arcade physics
 - typed/versioned settings, migrations, profiles and save slots
 - deterministic tween/timeline/state-machine animation runtime
+- font fallback registry, wrapping/alignment and bounded cached text layout
 
 ### 3D
 
@@ -177,6 +126,7 @@ See [`docs/CREATOR_HARDENING_1_2.md`](docs/CREATOR_HARDENING_1_2.md).
 - directional GPU shadows, post-processing, tone mapping and FXAA
 - sRGB/linear color-space handling
 - bounded transform caching and static larger-batch rendering
+- on active 1.3 development branches: native dynamic GPU instancing and CPU frustum culling
 
 ### Production systems
 
@@ -186,17 +136,30 @@ See [`docs/CREATOR_HARDENING_1_2.md`](docs/CREATOR_HARDENING_1_2.md).
 - plugin runtime, file watcher and transactional hot-reload restoration
 - budgeted staged asset streaming with in-flight deduplication, deterministic LRU residency and diagnostics
 - audio buses/groups, fades and spatial attenuation/pan
-- font fallback registry and cached text-layout diagnostics
 - typed settings, deterministic migrations and profile-oriented save layout
 - project-oriented editor workflow with reversible playtest state
 - deterministic TCP transport plus gameplay messages, explicit RPC and session diagnostics
 - deterministic export manifests, generated desktop specs and explicit native builds
 - debug overlay and programmatic profiler
 
+## 1.2 creator documentation
+
+- [`docs/PARTICLES_VFX_1_2.md`](docs/PARTICLES_VFX_1_2.md) — sparse pooled particles and VFX
+- [`docs/TEXT_FONT_PIPELINE_1_2.md`](docs/TEXT_FONT_PIPELINE_1_2.md) — font fallback and cached text layout
+- [`docs/CAMERA_SYSTEMS_1_2.md`](docs/CAMERA_SYSTEMS_1_2.md) — shared 2D/3D camera rigs
+- [`docs/SAVE_CONFIG_1_2.md`](docs/SAVE_CONFIG_1_2.md) — typed settings, migrations, profiles and saves
+- [`docs/NETWORK_GAMEPLAY_1_2.md`](docs/NETWORK_GAMEPLAY_1_2.md) — gameplay messages, RPC and diagnostics
+- [`docs/SCENE_ECS_ERGONOMICS_1_2.md`](docs/SCENE_ECS_ERGONOMICS_1_2.md) — scene/prefab/ECS composition and lifecycle
+- [`docs/ASSET_STREAMING_1_2.md`](docs/ASSET_STREAMING_1_2.md) — staged streaming and residency budgets
+- [`docs/RENDERER_VFX_PERFORMANCE_1_2.md`](docs/RENDERER_VFX_PERFORMANCE_1_2.md) — renderer/VFX frame-work reduction
+- [`docs/BUILD_EXPORT_1_2.md`](docs/BUILD_EXPORT_1_2.md) — native desktop build/export hardening
+- [`docs/CREATOR_HARDENING_1_2.md`](docs/CREATOR_HARDENING_1_2.md) — final creator/release contract
+
 ## Performance regression gates
 
 SwirEngine keeps performance claims narrow and reproducible:
 
+- **GPU instancing 1.3:** 1,000 visible compatible instances model 1,000 source submissions -> one instanced draw; a separate 1,000-instance case must cull exactly 900 outside the test frustum
 - **static 3D batching:** 100 compatible static cubes map from 100 renderer-facing object draws to one combined mesh draw
 - **async preload:** a reproducible synthetic I/O-like benchmark must demonstrate real overlap/wait reduction
 - **asset streaming residency:** exact incremental byte accounting is verified through eviction
@@ -208,7 +171,7 @@ SwirEngine keeps performance claims narrow and reproducible:
 
 These are workload/regression measurements, not synthetic FPS promises.
 
-## Project generator and export
+## Project generator and native desktop export
 
 ```bash
 swirengine new MyGame --mode 2d
@@ -224,15 +187,15 @@ Generated projects remain compatible with the stable engine line:
 engine = ">=1.0,<2.0"
 ```
 
-Android and Web remain experimental staging/research targets until their shipping paths are fully verified.
+The shipping workflow builds and launches one-file and one-directory executables on Windows, Linux and macOS. Android and Web remain experimental staging/research targets until their shipping paths are fully verified.
 
 ## Official validation demos and examples
 
 - **Neon Cube Hunt 3D** — 3D collection arena used for real OpenGL and packaged-runtime validation
 - **Neon Snake 3D** — complete 3D Snake with growth, food, collision, score, PBR and post-processing
+- `examples/demo_gpu_instancing.py` — active 1.3 dynamic instancing/frustum-culling demo with 6,400 cubes
 - `examples/demo_gamepad.py` — controller + keyboard fallback
 - `examples/demo_static_3d_batching.py` — static larger-batch rendering
-- `examples/demo_async_assets.py` — background/preload diagnostics
 - `examples/demo_asset_streaming.py` — staged loading, residency budgets and eviction
 - `examples/demo_responsive_ui.py` — resize-aware UI and focus navigation
 - `examples/demo_animation_runtime.py` — tween/sequence/timeline/state machine
@@ -254,6 +217,7 @@ pytest
 ruff check src tests examples demo_projects tools
 python -m compileall -q src examples demo_projects tools
 python tools/verify_1_2_release_candidate.py --require-complete
+python tools/benchmark_gpu_instancing.py
 ```
 
 CI validates:
@@ -264,19 +228,22 @@ CI validates:
 - dedicated Windows CPython 3.14 native dependency/wheel selection and import checks
 - one-file and one-directory desktop executables on Windows/Linux/macOS Python 3.13
 - reproducible performance/regression gates
-- real OpenGL paths through both official 3D demo workflows
+- real OpenGL paths through Neon Cube Hunt 3D, Neon Snake 3D and the active 1.3 instancing smoke
 
 ## Versioning and API stability
 
-SwirEngine follows semantic versioning for the stable 1.x public API. Existing 1.x behavior remains compatibility-sensitive and the 1.2 production systems are additive. User-visible work keeps code, tests, README, CHANGELOG and focused examples/documentation aligned.
+SwirEngine follows semantic versioning for the stable 1.x public API. Existing 1.x behavior remains compatibility-sensitive. New 1.3 development is additive unless a future explicitly planned version documents a migration.
 
-The 1.2 roadmap is complete; publication is controlled by the exact-head final gate and Trusted Publishing workflow rather than by another version bump. See [`docs/API_STABILITY.md`](docs/API_STABILITY.md) and [`docs/CREATOR_HARDENING_1_2.md`](docs/CREATOR_HARDENING_1_2.md).
+The installed/public package remains **1.2.0** during 1.3 development. The 1.3 release is frozen until its roadmap reaches exactly 10/10 = 100.0% and the final exact head passes CI/runtime/demo/packaging plus public-artifact post-release verification.
 
-## Roadmap
+See [`docs/API_STABILITY.md`](docs/API_STABILITY.md), [`docs/CREATOR_HARDENING_1_2.md`](docs/CREATOR_HARDENING_1_2.md) and [`docs/GPU_INSTANCING_1_3.md`](docs/GPU_INSTANCING_1_3.md).
+
+## Roadmaps
 
 - SwirEngine 1.0: [`ROADMAP.md`](ROADMAP.md) — **31/31 = 100%**, historical and locked
-- SwirEngine 1.1: [`ROADMAP_1_1.md`](ROADMAP_1_1.md) — **10/10 = 100%**, released
-- SwirEngine 1.2: [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **10/10 = 100.0%**, complete and in final release verification
+- SwirEngine 1.1: [`ROADMAP_1_1.md`](ROADMAP_1_1.md) — **10/10 = 100%**, released and locked
+- SwirEngine 1.2: [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **10/10 = 100.0%**, published and locked
+- SwirEngine 1.3: [`ROADMAP_1_3.md`](ROADMAP_1_3.md) — **1/10 = 10.0%**, active development
 
 ## Links
 

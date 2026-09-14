@@ -6,6 +6,7 @@ import numpy as np
 
 from .camera3d import Camera3D
 from .ibl_renderer import ImageBasedPostProcessRenderer, _read_context_state
+from .instancing import InstancedRenderPipeline
 from .lights import DirectionalLight3D, select_lights
 from .mesh import Mesh3D
 from .renderer import Renderer
@@ -19,6 +20,11 @@ class ShadowedImageBasedPostProcessRenderer(ImageBasedPostProcessRenderer):
     selected directional light owns one reusable depth map. A 3x3 PCF resolve is multiplied
     over direct scene lighting before the additive IBL pass, so image-based environment light
     remains available inside shadows.
+
+    SwirEngine 1.3 also attaches the additive GPU-instancing pipeline here because this is
+    the production renderer selected by ``Game``. Instanced objects currently participate
+    in the direct forward-lighting pass; shadow-map and additive IBL instancing are kept
+    explicit future extensions rather than silently falling back to per-object draws.
     """
 
     def __init__(
@@ -33,6 +39,7 @@ class ShadowedImageBasedPostProcessRenderer(ImageBasedPostProcessRenderer):
         self._directional_shadow: DirectionalShadowMap | None = None
         self._shadow_overlay_gpu: dict[int, tuple[object, object, int]] = {}
         super().__init__(*args, **kwargs)
+        self._instanced_pipeline = InstancedRenderPipeline(self)
         self._init_shadow_overlay()
 
     def _init_shadow_overlay(self) -> None:
@@ -196,11 +203,13 @@ class ShadowedImageBasedPostProcessRenderer(ImageBasedPostProcessRenderer):
     def _render_3d(self, scene: object, camera: Camera3D) -> None:
         if not self.shadows_enabled:
             super()._render_3d(scene, camera)
+            self._instanced_pipeline.render(scene, camera)
             return
 
         light = self._shadow_light(scene)
         if light is None:
             super()._render_3d(scene, camera)
+            self._instanced_pipeline.render(scene, camera)
             return
 
         resource = self._shadow_resource()
@@ -209,6 +218,7 @@ class ShadowedImageBasedPostProcessRenderer(ImageBasedPostProcessRenderer):
 
         # Call the base direct-light pass explicitly so IBL can remain unshadowed and additive.
         Renderer._render_3d(self, scene, camera)
+        self._instanced_pipeline.render(scene, camera)
         self._render_shadow_overlay(scene, camera, frame)
         self._render_ibl(scene, camera)
 
@@ -220,5 +230,6 @@ class ShadowedImageBasedPostProcessRenderer(ImageBasedPostProcessRenderer):
             vao.release()
             vbo.release()
         self._shadow_overlay_gpu.clear()
+        self._instanced_pipeline.release()
         self.shadow_overlay_program.release()
         super().release()
