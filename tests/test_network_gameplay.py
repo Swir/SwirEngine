@@ -10,6 +10,7 @@ from swirengine.network_gameplay import (
     GameplaySession,
     MessageKind,
     MessageRouter,
+    RPCError,
     RPCRegistry,
 )
 from swirengine.networking import NetworkPacket, TCPPeer
@@ -84,6 +85,30 @@ def test_rpc_round_trip_returns_value_without_background_threads() -> None:
         assert client.diagnostics.rpc_responses_received == 1
         assert server.diagnostics.rpc_requests_received == 1
         assert server.diagnostics.rpc_responses_sent == 1
+    finally:
+        client.close()
+        server.close()
+
+
+def test_expected_rpc_error_is_returned_without_swallowing_arbitrary_exceptions() -> None:
+    client, server = _session_pair()
+
+    def reject(_payload: dict[str, object]) -> object:
+        raise RPCError("action rejected")
+
+    server.rpc.register("player.action", reject)
+    try:
+        request_id = client.call_rpc("player.action")
+        _pump(client, server, turns=6)
+
+        result = client.pop_rpc_result()
+        assert result is not None
+        assert result.request_id == request_id
+        assert result.ok is False
+        assert result.error == "action rejected"
+        assert server.diagnostics.handler_errors == 1
+        assert server.diagnostics.rpc_errors == 1
+        assert client.diagnostics.rpc_errors == 1
     finally:
         client.close()
         server.close()
