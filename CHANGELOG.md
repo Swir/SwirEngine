@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1 development - 2026-09-14
+
+Physics/collision performance milestone.
+
+- replaced brute-force `CollisionWorld2D` pair/local query candidate enumeration with a tunable spatial-hash broad phase
+- preserved live moving-target semantics by rebuilding the spatial index from current collider bounds before public queries
+- added `overlap_aabb(...)`, `query_point(...)`, nearest-first `raycast(...)`, `CollisionDiagnostics` and `RaycastHit2D`
+- added deterministic regression coverage with 1,000 sparse colliders requiring at least a 100x candidate reduction versus 499,500 brute-force pairs
+- added creator documentation in `docs/PHYSICS_BROADPHASE.md` and a runnable `examples/demo_collision_queries.py`
+- kept the stable 1.x collision surface additive; no version bump, tag, GitHub Release or PyPI publication was performed
+
 ## 0.4.22 - 2026-09-12
 
 Unified live-development diagnostics and polling update.
