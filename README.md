@@ -188,6 +188,19 @@ Regression coverage requires a **512-sprite** repeatable render-run view to be c
 
 See [`docs/RENDERER_VFX_PERFORMANCE_1_2.md`](docs/RENDERER_VFX_PERFORMANCE_1_2.md) and run `python tools/benchmark_renderer_vfx_framework.py` for local measurements.
 
+### Native desktop build/export hardening
+
+Desktop staging now produces a portable `swirengine-build.spec` plus export-manifest format v2 with deterministic SHA-256 hashes for every staged input. `ProjectExporter.build_native()` is an explicit opt-in that executes PyInstaller only when the requested Windows/Linux/macOS target matches the current host. Staging-only `export()` remains the default, so existing 1.x workflows do not unexpectedly execute build tools.
+
+Project assets, scenes and dynamically loaded scripts are preserved in the generated bundle. Entrypoints, includes and icons reject absolute/parent-traversal paths. The dedicated desktop shipping workflow builds **both one-file and one-directory executables on Windows, Linux and macOS**, launches the artifact, imports SwirEngine from inside the package and verifies bundled asset/script access. This validation targets Python 3.13 across all three desktop OSes; the separate Windows CPython 3.14 engine-wheel gate remains distinct.
+
+```bash
+swirengine export . --target windows --name MyGame --onefile --windowed
+swirengine export . --target windows --name MyGame --onefile --windowed --build-native
+```
+
+See [`docs/BUILD_EXPORT_1_2.md`](docs/BUILD_EXPORT_1_2.md), `examples/demo_export_pipeline.py` and `tools/verify_desktop_export.py`.
+
 ## Engine capabilities
 
 ### 2D
@@ -228,7 +241,8 @@ See [`docs/RENDERER_VFX_PERFORMANCE_1_2.md`](docs/RENDERER_VFX_PERFORMANCE_1_2.m
 - typed settings, deterministic migrations and profile-oriented save layout
 - project-oriented editor workflow with reversible playtest state
 - deterministic TCP transport plus gameplay messages, explicit RPC and session diagnostics
-- packaging profiles, export manifests, debug overlay and programmatic profiler
+- deterministic export manifests, generated desktop build specs, explicit native builds and cross-platform shipping smoke gates
+- debug overlay and programmatic profiler
 
 ## Performance regression gates
 
@@ -252,6 +266,8 @@ swirengine new MyGame --mode 2d
 swirengine new My3DGame --mode 3d
 swirengine info
 swirengine export . --target windows --name MyGame --onefile --windowed
+# Explicit native compilation; run on a host matching the target:
+swirengine export . --target windows --name MyGame --onefile --windowed --build-native
 ```
 
 Generated projects declare compatibility with the stable engine line:
@@ -260,7 +276,7 @@ Generated projects declare compatibility with the stable engine line:
 engine = ">=1.0,<2.0"
 ```
 
-Desktop targets expose deterministic staging/build plans. Android and Web remain experimental staging/research targets until their shipping paths are fully verified.
+Desktop targets provide deterministic staging, manifest integrity hashes and generated PyInstaller specs. Native compilation is explicit and host-matched rather than pretending to cross-compile. Android and Web remain experimental staging/research targets until their shipping paths are fully verified.
 
 ## Official validation demos and examples
 
@@ -280,6 +296,7 @@ Desktop targets expose deterministic staging/build plans. Android and Web remain
 - `examples/demo_save_config.py` — typed settings, profile layout and save slots
 - `examples/demo_network_gameplay.py` — deterministic messages, RPC and diagnostics
 - `examples/demo_scene_ecs_ergonomics.py` — lifecycle, mounts, indexed queries and prefab waves
+- `examples/demo_export_pipeline.py` — manifest v2, integrity hashes and generated native spec
 
 ## Development and verification
 
@@ -296,6 +313,7 @@ CI validates:
 - Windows x86-64 with Python 3.14
 - wheel/sdist metadata and clean-wheel installation
 - dedicated Windows CPython 3.14 dependency/native-wheel selection and import checks
+- real one-file and one-directory desktop executable builds on Windows/Linux/macOS Python 3.13, including packaged-resource runtime smoke
 - reproducible performance/regression gates
 - real OpenGL paths through the official 3D demo workflows
 
@@ -309,7 +327,7 @@ PyPI/GitHub Release publication for active 1.2 remains frozen until all 10 roadm
 
 - SwirEngine 1.0: [`ROADMAP.md`](ROADMAP.md) — **31/31 = 100%**, historical and locked
 - SwirEngine 1.1: [`ROADMAP_1_1.md`](ROADMAP_1_1.md) — **10/10 = 100%**, released
-- SwirEngine 1.2: [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **8/10 = 80.0%**, active development roadmap
+- SwirEngine 1.2: [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **9/10 = 90.0%**, active development roadmap
 
 ## Links
 

@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
-from .exporting import ExportTarget, PackagingProfile, ProjectExporter
+from .exporting import ExportTarget, NativeBuildError, PackagingProfile, ProjectExporter
 
 TEMPLATE_2D = '''from swirengine import Color, Game, Rectangle2D
 
@@ -67,6 +67,11 @@ def _add_export_parser(subparsers) -> None:
     export.add_argument("--icon")
     export.add_argument("--onefile", action="store_true")
     export.add_argument("--windowed", action="store_true")
+    export.add_argument(
+        "--build-native",
+        action="store_true",
+        help="execute a host-native PyInstaller build after staging (desktop targets only)",
+    )
 
 
 def main(argv=None) -> int:
@@ -102,15 +107,25 @@ def main(argv=None) -> int:
             onefile=args.onefile,
             console=not args.windowed,
         )
+        exporter = ProjectExporter(project)
         try:
-            result = ProjectExporter(project).export(profile, args.output)
-        except (FileNotFoundError, ValueError) as exc:
+            if args.build_native:
+                build = exporter.build_native(profile, args.output)
+                result = build.export
+            else:
+                build = None
+                result = exporter.export(profile, args.output)
+        except (FileNotFoundError, NativeBuildError, ValueError) as exc:
             print(f"Export failed: {exc}", file=sys.stderr)
             return 2
         print(f"Exported {profile.target.value}: {result.output_dir}")
         if result.experimental:
             print("Target status: experimental staging export")
-        if result.native_build_command:
+        if build is not None:
+            print("Native build artifacts:")
+            for artifact in build.artifacts:
+                print(f"  {artifact}")
+        elif result.native_build_command:
             command = " ".join(shlex.quote(part) for part in result.native_build_command)
             print(f"Native build command: {command}")
         return 0

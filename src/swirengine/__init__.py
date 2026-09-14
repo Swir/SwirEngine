@@ -64,7 +64,15 @@ from .editor_workspace import (
     EditorWorkspace,
     default_editor_panels,
 )
-from .exporting import ExportPlan, ExportResult, ExportTarget, PackagingProfile, ProjectExporter
+from .exporting import (
+    ExportPlan,
+    ExportResult,
+    ExportTarget,
+    NativeBuildError,
+    NativeBuildResult,
+    PackagingProfile,
+    ProjectExporter,
+)
 from .filewatch import FileChangeEvent, PluginAutoReloader, PollingFileWatcher, ReloadResult
 from .graphics.animation import AnimatedSprite2D, AnimationClip, SpriteSheet, animated_sprite
 from .graphics.camera import Camera2D
@@ -249,6 +257,8 @@ __all__ = [
     "MeshData",
     "MessageKind",
     "MessageRouter",
+    "NativeBuildError",
+    "NativeBuildResult",
     "NetworkAddress",
     "NetworkDiagnostics",
     "NetworkPacket",
