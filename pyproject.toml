@@ -33,7 +33,7 @@ dependencies = [
 
 [project.optional-dependencies]
 audio = ["pygame>=2.6,<3"]
-dev = ["pytest>=8,<10", "ruff>=0.16,<0.17"]
+dev = ["pytest>=8,<10", "ruff>=0.16,<0.17", "tomli>=2,<3; python_version < '3.11'"]
 
 [project.scripts]
 swirengine = "swirengine.cli:main"
