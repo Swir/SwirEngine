@@ -123,6 +123,7 @@ from .network_gameplay import (
     MessageKind,
     MessageRouter,
     NetworkDiagnostics,
+    RPCError,
     RPCRegistry,
     RPCResult,
 )
@@ -270,6 +271,7 @@ __all__ = [
     "ProjectExporter",
     "PropertyEdit",
     "PygameAudioBackend",
+    "RPCError",
     "RPCRegistry",
     "RPCResult",
     "Rectangle2D",
