@@ -2,7 +2,14 @@ from dataclasses import dataclass
 
 import pytest
 
-from swirengine import ECSDiagnostics, ECSWorld, Prefab, Scene, SceneDiagnostics, SceneMount
+from swirengine import (
+    ECSDiagnostics,
+    ECSWorld,
+    Prefab,
+    Scene,
+    SceneDiagnostics,
+    SceneMount,
+)
 
 
 @dataclass
