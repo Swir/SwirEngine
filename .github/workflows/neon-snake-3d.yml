@@ -5,6 +5,7 @@ on:
     paths:
       - "src/**"
       - "pyproject.toml"
+      - "ROADMAP_1_1.md"
       - "demo_projects/neon_snake_3d/**"
       - "tests/test_neon_snake_3d_project.py"
       - ".github/workflows/neon-snake-3d.yml"
@@ -14,6 +15,7 @@ on:
     paths:
       - "src/**"
       - "pyproject.toml"
+      - "ROADMAP_1_1.md"
       - "demo_projects/neon_snake_3d/**"
       - "tests/test_neon_snake_3d_project.py"
       - ".github/workflows/neon-snake-3d.yml"
