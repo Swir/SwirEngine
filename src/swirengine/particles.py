@@ -164,7 +164,9 @@ class ParticleEmitter2D:
         )
 
     def _range(self, values: tuple[float, float]) -> float:
-        low, high = sorted(values)
+        """Sample a two-value range without allocating a sorted list per particle property."""
+        first, second = values
+        low, high = (first, second) if first <= second else (second, first)
         return self._random.uniform(low, high)
 
     def _spawn_offset(self) -> tuple[float, float]:
