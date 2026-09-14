@@ -112,24 +112,19 @@ class Scene:
         *objects: object,
         entities: Iterable[Entity] = (),
     ) -> SceneMount:
-        """Group existing/new scene content so it can be unloaded with one call.
+        """Take grouped ownership of scene content so it can be unloaded with one call.
 
-        Objects are added to this scene. Entities must already belong to this scene's ECS world;
-        this avoids silently migrating entity identity between worlds.
+        Objects may already be registered or may be new; either way, passing them to ``mount``
+        transfers removal ownership to the returned mount. Entities must already belong to this
+        scene's ECS world, avoiding silent entity migration between worlds.
         """
-        mounted_objects: list[object] = []
-        for obj in objects:
-            already_present = obj in self
-            self.add(obj)
-            if not already_present:
-                mounted_objects.append(obj)
-
-        mounted_entities: list[Entity] = []
-        for entity in entities:
+        mounted_entities = tuple(entities)
+        for entity in mounted_entities:
             if self.ecs.entity(entity.id) is not entity:
                 raise ValueError("mounted entities must belong to this scene")
-            mounted_entities.append(entity)
-        return SceneMount(self, tuple(mounted_objects), tuple(mounted_entities))
+
+        self.add_many(*objects)
+        return SceneMount(self, tuple(objects), mounted_entities)
 
     def remove(self, obj: object) -> bool:
         for index, existing in enumerate(self._objects):
