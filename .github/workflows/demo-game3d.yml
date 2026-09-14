@@ -5,6 +5,7 @@ on:
     paths:
       - "src/**"
       - "pyproject.toml"
+      - "ROADMAP_1_1.md"
       - "demo_projects/neon_cube_hunt_3d/**"
       - "tests/test_demo_game3d_project.py"
       - ".github/workflows/demo-game3d.yml"
@@ -14,6 +15,7 @@ on:
     paths:
       - "src/**"
       - "pyproject.toml"
+      - "ROADMAP_1_1.md"
       - "demo_projects/neon_cube_hunt_3d/**"
       - "tests/test_demo_game3d_project.py"
       - ".github/workflows/demo-game3d.yml"
