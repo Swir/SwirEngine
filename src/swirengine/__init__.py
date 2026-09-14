@@ -90,6 +90,14 @@ from .graphics.environment import Environment3D, EnvironmentInstallation, Skybox
 from .graphics.gltf import GltfSceneMesh, load_gltf, load_gltf_scene
 from .graphics.gltf_asset import GltfPrimitiveAsset, load_gltf_material, load_gltf_primitives
 from .graphics.ibl_renderer import ImageBasedPostProcessRenderer
+from .graphics.instancing import (
+    Frustum3D,
+    Instance3D,
+    InstancedCube3D,
+    InstancedMesh3D,
+    InstancingDiagnostics,
+    PreparedInstanceFrame,
+)
 from .graphics.lights import (
     MAX_DIRECTIONAL_LIGHTS,
     MAX_POINT_LIGHTS,
@@ -229,6 +237,7 @@ __all__ = [
     "FrameProfile",
     "FrontendHierarchyRow",
     "FrontendInspectorRow",
+    "Frustum3D",
     "GPUTextureInvalidation",
     "Game",
     "GamepadSnapshot",
@@ -249,6 +258,10 @@ __all__ = [
     "InputManager",
     "InspectorField",
     "InspectorSnapshot",
+    "Instance3D",
+    "InstancedCube3D",
+    "InstancedMesh3D",
+    "InstancingDiagnostics",
     "LightSelection3D",
     "LiveDevelopmentHub",
     "LiveDevelopmentResult",
@@ -278,6 +291,7 @@ __all__ = [
     "PrefabInstance",
     "PrefabOverrides",
     "PrefabSelector",
+    "PreparedInstanceFrame",
     "Profiler",
     "ProjectExporter",
     "PropertyEdit",

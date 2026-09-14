@@ -10,6 +10,10 @@ class RendererStats:
     texts: int = 0
     cubes: int = 0
     meshes: int = 0
+    instances: int = 0
+    instance_batches: int = 0
+    instance_candidates: int = 0
+    instances_culled: int = 0
     triangles: int = 0
     directional_lights: int = 0
     point_lights: int = 0
@@ -33,6 +37,10 @@ class RendererStats:
         self.texts = 0
         self.cubes = 0
         self.meshes = 0
+        self.instances = 0
+        self.instance_batches = 0
+        self.instance_candidates = 0
+        self.instances_culled = 0
         self.triangles = 0
         self.directional_lights = 0
         self.point_lights = 0
