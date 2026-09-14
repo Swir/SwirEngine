@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from swirengine import ECSWorld, Prefab, Scene
+from swirengine import Prefab, Scene
 
 
 @dataclass
