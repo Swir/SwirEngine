@@ -4,20 +4,20 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-80.0%25-f59e0b?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-8%2F10-1f6feb?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-90.0%25-f59e0b?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-9%2F10-1f6feb?style=for-the-badge">
   <img alt="Status" src="https://img.shields.io/badge/STATUS-ACTIVE-f59e0b?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-████████████████░░░░ 80.0%
+██████████████████░░ 90.0%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **8** | **2** | **10** | **80.0%** |
+| **9** | **1** | **10** | **90.0%** |
 
 > Progress is derived only from the equal-weight verified deliverables below. A checkbox becomes
 > complete only after implementation, regression coverage and the relevant CI/runtime validation.
@@ -30,7 +30,7 @@
 - [x] Expanded audio mixer with buses/groups, fades, spatial controls and runtime diagnostics
 - [x] Animation/tween/state-machine layer usable by both 2D and 3D gameplay
 - [x] Physics/collision performance pass with broad-phase scaling and richer creator queries
-- [ ] Editor workflow expansion for scene creation, prefabs, input setup and playtest iteration
+- [x] Editor workflow expansion for scene creation, prefabs, input setup and playtest iteration
 - [ ] 1.1 creator hardening: benchmarks, complete sample game, export/runtime smoke tests and documentation
 
 <!-- ROADMAP-PROGRESS:END -->

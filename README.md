@@ -175,6 +175,24 @@ hits = world.raycast(0, 0, 1, 0, max_distance=1000)
 
 The collision API also exposes point queries, region overlap queries, nearest-first ray hits and operation diagnostics with broad-phase candidate and actual narrow-phase-test counts. The deterministic 1,000-collider regression case requires at least a **100x candidate reduction** versus all-pairs enumeration; this is a workload reduction measurement, not an FPS claim. See [`docs/PHYSICS_BROADPHASE.md`](docs/PHYSICS_BROADPHASE.md) and `examples/demo_collision_queries.py`.
 
+### Project-oriented editor workflow
+
+`EditorWorkflow` ties the existing scene serializer, prefab system, semantic input profiles and Play/Edit runtime into one deterministic project workflow instead of inventing editor-only scene formats. Projects get predictable `scenes/`, `prefabs/` and `settings/input.json` locations, safe item names and deterministic discovery helpers for visual frontends.
+
+```python
+from swirengine.editor_workflow import EditorWorkflow
+
+workflow = EditorWorkflow("my_game", scene, input_actions=controls)
+workflow.save_scene("level_one")
+workflow.save_prefab("enemy", enemy)
+
+workflow.begin_playtest()
+# Run gameplay against the live scene; temporary runtime mutations are allowed.
+workflow.end_playtest()  # Restores the authoring scene and input profile.
+```
+
+Creators can explicitly keep runtime changes with `keep_playtest_changes()`. Input setup uses the same versioned `InputActions` profiles as shipped games, while prefab authoring uses the stable serializer and override system. See [`docs/EDITOR_WORKFLOW_1_1.md`](docs/EDITOR_WORKFLOW_1_1.md) and `examples/demo_editor_workflow.py`.
+
 ## Quick 2D game
 
 ```python
@@ -278,6 +296,7 @@ The 2D collision world uses a spatial hash to reduce pair and local-overlap cand
 - audio buses/groups, deterministic fades, spatial attenuation/pan and runtime diagnostics
 - deterministic tweens, sequences, parallel timelines, event markers and gameplay state machines
 - spatial-hash collision diagnostics, overlap/point/raycast queries and layer/tag filters
+- project-oriented scene/prefab/input workflow with reversible playtest state
 - `LiveDevelopmentHub`
 - pluggable sound effects and music backend
 
@@ -295,6 +314,9 @@ The 2D collision world uses a spatial hash to reduce pair and local-overlap cand
 - viewport picking and direct manipulation
 - interactive Tk editor frontend
 - isolated Play/Edit runtime session
+- project scene/prefab discovery and authoring workflow
+- semantic input-profile setup shared with runtime controls
+- reversible Play/Edit snapshots with an explicit keep-changes path
 - embedded live renderer preview
 
 ### Networking and export
@@ -350,6 +372,7 @@ It exposes FPS, frame/CPU timings, update/physics/render timings, draw calls, ba
 - `examples/demo_responsive_ui.py` — resize-aware menu with keyboard/gamepad focus navigation
 - `examples/demo_animation_runtime.py` — tween/sequence/timeline/state-machine runtime example
 - `examples/demo_collision_queries.py` — spatial collision overlap, point/raycast and diagnostics example
+- `examples/demo_editor_workflow.py` — scene/prefab/input/playtest project-iteration workflow
 - larger asset-free 2D samples under `examples/`
 
 The Windows demo build pipeline also probes the final packaged GLFW runtime so missing native libraries are caught before demo publication.
