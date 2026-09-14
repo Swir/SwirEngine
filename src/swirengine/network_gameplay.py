@@ -13,6 +13,10 @@ MessageHandler = Callable[["GameplayMessage"], None]
 RPCHandler = Callable[[Payload], Any]
 
 
+class RPCError(Exception):
+    """Expected gameplay RPC failure that is safe to return to the remote caller."""
+
+
 class ConnectionState(str, Enum):
     """High-level lifecycle state for a gameplay network session."""
 
@@ -318,9 +322,9 @@ class GameplaySession:
             return
         try:
             value = self.rpc.call(method, payload)
-        except Exception as exc:
+        except RPCError as exc:
             self.diagnostics.handler_errors += 1
-            self._send_rpc_error(request_id, method, f"{type(exc).__name__}: {exc}")
+            self._send_rpc_error(request_id, method, str(exc))
             return
         self._queue_packet(
             NetworkPacket(
