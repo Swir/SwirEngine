@@ -1,0 +1,30 @@
+name: Desktop Export
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: desktop-export-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  native-shipping-smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install engine and native build tooling
+        run: python -m pip install --upgrade pip pyinstaller .
+      - name: Build and execute one-file native shipping smoke
+        run: python tools/verify_desktop_export.py
+      - name: Build and execute one-directory native shipping smoke
+        run: python tools/verify_desktop_export.py --onedir
