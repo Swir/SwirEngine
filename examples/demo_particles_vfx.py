@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from swirengine import Color, Game
-from swirengine.particles import ParticleEmissionShape2D, ParticleEmitter2D
+from swirengine import Color, Game, ParticleEmitter2D
 
 
 game = Game("SwirEngine 1.2 Particle VFX", 1280, 720, mode="2d")
@@ -23,7 +22,7 @@ sparks = game.add(
         drag=1.2,
         rotation=(0, 360),
         angular_velocity=(-540, 540),
-        emission_shape=ParticleEmissionShape2D.RING,
+        emission_shape="ring",
         emission_size=(34, 34),
         seed=7,
     )
