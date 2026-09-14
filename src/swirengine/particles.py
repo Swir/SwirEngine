@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 from .graphics.primitives import Rectangle2D
@@ -39,7 +39,7 @@ class _Particle:
     age: float = 0.0
     lifetime: float = 1.0
     start_size: float = 0.0
-    start_color: Color = Color()
+    start_color: Color = field(default_factory=Color)
 
     @property
     def alive(self) -> bool:
