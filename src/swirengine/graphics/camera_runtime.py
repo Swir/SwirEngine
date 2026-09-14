@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Sequence
 
 from ..math.types import Vec2, Vec3
 from .camera import Camera2D
