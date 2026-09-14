@@ -1,5 +1,5 @@
-from pathlib import Path
 from tempfile import TemporaryDirectory
+from pathlib import Path
 
 from swirengine.core.scene import Scene
 from swirengine.editor_workflow import EditorWorkflow
