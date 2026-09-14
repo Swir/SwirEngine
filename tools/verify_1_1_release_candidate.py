@@ -153,11 +153,15 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         _require("gh release" not in workflow, f"{workflow_name} cannot bypass the release freeze", checks)
         _require("contents: write" not in workflow, f"{workflow_name} workflow has no release write permission", checks)
 
-    for project in ("neon_cube_hunt_3d", "neon_snake_3d"):
+    project_contracts = {
+        "neon_cube_hunt_3d": ("README.md", "pyproject.toml", "run_game.py", "neon_cube_hunt"),
+        "neon_snake_3d": ("README.md", "PROJECT.md", ".release-version", "run_game.py", "neon_snake"),
+    }
+    for project, required_entries in project_contracts.items():
         project_root = root / "demo_projects" / project
-        for required in ("README.md", "pyproject.toml", "run_game.py"):
+        for required in required_entries:
             _require(
-                (project_root / required).is_file(),
+                (project_root / required).exists(),
                 f"sample project {project} contains {required}",
                 checks,
             )
