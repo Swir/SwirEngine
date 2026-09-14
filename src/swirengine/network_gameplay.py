@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import deque
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
-from enum import StrEnum
+from enum import Enum
 from typing import Any
 
 from .networking import NetworkPacket, TCPPeer
@@ -13,7 +13,7 @@ MessageHandler = Callable[["GameplayMessage"], None]
 RPCHandler = Callable[[Payload], Any]
 
 
-class ConnectionState(StrEnum):
+class ConnectionState(str, Enum):
     """High-level lifecycle state for a gameplay network session."""
 
     DISCONNECTED = "disconnected"
@@ -24,7 +24,7 @@ class ConnectionState(StrEnum):
     ERROR = "error"
 
 
-class MessageKind(StrEnum):
+class MessageKind(str, Enum):
     """Built-in packet kinds used by :class:`GameplaySession`."""
 
     EVENT = "swir.event"
