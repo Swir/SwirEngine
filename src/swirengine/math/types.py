@@ -66,6 +66,15 @@ class Color:
     a: float = 1.0
 
     def clamped(self) -> Color:
+        """Return this immutable color directly when it already lies in the legal range."""
+        if (
+            0.0 <= self.r <= 1.0
+            and 0.0 <= self.g <= 1.0
+            and 0.0 <= self.b <= 1.0
+            and 0.0 <= self.a <= 1.0
+        ):
+            return self
+
         def clamp(value: float) -> float:
             return max(0.0, min(1.0, float(value)))
 
