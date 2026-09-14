@@ -1,6 +1,5 @@
 from swirengine import Color, Game, ParticleEmitter2D
 
-
 game = Game("SwirEngine 1.2 Particle VFX", 1280, 720, mode="2d")
 
 sparks = game.add(
