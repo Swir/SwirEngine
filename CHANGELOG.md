@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.2 development - 2026-09-14
+
+Budgeted asset-streaming milestone.
+
+- added `AssetStreamingManager` and `AssetStreamingBudget` on top of the existing `AssetManager` / `AssetPreloader` APIs without breaking stable 1.x preload behavior
+- added staged background loading with game-loop controlled, nonblocking `pump(max_completions=...)` finalization
+- added deterministic LRU residency with resident asset-count and estimated-byte budgets
+- added explicit `touch()`, `pin()`, `unpin()` and `evict()` controls so active gameplay/UI assets can be protected from automatic eviction
+- added `AssetStreamingDiagnostics` for staged/completed/failed requests, pending work, residency, peak resident bytes, eviction count and finalize hitch timing
+- hardened resident-byte accounting to an incrementally maintained O(1) counter so diagnostics and byte-budget checks do not rescan the entire residency set
+- added regression coverage for nonblocking pump behavior, deterministic eviction, pinned residency and exact byte accounting after explicit eviction
+- added creator documentation in `docs/ASSET_STREAMING_1_2.md` and runnable `examples/demo_asset_streaming.py`
+- kept GPU/context-owned upload work on the owning game/render thread; background workers remain limited to safe file/decode work
+- kept SwirEngine 1.2 publication frozen; no version bump, tag, GitHub Release or PyPI publication was performed
+
 ## 1.1 development - 2026-09-14
 
 Physics/collision performance milestone.
@@ -173,7 +188,7 @@ Plugin runtime and hot-reload architecture update.
 
 ECS persistence and serializer-migration update.
 
-- upgraded the scene/prefab document format to version 2 with automatic version-1 migration
+- upgraded scene/prefab document format to version 2 with automatic version-1 migration
 - added ECS entity persistence to scene documents, including stable IDs, names, enabled state and tags
 - added registered dataclass component persistence through the existing safe allow-list codec registry
 - preserved references from persisted ECS components to serialized scene objects
