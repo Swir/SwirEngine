@@ -120,7 +120,7 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         _require(version == TARGET_VERSION, f"final package version is {TARGET_VERSION}", checks)
 
     readme = _read(root, "README.md")
-    if require_complete:
+    if require_complete or roadmap.completed == EXPECTED_TOTAL:
         _require(f"# SwirEngine {TARGET_VERSION}" in readme, "README final version matches", checks)
         _require("current stable release" in readme and TARGET_VERSION in readme, "README identifies 1.2 as stable", checks)
     else:
@@ -185,8 +185,8 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             _require((project_root / required).exists(), f"sample project {project_name} contains {required}", checks)
 
     if require_complete:
-        changelog = _read(root, "CHANGELOG.md")
-        _require("## 1.2.0" in changelog, "CHANGELOG contains final 1.2.0 release section", checks)
+        release_notes = _read(root, "CHANGELOG.d/1.2.0-creator-hardening.md")
+        _require("## 1.2.0" in release_notes, "final 1.2.0 release notes exist", checks)
 
     return AuditReport(version=version, roadmap=roadmap, checks=tuple(checks))
 
