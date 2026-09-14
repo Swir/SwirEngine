@@ -1,10 +1,9 @@
-from tempfile import TemporaryDirectory
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from swirengine.core.scene import Scene
 from swirengine.editor_workflow import EditorWorkflow
 from swirengine.graphics.primitives import Rectangle2D
-
 
 with TemporaryDirectory() as temp_dir:
     scene = Scene()
