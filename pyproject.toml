@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "swirengine"
-version = "1.1.0"
+version = "1.2.0"
 description = "Modern Python-first 2D/3D game engine with a unified API."
 readme = "README.md"
 requires-python = ">=3.10,<3.15"
@@ -33,7 +33,7 @@ dependencies = [
 
 [project.optional-dependencies]
 audio = ["pygame>=2.6,<3"]
-dev = ["pytest>=8,<10", "ruff>=0.16,<0.17"]
+dev = ["pytest>=8,<10", "ruff>=0.16,<0.17", "tomli>=2,<3; python_version < '3.11'"]
 
 [project.scripts]
 swirengine = "swirengine.cli:main"
@@ -42,8 +42,9 @@ swirengine = "swirengine.cli:main"
 Homepage = "https://github.com/Swir/SwirEngine"
 Repository = "https://github.com/Swir/SwirEngine"
 Changelog = "https://github.com/Swir/SwirEngine/blob/main/CHANGELOG.md"
-Roadmap = "https://github.com/Swir/SwirEngine/blob/main/ROADMAP_1_1.md"
+Roadmap = "https://github.com/Swir/SwirEngine/blob/main/ROADMAP_1_2.md"
 "1.0 Roadmap" = "https://github.com/Swir/SwirEngine/blob/main/ROADMAP.md"
+"1.1 Roadmap" = "https://github.com/Swir/SwirEngine/blob/main/ROADMAP_1_1.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/swirengine"]

@@ -4,20 +4,20 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-90.0%25-1f6feb?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-9%2F10-1f6feb?style=for-the-badge">
-  <img alt="Status" src="https://img.shields.io/badge/STATUS-ACTIVE-1f6feb?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-100.0%25-1f6feb?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-10%2F10-1f6feb?style=for-the-badge">
+  <img alt="Status" src="https://img.shields.io/badge/STATUS-COMPLETE-1f6feb?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-██████████████████░░ 90.0%
+████████████████████ 100.0%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **9** | **1** | **10** | **90.0%** |
+| **10** | **0** | **10** | **100.0%** |
 
 > Progress is derived only from the equal-weight verified deliverables below. A checkbox becomes
 > complete only after implementation, regression coverage, README/CHANGELOG synchronization and
@@ -32,7 +32,7 @@
 - [x] Asset streaming: budgets, residency/eviction, staged background loading and hitch diagnostics
 - [x] Renderer/VFX performance pass: batching/state reduction and measurable frame-work regression gates
 - [x] Build/export hardening: portable project templates and verified Windows/Linux/macOS shipping workflows
-- [ ] 1.2 creator hardening: complete demo, documentation/API audit, compatibility and final release gate
+- [x] 1.2 creator hardening: complete demo, documentation/API audit, compatibility and final release gate
 
 <!-- ROADMAP-PROGRESS:END -->
 
@@ -47,6 +47,7 @@ completed 1.1 roadmap remains locked at 10/10 (100%) in [`ROADMAP_1_1.md`](ROADM
 
 ## Release policy
 
-No SwirEngine 1.2 package, tag or GitHub Release is published until this roadmap reaches a verified
-10/10 = 100.0% and the final release gate succeeds. Development continues on branches/`main` while
-README, CHANGELOG and tests track the actual state.
+The SwirEngine 1.2 roadmap is complete at a verified 10/10 = 100.0%. Publication is still permitted
+only after the final 1.2 release head passes the complete release contract, CI/runtime/demo/packaging
+and native export gates. After publication, the public PyPI artifact must pass post-release verification
+before 1.2 is considered finished.

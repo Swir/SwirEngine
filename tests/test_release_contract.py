@@ -14,8 +14,8 @@ def test_public_api_exports_are_unique_and_resolvable():
     assert missing == []
 
 
-def test_stable_minor_release_version():
-    assert swirengine.__version__ == "1.1.0"
+def test_target_minor_release_version():
+    assert swirengine.__version__ == "1.2.0"
 
 
 def test_supported_python_range_is_explicit():
