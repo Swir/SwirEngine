@@ -1,22 +1,28 @@
-name: Neon Snake 3D Validation & Release
+name: Neon Snake 3D Validation
 
 on:
   pull_request:
     paths:
       - "src/**"
       - "pyproject.toml"
+      - "ROADMAP_1_1.md"
       - "demo_projects/neon_snake_3d/**"
       - "tests/test_neon_snake_3d_project.py"
       - ".github/workflows/neon-snake-3d.yml"
+      - "tools/verify_1_1_release_candidate.py"
   push:
     branches: ["main"]
     paths:
+      - "src/**"
+      - "pyproject.toml"
+      - "ROADMAP_1_1.md"
       - "demo_projects/neon_snake_3d/**"
       - "tests/test_neon_snake_3d_project.py"
       - ".github/workflows/neon-snake-3d.yml"
+      - "tools/verify_1_1_release_candidate.py"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   smoke:
@@ -74,7 +80,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             throw "Packaged Windows runtime probe failed with exit code $LASTEXITCODE"
           }
-      - name: Give binary an OS-specific release name
+      - name: Give binary an OS-specific validation name
         shell: python
         run: |
           import platform
@@ -91,45 +97,3 @@ jobs:
           name: neon-snake-${{ runner.os }}
           path: dist/NeonSnake3D-*
           if-no-files-found: error
-
-  release:
-    name: Publish Neon Snake 3D Release
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [smoke, bundle]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: neon-snake-*
-          path: release-assets/binaries
-          merge-multiple: true
-      - name: Package standalone source project
-        shell: python
-        run: |
-          from pathlib import Path
-          from zipfile import ZIP_DEFLATED, ZipFile
-
-          root = Path("demo_projects/neon_snake_3d")
-          destination = Path("release-assets/NeonSnake3D-project.zip")
-          destination.parent.mkdir(parents=True, exist_ok=True)
-          with ZipFile(destination, "w", ZIP_DEFLATED) as archive:
-              for path in sorted(root.rglob("*")):
-                  if path.is_file() and "__pycache__" not in path.parts:
-                      archive.write(path, Path("NeonSnake3D") / path.relative_to(root))
-          print(destination)
-      - name: Create or refresh Snake release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          TAG="demo-neon-snake-3d-v1.0.0"
-          ASSETS=$(find release-assets -type f -print)
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" $ASSETS --clobber
-          else
-            gh release create "$TAG" $ASSETS \
-              --target "$GITHUB_SHA" \
-              --title "Neon Snake 3D v1.0.0" \
-              --notes "Official 3D Snake demo built with SwirEngine. Includes the complete source project and one-file Windows, Linux, and macOS builds."
-          fi
