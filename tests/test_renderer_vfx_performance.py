@@ -11,7 +11,9 @@ def test_repeatable_render_runs_stream_without_outer_materialization(tmp_path):
     runs = build_render_runs(objects)
 
     assert runs._cache is None
-    streamed = list(runs)
+    iterator = iter(runs)
+    streamed = [next(iterator)]
+    streamed.extend(iterator)
     assert runs._cache is None
     assert len(streamed) == 1
     assert isinstance(streamed[0], SpriteBatch)
