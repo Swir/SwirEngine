@@ -1,5 +1,9 @@
 from swirengine.graphics.camera import Camera2D
-from swirengine.graphics.camera_runtime import CameraBounds2D, CameraRail2D, CameraRig2D
+from swirengine.graphics.camera_runtime import (
+    CameraBounds2D,
+    CameraRail2D,
+    CameraRig2D,
+)
 from swirengine.math.types import Vec2
 
 
