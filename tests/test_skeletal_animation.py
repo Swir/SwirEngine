@@ -9,11 +9,11 @@ from swirengine import load_gltf
 from swirengine.graphics.mesh import MeshData
 from swirengine.skeletal import (
     MAX_SKIN_JOINTS,
-    Skeleton3D,
-    SkeletonNode3D,
     SkeletalAnimationChannel,
     SkeletalAnimationClip3D,
     SkeletalAnimationController,
+    Skeleton3D,
+    SkeletonNode3D,
     Skin3D,
     SkinnedMesh3D,
     SkinnedMeshData,

@@ -18,10 +18,10 @@ from .gltf_asset import _material
 from .mesh import MeshData
 from .skeletal import (
     MAX_SKIN_JOINTS,
-    Skeleton3D,
-    SkeletonNode3D,
     SkeletalAnimationChannel,
     SkeletalAnimationClip3D,
+    Skeleton3D,
+    SkeletonNode3D,
     Skin3D,
     SkinnedMesh3D,
     SkinnedMeshData,

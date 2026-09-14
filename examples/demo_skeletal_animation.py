@@ -3,10 +3,10 @@ import numpy as np
 from swirengine import Color, Game, Material3D, Vec3
 from swirengine.graphics.mesh import MeshData
 from swirengine.skeletal import (
-    Skeleton3D,
-    SkeletonNode3D,
     SkeletalAnimationChannel,
     SkeletalAnimationClip3D,
+    Skeleton3D,
+    SkeletonNode3D,
     Skin3D,
     SkinnedMesh3D,
     SkinnedMeshData,
