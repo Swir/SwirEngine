@@ -10,9 +10,9 @@
 
 **SwirEngine** is a Python-first 2D/3D game engine built around one approachable API. It combines creator-friendly Python gameplay code with a real OpenGL renderer, scenes, prefabs/ECS, physics, animation, audio, editor tooling, networking, export and complete game demos.
 
-The original 1.0 roadmap is complete at **31/31 deliverables**. SwirEngine 1.1 is the next stage: making complete games easier to control, animate, profile, optimize, package and ship without turning the engine into a thin wrapper around another framework.
+The original 1.0 roadmap is complete at **31/31 deliverables**, and SwirEngine 1.1 is released at **10/10 deliverables**. Active development now follows the consciously planned 1.2 roadmap, expanding production systems and performance without breaking the stable public 1.x API.
 
-> **Development policy:** the active 1.1 line is developed on `main`, but PyPI/GitHub Release publication is frozen until [`ROADMAP_1_1.md`](ROADMAP_1_1.md) reaches a verified 10/10 = 100%.
+> **Development policy:** PyPI/GitHub Release publication for 1.2 is frozen until [`ROADMAP_1_2.md`](ROADMAP_1_2.md) reaches a verified 10/10 = 100% with CI/runtime/demo validation.
 
 ## Install
 
@@ -40,7 +40,7 @@ The stable upstream `moderngl 5.12.0` and `glcontext 3.0.0` releases do not curr
 
 The platform wheel is rebuilt from upstream source in GitHub Actions, checked with `twine`, installed into a clean Python 3.14 environment and imported before Trusted Publishing is allowed to upload it. Python 3.10-3.13 continue using normal upstream dependencies. Linux and macOS remain on the verified 3.10-3.13 support window until equally reliable Python 3.14 binary dependencies exist there.
 
-## SwirEngine 1.1 development
+## SwirEngine 1.1 foundation
 
 ### Standardized gamepad/controller input
 
@@ -193,6 +193,33 @@ workflow.end_playtest()  # Restores the authoring scene and input profile.
 
 Creators can explicitly keep runtime changes with `keep_playtest_changes()`. Input setup uses the same versioned `InputActions` profiles as shipped games, while prefab authoring uses the stable serializer and override system. See [`docs/EDITOR_WORKFLOW_1_1.md`](docs/EDITOR_WORKFLOW_1_1.md) and `examples/demo_editor_workflow.py`.
 
+## SwirEngine 1.2 development
+
+### Sparse pooled particle/VFX runtime
+
+`ParticleEmitter2D` keeps the existing 1.x constructor contract while adding point/box/circle/ring emission regions, color and size interpolation over lifetime, drag, initial rotation, angular velocity and deterministic diagnostics.
+
+The runtime tracks active particle indexes instead of scanning the full pool each frame, and its renderer-facing `children` tuple is cached instead of rebuilt on every access. In the regression case, a capacity of **10,000** with **8 live particles** requires exactly **8 update visits per frame** rather than 10,000 pool visits. This is a measured Python-side workload reduction for sparse pools, not an end-to-end FPS claim.
+
+```python
+from swirengine import Color
+from swirengine.particles import ParticleEmissionShape2D, ParticleEmitter2D
+
+sparks = ParticleEmitter2D(
+    640,
+    360,
+    max_particles=2048,
+    rate=220,
+    end_color=Color(1.0, 0.1, 0.0, 0.0),
+    end_size_scale=0.1,
+    drag=1.2,
+    emission_shape=ParticleEmissionShape2D.RING,
+    emission_size=(34, 34),
+)
+```
+
+See [`docs/PARTICLES_VFX_1_2.md`](docs/PARTICLES_VFX_1_2.md) and `examples/demo_particles_vfx.py`.
+
 ## Quick 2D game
 
 ```python
@@ -246,7 +273,7 @@ game.run()
 - cached text rendering and bounded LRU text-texture cache
 - responsive labels, panels, buttons and progress bars with anchors/containers/reference scaling
 - keyboard/mouse/gamepad focus navigation and UI activation
-- particles
+- sparse pooled particle/VFX runtime with lifecycle interpolation and diagnostics
 - spatial-hash AABB collision broad phase with overlap, point and ray queries
 - deterministic fixed-step arcade rigid-body physics
 - JSON save data through `SaveStore`
@@ -281,6 +308,8 @@ The async asset pipeline moves thread-safe file/CPU decoding work out of serial 
 
 The 2D collision world uses a spatial hash to reduce pair and local-overlap candidate sets before narrow-phase intersection tests. A deterministic sparse-world regression with 1,000 colliders guards against accidentally returning to brute-force all-pairs scaling.
 
+The 1.2 particle runtime keeps an active-index list and cached renderer children, so sparse effects avoid full-pool per-frame scans and repeat tuple allocation. Regression coverage locks the measured update work to the live-particle count.
+
 ### Architecture and game systems
 
 - scene names, tags and creator-friendly lookup/removal helpers
@@ -296,6 +325,7 @@ The 2D collision world uses a spatial hash to reduce pair and local-overlap cand
 - audio buses/groups, deterministic fades, spatial attenuation/pan and runtime diagnostics
 - deterministic tweens, sequences, parallel timelines, event markers and gameplay state machines
 - spatial-hash collision diagnostics, overlap/point/raycast queries and layer/tag filters
+- sparse pooled particle/VFX controls and frame-local update diagnostics
 - project-oriented scene/prefab/input workflow with reversible playtest state
 - `LiveDevelopmentHub`
 - pluggable sound effects and music backend
@@ -373,6 +403,7 @@ It exposes FPS, frame/CPU timings, update/physics/render timings, draw calls, ba
 - `examples/demo_animation_runtime.py` — tween/sequence/timeline/state-machine runtime example
 - `examples/demo_collision_queries.py` — spatial collision overlap, point/raycast and diagnostics example
 - `examples/demo_editor_workflow.py` — scene/prefab/input/playtest project-iteration workflow
+- `examples/demo_particles_vfx.py` — 1.2 sparse pooled particle/VFX lifecycle example
 - larger asset-free 2D samples under `examples/`
 
 The Windows demo build pipeline also probes the final packaged GLFW runtime so missing native libraries are caught before demo publication.
@@ -398,20 +429,15 @@ CI validates SwirEngine on:
 
 ## Versioning and API stability
 
-SwirEngine follows semantic versioning for the stable 1.x public API. The exported `swirengine.__all__` surface is treated as a compatibility contract. User-visible changes are expected to update code, tests, README and changelog together. PyPI/GitHub Release publication for the active 1.1 roadmap remains frozen until all 10 deliverables are verified complete.
+SwirEngine follows semantic versioning for the stable 1.x public API. The exported `swirengine.__all__` surface is treated as a compatibility contract. User-visible changes are expected to update code, tests, README and changelog together. PyPI/GitHub Release publication for the active 1.2 roadmap remains frozen until all 10 deliverables are verified complete.
 
 See [`docs/API_STABILITY.md`](docs/API_STABILITY.md) for the compatibility policy.
 
 ## Roadmap
 
-The original SwirEngine 1.0 roadmap remains complete and historical:
+The original SwirEngine 1.0 roadmap remains complete and historical at **31/31 = 100%**. SwirEngine 1.1 is also complete and released at **10/10 = 100%**.
 
-```text
-████████████████████ 100.0%
-31 / 31 deliverables complete
-```
-
-The active expansion plan lives in [`ROADMAP_1_1.md`](ROADMAP_1_1.md). The historical 1.0 dashboard is kept in [`ROADMAP.md`](ROADMAP.md) and is not artificially increased beyond 100%.
+The active expansion plan lives in [`ROADMAP_1_2.md`](ROADMAP_1_2.md). Historical dashboards remain in [`ROADMAP.md`](ROADMAP.md) and [`ROADMAP_1_1.md`](ROADMAP_1_1.md) and are not artificially increased beyond 100%.
 
 ## Links
 
@@ -420,6 +446,7 @@ The active expansion plan lives in [`ROADMAP_1_1.md`](ROADMAP_1_1.md). The histo
 - Releases: https://github.com/Swir/SwirEngine/releases
 - 1.0 roadmap: https://github.com/Swir/SwirEngine/blob/main/ROADMAP.md
 - 1.1 roadmap: https://github.com/Swir/SwirEngine/blob/main/ROADMAP_1_1.md
+- 1.2 roadmap: https://github.com/Swir/SwirEngine/blob/main/ROADMAP_1_2.md
 - Changelog: https://github.com/Swir/SwirEngine/blob/main/CHANGELOG.md
 
 ## License
