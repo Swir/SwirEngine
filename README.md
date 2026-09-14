@@ -110,12 +110,7 @@ fonts.register(
 text = TextLayoutEngine(fonts)
 layout = text.layout(
     "Mission update: Привет! Collect all energy cells.",
-    TextStyle(
-        family="hud",
-        font_size=24,
-        max_width=420,
-        align=TextAlign.LEFT,
-    ),
+    TextStyle(family="hud", font_size=24, max_width=420, align=TextAlign.LEFT),
 )
 scene.add_many(*text.text_objects(layout, -200, 180, screen_space=True, layer=1500))
 ```
@@ -124,6 +119,29 @@ Layout results are immutable and cached through a bounded LRU. `TextLayoutDiagno
 
 `text_objects(...)` materializes ordinary `Text2D` runs, so scene ownership and the existing renderer stay compatible with 1.x. See [`docs/TEXT_FONT_PIPELINE_1_2.md`](docs/TEXT_FONT_PIPELINE_1_2.md) and `examples/demo_text_layout.py`.
 
+### Shared 2D/3D camera systems
+
+SwirEngine 1.2 adds additive `CameraRig2D` and `CameraRig3D` controllers while keeping the stable `Camera2D` and `Camera3D` APIs intact. Camera rigs provide world bounds, time-step-aware exponential smoothing, deterministic decaying shake, multi-segment rails and shared creator-facing movement ergonomics. The 2D rig also supports dead-zone follow; the 3D rig preserves the active look direction while rig movement changes camera position.
+
+```python
+from swirengine.graphics.camera import Camera2D
+from swirengine.graphics.camera_runtime import CameraBounds2D, CameraRail2D, CameraRig2D
+from swirengine.math.types import Vec2
+
+camera = Camera2D()
+rig = CameraRig2D(
+    camera,
+    smoothing=8.0,
+    dead_zone=Vec2(6.0, 4.0),
+    bounds=CameraBounds2D(-20.0, -12.0, 20.0, 12.0),
+)
+rail = CameraRail2D((Vec2(-12.0, 0.0), Vec2(0.0, 6.0), Vec2(12.0, 0.0)))
+rig.move_on_rail(rail, 0.5, 1.0 / 60.0)
+rig.shake(1.5, 0.35, frequency=14.0, seed=42.0)
+```
+
+Shake is deterministic and does not require fresh random-number generation every frame, while smoothing uses `dt` rather than frame-count-dependent interpolation. See [`docs/CAMERA_SYSTEMS_1_2.md`](docs/CAMERA_SYSTEMS_1_2.md) and `examples/demo_camera_systems.py`.
+
 ## Quick 2D game
 
 ```python
@@ -131,9 +149,7 @@ from swirengine import Color, Game, Rectangle2D
 
 
 game = Game("My 2D Game", 1280, 720, mode="2d")
-player = game.add(
-    Rectangle2D(0, 0, 120, 70, Color(0.1, 0.75, 1.0, 1.0), name="player")
-)
+player = game.add(Rectangle2D(0, 0, 120, 70, Color(0.1, 0.75, 1.0, 1.0), name="player"))
 
 @game.update
 def update(dt):
@@ -157,9 +173,7 @@ from swirengine import Color, Cube3D, Game, Vec3
 
 
 game = Game("My 3D Game", 1280, 720, mode="3d")
-cube = game.add(
-    Cube3D(position=Vec3(0, 0, -4), color=Color(0.2, 0.7, 1.0, 1.0))
-)
+cube = game.add(Cube3D(position=Vec3(0, 0, -4), color=Color(0.2, 0.7, 1.0, 1.0)))
 
 @game.update
 def update(dt):
@@ -179,6 +193,7 @@ game.run()
 - responsive labels, panels, buttons and progress bars with anchors/containers/reference scaling
 - keyboard/mouse/gamepad focus navigation and activation
 - sparse pooled particle/VFX runtime with lifecycle interpolation and diagnostics
+- bounded/smoothed camera rigs with dead-zone follow, rails and deterministic shake
 - spatial-hash AABB collision broad phase with overlap, point and ray queries
 - deterministic fixed-step arcade rigid-body physics
 - JSON save data through `SaveStore`
@@ -188,7 +203,7 @@ game.run()
 
 ### 3D runtime
 
-- perspective `Camera3D`
+- perspective `Camera3D` plus bounded/smoothed camera rigs, rails and deterministic shake
 - `MeshData`, `Mesh3D`, lazy GPU mesh caching and OBJ import
 - static glTF/GLB scene and material import
 - Phong and Cook-Torrance GGX metallic/roughness PBR
@@ -211,6 +226,7 @@ game.run()
 - bounded asynchronous asset preload with diagnostics and in-flight deduplication
 - audio mixer buses/groups, fades and spatial audio controls
 - font asset/fallback registry plus deterministic cached text layout diagnostics
+- shared 2D/3D camera rigs with bounds, smoothing, rails and deterministic shake
 - project-oriented scene/prefab/input editor workflow with reversible playtest state
 - deterministic networking packet foundation and TCP client/server peers
 - packaging profiles and export manifests
@@ -281,6 +297,7 @@ It exposes FPS, frame/CPU timings, update/physics/render timings, draw calls, ba
 - `examples/demo_editor_workflow.py` — scene/prefab/input/playtest project workflow
 - `examples/demo_particles_vfx.py` — sparse pooled particle/VFX lifecycle
 - `examples/demo_text_layout.py` — font fallback, wrapping, alignment and layout-cache diagnostics
+- `examples/demo_camera_systems.py` — bounded/smoothed 2D camera rail and deterministic shake workflow
 - larger asset-free 2D samples under `examples/`
 
 ## Development and verification
@@ -312,7 +329,7 @@ PyPI/GitHub Release publication for active 1.2 remains frozen until all 10 roadm
 
 - SwirEngine 1.0: [`ROADMAP.md`](ROADMAP.md) — **31/31 = 100%**, historical and locked
 - SwirEngine 1.1: [`ROADMAP_1_1.md`](ROADMAP_1_1.md) — **10/10 = 100%**, released
-- SwirEngine 1.2: [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — active development roadmap
+- SwirEngine 1.2: [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **3/10 = 30.0%**, active development roadmap
 
 ## Links
 
