@@ -74,6 +74,7 @@ class AssetStreamingManager:
         self.budget = budget or AssetStreamingBudget()
         self._size_estimator = size_estimator or self._default_size_estimator
         self._pending: OrderedDict[Path, Future[AssetLoadResult]] = OrderedDict()
+        self._pending_pin: dict[Path, bool] = {}
         self._resident: OrderedDict[Path, AssetResidency] = OrderedDict()
         self._staged = 0
         self._completed = 0
@@ -103,18 +104,24 @@ class AssetStreamingManager:
             return completed
         existing = self._pending.get(path)
         if existing is not None:
+            self._pending_pin[path] = self._pending_pin[path] or bool(pin)
             return existing
         future = self.preloader.load_async(asset)
-        setattr(future, "_swir_stream_pin", bool(pin))
         self._pending[path] = future
+        self._pending_pin[path] = bool(pin)
         self._staged += 1
         return future
 
-    def stage_many(self, assets: Iterable[str | Path], *, pin: bool = False) -> tuple[Future[AssetLoadResult], ...]:
+    def stage_many(
+        self,
+        assets: Iterable[str | Path],
+        *,
+        pin: bool = False,
+    ) -> tuple[Future[AssetLoadResult], ...]:
         return tuple(self.stage(asset, pin=pin) for asset in assets)
 
     def pump(self, *, max_completions: int = 4) -> tuple[AssetLoadResult, ...]:
-        """Finalize up to ``max_completions`` ready loads without waiting on unfinished work."""
+        """Finalize ready loads without waiting on unfinished background work."""
         if max_completions < 1:
             raise ValueError("max_completions must be >= 1")
         finalized: list[AssetLoadResult] = []
@@ -130,13 +137,16 @@ class AssetStreamingManager:
             if finalize_ns >= int(self.budget.hitch_threshold_ms * 1_000_000):
                 self._hitch_count += 1
             self._pending.pop(path, None)
+            pin = self._pending_pin.pop(path, False)
             if result.ok:
-                pin = bool(getattr(future, "_swir_stream_pin", False))
                 size = max(0, int(self._size_estimator(path, result.value)))
                 self._resident[path] = AssetResidency(path, size, pin)
                 self._resident.move_to_end(path)
                 self._completed += 1
-                self._peak_resident_bytes = max(self._peak_resident_bytes, self.resident_bytes)
+                self._peak_resident_bytes = max(
+                    self._peak_resident_bytes,
+                    self.resident_bytes,
+                )
                 self._evict_to_budget()
             else:
                 self._failed += 1
@@ -202,7 +212,7 @@ class AssetStreamingManager:
         if self._owns_preloader:
             self.preloader.shutdown(wait=wait, cancel_futures=cancel_futures)
 
-    def __enter__(self) -> AssetStreamingManager:  # noqa: PYI034 - project supports Python 3.10.
+    def __enter__(self) -> AssetStreamingManager:  # noqa: PYI034
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
@@ -213,13 +223,16 @@ class AssetStreamingManager:
             len(self._resident) > self.budget.max_resident_assets
             or self.resident_bytes > self.budget.max_resident_bytes
         ):
-            candidate = next((item for item in self._resident.values() if not item.pinned), None)
+            candidate = next(
+                (item for item in self._resident.values() if not item.pinned),
+                None,
+            )
             if candidate is None:
                 return
             self.evict(candidate.path)
 
     @staticmethod
-    def _default_size_estimator(path: Path, value: object) -> int:
+    def _default_size_estimator(path: Path, _value: object) -> int:
         try:
             return path.stat().st_size
         except OSError:
