@@ -30,6 +30,9 @@ jobs:
       - run: pytest
       - run: ruff check src tests examples demo_projects tools
       - run: python -m compileall -q src examples demo_projects tools
+      - name: Verify 1.1 release-candidate contract
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
+        run: python tools/verify_1_1_release_candidate.py
       - name: Verify static 3D batching CPU frame-preparation win
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
         run: python tools/benchmark_static_3d_batch.py --cubes 1000 --rounds 9 --frames 30 --assert-win
