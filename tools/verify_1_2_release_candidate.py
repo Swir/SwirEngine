@@ -5,7 +5,10 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-import tomllib
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10
+    import tomli as tomllib
 
 TARGET_VERSION = "1.2.0"
 CURRENT_STABLE_VERSION = "1.1.0"
