@@ -10,7 +10,7 @@ from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 
 class ExportTarget(str, Enum):
@@ -169,7 +169,7 @@ class ProjectExporter:
     Android and Web exports remain experimental staging targets.
     """
 
-    _DESKTOP_HOSTS = {
+    _DESKTOP_HOSTS: ClassVar[dict[ExportTarget, str]] = {
         ExportTarget.WINDOWS: "win32",
         ExportTarget.LINUX: "linux",
         ExportTarget.MACOS: "darwin",
