@@ -170,17 +170,22 @@ class ParticleEmitter2D:
     def _spawn_offset(self) -> tuple[float, float]:
         width, height = self.emission_size
         shape = self.emission_shape
-        if shape is ParticleEmissionShape2D.POINT or (width == 0.0 and height == 0.0):
+        is_point = shape is ParticleEmissionShape2D.POINT
+        if is_point or (width == 0.0 and height == 0.0):
             return 0.0, 0.0
         if shape is ParticleEmissionShape2D.BOX:
             return self._random.uniform(-width * 0.5, width * 0.5), self._random.uniform(
-                -height * 0.5, height * 0.5
+                -height * 0.5,
+                height * 0.5,
             )
 
         radius_x = width * 0.5
         radius_y = height * 0.5 if height > 0.0 else radius_x
         theta = self._random.random() * math.tau
-        radius = 1.0 if shape is ParticleEmissionShape2D.RING else math.sqrt(self._random.random())
+        if shape is ParticleEmissionShape2D.RING:
+            radius = 1.0
+        else:
+            radius = math.sqrt(self._random.random())
         return math.cos(theta) * radius_x * radius, math.sin(theta) * radius_y * radius
 
     @staticmethod
@@ -235,9 +240,11 @@ class ParticleEmitter2D:
         self._active.clear()
         self._alive_count = 0
         self._emit_accumulator = 0.0
+        self._update_visits = 0
         self._last_spawned = 0
 
     def update(self, dt: float) -> None:
+        self._update_visits = 0
         if not self.enabled or dt <= 0:
             self._last_spawned = 0
             return
