@@ -117,13 +117,12 @@ class SettingSpec:
 
     def validate(self, key: str, value: Any) -> _JSONScalar:
         expected = self.value_type
-        if not isinstance(value, expected) or (
-            isinstance(value, bool) and expected in (int, float)
-        ):
-            if isinstance(expected, tuple):
-                names = ", ".join(item.__name__ for item in expected)
-            else:
-                names = expected.__name__
+        expected_types = expected if isinstance(expected, tuple) else (expected,)
+        bool_as_number = isinstance(value, bool) and bool not in expected_types and any(
+            item in (int, float) for item in expected_types
+        )
+        if not isinstance(value, expected) or bool_as_number:
+            names = ", ".join(item.__name__ for item in expected_types)
             raise TypeError(f"setting {key!r} must be {names}")
         if self.choices and value not in self.choices:
             raise ValueError(f"setting {key!r} must be one of {self.choices!r}")
