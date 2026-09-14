@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, TypeAlias
 
@@ -37,10 +37,7 @@ class PrefabInstance:
 
     def remove_from(self, scene: Scene) -> int:
         """Remove every object in this instance from ``scene`` and return the count removed."""
-        removed = 0
-        for obj in self.objects:
-            removed += int(scene.remove(obj))
-        return removed
+        return len(scene.remove_many(*self.objects))
 
 
 class Prefab:
@@ -128,3 +125,26 @@ class Prefab:
         if scene is not None:
             scene.add_many(*objects)
         return PrefabInstance(objects=objects, prefab_name=self.name)
+
+    def instantiate_many(
+        self,
+        count: int,
+        scene: Scene | None = None,
+        *,
+        overrides: Sequence[PrefabOverrides | None] | None = None,
+    ) -> tuple[PrefabInstance, ...]:
+        """Instantiate a deterministic prefab batch for rooms, waves and world chunks.
+
+        ``overrides`` may provide one override mapping per instance. All instances remain
+        independent deep-copied graphs and are registered in spawn order.
+        """
+        resolved_count = int(count)
+        if resolved_count < 0:
+            raise ValueError("count must be >= 0")
+        if overrides is not None and len(overrides) != resolved_count:
+            raise ValueError("overrides length must match count")
+        instances: list[PrefabInstance] = []
+        for index in range(resolved_count):
+            instance_overrides = None if overrides is None else overrides[index]
+            instances.append(self.instantiate(scene, overrides=instance_overrides))
+        return tuple(instances)
