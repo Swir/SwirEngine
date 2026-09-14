@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from swirengine import Color, Game, ParticleEmitter2D
 
 
