@@ -39,6 +39,9 @@ def test_active_update_visits_only_live_particles_not_full_capacity() -> None:
     assert diagnostics.capacity == 10_000
     assert diagnostics.update_visits < diagnostics.capacity // 100
 
+    emitter.update(0.1)
+    assert emitter.diagnostics.update_visits == 8
+
 
 def test_pool_recycling_does_not_duplicate_active_entries() -> None:
     emitter = ParticleEmitter2D(
