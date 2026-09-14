@@ -188,7 +188,7 @@ class ECSWorld:
         try:
             for component in components:
                 entity.add(component)
-        except Exception:
+        except ValueError:
             self.destroy(entity)
             raise
         return entity
