@@ -187,14 +187,13 @@ class ECSWorld:
         enabled: bool = True,
         tags: Iterable[str] = (),
     ) -> Entity:
-        """Create an entity and attach a component bundle in one creator-facing call."""
+        """Validate a component bundle, then create and populate one entity atomically."""
+        component_types = tuple(type(component) for component in components)
+        if len(set(component_types)) != len(component_types):
+            raise ValueError("component bundle contains duplicate concrete types")
         entity = self.create_entity(name=name, enabled=enabled, tags=tags)
-        try:
-            for component in components:
-                entity.add(component)
-        except ValueError:
-            self.destroy(entity)
-            raise
+        for component in components:
+            entity.add(component)
         return entity
 
     def entity(self, entity_id: int) -> Entity | None:
