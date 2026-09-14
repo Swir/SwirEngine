@@ -180,12 +180,20 @@ See [`docs/SCENE_ECS_ERGONOMICS_1_2.md`](docs/SCENE_ECS_ERGONOMICS_1_2.md) and `
 
 GPU/context-owned uploads remain on the owning game/render thread; background workers are for file/decode work. See [`docs/ASSET_STREAMING_1_2.md`](docs/ASSET_STREAMING_1_2.md) and `examples/demo_asset_streaming.py`.
 
+### Renderer and VFX frame-work reduction
+
+The 1.2 renderer performance pass removes repeated Python-side work without changing draw order or claiming a synthetic FPS uplift. Repeatable 2D scene lists now stream render runs instead of first allocating a second outer frame-sized run tuple. Immutable sprite batch-state keys are reused through a bounded cache across stable frames, already-valid immutable `Color.clamped()` calls return the same object, and particle range sampling no longer creates a temporary `sorted()` list for every sampled lifetime/speed/angle/size/rotation value.
+
+Regression coverage requires a **512-sprite** repeatable render-run view to be consumed without materializing an outer cache, and **1,000 repeated stable sprite-state lookups** to produce one miss plus 1,000 cache hits with object-identity reuse. The valid-color fast path is likewise checked for **1,000 identity-preserving calls**. Host-dependent timings remain diagnostic rather than fixed CI thresholds.
+
+See [`docs/RENDERER_VFX_PERFORMANCE_1_2.md`](docs/RENDERER_VFX_PERFORMANCE_1_2.md) and run `python tools/benchmark_renderer_vfx_framework.py` for local measurements.
+
 ## Engine capabilities
 
 ### 2D
 
 - sprites, textures, render layers, sprite sheets and named animation clips
-- tilemaps and adjacent compatible sprite batching
+- tilemaps plus adjacent compatible sprite batching with streamed repeatable run preparation
 - responsive labels/panels/buttons/progress bars with anchors and containers
 - keyboard/mouse/gamepad focus navigation and semantic input actions
 - persistent input rebinding profiles
@@ -233,6 +241,7 @@ SwirEngine keeps performance claims narrow and reproducible:
 - **particle/VFX:** a 10,000-capacity pool with eight live particles must perform exactly eight update visits per measured frame
 - **text layout:** after the first layout, 1,000 identical requests must hit cache with zero additional measurement calls
 - **indexed ECS:** a 1,001-entity mixed-component regression must reduce `Position + Velocity` query candidates to exactly one
+- **renderer/VFX frame work:** a 512-sprite repeatable run must stream without an outer cache; after first resolution, 1,000 stable sprite-state lookups and 1,000 already-valid color clamps must reuse cached/identity objects
 
 These are workload/regression measurements, not synthetic FPS promises.
 
@@ -300,7 +309,7 @@ PyPI/GitHub Release publication for active 1.2 remains frozen until all 10 roadm
 
 - SwirEngine 1.0: [`ROADMAP.md`](ROADMAP.md) — **31/31 = 100%**, historical and locked
 - SwirEngine 1.1: [`ROADMAP_1_1.md`](ROADMAP_1_1.md) — **10/10 = 100%**, released
-- SwirEngine 1.2: [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **7/10 = 70.0%**, active development roadmap
+- SwirEngine 1.2: [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **8/10 = 80.0%**, active development roadmap
 
 ## Links
 
