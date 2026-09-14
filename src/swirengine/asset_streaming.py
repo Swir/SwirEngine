@@ -76,6 +76,7 @@ class AssetStreamingManager:
         self._pending: OrderedDict[Path, Future[AssetLoadResult]] = OrderedDict()
         self._pending_pin: dict[Path, bool] = {}
         self._resident: OrderedDict[Path, AssetResidency] = OrderedDict()
+        self._resident_bytes = 0
         self._staged = 0
         self._completed = 0
         self._failed = 0
@@ -140,12 +141,16 @@ class AssetStreamingManager:
             pin = self._pending_pin.pop(path, False)
             if result.ok:
                 size = max(0, int(self._size_estimator(path, result.value)))
+                previous = self._resident.get(path)
+                if previous is not None:
+                    self._resident_bytes -= previous.size_bytes
                 self._resident[path] = AssetResidency(path, size, pin)
+                self._resident_bytes += size
                 self._resident.move_to_end(path)
                 self._completed += 1
                 self._peak_resident_bytes = max(
                     self._peak_resident_bytes,
-                    self.resident_bytes,
+                    self._resident_bytes,
                 )
                 self._evict_to_budget()
             else:
@@ -183,6 +188,7 @@ class AssetStreamingManager:
         if current is None or (current.pinned and not force):
             return False
         self._resident.pop(path, None)
+        self._resident_bytes -= current.size_bytes
         self.assets.invalidate(path)
         self._evictions += 1
         return True
@@ -192,7 +198,7 @@ class AssetStreamingManager:
 
     @property
     def resident_bytes(self) -> int:
-        return sum(item.size_bytes for item in self._resident.values())
+        return self._resident_bytes
 
     def diagnostics(self) -> AssetStreamingDiagnostics:
         return AssetStreamingDiagnostics(
@@ -201,7 +207,7 @@ class AssetStreamingManager:
             failed=self._failed,
             evictions=self._evictions,
             resident_assets=len(self._resident),
-            resident_bytes=self.resident_bytes,
+            resident_bytes=self._resident_bytes,
             peak_resident_bytes=self._peak_resident_bytes,
             hitch_count=self._hitch_count,
             max_finalize_ms=self._max_finalize_ns / 1_000_000.0,
@@ -221,7 +227,7 @@ class AssetStreamingManager:
     def _evict_to_budget(self) -> None:
         while (
             len(self._resident) > self.budget.max_resident_assets
-            or self.resident_bytes > self.budget.max_resident_bytes
+            or self._resident_bytes > self.budget.max_resident_bytes
         ):
             candidate = next(
                 (item for item in self._resident.values() if not item.pinned),
