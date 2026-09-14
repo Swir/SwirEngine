@@ -162,6 +162,16 @@ session.update()
 
 RPC methods must be registered explicitly: remote data is never used for arbitrary Python attribute/global lookup. Networking remains polling-based and thread-free, so handler execution stays ordered relative to the simulation loop. See [`docs/NETWORK_GAMEPLAY_1_2.md`](docs/NETWORK_GAMEPLAY_1_2.md) and `examples/demo_network_gameplay.py`.
 
+### Scene, prefab and ECS ergonomics
+
+SwirEngine 1.2 expands scene composition without replacing the stable scene/prefab/ECS APIs. Ordinary scene objects can opt into `on_added_to_scene`, `on_start`, `on_stop` and `on_removed_from_scene` lifecycle hooks. `Scene.update()` reuses a cached stable update snapshot until scene membership changes, with `SceneDiagnostics` exposing snapshot rebuilds and actual object updates.
+
+`Scene.mount()` / `SceneMount` provide idempotent grouped ownership for rooms, encounters and streamed chunks. `Scene.compose_entity()` creates component bundles in one call, while indexed `ECSWorld.query()` narrows iteration to compatible component candidates and still preserves deterministic entity insertion order and subclass-aware component lookup. System ordering is cached until registration changes, and optional world lifecycle hooks make systems easier to compose. `Prefab.instantiate_many()` adds deterministic batch spawning with independent per-instance overrides.
+
+The regression case creates **1,000 `Position`-only entities plus one `Position + Velocity` entity** and requires `query(Position, Velocity)` to visit exactly **one indexed candidate**, rather than checking all 1,001 entities. This is a measured reduction in Python-side query work, not an FPS claim.
+
+See [`docs/SCENE_ECS_ERGONOMICS_1_2.md`](docs/SCENE_ECS_ERGONOMICS_1_2.md) and `examples/demo_scene_ecs_ergonomics.py`.
+
 ## Engine capabilities
 
 ### 2D
@@ -192,9 +202,9 @@ RPC methods must be registered explicitly: remote data is never used for arbitra
 
 ### Production systems
 
-- scenes with names/tags and creator-friendly lookup helpers
-- reusable prefabs, per-instance overrides and versioned scene/prefab serialization
-- lightweight ECS with entities, components, queries and prioritized systems
+- scenes with names/tags, lifecycle hooks, cached update snapshots and grouped mounts
+- reusable prefabs, per-instance overrides, deterministic batch spawning and versioned serialization
+- indexed lightweight ECS with composition helpers, deterministic queries and cached prioritized systems
 - plugin runtime, file watcher and transactional hot-reload restoration
 - bounded asynchronous asset preload with in-flight deduplication and diagnostics
 - audio buses/groups, fades and spatial attenuation/pan
@@ -213,6 +223,7 @@ SwirEngine keeps performance claims narrow and reproducible:
 - **2D collision:** a sparse 1,000-collider case must reduce broad-phase candidates by at least 100x versus brute-force all-pairs enumeration
 - **particle/VFX:** a 10,000-capacity pool with eight live particles must perform exactly eight update visits per measured frame
 - **text layout:** after the first layout, 1,000 identical requests must hit cache with zero additional measurement calls
+- **indexed ECS:** a 1,001-entity mixed-component regression must reduce `Position + Velocity` query candidates to exactly one
 
 These are workload/regression measurements, not synthetic FPS promises.
 
@@ -249,6 +260,7 @@ Desktop targets expose deterministic staging/build plans. Android and Web remain
 - `examples/demo_camera_systems.py` — camera rail/smoothing/shake workflow
 - `examples/demo_save_config.py` — typed settings, profile layout and save slots
 - `examples/demo_network_gameplay.py` — deterministic messages, RPC and diagnostics
+- `examples/demo_scene_ecs_ergonomics.py` — lifecycle, mounts, indexed queries and prefab waves
 
 ## Development and verification
 
@@ -278,7 +290,7 @@ PyPI/GitHub Release publication for active 1.2 remains frozen until all 10 roadm
 
 - SwirEngine 1.0: [`ROADMAP.md`](ROADMAP.md) — **31/31 = 100%**, historical and locked
 - SwirEngine 1.1: [`ROADMAP_1_1.md`](ROADMAP_1_1.md) — **10/10 = 100%**, released
-- SwirEngine 1.2: [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **5/10 = 50.0%**, active development roadmap
+- SwirEngine 1.2: [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **6/10 = 60.0%**, active development roadmap
 
 ## Links
 
