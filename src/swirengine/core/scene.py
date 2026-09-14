@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Iterator
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, TypeVar
 
-from ..ecs import ECSWorld, Entity
+from ..ecs import ECSDiagnostics, ECSWorld, Entity
 
 if TYPE_CHECKING:
     from ..prefab import Prefab, PrefabInstance, PrefabOverrides
@@ -11,10 +12,51 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 
+@dataclass(slots=True)
+class SceneDiagnostics:
+    """Creator-visible counters for scene update work."""
+
+    snapshot_rebuilds: int = 0
+    object_updates: int = 0
+
+    def reset(self) -> None:
+        self.snapshot_rebuilds = 0
+        self.object_updates = 0
+
+
+@dataclass(slots=True)
+class SceneMount:
+    """Grouped scene ownership for rooms, encounters and streamed world chunks."""
+
+    scene: Scene
+    objects: tuple[object, ...] = ()
+    entities: tuple[Entity, ...] = ()
+    active: bool = True
+
+    def unmount(self) -> tuple[int, int]:
+        """Remove all mounted content once and return ``(objects, entities)`` counts."""
+        if not self.active:
+            return (0, 0)
+        removed_objects = len(self.scene.remove_many(*self.objects))
+        removed_entities = sum(int(self.scene.ecs.destroy(entity)) for entity in self.entities)
+        self.active = False
+        return removed_objects, removed_entities
+
+    def __enter__(self) -> SceneMount:
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        self.unmount()
+
+
 class Scene:
     def __init__(self) -> None:
         self._objects: list[object] = []
+        self._update_snapshot: tuple[object, ...] = ()
+        self._snapshot_dirty = False
+        self._started_ids: set[int] = set()
         self.ecs = ECSWorld()
+        self.diagnostics = SceneDiagnostics()
 
     @property
     def objects(self) -> tuple[object, ...]:
@@ -23,6 +65,10 @@ class Scene:
     @property
     def entities(self) -> tuple[Entity, ...]:
         return self.ecs.entities
+
+    @property
+    def ecs_diagnostics(self) -> ECSDiagnostics:
+        return self.ecs.diagnostics
 
     def __iter__(self) -> Iterator[object]:
         return iter(tuple(self._objects))
@@ -33,9 +79,27 @@ class Scene:
     def __contains__(self, obj: object) -> bool:
         return any(existing is obj for existing in self._objects)
 
+    @staticmethod
+    def _lifecycle(obj: object, name: str, scene: Scene) -> None:
+        hook = getattr(obj, name, None)
+        if callable(hook):
+            hook(scene)
+
+    def _invalidate_snapshot(self) -> None:
+        self._snapshot_dirty = True
+
+    def _objects_for_update(self) -> tuple[object, ...]:
+        if self._snapshot_dirty or len(self._update_snapshot) != len(self._objects):
+            self._update_snapshot = tuple(self._objects)
+            self._snapshot_dirty = False
+            self.diagnostics.snapshot_rebuilds += 1
+        return self._update_snapshot
+
     def add(self, obj: T) -> T:
         if not any(existing is obj for existing in self._objects):
             self._objects.append(obj)
+            self._invalidate_snapshot()
+            self._lifecycle(obj, "on_added_to_scene", self)
         return obj
 
     def add_many(self, *objects: object) -> tuple[object, ...]:
@@ -43,10 +107,39 @@ class Scene:
             self.add(obj)
         return objects
 
+    def mount(
+        self,
+        *objects: object,
+        entities: Iterable[Entity] = (),
+    ) -> SceneMount:
+        """Group existing/new scene content so it can be unloaded with one call.
+
+        Objects are added to this scene. Entities must already belong to this scene's ECS world;
+        this avoids silently migrating entity identity between worlds.
+        """
+        mounted_objects: list[object] = []
+        for obj in objects:
+            already_present = obj in self
+            self.add(obj)
+            if not already_present:
+                mounted_objects.append(obj)
+
+        mounted_entities: list[Entity] = []
+        for entity in entities:
+            if self.ecs.entity(entity.id) is not entity:
+                raise ValueError("mounted entities must belong to this scene")
+            mounted_entities.append(entity)
+        return SceneMount(self, tuple(mounted_objects), tuple(mounted_entities))
+
     def remove(self, obj: object) -> bool:
         for index, existing in enumerate(self._objects):
             if existing is obj:
+                if id(existing) in self._started_ids:
+                    self._lifecycle(existing, "on_stop", self)
+                    self._started_ids.discard(id(existing))
+                self._lifecycle(existing, "on_removed_from_scene", self)
                 del self._objects[index]
+                self._invalidate_snapshot()
                 return True
         return False
 
@@ -71,17 +164,22 @@ class Scene:
         return matches
 
     def clear(self, *, clear_entities: bool = True) -> None:
-        self._objects.clear()
+        self.remove_many(*tuple(self._objects))
         if clear_entities:
             self.ecs.clear()
 
     def update(self, dt: float) -> None:
-        for obj in tuple(self._objects):
+        for obj in self._objects_for_update():
             if not getattr(obj, "enabled", True):
                 continue
+            object_id = id(obj)
+            if object_id not in self._started_ids:
+                self._lifecycle(obj, "on_start", self)
+                self._started_ids.add(object_id)
             update = getattr(obj, "update", None)
             if callable(update):
                 update(dt)
+                self.diagnostics.object_updates += 1
         self.ecs.update(dt)
 
     def by_type(self, cls: type[T]) -> tuple[T, ...]:
@@ -112,6 +210,16 @@ class Scene:
     ) -> Entity:
         """Create an ECS entity owned by this scene's world."""
         return self.ecs.create_entity(name=name, enabled=enabled, tags=tags)
+
+    def compose_entity(
+        self,
+        *components: object,
+        name: str = "",
+        enabled: bool = True,
+        tags: Iterable[str] = (),
+    ) -> Entity:
+        """Create and populate an ECS entity in one call."""
+        return self.ecs.compose_entity(*components, name=name, enabled=enabled, tags=tags)
 
     def query_entities(
         self,
