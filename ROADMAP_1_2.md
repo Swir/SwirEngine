@@ -4,26 +4,26 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-0.0%25-6e7781?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-0%2F10-6e7781?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-10.0%25-1f6feb?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-1%2F10-1f6feb?style=for-the-badge">
   <img alt="Status" src="https://img.shields.io/badge/STATUS-ACTIVE-1f6feb?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-░░░░░░░░░░░░░░░░░░░░ 0.0%
+██░░░░░░░░░░░░░░░░░░ 10.0%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **0** | **10** | **10** | **0.0%** |
+| **1** | **9** | **10** | **10.0%** |
 
 > Progress is derived only from the equal-weight verified deliverables below. A checkbox becomes
 > complete only after implementation, regression coverage, README/CHANGELOG synchronization and
 > the relevant CI/runtime validation.
 
-- [ ] Particle/VFX runtime: sparse pooled updates, spawn shapes, lifecycle curves and diagnostics
+- [x] Particle/VFX runtime: sparse pooled updates, spawn shapes, lifecycle curves and diagnostics
 - [ ] Text/font pipeline: font assets, fallback families, layout/wrapping/alignment and cache diagnostics
 - [ ] Camera systems: bounds, shake, smoothing, rails/blends and shared 2D/3D creator ergonomics
 - [ ] Save/config expansion: typed settings, migrations, profiles, atomic writes and cloud-friendly layout
