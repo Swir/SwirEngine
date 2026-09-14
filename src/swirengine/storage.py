@@ -126,12 +126,18 @@ class SettingSpec:
             raise TypeError(f"setting {key!r} must be {names}")
         if self.choices and value not in self.choices:
             raise ValueError(f"setting {key!r} must be one of {self.choices!r}")
-        if self.minimum is not None and isinstance(value, (int, float)):
-            if value < self.minimum:
-                raise ValueError(f"setting {key!r} must be >= {self.minimum}")
-        if self.maximum is not None and isinstance(value, (int, float)):
-            if value > self.maximum:
-                raise ValueError(f"setting {key!r} must be <= {self.maximum}")
+        if (
+            self.minimum is not None
+            and isinstance(value, (int, float))
+            and value < self.minimum
+        ):
+            raise ValueError(f"setting {key!r} must be >= {self.minimum}")
+        if (
+            self.maximum is not None
+            and isinstance(value, (int, float))
+            and value > self.maximum
+        ):
+            raise ValueError(f"setting {key!r} must be <= {self.maximum}")
         return value
 
 
