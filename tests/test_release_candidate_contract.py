@@ -1,6 +1,6 @@
 from pathlib import Path
-from tools.verify_1_1_release_candidate import audit, parse_roadmap
 
+from tools.verify_1_1_release_candidate import audit, parse_roadmap
 
 ROOT = Path(__file__).resolve().parents[1]
 
