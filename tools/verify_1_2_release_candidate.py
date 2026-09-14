@@ -162,7 +162,11 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
 
     for runner in ("windows-latest", "ubuntu-latest", "macos-latest"):
         _require(runner in desktop_export, f"desktop export gate includes {runner}", checks)
-    _require("--onefile" in desktop_export and "--onedir" in desktop_export, "desktop export gate covers one-file and one-directory builds", checks)
+    _require(
+        "verify_desktop_export.py" in desktop_export and "--onedir" in desktop_export,
+        "desktop export gate covers default one-file and explicit one-directory builds",
+        checks,
+    )
 
     project_contracts = {
         "neon_cube_hunt_3d": ("README.md", "pyproject.toml", "run_game.py"),
