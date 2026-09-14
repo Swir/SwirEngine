@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import argparse
 import re
-import tomllib
 from dataclasses import dataclass
 from pathlib import Path
+
+import tomllib
 
 TARGET_VERSION = "1.2.0"
 CURRENT_STABLE_VERSION = "1.1.0"
