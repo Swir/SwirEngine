@@ -8,10 +8,10 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_release_candidate_contract_is_internally_consistent() -> None:
     report = audit(ROOT)
 
-    assert report.version == "1.1.0"
+    assert report.version == "1.1.1"
     assert report.roadmap.total == 10
     assert report.roadmap.completed + report.roadmap.remaining == 10
-    assert report.roadmap.percent in {90.0, 100.0}
+    assert report.roadmap.percent == 100.0
     assert len(report.checks) >= 30
 
 
