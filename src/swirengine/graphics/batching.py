@@ -27,20 +27,26 @@ def _canonical_texture_key(texture: str) -> str:
     return str(Path(texture).expanduser().resolve())
 
 
+@lru_cache(maxsize=8192)
+def _cached_sprite_batch_key(texture: str, layer: int, screen_space: bool) -> SpriteBatchKey:
+    """Reuse immutable state keys instead of allocating one per sprite on every frame."""
+    return SpriteBatchKey(texture=texture, layer=layer, screen_space=screen_space)
+
+
 def sprite_batch_key(sprite: Sprite2D) -> SpriteBatchKey:
-    return SpriteBatchKey(
-        texture=_canonical_texture_key(str(sprite.texture)),
-        layer=int(sprite.layer),
-        screen_space=bool(sprite.screen_space),
+    return _cached_sprite_batch_key(
+        _canonical_texture_key(str(sprite.texture)),
+        int(sprite.layer),
+        bool(sprite.screen_space),
     )
 
 
 def iter_render_runs(objects: Iterable[object]) -> Iterator[object | SpriteBatch]:
     """Yield visible render runs in order without materializing an outer frame tuple.
 
-    This is the hot-path form used by the renderer. Only the currently pending compatible
-    sprite run is retained, so scenes with many rectangles/text objects do not allocate a
-    second frame-sized list/tuple merely to iterate it once.
+    The renderer can consume this hot-path iterator directly. Only the currently pending
+    compatible sprite run is retained, so scenes with many rectangles/text objects do not
+    need a second frame-sized list/tuple merely to iterate it once.
     """
     renderable_types = (Rectangle2D, Sprite2D, Text2D)
     pending_key: SpriteBatchKey | None = None
@@ -56,7 +62,7 @@ def iter_render_runs(objects: Iterable[object]) -> Iterator[object | SpriteBatch
 
         if isinstance(obj, Sprite2D):
             key = sprite_batch_key(obj)
-            if pending_key == key:
+            if pending_key is key or pending_key == key:
                 pending_sprites.append(obj)
                 continue
             if pending_key is not None:
