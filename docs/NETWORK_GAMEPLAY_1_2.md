@@ -28,11 +28,16 @@ Handlers run in registration order on the thread that calls `update()`. SwirEngi
 ## Explicit RPC registry
 
 ```python
-session.rpc.register(
-    "inventory.add",
-    lambda payload: {"accepted": payload["count"] > 0},
-)
+from swirengine import RPCError
 
+
+def add_item(payload):
+    if payload["count"] <= 0:
+        raise RPCError("count must be positive")
+    return {"accepted": True}
+
+
+session.rpc.register("inventory.add", add_item)
 request_id = session.call_rpc("inventory.add", {"item": "key", "count": 1})
 session.update()
 result = session.pop_rpc_result()
@@ -40,7 +45,7 @@ result = session.pop_rpc_result()
 
 RPC lookup only uses methods explicitly registered in `RPCRegistry`. It never performs dynamic global lookup, `getattr()` traversal or import resolution based on remote data.
 
-Unknown methods return a deterministic `RPCResult` error. Handler exceptions are converted to RPC errors on the responding side and are counted in diagnostics.
+Unknown methods return a deterministic `RPCResult` error. An RPC handler can raise `RPCError` for an expected gameplay rejection that is safe to send to the caller. Other exceptions are deliberately not swallowed as remote-facing errors: they propagate through `GameplaySession.update()`, set the session to `ERROR`, and remain visible as programming/runtime failures.
 
 ## Connection state
 
