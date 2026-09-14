@@ -102,7 +102,9 @@ def test_joint_palette_is_identity_in_bind_pose_and_moves_with_joint():
         np.asarray((0.0, 1.0), dtype="f4"),
         np.asarray(((0.0, 1.0, 0.0), (1.0, 1.0, 0.0)), dtype="f4"),
     )
-    pose = sample_skeletal_clip(skeleton, SkeletalAnimationClip3D("move", (channel,)), 1.0)
+    pose = sample_skeletal_clip(
+        skeleton, SkeletalAnimationClip3D("move", (channel,)), 1.0, loop=False
+    )
     palette = skin_joint_palette(skeleton, skin, pose)
     assert palette[1, 0, 3] == pytest.approx(1.0)
 
