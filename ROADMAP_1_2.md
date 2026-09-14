@@ -4,20 +4,20 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-60.0%25-1f6feb?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-6%2F10-1f6feb?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-70.0%25-1f6feb?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-7%2F10-1f6feb?style=for-the-badge">
   <img alt="Status" src="https://img.shields.io/badge/STATUS-ACTIVE-1f6feb?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-████████████░░░░░░░░ 60.0%
+██████████████░░░░░░ 70.0%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **6** | **4** | **10** | **60.0%** |
+| **7** | **3** | **10** | **70.0%** |
 
 > Progress is derived only from the equal-weight verified deliverables below. A checkbox becomes
 > complete only after implementation, regression coverage, README/CHANGELOG synchronization and
@@ -29,7 +29,7 @@
 - [x] Save/config expansion: typed settings, migrations, profiles, atomic writes and cloud-friendly layout
 - [x] Networking gameplay layer: messages/RPC helpers, connection state and deterministic diagnostics
 - [x] Scene/prefab/ECS ergonomics: composition helpers, lifecycle hooks and faster large-world iteration
-- [ ] Asset streaming: budgets, residency/eviction, staged background loading and hitch diagnostics
+- [x] Asset streaming: budgets, residency/eviction, staged background loading and hitch diagnostics
 - [ ] Renderer/VFX performance pass: batching/state reduction and measurable frame-work regression gates
 - [ ] Build/export hardening: portable project templates and verified Windows/Linux/macOS shipping workflows
 - [ ] 1.2 creator hardening: complete demo, documentation/API audit, compatibility and final release gate

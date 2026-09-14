@@ -172,6 +172,14 @@ The regression case creates **1,000 `Position`-only entities plus one `Position 
 
 See [`docs/SCENE_ECS_ERGONOMICS_1_2.md`](docs/SCENE_ECS_ERGONOMICS_1_2.md) and `examples/demo_scene_ecs_ergonomics.py`.
 
+### Budgeted asset streaming
+
+`AssetStreamingManager` builds staged loading and deterministic residency on top of the existing `AssetManager` / `AssetPreloader` APIs. File/decode work runs through the background preloader while the game loop controls finalization with nonblocking `pump(max_completions=...)` calls.
+
+`AssetStreamingBudget` caps resident asset count and estimated resident bytes. The residency set uses deterministic LRU eviction with explicit `touch()`, `pin()`, `unpin()` and `evict()` controls, while `AssetStreamingDiagnostics` reports pending/completed/failed work, residency, evictions, peak memory and finalize hitches. Resident-byte totals are maintained incrementally, so diagnostics and byte-budget checks are **O(1)** with respect to the number of resident assets rather than rescanning the complete LRU set.
+
+GPU/context-owned uploads remain on the owning game/render thread; background workers are for file/decode work. See [`docs/ASSET_STREAMING_1_2.md`](docs/ASSET_STREAMING_1_2.md) and `examples/demo_asset_streaming.py`.
+
 ## Engine capabilities
 
 ### 2D
@@ -206,7 +214,7 @@ See [`docs/SCENE_ECS_ERGONOMICS_1_2.md`](docs/SCENE_ECS_ERGONOMICS_1_2.md) and `
 - reusable prefabs, per-instance overrides, deterministic batch spawning and versioned serialization
 - indexed lightweight ECS with composition helpers, deterministic queries and cached prioritized systems
 - plugin runtime, file watcher and transactional hot-reload restoration
-- bounded asynchronous asset preload with in-flight deduplication and diagnostics
+- budgeted staged asset streaming with in-flight deduplication, deterministic LRU residency, pinning and diagnostics
 - audio buses/groups, fades and spatial attenuation/pan
 - font fallback registry and cached text-layout diagnostics
 - typed settings, deterministic migrations and profile-oriented save layout
@@ -220,6 +228,7 @@ SwirEngine keeps performance claims narrow and reproducible:
 
 - **static 3D batching:** 100 compatible static cubes map from 100 renderer-facing object draws to one combined mesh draw
 - **async preload:** a reproducible synthetic I/O-like benchmark must demonstrate real overlap/wait reduction
+- **asset streaming residency:** resident-byte accounting is maintained incrementally so diagnostics and byte-budget checks do not sum the full residency set; regression coverage verifies exact accounting through explicit eviction
 - **2D collision:** a sparse 1,000-collider case must reduce broad-phase candidates by at least 100x versus brute-force all-pairs enumeration
 - **particle/VFX:** a 10,000-capacity pool with eight live particles must perform exactly eight update visits per measured frame
 - **text layout:** after the first layout, 1,000 identical requests must hit cache with zero additional measurement calls
@@ -251,6 +260,7 @@ Desktop targets expose deterministic staging/build plans. Android and Web remain
 - `examples/demo_gamepad.py` — controller + keyboard fallback
 - `examples/demo_static_3d_batching.py` — static larger-batch rendering
 - `examples/demo_async_assets.py` — background/preload diagnostics
+- `examples/demo_asset_streaming.py` — staged loading, residency budgets, eviction and hitch diagnostics
 - `examples/demo_responsive_ui.py` — resize-aware UI and focus navigation
 - `examples/demo_animation_runtime.py` — tween/sequence/timeline/state machine
 - `examples/demo_collision_queries.py` — spatial collision queries and diagnostics
@@ -290,7 +300,7 @@ PyPI/GitHub Release publication for active 1.2 remains frozen until all 10 roadm
 
 - SwirEngine 1.0: [`ROADMAP.md`](ROADMAP.md) — **31/31 = 100%**, historical and locked
 - SwirEngine 1.1: [`ROADMAP_1_1.md`](ROADMAP_1_1.md) — **10/10 = 100%**, released
-- SwirEngine 1.2: [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **6/10 = 60.0%**, active development roadmap
+- SwirEngine 1.2: [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **7/10 = 70.0%**, active development roadmap
 
 ## Links
 
