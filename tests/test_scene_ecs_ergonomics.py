@@ -50,7 +50,8 @@ class LifecycleObject:
 def test_new_creator_types_are_available_from_stable_top_level_api():
     assert ECSDiagnostics().query_calls == 0
     assert SceneDiagnostics().snapshot_rebuilds == 0
-    assert SceneMount
+    mount = Scene().mount()
+    assert isinstance(mount, SceneMount)
 
 
 def test_scene_lifecycle_runs_once_and_cached_snapshot_rebuilds_only_on_mutation():
