@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
-from .exporting import NativeBuildError, ExportTarget, PackagingProfile, ProjectExporter
+from .exporting import ExportTarget, NativeBuildError, PackagingProfile, ProjectExporter
 
 TEMPLATE_2D = '''from swirengine import Color, Game, Rectangle2D
 
