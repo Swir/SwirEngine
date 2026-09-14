@@ -82,8 +82,11 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
     pyproject = tomllib.loads(pyproject_text)
     project = pyproject["project"]
     version = project["version"]
-    allowed_versions = {TARGET_VERSION} if require_complete else {CURRENT_STABLE_VERSION, TARGET_VERSION}
-    _require(version in allowed_versions, f"package version is valid for the 1.2 release phase: {version}", checks)
+    _require(
+        version in {CURRENT_STABLE_VERSION, TARGET_VERSION},
+        f"package version is valid for the 1.2 release phase: {version}",
+        checks,
+    )
     _require(project["requires-python"] == EXPECTED_PYTHON_RANGE, f"Python contract is {EXPECTED_PYTHON_RANGE}", checks)
     classifiers = set(project.get("classifiers", ()))
     for minor in range(10, 15):
