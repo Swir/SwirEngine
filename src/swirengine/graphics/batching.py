@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+from typing import overload
 
 from .primitives import Rectangle2D, Sprite2D, Text2D
 
@@ -42,12 +43,7 @@ def sprite_batch_key(sprite: Sprite2D) -> SpriteBatchKey:
 
 
 def iter_render_runs(objects: Iterable[object]) -> Iterator[object | SpriteBatch]:
-    """Yield visible render runs in order without materializing an outer frame tuple.
-
-    The renderer can consume this hot-path iterator directly. Only the currently pending
-    compatible sprite run is retained, so scenes with many rectangles/text objects do not
-    need a second frame-sized list/tuple merely to iterate it once.
-    """
+    """Yield visible render runs while retaining only the pending sprite batch."""
     renderable_types = (Rectangle2D, Sprite2D, Text2D)
     pending_key: SpriteBatchKey | None = None
     pending_sprites: list[Sprite2D] = []
@@ -82,6 +78,61 @@ def iter_render_runs(objects: Iterable[object]) -> Iterator[object | SpriteBatch
         yield SpriteBatch(pending_key, tuple(pending_sprites))
 
 
-def build_render_runs(objects: Iterable[object]) -> tuple[object | SpriteBatch, ...]:
-    """Compatibility wrapper returning the historical materialized tuple of render runs."""
-    return tuple(iter_render_runs(objects))
+class RenderRuns(Sequence[object | SpriteBatch]):
+    """Sequence-compatible render-run view with a zero-materialization iteration fast path.
+
+    Repeatable inputs such as the renderer's sorted scene list stream directly on iteration,
+    avoiding a second frame-sized list/tuple. One-shot iterators are materialized once so the
+    historical indexing/length behavior remains deterministic for callers that need it.
+    """
+
+    __slots__ = ("_cache", "_objects", "_single_pass")
+
+    def __init__(self, objects: Iterable[object]) -> None:
+        self._objects = objects
+        self._single_pass = iter(objects) is objects
+        self._cache: tuple[object | SpriteBatch, ...] | None = None
+
+    def _materialize(self) -> tuple[object | SpriteBatch, ...]:
+        if self._cache is None:
+            self._cache = tuple(iter_render_runs(self._objects))
+        return self._cache
+
+    def __iter__(self) -> Iterator[object | SpriteBatch]:
+        if self._cache is not None:
+            return iter(self._cache)
+        if self._single_pass:
+            return iter(self._materialize())
+        return iter_render_runs(self._objects)
+
+    def __len__(self) -> int:
+        return len(self._materialize())
+
+    @overload
+    def __getitem__(self, index: int) -> object | SpriteBatch: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> tuple[object | SpriteBatch, ...]: ...
+
+    def __getitem__(
+        self,
+        index: int | slice,
+    ) -> object | SpriteBatch | tuple[object | SpriteBatch, ...]:
+        return self._materialize()[index]
+
+    def __repr__(self) -> str:
+        return repr(self._materialize())
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Sequence):
+            return tuple(self) == tuple(other)
+        return NotImplemented
+
+
+def build_render_runs(objects: Iterable[object]) -> RenderRuns:
+    """Build an order-preserving sequence view of visible render runs.
+
+    Existing callers keep sequence semantics (iteration, ``len`` and indexing), while the
+    renderer's ordinary repeatable list input no longer creates an outer run tuple per frame.
+    """
+    return RenderRuns(objects)
