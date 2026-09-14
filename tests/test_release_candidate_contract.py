@@ -1,5 +1,4 @@
 from pathlib import Path
-
 from tools.verify_1_1_release_candidate import audit, parse_roadmap
 
 
