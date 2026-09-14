@@ -78,6 +78,25 @@ def test_byte_budget_is_enforced_with_deterministic_estimator(tmp_path):
     assert diag.evictions == 1
 
 
+def test_resident_byte_counter_stays_exact_after_explicit_eviction(tmp_path):
+    manager = _manager(tmp_path, 3)
+    sizes = {"asset-0.txt": 5, "asset-1.txt": 7, "asset-2.txt": 11}
+
+    def estimate(path, value):
+        return sizes[path.name]
+
+    with AssetStreamingManager(manager, size_estimator=estimate) as streamer:
+        streamer.stage_many(["asset-0.txt", "asset-1.txt", "asset-2.txt"])
+        _drain(streamer)
+        assert streamer.resident_bytes == 23
+        assert streamer.evict("asset-1.txt")
+        diag = streamer.diagnostics()
+
+    assert diag.resident_bytes == 16
+    assert diag.resident_assets == 2
+    assert diag.evictions == 1
+
+
 def test_pinned_assets_survive_budget_pressure_until_explicitly_unpinned(tmp_path):
     manager = _manager(tmp_path, 3)
     budget = AssetStreamingBudget(max_resident_bytes=1024, max_resident_assets=1)
