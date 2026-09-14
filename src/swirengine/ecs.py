@@ -8,6 +8,22 @@ T = TypeVar("T")
 SystemCallable = Callable[["ECSWorld", float], None]
 
 
+@dataclass(slots=True)
+class ECSDiagnostics:
+    """Deterministic counters for ECS query/update work."""
+
+    query_calls: int = 0
+    query_candidates: int = 0
+    query_matches: int = 0
+    system_updates: int = 0
+
+    def reset(self) -> None:
+        self.query_calls = 0
+        self.query_candidates = 0
+        self.query_matches = 0
+        self.system_updates = 0
+
+
 class Entity:
     """Lightweight component container owned by an :class:`ECSWorld`."""
 
@@ -36,9 +52,12 @@ class Entity:
     def add(self, component: T, *, replace: bool = False) -> T:
         """Attach a component and return it for fluent creator-facing setup."""
         component_type = type(component)
-        if component_type in self._components and not replace:
+        previous = self._components.get(component_type)
+        if previous is not None and not replace:
             raise ValueError(f"entity {self.id} already has component {component_type.__name__}")
         self._components[component_type] = component
+        if previous is None and self._world is not None:
+            self._world._index_component(self.id, component_type)
         return component
 
     def set(self, component: T) -> T:
@@ -66,10 +85,14 @@ class Entity:
     def remove(self, component_type: type[T]) -> T | None:
         exact = self._components.pop(component_type, None)
         if exact is not None:
+            if self._world is not None:
+                self._world._unindex_component(self.id, type(exact))
             return exact  # type: ignore[return-value]
         for stored_type, component in tuple(self._components.items()):
             if isinstance(component, component_type):
                 del self._components[stored_type]
+                if self._world is not None:
+                    self._world._unindex_component(self.id, stored_type)
                 return component
         return None
 
@@ -88,13 +111,24 @@ class _SystemEntry:
 
 
 class ECSWorld:
-    """Deterministic entity/component/system runtime with no mandatory base component type."""
+    """Deterministic entity/component/system runtime with indexed component queries.
+
+    Exact component membership is indexed as entities change. Queries use compatible
+    component indexes to visit only candidate entities, while preserving subclass-aware
+    component semantics and deterministic entity insertion order.
+    """
 
     def __init__(self) -> None:
         self._entities: dict[int, Entity] = {}
+        self._entity_order: dict[int, int] = {}
+        self._component_index: dict[type[object], set[int]] = {}
         self._systems: list[_SystemEntry] = []
+        self._ordered_system_cache: tuple[_SystemEntry, ...] = ()
+        self._systems_dirty = False
         self._next_entity_id = 1
+        self._next_entity_order = 0
         self._next_system_order = 0
+        self.diagnostics = ECSDiagnostics()
 
     @property
     def entities(self) -> tuple[Entity, ...]:
@@ -103,6 +137,17 @@ class ECSWorld:
     @property
     def systems(self) -> tuple[object, ...]:
         return tuple(entry.system for entry in self._ordered_systems())
+
+    def _index_component(self, entity_id: int, component_type: type[object]) -> None:
+        self._component_index.setdefault(component_type, set()).add(entity_id)
+
+    def _unindex_component(self, entity_id: int, component_type: type[object]) -> None:
+        entity_ids = self._component_index.get(component_type)
+        if entity_ids is None:
+            return
+        entity_ids.discard(entity_id)
+        if not entity_ids:
+            del self._component_index[component_type]
 
     def create_entity(
         self,
@@ -130,7 +175,25 @@ class ECSWorld:
             world=self,
         )
         self._entities[entity.id] = entity
+        self._entity_order[entity.id] = self._next_entity_order
+        self._next_entity_order += 1
         self._next_entity_id = max(self._next_entity_id, entity.id + 1)
+        return entity
+
+    def compose_entity(
+        self,
+        *components: object,
+        name: str = "",
+        enabled: bool = True,
+        tags: Iterable[str] = (),
+    ) -> Entity:
+        """Validate a component bundle, then create and populate one entity atomically."""
+        component_types = tuple(type(component) for component in components)
+        if len(set(component_types)) != len(component_types):
+            raise ValueError("component bundle contains duplicate concrete types")
+        entity = self.create_entity(name=name, enabled=enabled, tags=tags)
+        for component in components:
+            entity.add(component)
         return entity
 
     def entity(self, entity_id: int) -> Entity | None:
@@ -146,7 +209,10 @@ class ECSWorld:
             return False
         if isinstance(entity, Entity) and existing is not entity:
             return False
+        for component_type in tuple(existing._components):
+            self._unindex_component(entity_id, component_type)
         del self._entities[entity_id]
+        self._entity_order.pop(entity_id, None)
         existing._world = None
         return True
 
@@ -154,6 +220,28 @@ class ECSWorld:
         for entity in self._entities.values():
             entity._world = None
         self._entities.clear()
+        self._entity_order.clear()
+        self._component_index.clear()
+
+    def _candidate_ids(self, component_types: tuple[type[object], ...]) -> set[int] | None:
+        if not component_types:
+            return None
+        candidate_groups: list[set[int]] = []
+        for requested_type in component_types:
+            compatible: set[int] = set()
+            for stored_type, entity_ids in self._component_index.items():
+                if issubclass(stored_type, requested_type):
+                    compatible.update(entity_ids)
+            if not compatible:
+                return set()
+            candidate_groups.append(compatible)
+        candidate_groups.sort(key=len)
+        candidates = candidate_groups[0].copy()
+        for group in candidate_groups[1:]:
+            candidates.intersection_update(group)
+            if not candidates:
+                break
+        return candidates
 
     def query(
         self,
@@ -162,13 +250,28 @@ class ECSWorld:
         tags: Iterable[str] = (),
     ) -> tuple[Entity, ...]:
         required_tags = frozenset(tags)
-        return tuple(
+        candidates = self._candidate_ids(component_types)
+        self.diagnostics.query_calls += 1
+
+        if candidates is None:
+            candidate_entities: Iterable[Entity] = self._entities.values()
+            candidate_count = len(self._entities)
+        else:
+            candidate_ids = sorted(candidates, key=self._entity_order.__getitem__)
+            candidate_entities = (self._entities[entity_id] for entity_id in candidate_ids)
+            candidate_count = len(candidate_ids)
+
+        self.diagnostics.query_candidates += candidate_count
+        if not candidate_count:
+            return ()
+
+        result = tuple(
             entity
-            for entity in self._entities.values()
-            if (entity.enabled or not enabled_only)
-            and required_tags.issubset(entity.tags)
-            and entity.has(*component_types)
+            for entity in candidate_entities
+            if (entity.enabled or not enabled_only) and required_tags.issubset(entity.tags)
         )
+        self.diagnostics.query_matches += len(result)
+        return result
 
     def rows(
         self,
@@ -195,17 +298,30 @@ class ECSWorld:
             _SystemEntry(priority=int(priority), order=self._next_system_order, system=system)
         )
         self._next_system_order += 1
+        self._systems_dirty = True
+        hook = getattr(system, "on_added_to_world", None)
+        if callable(hook):
+            hook(self)
         return system
 
     def remove_system(self, system: object) -> bool:
         for index, entry in enumerate(self._systems):
             if entry.system is system:
                 del self._systems[index]
+                self._systems_dirty = True
+                hook = getattr(system, "on_removed_from_world", None)
+                if callable(hook):
+                    hook(self)
                 return True
         return False
 
     def _ordered_systems(self) -> tuple[_SystemEntry, ...]:
-        return tuple(sorted(self._systems, key=lambda entry: (entry.priority, entry.order)))
+        if self._systems_dirty or len(self._ordered_system_cache) != len(self._systems):
+            self._ordered_system_cache = tuple(
+                sorted(self._systems, key=lambda entry: (entry.priority, entry.order))
+            )
+            self._systems_dirty = False
+        return self._ordered_system_cache
 
     def update(self, dt: float) -> None:
         delta = float(dt)
@@ -220,3 +336,4 @@ class ECSWorld:
                 update(self, delta)
             else:
                 system(self, delta)  # type: ignore[operator]
+            self.diagnostics.system_updates += 1
