@@ -4,26 +4,26 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-0.0%25-6c757d?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-0%2F10-6c757d?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-10.0%25-0969da?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-1%2F10-0969da?style=for-the-badge">
   <img alt="Status" src="https://img.shields.io/badge/STATUS-ACTIVE-0969da?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-░░░░░░░░░░░░░░░░░░░░ 0.0%
+██░░░░░░░░░░░░░░░░░░ 10.0%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **0** | **10** | **10** | **0.0%** |
+| **1** | **9** | **10** | **10.0%** |
 
 > Progress is derived only from the equal-weight verified deliverables below. A checkbox becomes
 > complete only after implementation, regression coverage, README/CHANGELOG synchronization and
 > the relevant CI/runtime validation.
 
-- [ ] GPU Instancing + Frustum Culling: native per-instance GPU attributes/submissions, reusable buffers,
+- [x] GPU Instancing + Frustum Culling: native per-instance GPU attributes/submissions, reusable buffers,
       CPU view-frustum rejection, diagnostics and performance gates
 - [ ] 3D Skeletal Animation: glTF skins/skeletons, GPU skinning, clips, blending and creator-friendly
       animation control

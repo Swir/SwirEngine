@@ -11,6 +11,10 @@ on:
       - "examples/demo_gpu_instancing.py"
       - "tools/benchmark_gpu_instancing.py"
       - "tools/verify_gpu_instancing_opengl.py"
+      - "docs/GPU_INSTANCING_1_3.md"
+      - "CHANGELOG.d/1.3.0-gpu-instancing-culling.md"
+      - "ROADMAP_1_3.md"
+      - "README.md"
       - ".github/workflows/gpu-instancing-1-3.yml"
   push:
     branches: ["main"]
@@ -20,7 +24,13 @@ on:
       - "src/swirengine/graphics/stats.py"
       - "src/swirengine/__init__.py"
       - "tests/test_instancing.py"
+      - "examples/demo_gpu_instancing.py"
+      - "tools/benchmark_gpu_instancing.py"
       - "tools/verify_gpu_instancing_opengl.py"
+      - "docs/GPU_INSTANCING_1_3.md"
+      - "CHANGELOG.d/1.3.0-gpu-instancing-culling.md"
+      - "ROADMAP_1_3.md"
+      - "README.md"
       - ".github/workflows/gpu-instancing-1-3.yml"
 
 permissions:
