@@ -4,23 +4,13 @@ from dataclasses import dataclass, field
 from typing import Protocol
 
 from ..math.types import Color, Transform, Vec3, perspective
+from . import shader_pipeline
 from .camera3d import Camera3D
 from .lights import DirectionalLight3D, select_lights
 from .mesh import MeshData
-from .shader_pipeline import (
-    DefineValue,
-    ShaderDiagnostics,
-    ShaderHookPoint,
-    ShaderMaterial3D,
-    ShaderPipelineError,
-    ShaderProgramCache,
-    ShaderTemplate,
-    UniformValue,
-    prepare_shader_variant,
-)
 
 
-SURFACE_3D_TEMPLATE = ShaderTemplate(
+SURFACE_3D_TEMPLATE = shader_pipeline.ShaderTemplate(
     "swir_surface_3d",
     """#version 330
 in vec3 in_pos;
@@ -71,11 +61,11 @@ void main() {
 }
 """,
     hook_points=(
-        ShaderHookPoint("vertex_globals", "vertex"),
-        ShaderHookPoint("vertex_surface", "vertex"),
-        ShaderHookPoint("fragment_globals", "fragment"),
-        ShaderHookPoint("fragment_surface", "fragment"),
-        ShaderHookPoint("fragment_lighting", "fragment"),
+        shader_pipeline.ShaderHookPoint("vertex_globals", "vertex"),
+        shader_pipeline.ShaderHookPoint("vertex_surface", "vertex"),
+        shader_pipeline.ShaderHookPoint("fragment_globals", "fragment"),
+        shader_pipeline.ShaderHookPoint("fragment_surface", "fragment"),
+        shader_pipeline.ShaderHookPoint("fragment_lighting", "fragment"),
     ),
 )
 
@@ -85,7 +75,7 @@ class ShaderMesh3D:
     """3D mesh rendered through a validated SwirEngine shader material variant."""
 
     mesh: MeshData
-    shader_material: ShaderMaterial3D
+    shader_material: shader_pipeline.ShaderMaterial3D
     position: Vec3 = field(default_factory=Vec3)
     rotation: Vec3 = field(default_factory=Vec3)
     scale: Vec3 = field(default_factory=lambda: Vec3(1.0, 1.0, 1.0))
@@ -105,19 +95,19 @@ class ShaderMesh3D:
 
 def shader_material_3d(
     *,
-    defines: dict[str, DefineValue] | None = None,
+    defines: dict[str, shader_pipeline.DefineValue] | None = None,
     hooks: dict[str, str] | None = None,
-    uniforms: dict[str, UniformValue] | None = None,
+    uniforms: dict[str, shader_pipeline.UniformValue] | None = None,
     strict_uniforms: bool = True,
-) -> ShaderMaterial3D:
+) -> shader_pipeline.ShaderMaterial3D:
     """Create a context-free material for the engine-owned ShaderMesh3D template."""
 
-    variant = prepare_shader_variant(
+    variant = shader_pipeline.prepare_shader_variant(
         SURFACE_3D_TEMPLATE,
         defines=defines,
         hooks=hooks,
     )
-    return ShaderMaterial3D(
+    return shader_pipeline.ShaderMaterial3D(
         variant,
         uniforms=dict(uniforms or {}),
         strict_uniforms=strict_uniforms,
@@ -144,21 +134,21 @@ class ShaderMaterialRenderPipeline:
     def __init__(self, host: _RendererHost, *, max_programs: int = 64) -> None:
         self.host = host
         self.ctx = host.ctx
-        self.programs = ShaderProgramCache(self.ctx, max_programs=max_programs)
+        self.programs = shader_pipeline.ShaderProgramCache(self.ctx, max_programs=max_programs)
         self._mesh_buffers: dict[int, tuple[object, int]] = {}
         self._mesh_vaos: dict[tuple[int, str], object] = {}
 
     @property
-    def diagnostics(self) -> ShaderDiagnostics:
+    def diagnostics(self) -> shader_pipeline.ShaderDiagnostics:
         return self.programs.diagnostics
 
-    def _validate_material(self, material: ShaderMaterial3D) -> None:
+    def _validate_material(self, material: shader_pipeline.ShaderMaterial3D) -> None:
         variant = material.variant
         if (
             variant.template_name != SURFACE_3D_TEMPLATE.name
             or variant.template_fingerprint != SURFACE_3D_TEMPLATE.fingerprint
         ):
-            raise ShaderPipelineError(
+            raise shader_pipeline.ShaderPipelineError(
                 "ShaderMesh3D only accepts variants prepared from the engine-owned "
                 "SURFACE_3D_TEMPLATE"
             )
