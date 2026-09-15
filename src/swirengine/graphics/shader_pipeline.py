@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import hashlib
+import math
 import re
 from collections import OrderedDict
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Literal, Mapping, TypeAlias
+from typing import Literal, TypeAlias
 
 ShaderStage: TypeAlias = Literal["vertex", "fragment"]
 DefineValue: TypeAlias = bool | int | float | str
@@ -171,12 +173,7 @@ class ShaderDiagnostics:
 
 @dataclass(slots=True)
 class ShaderMaterial3D:
-    """A prepared shader variant plus validated creator uniform values.
-
-    The class is additive: existing :class:`Material3D` continues to work unchanged.
-    It is intentionally backend-agnostic so renderers can bind it without allowing
-    creator code to replace engine-owned GL state or vertex layouts.
-    """
+    """A prepared shader variant plus validated creator uniform values."""
 
     variant: ShaderVariantSpec
     uniforms: dict[str, UniformValue] = field(default_factory=dict)
@@ -219,12 +216,7 @@ class ShaderMaterial3D:
 
 
 class ShaderProgramCache:
-    """Bounded LRU cache for prepared shader variants.
-
-    ``resolve()`` performs only a dictionary/LRU lookup on a prepared variant until
-    eviction or invalidation. Shader source expansion and safety validation belong in
-    ``prepare()`` so they stay out of the per-frame render path.
-    """
+    """Bounded LRU cache for prepared shader variants."""
 
     def __init__(
         self,
@@ -332,14 +324,14 @@ def _normalize_defines(
         raise ShaderSafetyError(f"shader variant exceeds {safety.max_defines} defines")
     normalized: list[tuple[str, str]] = []
     for name, value in defines.items():
-        if not _IDENTIFIER.fullmatch(name) or not name[0].isalpha() and name[0] != "_":
+        if not _IDENTIFIER.fullmatch(name):
             raise ShaderSafetyError(f"invalid shader define name: {name!r}")
         if isinstance(value, bool):
             token = "1" if value else "0"
         elif isinstance(value, int):
             token = str(value)
         elif isinstance(value, float):
-            if not math_isfinite(value):
+            if not math.isfinite(value):
                 raise ShaderSafetyError(f"shader define {name!r} must be finite")
             token = format(value, ".9g")
         elif isinstance(value, str) and _DEFINE_TOKEN.fullmatch(value):
@@ -411,19 +403,15 @@ def _normalize_uniform_value(value: UniformValue) -> UniformValue:
     if isinstance(value, int):
         return value
     if isinstance(value, float):
-        if not math_isfinite(value):
+        if not math.isfinite(value):
             raise ValueError("shader uniform values must be finite")
         return float(value)
     if isinstance(value, tuple) and 1 <= len(value) <= 4:
         result = tuple(float(item) for item in value)
-        if not all(math_isfinite(item) for item in result):
+        if not all(math.isfinite(item) for item in result):
             raise ValueError("shader uniform tuple values must be finite")
         return result
     raise TypeError("shader uniform must be bool/int/float or a float tuple of length 1..4")
-
-
-def math_isfinite(value: float) -> bool:
-    return value == value and value not in (float("inf"), float("-inf"))
 
 
 def _release_program(program: object) -> None:
