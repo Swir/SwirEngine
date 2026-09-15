@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-from swirengine.core.scene import Scene
-from swirengine.editor_frontend import EditorFrontendController
-from swirengine.editor_systems import CreatorEditorIntegration, EditorSystemRegistry
-from swirengine.editor_workspace import EditorWorkspace
+from swirengine import EditorFrontendController, EditorWorkspace, Scene
+from swirengine.creator import CreatorEditorIntegration, EditorSystemRegistry
 from swirengine.gameplay import Scheduler
-
 
 scene = Scene()
 workspace = EditorWorkspace(scene, project_name="SwirEngine 1.3 Creator Demo")
