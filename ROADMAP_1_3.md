@@ -4,20 +4,20 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-90.0%25-0969da?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-9%2F10-0969da?style=for-the-badge">
-  <img alt="Status" src="https://img.shields.io/badge/STATUS-ACTIVE-0969da?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-100.0%25-2ea043?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-10%2F10-2ea043?style=for-the-badge">
+  <img alt="Status" src="https://img.shields.io/badge/STATUS-COMPLETE-2ea043?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-██████████████████░░ 90.0%
+████████████████████ 100.0%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **9** | **1** | **10** | **90.0%** |
+| **10** | **0** | **10** | **100.0%** |
 
 > Progress is derived only from the equal-weight verified deliverables below. A checkbox becomes
 > complete only after implementation, regression coverage, README/CHANGELOG synchronization and
@@ -41,16 +41,16 @@
       composition-friendly gameplay utilities
 - [x] Creator / Editor Integration: expose 1.3 systems through the existing workspace, inspector,
       viewport and diagnostics without starting a separate 2.0 editor project
-- [ ] 1.3 Full Game + Hardening + Release Gate: complete validation game, API/docs audit,
-      platform/packaging verification, performance contracts and one final 1.3 release
+- [x] 1.3 Full Game + Hardening + Release Gate: integrated Neon Frontier validation game, API/docs audit,
+      platform/packaging verification, performance contracts and a single guarded 1.3 release path
 
 <!-- ROADMAP-PROGRESS:END -->
 
 ## Direction
 
-SwirEngine 1.3 is the **Gameplay & Creator Power** line. It is additive to the stable public 1.x API
-and focuses on larger dynamic worlds, stronger 3D production systems, lower renderer overhead and
-more complete creator workflows.
+SwirEngine 1.3 is the completed **Gameplay & Creator Power** line. It is additive to the stable public
+1.x API and expands larger dynamic worlds, stronger 3D production systems, lower renderer overhead
+and more complete creator workflows.
 
 The historical 1.0 roadmap remains locked at 31/31 (100%) in [`ROADMAP.md`](ROADMAP.md), the
 completed 1.1 roadmap remains locked at 10/10 (100%) in [`ROADMAP_1_1.md`](ROADMAP_1_1.md), and
@@ -58,6 +58,7 @@ the published 1.2 roadmap remains locked at 10/10 (100%) in [`ROADMAP_1_2.md`](R
 
 ## Release policy
 
-No PyPI package, GitHub Release or 1.3 release tag is allowed until this roadmap reaches exactly
-10/10 = 100.0%, all checkboxes are `[x]`, and the exact release head passes the full
-CI/runtime/demo/packaging gate plus public-artifact post-release verification.
+The 1.3 roadmap is now exactly 10/10 = 100.0%. Publication is permitted only from the exact final
+release head after the strict `tools/verify_1_3_release_candidate.py --require-complete` contract,
+full CI/runtime/demo/packaging matrix and Trusted Publishing workflow succeed. Public PyPI metadata,
+clean installation and Windows x64 / Python 3.14 validation remain mandatory post-release checks.

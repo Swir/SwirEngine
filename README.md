@@ -1,20 +1,25 @@
-# SwirEngine 1.2.0
+# SwirEngine 1.3.0
 
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://pypi.org/project/swirengine/"><img alt="PyPI" src="https://img.shields.io/pypi/v/swirengine?style=flat-square"></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.10--3.13%20cross--platform%20%7C%203.14%20Windows-3776AB?style=flat-square&logo=python&logoColor=white">
+  <img alt="Roadmap" src="https://img.shields.io/badge/1.3%20ROADMAP-100%25-2ea043?style=flat-square">
   <img alt="Status" src="https://img.shields.io/badge/status-stable-2ea043?style=flat-square">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square">
 </p>
 
-**SwirEngine** is a Python-first 2D/3D game engine built around an approachable API. It combines Python gameplay code with a real OpenGL renderer, scenes, prefabs/ECS, physics, animation, audio, responsive UI, input rebinding, gameplay networking, asset streaming, native desktop export and complete 3D validation demos.
+**SwirEngine 1.3.0 is the current stable release** of a Python-first 2D/3D game engine built around an approachable, stable 1.x API. It combines Python gameplay code with a real OpenGL renderer, GPU instancing, skeletal animation, 2D/3D physics and collision, navigation, large-world streaming, shader/material variants, editor integration, gameplay utilities, responsive UI, audio, networking and native desktop export.
 
-SwirEngine **1.2.0 is the current stable release** published on PyPI and GitHub. The historical 1.0 roadmap is locked at **31/31 = 100%**, 1.1 is locked at **10/10 = 100%**, and the published 1.2 roadmap is locked at **10/10 = 100%**. Development after the stable release is tracked separately in [`ROADMAP_1_3.md`](ROADMAP_1_3.md); unfinished 1.3 work is **not** published as an intermediate package.
+The 1.3 **Gameplay & Creator Power** roadmap is complete at **10/10 = 100.0%**. Historical 1.0, 1.1 and 1.2 roadmaps remain locked at 100%.
 
-## Install stable 1.2.0
+```text
+████████████████████ 100.0%
+```
 
-Verified support covers **Python 3.10-3.13** on Windows, Linux and macOS, plus **Python 3.14 on Windows x86-64**.
+## Install
+
+Verified support covers **Python 3.10-3.13** on Windows, Linux and macOS, plus **Python 3.14 on Windows x86-64** through the dedicated validated native-wheel path.
 
 ```bash
 python -m pip install -U swirengine
@@ -25,10 +30,6 @@ Optional audio support:
 ```bash
 python -m pip install -U "swirengine[audio]"
 ```
-
-### Python 3.14 on Windows
-
-Stable upstream `moderngl 5.12.0` and `glcontext 3.0.0` do not currently provide the Windows x86-64 CPython 3.14 wheel combination required by the normal dependency path. SwirEngine therefore builds and validates a dedicated `cp314-cp314-win_amd64` wheel path in GitHub Actions, proves normal pip candidate selection and performs native import validation. Linux/macOS remain on Python 3.10-3.13 until an equivalent dependency path is reproducibly verified.
 
 ## Quick 2D game
 
@@ -71,323 +72,165 @@ def update(dt):
 game.run()
 ```
 
-## Active 1.3 development — Gameplay & Creator Power
+## What shipped in 1.3
 
-The package version intentionally remains **1.2.0** while the 1.3 roadmap is developed. No 1.3 PyPI package, tag or GitHub Release is created until the whole roadmap reaches 10/10 and passes the final release gate.
+### 1. GPU instancing + frustum culling
 
-### GPU instancing + frustum culling — milestone 1/10
+- `Instance3D`, `InstancedMesh3D`, `InstancedCube3D`, `Frustum3D`
+- real per-instance GPU attributes and one instanced submission per compatible visible batch
+- reusable CPU/GPU staging buffers
+- conservative frustum rejection and renderer diagnostics
+- deterministic 1,000-instance draw/cull regression gates
 
-The first verified 1.3 milestone adds a native dynamic-instancing path alongside the existing CPU-baked static batching system:
+### 2. 3D skeletal animation
 
-- additive `Instance3D`, `InstancedMesh3D`, `InstancedCube3D` and `Frustum3D` APIs
-- real ModernGL per-instance attributes with one `vao.render(..., instances=N)` submission for a visible batch
-- reusable grow-on-demand GPU instance buffers and a reusable float32 CPU staging array
-- direct transform packing without allocating a separate 4x4 NumPy transform matrix for every instance
-- conservative CPU frustum rejection using scale-aware mesh bounding spheres
-- per-instance RGBA variation plus existing `Material3D` forward Phong/PBR channels
-- directional, point and spot lights under the existing deterministic light budgets
-- renderer diagnostics for instance candidates, culled instances, submitted instances and instance batches
+- glTF/GLB skins, joints, weights and inverse-bind matrices
+- STEP, LINEAR and CUBICSPLINE animation channels
+- named clips, looping, crossfades and hierarchical poses
+- GPU skinning with a deterministic 64-joint palette budget
+- production OpenGL smoke validation
 
-The deterministic regression contract requires **1,000 visible compatible instances to map from a 1,000-draw baseline to one instanced draw**, and a separate 1,000-instance culling case requires exactly **100 visible / 900 culled**. `tools/benchmark_gpu_instancing.py` measures host-dependent CPU cull+pack work for 10,000 instances without converting that timing into an FPS claim.
+### 3. 3D collision / physics foundation
 
-A real Xvfb/software-OpenGL CI gate compiles and executes the production instanced draw path. `examples/demo_gpu_instancing.py` builds a **6,400-instance** PBR-lit field for creator testing.
+- `AABB3D`, sphere/box colliders and `CollisionWorld3D`
+- spatial-hash broad phase and deterministic shape queries
+- overlap, point, sphere, box and ray queries with filtering
+- fixed-step `RigidBody3D` / `PhysicsWorld3D`
+- measurable candidate-reduction performance gates
 
-Current boundary: the 1.3 milestone integrates instanced objects into the direct forward pass. Existing shadow-map overlay and additive cubemap-IBL auxiliary passes still operate on regular `Mesh3D` objects; SwirEngine does not silently fall back to one draw per instance for those passes.
+### 4. Navigation & pathfinding
 
-See [`docs/GPU_INSTANCING_1_3.md`](docs/GPU_INSTANCING_1_3.md) and [`ROADMAP_1_3.md`](ROADMAP_1_3.md).
+- weighted deterministic A* for 2D and grounded 3D XZ navigation
+- traversal costs, blocked cells and safe diagonal movement
+- bounded revision-aware route caching
+- navigation agents with automatic repathing
+- stable provider protocols for future navigation backends
 
-### 3D skeletal animation — milestone 2/10
+### 5. Large world / chunk streaming
 
-The second verified 1.3 milestone adds an additive skinned-character pipeline while preserving the established static glTF loaders and stable 1.x behavior:
+- chunk registry, chunk content and bounded `LargeWorldStreamer`
+- local preload/active/retention windows
+- bounded activation, deactivation and asset-finalization budgets
+- scene/ECS ownership and streaming hooks
+- sparse provider-miss caching and deterministic diagnostics
 
-- creator-facing `swirengine.skeletal` namespace with skeletons, skins, poses, clips and controllers
-- glTF/GLB `skins`, `JOINTS_0`, `WEIGHTS_0` and inverse-bind-matrix import
-- four weighted joint influences per vertex with normalized float/unsigned-byte/unsigned-short weights
-- STEP, LINEAR and CUBICSPLINE animation channels plus shortest-path quaternion SLERP
-- named clip playback, looping/non-looping terminal poses and smooth crossfades
-- hierarchical pose evaluation and a deterministic **64-joint** GPU palette budget
-- OpenGL 3.3 transform-feedback skin deformation for animated positions and normals
-- the deformed stream reuses the existing forward Phong/PBR material and lighting path rather than duplicating renderer behavior
-- renderer diagnostics for skinned meshes, animated vertices and submitted skin joints
+### 6. Advanced material & shader pipeline
 
-A dedicated Xvfb/software-OpenGL gate executes the real production GPU-skinning path. Generated glTF regression coverage proves skin/weight/animation import and verifies that the legacy static glTF loader remains separate and compatible. `examples/demo_skeletal_animation.py` provides a runnable creator example.
+- `ShaderTemplate`, `ShaderHookPoint`, `ShaderVariantSpec`, `ShaderMaterial3D`
+- production `ShaderMesh3D`
+- safe creator hook points and custom uniforms
+- bounded LRU shader program cache
+- shared mesh uploads and cached VAO bindings
 
-Current boundary: the new skinned path participates in the direct forward renderer. Existing auxiliary shadow-map and additive cubemap-IBL passes are not silently converted to CPU deformation or per-joint fallback behavior.
+### 7. 2D renderer power pass
 
-See [`docs/SKELETAL_ANIMATION_1_3.md`](docs/SKELETAL_ANIMATION_1_3.md) and [`ROADMAP_1_3.md`](ROADMAP_1_3.md).
+- tilemap viewport-local submission
+- cached render roots and dirty transform synchronization
+- O(1) tile counts
+- conservative world-space culling
+- reusable NumPy sprite staging buffers
+- renderer diagnostics for culling and tilemap locality
 
-### 3D collision / physics foundation — milestone 3/10
+### 8. Advanced gameplay framework
 
-The third verified 1.3 milestone brings gameplay collision queries and deterministic fixed-step movement into the 3D API without adding a heavyweight native physics dependency:
+- `Scheduler`, `TimerHandle`, `Signal`, `ObjectPool`, `Cooldown`, `Spawner`, `GameplayRuntime`
+- deterministic min-heap timers
+- mutation-safe signals
+- prewarmed bounded pools
+- allocation-reuse and dormant-timer regression gates
 
-- additive `AABB3D`, `SphereBounds3D`, `BoxCollider3D`, `SphereCollider3D` and `CollisionWorld3D`
-- live transform tracking for creator objects, with explicit collider dimensions available for arbitrary meshes
-- deterministic 3D spatial-hash broad phase plus box/box, sphere/sphere and sphere/box narrow phase
-- layer/mask/tag filtering, box/sphere/point overlaps, deterministic collision pairs and distance-sorted raycasts
-- finite raycasts restrict exact shape tests to intersected spatial cells instead of scanning the full registry
-- additive `RigidBody3D` / `PhysicsWorld3D` with dynamic, kinematic and static bodies, forces, impulses, gravity, damping and restitution
-- fixed substeps, catch-up caps, `dropped_time` diagnostics and interpolation alpha for stable gameplay simulation
+### 9. Creator / editor integration
 
-The performance contract keeps claims measurable: a sparse **1,000-collider** pair workload must stay at least **100x below brute-force candidate enumeration**, and a short finite ray through a 1,000-collider registry must visit fewer than ten candidates. The dedicated 10,000-collider benchmark reports host timing only as diagnostic data and does not claim an FPS uplift.
+- `swirengine.creator` integration over the existing editor architecture
+- lazy subsystem diagnostics and deterministic metadata filtering
+- no background polling of hidden systems
+- integration with existing hierarchy, inspector, viewport, assets, console, profiler and playtest workflow
 
-Current boundary: box colliders are axis-aligned, rigid-body response is box-vs-box, and sphere colliders currently participate in queries rather than rigid-body response. This milestone does not claim OBB/mesh collision, CCD, joints or a full constraint solver.
+### 10. Full game + hardening + release gate
 
-See [`docs/COLLISION_PHYSICS_1_3.md`](docs/COLLISION_PHYSICS_1_3.md) and [`ROADMAP_1_3.md`](ROADMAP_1_3.md).
+**Neon Frontier 1.3** is the integrated validation game for the release. One application exercises production OpenGL, GPU instancing, `ShaderMesh3D`, 3D collision queries, 3D navigation, bounded large-world streaming, gameplay scheduling, camera and lighting.
 
-### Navigation & pathfinding — milestone 4/10
+The final gate validates:
 
-The fourth verified 1.3 milestone adds deterministic navigation for 2D games and grounded 3D worlds while keeping future navmesh implementations behind a stable provider seam:
+- full pytest matrix and strict Ruff/compileall
+- Windows, Linux and macOS Python coverage
+- Windows x64 / Python 3.14 native wheel selection and import path
+- wheel/sdist metadata and clean-wheel installation
+- one-file and one-directory native desktop export
+- real Xvfb/software-OpenGL runtime execution
+- Windows one-file `NeonFrontier13.exe` packaged runtime probe
+- deterministic performance contracts without synthetic FPS claims
+- strict `tools/verify_1_3_release_candidate.py --require-complete`
+- public PyPI metadata and clean-install verification after publication
 
-- dedicated `swirengine.navigation` creator namespace
-- weighted deterministic A* on `NavigationGrid2D` and an XZ-plane `NavigationGrid3D`
-- blocked cells, traversal costs, cardinal/diagonal movement and safe no-corner-cutting behavior by default
-- bounded revision-aware route caching so unchanged repeated routes do not repeat A* expansion
-- obstacle/cost revisions invalidate stale routes and trigger automatic agent repathing
-- `max_expansions` supports budgeted searches without poisoning the stable route cache
-- `NavigationAgent2D` / `NavigationAgent3D` consume a distance budget across waypoints and preserve 3D target height
-- runtime-checkable `NavigationProvider2D` / `NavigationProvider3D` protocols provide the compatibility route toward later authored/generated navmesh backends
-
-The regression contract performs one cold 64x64 route query and then **999 identical requests**: it requires exactly one cache miss, 999 cache hits and zero A* node expansion on the final cached query. `tools/benchmark_navigation.py` separately runs one cold 128x128 obstacle route plus 1,000 cached requests and reports host timing only; no FPS uplift is claimed.
-
-Current boundary: this milestone provides grid navigation and flat XZ-plane 3D navigation. It does not claim polygon navmesh generation, off-mesh links, crowd steering/RVO, slope traversal or arbitrary 3D navigation volumes.
-
-See [`docs/NAVIGATION_PATHFINDING_1_3.md`](docs/NAVIGATION_PATHFINDING_1_3.md) and [`ROADMAP_1_3.md`](ROADMAP_1_3.md).
-
-### Large world / chunk streaming — milestone 5/10
-
-The fifth verified 1.3 milestone adds deterministic large-world residency without turning every frame into a scan of the full authored or procedural world:
-
-- dedicated `swirengine.large_world` creator namespace with `ChunkKey`, `ChunkDefinition`, `ChunkRegistry`, `ChunkContent`, `LargeWorldSettings` and `LargeWorldStreamer`
-- shared 2D/3D addressing with floor-correct negative coordinates, plus local preload, active and retention windows
-- nearest-first bounded activation and bounded deactivation/asset-finalization work for teleport and fast-travel scenarios
-- `SceneMount` integration so chunk-owned scene objects and ECS entities follow established lifecycle cleanup
-- optional `AssetStreamingManager` staging with shared-asset reference-counted pinning and the existing deterministic LRU residency policy
-- optional visibility gating plus creator-visible activation/asset/deactivation-hook failures and single-chunk retry
-- sparse provider-miss caching, bounded by retention; `ChunkRegistry.revision` invalidates authored-world misses automatically and mutable procedural providers can invalidate explicitly
-- diagnostics for local candidates, provider queries, ready/active/waiting/failed chunks and cached missing keys
-
-The measurable performance contract is based on locality rather than a synthetic FPS number: update candidate work is bounded by `(2 * preload_radius + 1)^dimensions`. The dedicated 3D benchmark requires exactly **125 local candidates** for radius 2 while moving through hundreds of far-separated positions, and sparse-world regressions prove provider misses are not re-queried every frame or retained without bound.
-
-Current boundary: this milestone is chunk lifetime/residency and activation infrastructure. It does not claim terrain LOD/clipmaps, renderer occlusion culling, a persistent world database, editor terrain authoring or network interest management.
-
-See [`docs/LARGE_WORLD_STREAMING_1_3.md`](docs/LARGE_WORLD_STREAMING_1_3.md) and [`ROADMAP_1_3.md`](ROADMAP_1_3.md).
-
-### Advanced material & shader pipeline — milestone 6/10
-
-The sixth verified 1.3 milestone adds controlled creator shader customization without replacing the engine-owned render contract:
-
-- additive `ShaderTemplate`, `ShaderHookPoint`, deterministic `ShaderVariantSpec` and `ShaderMaterial3D` APIs
-- context-free `prepare_shader_variant()` plus the creator-friendly `shader_material_3d()` helper
-- production `ShaderMesh3D` rendering through the renderer selected by `Game`
-- bounded LRU backend program cache with hit/miss/failure/eviction/invalidation diagnostics
-- explicit hook seams for vertex/fragment globals, surface modification and post-lighting work
-- conservative validation that rejects unknown hooks, unsafe preprocessor/layout/state escape paths and invalid defines/uniforms
-- shared mesh VBOs across variants plus cached VAO bindings per mesh/variant key
-- existing `Mesh3D`, `Material3D`, Phong and PBR paths remain unchanged
-
-The deterministic performance contract requires **1,000 resolves of one prepared variant to produce exactly one backend compile, one miss and 999 cache hits**. A production-pipeline regression also requires two compatible shader meshes to share one uploaded VBO and one VAO binding. `tools/benchmark_shader_pipeline.py` repeats 10,000 cache resolves as host timing only; it does not claim an FPS uplift.
-
-A dedicated Xvfb/software-OpenGL gate compiles and renders a real custom `ShaderMesh3D` through `Game`, including a runtime custom uniform and fragment hook. Current boundary: custom shader meshes participate in the direct-forward pass and do not silently claim auxiliary shadow-map/IBL support or arbitrary custom sampler binding.
-
-See [`docs/ADVANCED_SHADER_MATERIAL_1_3.md`](docs/ADVANCED_SHADER_MATERIAL_1_3.md) and [`ROADMAP_1_3.md`](ROADMAP_1_3.md).
-
-### 2D renderer power pass — milestone 7/10
-
-The seventh verified 1.3 milestone removes several frame-sized 2D hot paths while preserving the stable 1.x creator API:
-
-- `TileMap2D` keeps its fixed pooled children for compatibility but marks them as aggregate-managed so scene update/render-root scans do not visit every child every frame
-- scene render roots are cached and rebuilt only when membership changes
-- unchanged tilemap transforms perform zero full-pool sprite-transform visits; transform synchronization becomes dirty-driven
-- `tile_count` is maintained in O(1) instead of recounting the full map on every read
-- tilemap visibility is computed mathematically from camera bounds and visits only local viewport cells
-- world-space rectangles and explicit-size sprites receive conservative camera culling before batching
-- sprite CPU staging uses one geometrically grown reusable NumPy buffer and uploads through the buffer protocol rather than rebuilding frame-sized Python float lists
-- creator-visible renderer diagnostics report render roots, culled 2D objects and tilemap candidate/visible-cell work
-
-The locality benchmark uses a **192×192 map (36,864 cells)**. Across 500 moving-camera queries the CI runner reported at most **943 candidate cells per viewport**, while 1,000 unchanged tilemap updates performed no full-pool transform walk. The elapsed timings are diagnostic only and are not converted into an FPS claim.
-
-A dedicated Xvfb/software-OpenGL smoke renders a moving-camera tilemap through the production `Game` renderer, validating the reusable staging-buffer/VBO upload path rather than only testing helpers. Current boundary: the fixed child pool still exists by design for 1.x compatibility; this milestone targets per-frame CPU/render work, not construction-time memory reduction or GPU tilemap instancing.
-
-See [`docs/RENDERER_2D_POWER_1_3.md`](docs/RENDERER_2D_POWER_1_3.md) and [`ROADMAP_1_3.md`](ROADMAP_1_3.md).
-
-### Advanced gameplay framework — milestone 8/10
-
-The eighth verified 1.3 milestone adds small deterministic gameplay primitives without replacing `EventBus`, `Game.update` or `Game.fixed_update`:
-
-- official `swirengine.gameplay` namespace with `Scheduler`, cancellable `TimerHandle`, `Signal`, `SignalConnection`, `ObjectPool`, `Cooldown`, `Spawner` and `GameplayRuntime`
-- min-heap timers with deterministic equal-deadline ordering; idle frames inspect only the next due timer instead of scanning the full timer registry
-- repeating timers reschedule from the current runtime clock, avoiding unbounded catch-up bursts after long frames
-- ordered mutation-safe signals with explicit connection ownership and one-shot subscriptions
-- prewarmed/bounded object pools with acquire/release lifecycle hooks and creator-visible diagnostics
-- timestamp-backed cooldowns that require no frame-scanned registration
-- scheduler-backed spawners with immediate start, stop, burst, total limits and a `spawned` signal
-- additive composition with the stable public update callback API
-
-A gameplay runtime can be attached without changing the established `Game` contract:
-
-```python
-from swirengine import Game
-from swirengine.gameplay import GameplayRuntime
-
-
-game = Game("Gameplay")
-gameplay = GameplayRuntime()
-game.update(gameplay.update)
-gameplay.call_later(1.0, print, "one second later")
-```
-
-The deterministic performance contract schedules **10,000 dormant timers** and performs **1,000 idle updates**, requiring exactly **0 heap pops**. A separate pool workload prewarms **5,000 objects** and runs five complete acquire/release cycles while requiring exactly **5,000 total factory calls** — no new objects after warm-up. Host elapsed timings are diagnostics only and are not converted into an FPS claim.
-
-Current boundary: this milestone is not a coroutine engine, async task runtime, rollback scheduler, behavior tree, dependency-injection framework or network-replicated timer system.
-
-See [`docs/ADVANCED_GAMEPLAY_FRAMEWORK_1_3.md`](docs/ADVANCED_GAMEPLAY_FRAMEWORK_1_3.md) and [`ROADMAP_1_3.md`](ROADMAP_1_3.md).
-
-### Creator / editor integration — milestone 9/10
-
-The ninth verified 1.3 milestone exposes runtime subsystem diagnostics through the editor model SwirEngine already ships instead of creating a separate editor architecture:
-
-- additive `swirengine.creator` namespace with `EditorSystemRegistry`, immutable system frames/snapshots/metrics and `CreatorEditorIntegration`
-- the creator bridge wraps the existing `EditorFrontendController`, preserving hierarchy, inspector, viewport, assets, console, profiler, undo/redo and reversible playtest behavior
-- diagnostics sources can be dataclasses, mappings, plain public-attribute objects or explicit provider callbacks
-- subsystem metadata is ordered deterministically and supports category/text filtering
-- category/query filtering occurs **before** provider invocation, so a hidden or unrelated subsystem is not polled for a filtered editor frame
-- registration performs no background/game-frame polling; diagnostics are captured only when an editor system frame is requested
-- the same generic seam can expose instancing, skeletal, physics, navigation, large-world, shader-cache, 2D-renderer and gameplay diagnostics without eight editor-specific copies of runtime state
-
-The performance contract registers **10,000 systems** in groups of 100 and requests one category. The benchmark requires exactly **100 provider calls**, not 10,000; elapsed host timing is diagnostic only and is not converted into an FPS claim.
-
-Current boundary: this milestone does not claim a new Qt/ImGui/web editor, visual shader graph, terrain editor, navmesh painting UI or a 2.0 editor rewrite. Existing editor APIs remain authoritative and the 1.3 systems frame is additive.
-
-See [`docs/CREATOR_EDITOR_INTEGRATION_1_3.md`](docs/CREATOR_EDITOR_INTEGRATION_1_3.md) and [`ROADMAP_1_3.md`](ROADMAP_1_3.md).
-
-## Stable 1.2 feature set
-
-SwirEngine 1.2 is additive and preserves compatibility-sensitive 1.x behavior while filling major engine-level gaps beyond a low-level game library.
+## Stable feature set
 
 ### 2D
 
-- sprites, textures, render layers, sprite sheets and animation clips
-- tilemaps and adjacent compatible sprite batching
-- responsive labels/panels/buttons/progress bars with anchors and containers
-- keyboard/mouse/gamepad focus navigation and semantic input actions
-- persistent input rebinding profiles
-- sparse pooled particles/VFX and diagnostics
-- bounded/smoothed camera rigs, dead-zone follow, rails and deterministic shake
-- spatial-hash AABB broad phase, overlap/point/ray queries and fixed-step arcade physics
-- typed/versioned settings, migrations, profiles and save slots
-- deterministic tween/timeline/state-machine animation runtime
-- font fallback registry, wrapping/alignment and bounded cached text layout
+- sprites, textures, layers, sprite sheets and animation
+- tilemaps, batching and viewport culling
+- responsive labels, panels, buttons and progress bars
+- keyboard, mouse and gamepad input with rebinding
+- particles/VFX, camera rigs and collision queries
+- settings, migrations, profiles and save slots
+- tween/timeline/state-machine animation runtime
+- font fallback, wrapping, alignment and cached text layout
 
 ### 3D
 
-- perspective cameras, bounded/smoothed camera rigs, rails and deterministic shake
-- `MeshData`, `Mesh3D`, lazy GPU mesh caching and OBJ import
-- static glTF/GLB scene/material import
+- perspective cameras and camera rigs
+- mesh primitives, OBJ and static glTF/GLB import
 - Phong and Cook-Torrance GGX metallic/roughness PBR
-- base-color, metallic/roughness, normal, occlusion and emissive channels
-- directional, point and spot lights with deterministic GPU budgets
-- skybox/environment support and cubemap image-based lighting
-- directional GPU shadows, post-processing, tone mapping and FXAA
-- sRGB/linear color-space handling
-- bounded transform caching and static larger-batch rendering
-- on active 1.3 development branches: native GPU instancing/frustum culling, GPU-skinned glTF skeletal animation, 3D collision/fixed-step gameplay physics, deterministic 2D/3D navigation, bounded large-world chunk residency and controlled shader/material variants
+- directional, point and spot lights
+- skybox/environment cubemaps and IBL
+- directional shadows, post-processing, tone mapping and FXAA
+- GPU instancing and frustum culling
+- skeletal animation and GPU skinning
+- collision queries and fixed-step gameplay physics
+- deterministic navigation and large-world chunk residency
+- controlled shader/material variants
 
 ### Production systems
 
-- scenes with names/tags, lifecycle hooks, cached update snapshots and grouped mounts
-- reusable prefabs, overrides, deterministic batch spawning and versioned serialization
-- indexed lightweight ECS with composition helpers, deterministic queries and cached prioritized systems
-- plugin runtime, file watcher and transactional hot-reload restoration
-- budgeted staged asset streaming with in-flight deduplication, deterministic LRU residency and diagnostics
-- audio buses/groups, fades and spatial attenuation/pan
-- typed settings, deterministic migrations and profile-oriented save layout
-- project-oriented editor workflow with reversible playtest state
-- deterministic TCP transport plus gameplay messages, explicit RPC and session diagnostics
-- deterministic export manifests, generated desktop specs and explicit native builds
-- debug overlay and programmatic profiler
-
-## 1.2 creator documentation
-
-- [`docs/PARTICLES_VFX_1_2.md`](docs/PARTICLES_VFX_1_2.md) — sparse pooled particles and VFX
-- [`docs/TEXT_FONT_PIPELINE_1_2.md`](docs/TEXT_FONT_PIPELINE_1_2.md) — font fallback and cached text layout
-- [`docs/CAMERA_SYSTEMS_1_2.md`](docs/CAMERA_SYSTEMS_1_2.md) — shared 2D/3D camera rigs
-- [`docs/SAVE_CONFIG_1_2.md`](docs/SAVE_CONFIG_1_2.md) — typed settings, migrations, profiles and saves
-- [`docs/NETWORK_GAMEPLAY_1_2.md`](docs/NETWORK_GAMEPLAY_1_2.md) — gameplay messages, RPC and diagnostics
-- [`docs/SCENE_ECS_ERGONOMICS_1_2.md`](docs/SCENE_ECS_ERGONOMICS_1_2.md) — scene/prefab/ECS composition and lifecycle
-- [`docs/ASSET_STREAMING_1_2.md`](docs/ASSET_STREAMING_1_2.md) — staged streaming and residency budgets
-- [`docs/RENDERER_VFX_PERFORMANCE_1_2.md`](docs/RENDERER_VFX_PERFORMANCE_1_2.md) — renderer/VFX frame-work reduction
-- [`docs/BUILD_EXPORT_1_2.md`](docs/BUILD_EXPORT_1_2.md) — native desktop build/export hardening
-- [`docs/CREATOR_HARDENING_1_2.md`](docs/CREATOR_HARDENING_1_2.md) — final creator/release contract
+- scenes, lifecycle hooks, grouped mounts and cached update snapshots
+- prefabs, overrides, batch spawning and versioned serialization
+- lightweight indexed ECS
+- plugin runtime and transactional hot reload
+- staged asset streaming with deterministic LRU residency
+- audio buses/groups and spatial attenuation
+- deterministic networking, gameplay messages and RPC
+- project/editor workflow with reversible playtest state
+- native export manifests and PyInstaller desktop builds
+- debug overlay and profiler
 
 ## Performance regression gates
 
-SwirEngine keeps performance claims narrow and reproducible:
+SwirEngine keeps performance claims reproducible and workload-specific. Examples include:
 
-- **GPU instancing 1.3:** 1,000 visible compatible instances model 1,000 source submissions -> one instanced draw; a separate 1,000-instance case must cull exactly 900 outside the test frustum
-- **skeletal animation 1.3:** bind-pose palettes, normalized skin weights, clip sampling/crossfade and glTF skin import are deterministic regressions, while a real software-OpenGL smoke executes the production transform-feedback GPU skinning path
-- **3D collision 1.3:** a sparse 1,000-collider pair workload must reduce broad-phase candidates by at least 100x versus brute force; a short finite ray through 1,000 sparse colliders must visit fewer than ten candidates
-- **navigation 1.3:** one cold 64x64 path plus 999 identical requests must produce one cache miss, 999 hits and zero node expansion on the final cached query
-- **large-world streaming 1.3:** radius-2 3D streaming must enumerate exactly 125 local candidate keys independent of world extent; sparse provider misses must be cached locally and pruned with retention rather than queried every frame or accumulated forever
-- **shader/material pipeline 1.3:** 1,000 resolves of one prepared variant must produce exactly one backend compile and 999 cache hits; two compatible `ShaderMesh3D` objects must share one mesh upload and one VAO binding
-- **2D renderer power 1.3:** a 192×192 tilemap (36,864 cells) must keep viewport work local; the dedicated benchmark observed at most 943 candidate cells per query, and repeated unchanged updates must perform zero full-pool transform visits
-- **gameplay framework 1.3:** 10,000 dormant timers across 1,000 idle updates must produce zero heap pops; a prewarmed 5,000-object pool must complete five full reuse cycles without additional factory calls
-- **creator/editor integration 1.3:** 10,000 registered systems grouped by 100 must invoke exactly 100 diagnostics providers when one category is requested; unrelated providers remain untouched
-- **static 3D batching:** 100 compatible static cubes map from 100 renderer-facing object draws to one combined mesh draw
-- **async preload:** a reproducible synthetic I/O-like benchmark must demonstrate real overlap/wait reduction
-- **asset streaming residency:** exact incremental byte accounting is verified through eviction
-- **2D collision:** a sparse 1,000-collider case must reduce broad-phase candidates by at least 100x versus brute-force all-pairs enumeration
-- **particle/VFX:** 10,000 capacity with eight live particles must perform exactly eight update visits
-- **text layout:** after first layout, 1,000 identical requests must hit cache with zero additional measurement calls
-- **indexed ECS:** a 1,001-entity mixed query must reduce candidates to exactly one
-- **renderer/VFX frame work:** a 512-sprite repeatable run streams without an outer cache and stable state/color operations reuse cached objects
+- 1,000 compatible instanced objects -> one instanced draw
+- 1,000-instance culling workload -> exactly 900 rejected in the test frustum
+- 1,000 shader-variant resolves -> one compile + 999 cache hits
+- 192×192 tilemap -> viewport-local cell work instead of whole-map scanning
+- 10,000 dormant gameplay timers -> zero heap pops across idle updates
+- 10,000 registered editor systems -> only the selected group is polled
+- sparse 2D/3D collision workloads -> large broad-phase candidate reduction
 
-These are workload/regression measurements, not synthetic FPS promises.
+Host timings are diagnostics only. SwirEngine does **not** turn those numbers into unmeasured FPS claims.
 
-## Project generator and native desktop export
+## Validation demos and examples
 
-```bash
-swirengine new MyGame --mode 2d
-swirengine new My3DGame --mode 3d
-swirengine info
-swirengine export . --target windows --name MyGame --onefile --windowed
-swirengine export . --target windows --name MyGame --onefile --windowed --build-native
-```
-
-Generated projects remain compatible with the stable engine line:
-
-```toml
-engine = ">=1.0,<2.0"
-```
-
-The shipping workflow builds and launches one-file and one-directory executables on Windows, Linux and macOS. Android and Web remain experimental staging/research targets until their shipping paths are fully verified.
-
-## Official validation demos and examples
-
-- **Neon Cube Hunt 3D** — 3D collection arena used for real OpenGL and packaged-runtime validation
-- **Neon Snake 3D** — complete 3D Snake with growth, food, collision, score, PBR and post-processing
-- `examples/demo_gpu_instancing.py` — active 1.3 dynamic instancing/frustum-culling demo with 6,400 cubes
-- `examples/demo_skeletal_animation.py` — active 1.3 skinned-character animation and GPU-skinning demo
-- `examples/demo_collision3d_physics.py` — active 1.3 collision queries and fixed-step 3D gameplay physics
-- `examples/demo_navigation_pathfinding.py` — active 1.3 weighted A*, dynamic obstacles and automatic 3D agent repathing
-- `examples/demo_large_world_streaming.py` — active 1.3 local-window residency, bounded chunk activation and reversible scene ownership
-- `examples/demo_shader_variants.py` — active 1.3 deterministic shader variants, safe hooks, uniforms and bounded program-cache diagnostics
-- `examples/demo_renderer2d_power.py` — active 1.3 large-tilemap viewport culling, dirty transform sync and moving-camera diagnostics
-- `examples/demo_gameplay_framework.py` — active 1.3 timers, signals, cooldowns, spawning and allocation-free warm-pool reuse
-- `examples/demo_creator_editor_integration.py` — active 1.3 existing-editor bridge plus lazy subsystem diagnostics/filtering
-- `examples/demo_gamepad.py` — controller + keyboard fallback
-- `examples/demo_static_3d_batching.py` — static larger-batch rendering
-- `examples/demo_asset_streaming.py` — staged loading, residency budgets and eviction
-- `examples/demo_responsive_ui.py` — resize-aware UI and focus navigation
-- `examples/demo_animation_runtime.py` — tween/sequence/timeline/state machine
-- `examples/demo_collision_queries.py` — spatial collision queries and diagnostics
-- `examples/demo_editor_workflow.py` — scene/prefab/input/playtest workflow
-- `examples/demo_particles_vfx.py` — sparse pooled particle lifecycle
-- `examples/demo_text_layout.py` — fallback, wrapping, alignment and cache diagnostics
-- `examples/demo_camera_systems.py` — camera rails/smoothing/shake
-- `examples/demo_save_config.py` — typed settings, profiles and save slots
-- `examples/demo_network_gameplay.py` — deterministic messages, RPC and diagnostics
-- `examples/demo_scene_ecs_ergonomics.py` — lifecycle, mounts, indexed queries and prefab waves
-- `examples/demo_export_pipeline.py` — manifest v2, integrity hashes and native spec
+- **Neon Frontier 1.3** — integrated 1.3 full-game/release validation
+- **Neon Cube Hunt 3D** — OpenGL + packaged-runtime validation arena
+- **Neon Snake 3D** — complete 3D Snake validation project
+- `examples/demo_gpu_instancing.py`
+- `examples/demo_skeletal_animation.py`
+- `examples/demo_collision3d_physics.py`
+- `examples/demo_navigation_pathfinding.py`
+- `examples/demo_large_world_streaming.py`
+- `examples/demo_shader_variants.py`
+- `examples/demo_renderer2d_power.py`
+- `examples/demo_gameplay_framework.py`
+- `examples/demo_creator_editor_integration.py`
 
 ## Development and verification
 
@@ -396,55 +239,39 @@ python -m pip install -e ".[dev]"
 pytest
 ruff check src tests examples demo_projects tools
 python -m compileall -q src examples demo_projects tools
-python tools/verify_1_2_release_candidate.py --require-complete
-python tools/benchmark_gpu_instancing.py
-pytest tests/test_skeletal_animation.py
-pytest tests/test_collision3d.py tests/test_rigidbody3d.py
-python tools/benchmark_collision3d.py
-pytest tests/test_navigation.py
-python tools/benchmark_navigation.py
-python examples/demo_navigation_pathfinding.py
-pytest tests/test_large_world.py tests/test_large_world_provider_cache.py
-python tools/benchmark_large_world.py
-python examples/demo_large_world_streaming.py
-pytest tests/test_shader_pipeline.py tests/test_shader_mesh.py
-python tools/benchmark_shader_pipeline.py
-python examples/demo_shader_variants.py
-pytest tests/test_renderer2d_power.py tests/test_tilemap.py tests/test_scene.py
-python tools/benchmark_renderer2d_power.py
-python examples/demo_renderer2d_power.py
-pytest tests/test_gameplay_framework.py
-python tools/benchmark_gameplay_framework.py
-python examples/demo_gameplay_framework.py
-pytest tests/test_editor_systems_1_3.py tests/test_editor_workspace.py tests/test_editor_frontend.py
-python tools/benchmark_editor_systems_1_3.py
-python examples/demo_creator_editor_integration.py
+python tools/verify_1_3_release_candidate.py --require-complete
 ```
 
-CI validates:
+Additional dedicated benchmarks and OpenGL validators live under `tools/` and are executed by GitHub Actions.
 
-- Windows, Linux and macOS with Python 3.10, 3.11, 3.12 and 3.13
-- Windows x86-64 with Python 3.14
-- wheel/sdist metadata and clean-wheel installation
-- dedicated Windows CPython 3.14 native dependency/wheel selection and import checks
-- one-file and one-directory desktop executables on Windows/Linux/macOS Python 3.13
-- reproducible performance/regression gates, including 1.3 3D collision, navigation, large-world locality, shader-cache, 2D tilemap-locality, gameplay scheduler/pool and creator/editor provider-locality workloads
-- real OpenGL paths through Neon Cube Hunt 3D, Neon Snake 3D, GPU instancing, skeletal GPU skinning, `ShaderMesh3D` and the 2D renderer power-pass moving-camera tilemap smoke
+## Python 3.14 on Windows
+
+Stable upstream native renderer dependencies do not expose the same wheel path for every Python/platform combination. SwirEngine therefore validates a dedicated `cp314-cp314-win_amd64` release candidate on Windows x86-64, checks metadata, proves normal pip candidate selection and performs native import validation. Linux/macOS remain on the explicitly verified Python 3.10-3.13 cross-platform matrix.
 
 ## Versioning and API stability
 
-SwirEngine follows semantic versioning for the stable 1.x public API. Existing 1.x behavior remains compatibility-sensitive. New 1.3 development is additive unless a future explicitly planned version documents a migration.
+SwirEngine follows semantic versioning for the stable 1.x public API. Version 1.3.0 is additive to established 1.x behavior; existing projects are not required to adopt the new systems.
 
-The installed/public package remains **1.2.0** during 1.3 development. The 1.3 release is frozen until its roadmap reaches exactly 10/10 = 100.0% and the final exact head passes CI/runtime/demo/packaging plus public-artifact post-release verification.
+See [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
 
-See [`docs/API_STABILITY.md`](docs/API_STABILITY.md), [`docs/CREATOR_HARDENING_1_2.md`](docs/CREATOR_HARDENING_1_2.md), [`docs/GPU_INSTANCING_1_3.md`](docs/GPU_INSTANCING_1_3.md), [`docs/SKELETAL_ANIMATION_1_3.md`](docs/SKELETAL_ANIMATION_1_3.md), [`docs/COLLISION_PHYSICS_1_3.md`](docs/COLLISION_PHYSICS_1_3.md), [`docs/NAVIGATION_PATHFINDING_1_3.md`](docs/NAVIGATION_PATHFINDING_1_3.md), [`docs/LARGE_WORLD_STREAMING_1_3.md`](docs/LARGE_WORLD_STREAMING_1_3.md), [`docs/ADVANCED_SHADER_MATERIAL_1_3.md`](docs/ADVANCED_SHADER_MATERIAL_1_3.md), [`docs/RENDERER_2D_POWER_1_3.md`](docs/RENDERER_2D_POWER_1_3.md), [`docs/ADVANCED_GAMEPLAY_FRAMEWORK_1_3.md`](docs/ADVANCED_GAMEPLAY_FRAMEWORK_1_3.md) and [`docs/CREATOR_EDITOR_INTEGRATION_1_3.md`](docs/CREATOR_EDITOR_INTEGRATION_1_3.md).
+## 1.3 documentation
+
+- [`docs/GPU_INSTANCING_1_3.md`](docs/GPU_INSTANCING_1_3.md)
+- [`docs/SKELETAL_ANIMATION_1_3.md`](docs/SKELETAL_ANIMATION_1_3.md)
+- [`docs/COLLISION_PHYSICS_1_3.md`](docs/COLLISION_PHYSICS_1_3.md)
+- [`docs/NAVIGATION_PATHFINDING_1_3.md`](docs/NAVIGATION_PATHFINDING_1_3.md)
+- [`docs/LARGE_WORLD_STREAMING_1_3.md`](docs/LARGE_WORLD_STREAMING_1_3.md)
+- [`docs/ADVANCED_SHADER_MATERIAL_1_3.md`](docs/ADVANCED_SHADER_MATERIAL_1_3.md)
+- [`docs/RENDERER_2D_POWER_1_3.md`](docs/RENDERER_2D_POWER_1_3.md)
+- [`docs/ADVANCED_GAMEPLAY_FRAMEWORK_1_3.md`](docs/ADVANCED_GAMEPLAY_FRAMEWORK_1_3.md)
+- [`docs/CREATOR_EDITOR_INTEGRATION_1_3.md`](docs/CREATOR_EDITOR_INTEGRATION_1_3.md)
 
 ## Roadmaps
 
-- SwirEngine 1.0: [`ROADMAP.md`](ROADMAP.md) — **31/31 = 100%**, historical and locked
-- SwirEngine 1.1: [`ROADMAP_1_1.md`](ROADMAP_1_1.md) — **10/10 = 100%**, released and locked
-- SwirEngine 1.2: [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **10/10 = 100.0%**, published and locked
-- SwirEngine 1.3: [`ROADMAP_1_3.md`](ROADMAP_1_3.md) — **9/10 = 90.0%**, active development
+- SwirEngine 1.0 — [`ROADMAP.md`](ROADMAP.md) — **31/31 = 100%**, historical and locked
+- SwirEngine 1.1 — [`ROADMAP_1_1.md`](ROADMAP_1_1.md) — **10/10 = 100%**, released and locked
+- SwirEngine 1.2 — [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **10/10 = 100%**, released and locked
+- SwirEngine 1.3 — [`ROADMAP_1_3.md`](ROADMAP_1_3.md) — **10/10 = 100.0%**, complete
 
 ## Links
 

@@ -1,34 +1,39 @@
 from pathlib import Path
 
-from tools.verify_1_2_release_candidate import audit, parse_roadmap
+from tools.verify_1_2_release_candidate import parse_roadmap
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_release_candidate_contract_is_internally_consistent() -> None:
-    report = audit(ROOT)
+def test_published_1_2_roadmap_remains_locked_and_complete() -> None:
+    roadmap_text = (ROOT / "ROADMAP_1_2.md").read_text(encoding="utf-8")
+    state = parse_roadmap(roadmap_text)
 
-    assert report.version in {"1.1.0", "1.2.0"}
-    assert report.roadmap.total == 10
-    assert report.roadmap.completed + report.roadmap.remaining == 10
-    assert report.roadmap.percent in {90.0, 100.0}
-    assert len(report.checks) >= 40
+    assert state.completed == 10
+    assert state.remaining == 0
+    assert state.total == 10
+    assert state.percent == 100.0
+    assert state.bar == "████████████████████ 100.0%"
+    assert "STATUS-COMPLETE" in roadmap_text
 
 
-def test_complete_publication_gate_tracks_roadmap_state() -> None:
-    report = audit(ROOT)
+def test_historical_1_2_release_artifacts_remain_documented() -> None:
+    release_note = (ROOT / "CHANGELOG.d/1.2.0-creator-hardening.md").read_text(encoding="utf-8")
+    roadmap = (ROOT / "ROADMAP_1_2.md").read_text(encoding="utf-8")
 
-    if report.roadmap.completed == 10:
-        complete = audit(ROOT, require_complete=True)
-        assert complete.version == "1.2.0"
-        assert complete.roadmap.percent == 100.0
-    else:
-        try:
-            audit(ROOT, require_complete=True)
-        except AssertionError as exc:
-            assert "10/10" in str(exc)
-        else:
-            raise AssertionError("publication gate unexpectedly passed before roadmap completion")
+    assert "## 1.2.0" in release_note
+    assert "SwirEngine 1.2.0 completes" in release_note
+    assert "SwirEngine 1.2" in roadmap
+    assert (ROOT / "tools/verify_1_2_release_candidate.py").is_file()
+
+
+def test_active_release_workflow_no_longer_uses_historical_1_2_gate() -> None:
+    ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    release = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
+
+    assert "verify_1_3_release_candidate.py" in ci
+    assert "verify_1_3_release_candidate.py --require-complete" in release
+    assert "verify_1_2_release_candidate.py --require-complete" not in release
 
 
 def test_roadmap_parser_derives_twenty_segment_bar_from_checkboxes() -> None:
