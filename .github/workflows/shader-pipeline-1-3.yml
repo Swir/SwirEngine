@@ -1,0 +1,42 @@
+name: Shader Pipeline 1.3 Validation
+
+on:
+  pull_request:
+    paths:
+      - "src/swirengine/graphics/shader_pipeline.py"
+      - "tests/test_shader_pipeline.py"
+      - "examples/demo_shader_variants.py"
+      - "tools/benchmark_shader_pipeline.py"
+      - "docs/ADVANCED_SHADER_MATERIAL_1_3.md"
+      - "CHANGELOG.d/1.3.0-advanced-shader-material.md"
+      - ".github/workflows/shader-pipeline-1-3.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "src/swirengine/graphics/shader_pipeline.py"
+      - "tests/test_shader_pipeline.py"
+      - "examples/demo_shader_variants.py"
+      - "tools/benchmark_shader_pipeline.py"
+      - "docs/ADVANCED_SHADER_MATERIAL_1_3.md"
+      - "CHANGELOG.d/1.3.0-advanced-shader-material.md"
+      - ".github/workflows/shader-pipeline-1-3.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: Shader variant/cache contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - run: pytest tests/test_shader_pipeline.py
+      - run: ruff check src/swirengine/graphics/shader_pipeline.py tests/test_shader_pipeline.py examples/demo_shader_variants.py tools/benchmark_shader_pipeline.py
+      - run: python -m compileall -q src/swirengine/graphics/shader_pipeline.py tests/test_shader_pipeline.py examples/demo_shader_variants.py tools/benchmark_shader_pipeline.py
+      - run: python tools/benchmark_shader_pipeline.py
+      - run: python examples/demo_shader_variants.py
