@@ -18,10 +18,11 @@ def test_published_1_2_roadmap_remains_locked_and_complete() -> None:
 
 
 def test_historical_1_2_release_artifacts_remain_documented() -> None:
-    changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    release_note = (ROOT / "CHANGELOG.d/1.2.0-creator-hardening.md").read_text(encoding="utf-8")
     roadmap = (ROOT / "ROADMAP_1_2.md").read_text(encoding="utf-8")
 
-    assert "1.2.0" in changelog
+    assert "## 1.2.0" in release_note
+    assert "SwirEngine 1.2.0 completes" in release_note
     assert "SwirEngine 1.2" in roadmap
     assert (ROOT / "tools/verify_1_2_release_candidate.py").is_file()
 
