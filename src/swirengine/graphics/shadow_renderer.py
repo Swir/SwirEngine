@@ -10,6 +10,7 @@ from .instancing import InstancedRenderPipeline
 from .lights import DirectionalLight3D, select_lights
 from .mesh import Mesh3D
 from .renderer import Renderer
+from .shader_mesh import ShaderMaterialRenderPipeline
 from .shadows import DirectionalShadowFrame, DirectionalShadowMap, DirectionalShadowSettings
 from .skeletal import SkinnedRenderPipeline
 
@@ -22,11 +23,10 @@ class ShadowedImageBasedPostProcessRenderer(ImageBasedPostProcessRenderer):
     over direct scene lighting before the additive IBL pass, so image-based environment light
     remains available inside shadows.
 
-    SwirEngine 1.3 attaches additive GPU-instancing and GPU-skinning pipelines here because
-    this is the production renderer selected by ``Game``. Instanced and skinned objects
-    currently participate in the direct forward-lighting pass; shadow-map and additive IBL
-    support remain explicit follow-up work rather than silently falling back to CPU/per-object
-    deformation paths.
+    SwirEngine 1.3 attaches additive GPU-instancing, GPU-skinning and validated shader-material
+    pipelines here because this is the production renderer selected by ``Game``. These 1.3
+    objects participate in direct forward rendering; auxiliary shadow-map and additive IBL support
+    remain explicit follow-up work rather than silently falling back to incompatible paths.
     """
 
     def __init__(
@@ -43,7 +43,12 @@ class ShadowedImageBasedPostProcessRenderer(ImageBasedPostProcessRenderer):
         super().__init__(*args, **kwargs)
         self._instanced_pipeline = InstancedRenderPipeline(self)
         self._skinned_pipeline = SkinnedRenderPipeline(self)
+        self._shader_material_pipeline = ShaderMaterialRenderPipeline(self)
         self._init_shadow_overlay()
+
+    @property
+    def shader_diagnostics(self):
+        return self._shader_material_pipeline.diagnostics
 
     def _init_shadow_overlay(self) -> None:
         self.shadow_overlay_program = self.ctx.program(
@@ -202,6 +207,7 @@ class ShadowedImageBasedPostProcessRenderer(ImageBasedPostProcessRenderer):
         )
 
     def _render_dynamic_13(self, scene: object, camera: Camera3D) -> None:
+        self._shader_material_pipeline.render(scene, camera)
         self._skinned_pipeline.render(scene, camera)
         self._instanced_pipeline.render(scene, camera)
 
@@ -234,6 +240,7 @@ class ShadowedImageBasedPostProcessRenderer(ImageBasedPostProcessRenderer):
             vao.release()
             vbo.release()
         self._shadow_overlay_gpu.clear()
+        self._shader_material_pipeline.release()
         self._skinned_pipeline.release()
         self._instanced_pipeline.release()
         self.shadow_overlay_program.release()

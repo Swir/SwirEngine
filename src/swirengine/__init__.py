@@ -114,6 +114,19 @@ from .graphics.mesh import Mesh3D, MeshData, cube_mesh
 from .graphics.obj import load_obj
 from .graphics.postprocess import PostProcessRenderer, PostProcessSettings, ToneMapping
 from .graphics.primitives import Cube3D, Rectangle2D, Sprite2D, Text2D
+from .graphics.shader_mesh import SURFACE_3D_TEMPLATE, ShaderMesh3D, shader_material_3d
+from .graphics.shader_pipeline import (
+    ShaderDiagnostics,
+    ShaderHookPoint,
+    ShaderMaterial3D,
+    ShaderPipelineError,
+    ShaderProgramCache,
+    ShaderSafetyError,
+    ShaderTemplate,
+    ShaderVariantKey,
+    ShaderVariantSpec,
+    prepare_shader_variant,
+)
 from .graphics.stats import RendererStats
 from .hotreload import (
     HotReloadSnapshot,
@@ -187,6 +200,7 @@ __all__ = [
     "MAX_DIRECTIONAL_LIGHTS",
     "MAX_POINT_LIGHTS",
     "MAX_SPOT_LIGHTS",
+    "SURFACE_3D_TEMPLATE",
     "AnimatedSprite2D",
     "AnimationClip",
     "AssetDiagnostics",
@@ -332,6 +346,16 @@ __all__ = [
     "SceneMount",
     "SceneSerializationError",
     "SceneSerializer",
+    "ShaderDiagnostics",
+    "ShaderHookPoint",
+    "ShaderMaterial3D",
+    "ShaderMesh3D",
+    "ShaderPipelineError",
+    "ShaderProgramCache",
+    "ShaderSafetyError",
+    "ShaderTemplate",
+    "ShaderVariantKey",
+    "ShaderVariantSpec",
     "Skybox3D",
     "SphereBounds3D",
     "SphereCollider3D",
@@ -378,8 +402,10 @@ __all__ = [
     "normalize_gamepad_button",
     "parse_editor_value",
     "place_control",
+    "prepare_shader_variant",
     "restore_editor_hierarchy",
     "select_lights",
+    "shader_material_3d",
     "skybox_mesh_data",
     "upload_cubemap",
 ]

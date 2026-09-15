@@ -10,6 +10,7 @@ class RendererStats:
     texts: int = 0
     cubes: int = 0
     meshes: int = 0
+    shader_meshes: int = 0
     instances: int = 0
     instance_batches: int = 0
     instance_candidates: int = 0
@@ -40,6 +41,7 @@ class RendererStats:
         self.texts = 0
         self.cubes = 0
         self.meshes = 0
+        self.shader_meshes = 0
         self.instances = 0
         self.instance_batches = 0
         self.instance_candidates = 0

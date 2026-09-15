@@ -172,6 +172,25 @@ Current boundary: this milestone is chunk lifetime/residency and activation infr
 
 See [`docs/LARGE_WORLD_STREAMING_1_3.md`](docs/LARGE_WORLD_STREAMING_1_3.md) and [`ROADMAP_1_3.md`](ROADMAP_1_3.md).
 
+### Advanced material & shader pipeline — milestone 6/10
+
+The sixth verified 1.3 milestone adds controlled creator shader customization without replacing the engine-owned render contract:
+
+- additive `ShaderTemplate`, `ShaderHookPoint`, deterministic `ShaderVariantSpec` and `ShaderMaterial3D` APIs
+- context-free `prepare_shader_variant()` plus the creator-friendly `shader_material_3d()` helper
+- production `ShaderMesh3D` rendering through the renderer selected by `Game`
+- bounded LRU backend program cache with hit/miss/failure/eviction/invalidation diagnostics
+- explicit hook seams for vertex/fragment globals, surface modification and post-lighting work
+- conservative validation that rejects unknown hooks, unsafe preprocessor/layout/state escape paths and invalid defines/uniforms
+- shared mesh VBOs across variants plus cached VAO bindings per mesh/variant key
+- existing `Mesh3D`, `Material3D`, Phong and PBR paths remain unchanged
+
+The deterministic performance contract requires **1,000 resolves of one prepared variant to produce exactly one backend compile, one miss and 999 cache hits**. A production-pipeline regression also requires two compatible shader meshes to share one uploaded VBO and one VAO binding. `tools/benchmark_shader_pipeline.py` repeats 10,000 cache resolves as host timing only; it does not claim an FPS uplift.
+
+A dedicated Xvfb/software-OpenGL gate compiles and renders a real custom `ShaderMesh3D` through `Game`, including a runtime custom uniform and fragment hook. Current boundary: custom shader meshes participate in the direct-forward pass and do not silently claim auxiliary shadow-map/IBL support or arbitrary custom sampler binding.
+
+See [`docs/ADVANCED_SHADER_MATERIAL_1_3.md`](docs/ADVANCED_SHADER_MATERIAL_1_3.md) and [`ROADMAP_1_3.md`](ROADMAP_1_3.md).
+
 ## Stable 1.2 feature set
 
 SwirEngine 1.2 is additive and preserves compatibility-sensitive 1.x behavior while filling major engine-level gaps beyond a low-level game library.
@@ -202,7 +221,7 @@ SwirEngine 1.2 is additive and preserves compatibility-sensitive 1.x behavior wh
 - directional GPU shadows, post-processing, tone mapping and FXAA
 - sRGB/linear color-space handling
 - bounded transform caching and static larger-batch rendering
-- on active 1.3 development branches: native GPU instancing/frustum culling, GPU-skinned glTF skeletal animation, 3D collision/fixed-step gameplay physics, deterministic 2D/3D navigation and bounded large-world chunk residency
+- on active 1.3 development branches: native GPU instancing/frustum culling, GPU-skinned glTF skeletal animation, 3D collision/fixed-step gameplay physics, deterministic 2D/3D navigation, bounded large-world chunk residency and controlled shader/material variants
 
 ### Production systems
 
@@ -240,6 +259,7 @@ SwirEngine keeps performance claims narrow and reproducible:
 - **3D collision 1.3:** a sparse 1,000-collider pair workload must reduce broad-phase candidates by at least 100x versus brute force; a short finite ray through 1,000 sparse colliders must visit fewer than ten candidates
 - **navigation 1.3:** one cold 64x64 path plus 999 identical requests must produce one cache miss, 999 hits and zero node expansion on the final cached query
 - **large-world streaming 1.3:** radius-2 3D streaming must enumerate exactly 125 local candidate keys independent of world extent; sparse provider misses must be cached locally and pruned with retention rather than queried every frame or accumulated forever
+- **shader/material pipeline 1.3:** 1,000 resolves of one prepared variant must produce exactly one backend compile and 999 cache hits; two compatible `ShaderMesh3D` objects must share one mesh upload and one VAO binding
 - **static 3D batching:** 100 compatible static cubes map from 100 renderer-facing object draws to one combined mesh draw
 - **async preload:** a reproducible synthetic I/O-like benchmark must demonstrate real overlap/wait reduction
 - **asset streaming residency:** exact incremental byte accounting is verified through eviction
@@ -278,6 +298,7 @@ The shipping workflow builds and launches one-file and one-directory executables
 - `examples/demo_collision3d_physics.py` — active 1.3 collision queries and fixed-step 3D gameplay physics
 - `examples/demo_navigation_pathfinding.py` — active 1.3 weighted A*, dynamic obstacles and automatic 3D agent repathing
 - `examples/demo_large_world_streaming.py` — active 1.3 local-window residency, bounded chunk activation and reversible scene ownership
+- `examples/demo_shader_variants.py` — active 1.3 deterministic shader variants, safe hooks, uniforms and bounded program-cache diagnostics
 - `examples/demo_gamepad.py` — controller + keyboard fallback
 - `examples/demo_static_3d_batching.py` — static larger-batch rendering
 - `examples/demo_asset_streaming.py` — staged loading, residency budgets and eviction
@@ -311,6 +332,9 @@ python examples/demo_navigation_pathfinding.py
 pytest tests/test_large_world.py tests/test_large_world_provider_cache.py
 python tools/benchmark_large_world.py
 python examples/demo_large_world_streaming.py
+pytest tests/test_shader_pipeline.py tests/test_shader_mesh.py
+python tools/benchmark_shader_pipeline.py
+python examples/demo_shader_variants.py
 ```
 
 CI validates:
@@ -320,8 +344,8 @@ CI validates:
 - wheel/sdist metadata and clean-wheel installation
 - dedicated Windows CPython 3.14 native dependency/wheel selection and import checks
 - one-file and one-directory desktop executables on Windows/Linux/macOS Python 3.13
-- reproducible performance/regression gates, including 1.3 3D collision, navigation and large-world locality workloads
-- real OpenGL paths through Neon Cube Hunt 3D, Neon Snake 3D, GPU instancing and skeletal GPU skinning
+- reproducible performance/regression gates, including 1.3 3D collision, navigation, large-world locality and shader-cache workloads
+- real OpenGL paths through Neon Cube Hunt 3D, Neon Snake 3D, GPU instancing, skeletal GPU skinning and `ShaderMesh3D`
 
 ## Versioning and API stability
 
@@ -329,14 +353,14 @@ SwirEngine follows semantic versioning for the stable 1.x public API. Existing 1
 
 The installed/public package remains **1.2.0** during 1.3 development. The 1.3 release is frozen until its roadmap reaches exactly 10/10 = 100.0% and the final exact head passes CI/runtime/demo/packaging plus public-artifact post-release verification.
 
-See [`docs/API_STABILITY.md`](docs/API_STABILITY.md), [`docs/CREATOR_HARDENING_1_2.md`](docs/CREATOR_HARDENING_1_2.md), [`docs/GPU_INSTANCING_1_3.md`](docs/GPU_INSTANCING_1_3.md), [`docs/SKELETAL_ANIMATION_1_3.md`](docs/SKELETAL_ANIMATION_1_3.md), [`docs/COLLISION_PHYSICS_1_3.md`](docs/COLLISION_PHYSICS_1_3.md), [`docs/NAVIGATION_PATHFINDING_1_3.md`](docs/NAVIGATION_PATHFINDING_1_3.md) and [`docs/LARGE_WORLD_STREAMING_1_3.md`](docs/LARGE_WORLD_STREAMING_1_3.md).
+See [`docs/API_STABILITY.md`](docs/API_STABILITY.md), [`docs/CREATOR_HARDENING_1_2.md`](docs/CREATOR_HARDENING_1_2.md), [`docs/GPU_INSTANCING_1_3.md`](docs/GPU_INSTANCING_1_3.md), [`docs/SKELETAL_ANIMATION_1_3.md`](docs/SKELETAL_ANIMATION_1_3.md), [`docs/COLLISION_PHYSICS_1_3.md`](docs/COLLISION_PHYSICS_1_3.md), [`docs/NAVIGATION_PATHFINDING_1_3.md`](docs/NAVIGATION_PATHFINDING_1_3.md), [`docs/LARGE_WORLD_STREAMING_1_3.md`](docs/LARGE_WORLD_STREAMING_1_3.md) and [`docs/ADVANCED_SHADER_MATERIAL_1_3.md`](docs/ADVANCED_SHADER_MATERIAL_1_3.md).
 
 ## Roadmaps
 
 - SwirEngine 1.0: [`ROADMAP.md`](ROADMAP.md) — **31/31 = 100%**, historical and locked
 - SwirEngine 1.1: [`ROADMAP_1_1.md`](ROADMAP_1_1.md) — **10/10 = 100%**, released and locked
 - SwirEngine 1.2: [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **10/10 = 100.0%**, published and locked
-- SwirEngine 1.3: [`ROADMAP_1_3.md`](ROADMAP_1_3.md) — **5/10 = 50.0%**, active development
+- SwirEngine 1.3: [`ROADMAP_1_3.md`](ROADMAP_1_3.md) — **6/10 = 60.0%**, active development
 
 ## Links
 
