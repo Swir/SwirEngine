@@ -47,7 +47,12 @@ class Sprite2D:
 
     @property
     def render_managed(self) -> bool:
-        """Whether a parent render source owns submission for this sprite."""
+        """Whether a parent aggregate owns renderer submission for this sprite."""
+        return self._render_owner_id is not None
+
+    @property
+    def update_managed(self) -> bool:
+        """Whether the same aggregate owns this sprite's transform/update lifecycle."""
         return self._render_owner_id is not None
 
     def update(self, dt: float) -> None:
