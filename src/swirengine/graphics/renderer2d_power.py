@@ -94,10 +94,9 @@ class Renderer2DPowerPass:
         if getattr(obj, "screen_space", False):
             return True
 
-        if isinstance(obj, Rectangle2D):
-            width = abs(float(obj.width))
-            height = abs(float(obj.height))
-        elif isinstance(obj, Sprite2D) and obj.width is not None and obj.height is not None:
+        if isinstance(obj, Rectangle2D) or (
+            isinstance(obj, Sprite2D) and obj.width is not None and obj.height is not None
+        ):
             width = abs(float(obj.width))
             height = abs(float(obj.height))
         else:
@@ -125,14 +124,13 @@ class Renderer2DPowerPass:
             if isinstance(obj, TileMap2D):
                 if not obj.enabled or not obj.visible:
                     continue
-                for sprite in obj.iter_visible_sprites(
+                yield from obj.iter_visible_sprites(
                     camera.x,
                     camera.y,
                     host.width,
                     host.height,
                     zoom=camera.safe_zoom,
-                ):
-                    yield sprite
+                )
                 host.stats.tilemap_cells_considered += (  # type: ignore[attr-defined]
                     obj.diagnostics.last_visibility_candidates
                 )
