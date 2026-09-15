@@ -4,30 +4,21 @@ from typing import Any
 
 import numpy as np
 
+from .camera import Camera2D
 from .camera3d import Camera3D
 from .ibl_renderer import ImageBasedPostProcessRenderer, _read_context_state
 from .instancing import InstancedRenderPipeline
 from .lights import DirectionalLight3D, select_lights
 from .mesh import Mesh3D
 from .renderer import Renderer
+from .renderer2d_power import Renderer2DPowerPass
 from .shader_mesh import ShaderMaterialRenderPipeline
 from .shadows import DirectionalShadowFrame, DirectionalShadowMap, DirectionalShadowSettings
 from .skeletal import SkinnedRenderPipeline
 
 
 class ShadowedImageBasedPostProcessRenderer(ImageBasedPostProcessRenderer):
-    """Full 3D renderer with optional directional shadow mapping.
-
-    Shadows are opt-in to preserve the 0.4 rendering contract. When enabled, the first
-    selected directional light owns one reusable depth map. A 3x3 PCF resolve is multiplied
-    over direct scene lighting before the additive IBL pass, so image-based environment light
-    remains available inside shadows.
-
-    SwirEngine 1.3 attaches additive GPU-instancing, GPU-skinning and validated shader-material
-    pipelines here because this is the production renderer selected by ``Game``. These 1.3
-    objects participate in direct forward rendering; auxiliary shadow-map and additive IBL support
-    remain explicit follow-up work rather than silently falling back to incompatible paths.
-    """
+    """Production renderer with 1.3 additive 2D/3D pipelines."""
 
     def __init__(
         self,
@@ -41,6 +32,7 @@ class ShadowedImageBasedPostProcessRenderer(ImageBasedPostProcessRenderer):
         self._directional_shadow: DirectionalShadowMap | None = None
         self._shadow_overlay_gpu: dict[int, tuple[object, object, int]] = {}
         super().__init__(*args, **kwargs)
+        self._power_2d = Renderer2DPowerPass()
         self._instanced_pipeline = InstancedRenderPipeline(self)
         self._skinned_pipeline = SkinnedRenderPipeline(self)
         self._shader_material_pipeline = ShaderMaterialRenderPipeline(self)
@@ -49,6 +41,10 @@ class ShadowedImageBasedPostProcessRenderer(ImageBasedPostProcessRenderer):
     @property
     def shader_diagnostics(self):
         return self._shader_material_pipeline.diagnostics
+
+    @property
+    def renderer2d_power(self) -> Renderer2DPowerPass:
+        return self._power_2d
 
     def _init_shadow_overlay(self) -> None:
         self.shadow_overlay_program = self.ctx.program(
@@ -205,6 +201,9 @@ class ShadowedImageBasedPostProcessRenderer(ImageBasedPostProcessRenderer):
             float(camera.near),
             float(camera.far),
         )
+
+    def _render_2d(self, scene: object, camera: Camera2D) -> None:
+        self._power_2d.render(self, scene, camera)
 
     def _render_dynamic_13(self, scene: object, camera: Camera3D) -> None:
         self._shader_material_pipeline.render(scene, camera)

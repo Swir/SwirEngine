@@ -8,6 +8,10 @@ class RendererStats:
     sprite_batches: int = 0
     rectangles: int = 0
     texts: int = 0
+    render_roots_2d: int = 0
+    objects_culled_2d: int = 0
+    tilemap_cells_considered: int = 0
+    tilemap_cells_visible: int = 0
     cubes: int = 0
     meshes: int = 0
     shader_meshes: int = 0
@@ -39,6 +43,10 @@ class RendererStats:
         self.sprite_batches = 0
         self.rectangles = 0
         self.texts = 0
+        self.render_roots_2d = 0
+        self.objects_culled_2d = 0
+        self.tilemap_cells_considered = 0
+        self.tilemap_cells_visible = 0
         self.cubes = 0
         self.meshes = 0
         self.shader_meshes = 0

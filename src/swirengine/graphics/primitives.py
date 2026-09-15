@@ -43,6 +43,17 @@ class Sprite2D:
     layer: int = 0
     uv_rect: UVRect = (0.0, 0.0, 1.0, 1.0)
     screen_space: bool = False
+    _render_owner_id: int | None = field(default=None, init=False, repr=False, compare=False)
+
+    @property
+    def render_managed(self) -> bool:
+        """Whether a parent aggregate owns renderer submission for this sprite."""
+        return self._render_owner_id is not None
+
+    @property
+    def update_managed(self) -> bool:
+        """Whether the same aggregate owns this sprite's transform/update lifecycle."""
+        return self._render_owner_id is not None
 
     def update(self, dt: float) -> None:
         pass
