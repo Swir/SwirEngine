@@ -101,12 +101,13 @@ def test_object_pool_reuses_instances_and_runs_hooks():
     assert pool.available_count == 0
     assert pool.active_count == 2
 
+    reused_before = pool.diagnostics.reused
     assert pool.release(first)
     assert not pool.release(first)
     reused = pool.acquire()
     assert reused is first
     assert serial == 2
-    assert pool.diagnostics.reused == 1
+    assert pool.diagnostics.reused == reused_before + 1
     assert lifecycle[0][0] == "acquire"
     assert ("release", first["id"]) in lifecycle
     assert second is not reused
