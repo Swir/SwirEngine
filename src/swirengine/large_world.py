@@ -362,7 +362,7 @@ class LargeWorldStreamer:
     def unload_all(self) -> tuple[ChunkKey, ...]:
         """Deactivate and forget every tracked chunk while preserving asset-cache policy."""
         unloaded: list[ChunkKey] = []
-        for key in sorted(tuple(self._states)):
+        for key in sorted(self._states):
             state = self._states[key]
             if state.active:
                 self._deactivate(key, state)
@@ -413,7 +413,7 @@ class LargeWorldStreamer:
             return False
         try:
             results = tuple(future.result() for future in state.futures)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - loader failures cross this boundary
             state.failed = True
             state.failure = f"asset staging failed: {exc}"
             return False
@@ -438,7 +438,7 @@ class LargeWorldStreamer:
             if not isinstance(content, ChunkContent):
                 raise TypeError("chunk factory must return ChunkContent")
             mount = self.scene.mount(*content.objects, entities=content.entities)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - creator factory is an isolation boundary
             if content is not None:
                 self.scene.remove_many(*content.objects)
                 for entity in content.entities:
@@ -460,7 +460,7 @@ class LargeWorldStreamer:
         if state.definition.on_deactivate is not None:
             try:
                 state.definition.on_deactivate(context, content)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - cleanup must survive creator hooks
                 hook_error = exc
         if state.mount is not None:
             state.mount.unmount()
