@@ -1,0 +1,87 @@
+name: Full Game 1.3 Validation
+
+on:
+  push:
+    branches:
+      - feat/1.3-full-game-hardening-release-gate
+  pull_request:
+    paths:
+      - "demo_projects/neon_frontier_1_3/**"
+      - "tools/verify_1_3_release_candidate.py"
+      - "tests/test_release_1_3_contract.py"
+      - ".github/workflows/full-game-1-3.yml"
+      - ".github/workflows/release.yml"
+      - ".github/workflows/ci.yml"
+      - "README.md"
+      - "ROADMAP_1_3.md"
+      - "pyproject.toml"
+
+jobs:
+  integrated-runtime:
+    name: Integrated 1.3 runtime + OpenGL
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Verify development release contract
+        run: python tools/verify_1_3_release_candidate.py
+      - name: Focused 1.3 integration regressions
+        run: >-
+          pytest
+          tests/test_gpu_instancing.py
+          tests/test_collision3d.py
+          tests/test_navigation.py
+          tests/test_large_world.py
+          tests/test_shader_pipeline.py
+          tests/test_shader_mesh.py
+          tests/test_gameplay_framework.py
+          tests/test_editor_systems_1_3.py
+          tests/test_release_1_3_contract.py
+      - name: Strict final-game lint
+        run: >-
+          ruff check
+          demo_projects/neon_frontier_1_3
+          tools/verify_1_3_release_candidate.py
+          tests/test_release_1_3_contract.py
+      - name: Compile final-game release files
+        run: >-
+          python -m compileall -q
+          demo_projects/neon_frontier_1_3
+          tools/verify_1_3_release_candidate.py
+          tests/test_release_1_3_contract.py
+      - name: Install software OpenGL/Xvfb runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 libgl-dev libegl-dev
+      - name: Render integrated Neon Frontier 1.3 smoke
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          SWIR_1_3_SMOKE_FRAMES: "12"
+        run: xvfb-run -a python demo_projects/neon_frontier_1_3/run_game.py
+
+  packaged-windows:
+    name: Packaged Neon Frontier Windows probe
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e . pyinstaller
+      - name: Build one-file validation game
+        run: >-
+          python -m PyInstaller --noconfirm --clean --onefile
+          --collect-all glfw --collect-all glcontext
+          --name NeonFrontier13 demo_projects/neon_frontier_1_3/run_game.py
+      - name: Probe packaged native runtime
+        shell: pwsh
+        env:
+          SWIR_DEMO_RUNTIME_PROBE: "1"
+        run: |
+          & .\dist\NeonFrontier13.exe
+          if ($LASTEXITCODE -ne 0) { throw "Neon Frontier 1.3 packaged probe failed: $LASTEXITCODE" }
