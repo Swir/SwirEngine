@@ -153,7 +153,18 @@ from .networking import (
 )
 from .particles import ParticleEmitter2D
 from .physics.collision2d import AABB, BoxCollider2D, CollisionWorld2D
+from .physics.collision3d import (
+    AABB3D,
+    BoxCollider3D,
+    Collider3D,
+    CollisionDiagnostics3D,
+    CollisionWorld3D,
+    RaycastHit3D,
+    SphereBounds3D,
+    SphereCollider3D,
+)
 from .physics.rigidbody2d import PhysicsWorld2D, RigidBody2D
+from .physics.rigidbody3d import PhysicsWorld3D, RigidBody3D
 from .plugins import PluginError, PluginInfo, PluginManager
 from .prefab import Prefab, PrefabInstance, PrefabOverrides, PrefabSelector
 from .profiler import FrameProfile, Profiler
@@ -166,6 +177,7 @@ from .ui_navigation import UIFocusManager
 
 __all__ = [
     "AABB",
+    "AABB3D",
     "EDITOR_HIERARCHY_FORMAT",
     "EDITOR_HIERARCHY_VERSION",
     "EDITOR_PROJECT_FORMAT",
@@ -186,9 +198,13 @@ __all__ = [
     "AudioHandle",
     "AudioReloadEvent",
     "BoxCollider2D",
+    "BoxCollider3D",
     "Camera2D",
     "Camera3D",
+    "Collider3D",
+    "CollisionDiagnostics3D",
     "CollisionWorld2D",
+    "CollisionWorld3D",
     "Color",
     "ConnectionState",
     "Cube3D",
@@ -279,6 +295,7 @@ __all__ = [
     "PacketStreamDecoder",
     "ParticleEmitter2D",
     "PhysicsWorld2D",
+    "PhysicsWorld3D",
     "PluginAutoReloader",
     "PluginError",
     "PluginInfo",
@@ -299,12 +316,14 @@ __all__ = [
     "RPCError",
     "RPCRegistry",
     "RPCResult",
+    "RaycastHit3D",
     "Rectangle2D",
     "ReloadResult",
     "RendererAssetBridge",
     "RendererStats",
     "RendererViewportBridge",
     "RigidBody2D",
+    "RigidBody3D",
     "SaveStore",
     "Scene",
     "SceneCodecRegistry",
@@ -314,6 +333,8 @@ __all__ = [
     "SceneSerializationError",
     "SceneSerializer",
     "Skybox3D",
+    "SphereBounds3D",
+    "SphereCollider3D",
     "SpotLight3D",
     "Sprite2D",
     "SpriteSheet",
