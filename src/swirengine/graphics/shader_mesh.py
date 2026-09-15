@@ -5,10 +5,11 @@ from typing import Protocol
 
 from ..math.types import Color, Transform, Vec3, perspective
 from .camera3d import Camera3D
-from .lights import select_lights
+from .lights import DirectionalLight3D, select_lights
 from .mesh import MeshData
 from .shader_pipeline import (
     DefineValue,
+    ShaderDiagnostics,
     ShaderHookPoint,
     ShaderMaterial3D,
     ShaderPipelineError,
@@ -148,7 +149,7 @@ class ShaderMaterialRenderPipeline:
         self._mesh_vaos: dict[tuple[int, str], object] = {}
 
     @property
-    def diagnostics(self):
+    def diagnostics(self) -> ShaderDiagnostics:
         return self.programs.diagnostics
 
     def _validate_material(self, material: ShaderMaterial3D) -> None:
@@ -178,13 +179,16 @@ class ShaderMaterialRenderPipeline:
             vao = self.ctx.vertex_array(  # type: ignore[attr-defined]
                 program,
                 [(buffer_entry[0], "3f 3f 2f", "in_pos", "in_normal", "in_uv")],
+                skip_errors=True,
             )
             self._mesh_vaos[vao_key] = vao
         return vao, buffer_entry[1]
 
-    def _configure_frame_program(self, program: object, scene: object) -> None:
-        selection = select_lights(getattr(scene, "objects", ()), max_directional=1)
-        directional = selection.directional[0] if selection.directional else None
+    @staticmethod
+    def _configure_frame_program(
+        program: object,
+        directional: DirectionalLight3D | None,
+    ) -> None:
         program["directional_enabled"].value = int(directional is not None)  # type: ignore[index]
         if directional is None:
             program["directional_direction"].value = (0.0, -1.0, 0.0)  # type: ignore[index]
@@ -221,6 +225,8 @@ class ShaderMaterialRenderPipeline:
             float(camera.far),
         )
         view_projection = projection @ camera.view_matrix()
+        selection = select_lights(getattr(scene, "objects", ()), max_directional=1)
+        directional = selection.directional[0] if selection.directional else None
         configured_programs: set[int] = set()
         self.ctx.enable(self.ctx.DEPTH_TEST)  # type: ignore[attr-defined]
         try:
@@ -230,7 +236,7 @@ class ShaderMaterialRenderPipeline:
                 program = self.programs.resolve(material.variant)
                 program_id = id(program)
                 if program_id not in configured_programs:
-                    self._configure_frame_program(program, scene)
+                    self._configure_frame_program(program, directional)
                     configured_programs.add(program_id)
 
                 vao, vertex_count = self._gpu_mesh(obj, program)
