@@ -54,9 +54,22 @@ For example, preload radius 2 means exactly 25 local candidate keys in 2D or 125
 of whether the conceptual world contains hundreds, millions or procedurally infinite chunks.
 Tracked states outside the retention radius are removed rather than accumulated forever.
 
+Sparse worlds get an additional hot-path guard: provider misses are cached inside the retained local
+region. If a provider returns `None` for an empty chunk, the same empty key is not queried again every
+frame. Miss entries are pruned once they leave the retention radius, so travelling through an empty
+procedural world does not accumulate an unbounded negative cache. `LargeWorldDiagnostics` exposes
+`cached_missing_chunks` and per-update `provider_queries` so this work stays observable.
+
+`ChunkRegistry` carries a monotonic `revision`; adding or removing authored chunks automatically
+invalidates cached misses on the next update. Procedural/callable providers whose backing world data
+changes externally can call `invalidate_provider_cache(key)` or `invalidate_provider_cache()` to
+refresh one missing key or the full local miss cache explicitly.
+
 `tools/benchmark_large_world.py` exercises long-distance movement through a procedural world and
-gates these local-window bounds. Its wall-clock output is diagnostic only and is deliberately not
-converted into an FPS claim.
+gates the local-window bounds. `tests/test_large_world_provider_cache.py` separately verifies that
+repeated sparse-window updates avoid duplicate provider calls, registry revisions invalidate misses,
+and negative cache residency stays bounded during long-distance travel. Host wall-clock output is
+diagnostic only and is deliberately not converted into an FPS claim.
 
 ## Per-frame work budgets
 
@@ -99,7 +112,8 @@ active while individual renderables are culled by the renderer.
 
 Background asset failures and factory/activation exceptions become creator-visible `ChunkFailure`
 entries instead of silently corrupting residency. `retry(key)` rebuilds only the failed chunk state
-and leaves unrelated chunks untouched.
+and leaves unrelated chunks untouched. A creator deactivation hook is also isolated from mount
+cleanup: if the hook raises, SwirEngine still removes the mounted chunk and records the failure.
 
 ## Current 1.3 boundaries
 
@@ -115,5 +129,5 @@ claim to be:
 Those systems can build on the chunk/provider contracts without forcing a breaking change to the
 stable 1.x scene and asset APIs.
 
-See `examples/demo_large_world_streaming.py` and `tests/test_large_world.py` for executable usage and
-regression contracts.
+See `examples/demo_large_world_streaming.py`, `tests/test_large_world.py` and
+`tests/test_large_world_provider_cache.py` for executable usage and regression contracts.
