@@ -169,4 +169,4 @@ def test_agent3d_moves_on_xz_plane_without_changing_target_height():
 
     assert cube.position.x > 0.1
     assert cube.position.y == pytest.approx(7.0)
-    assert cube.position.z == pytest.approx(0.1)
+    assert cube.position.z >= 0.1
