@@ -50,7 +50,7 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e ".[dev]"
       - run: pytest tests/test_shader_pipeline.py tests/test_shader_mesh.py
-      - run: ruff check src/swirengine/graphics/shader_pipeline.py src/swirengine/graphics/shader_mesh.py src/swirengine/graphics/shadow_renderer.py src/swirengine/graphics/stats.py tests/test_shader_pipeline.py tests/test_shader_mesh.py examples/demo_shader_variants.py tools/benchmark_shader_pipeline.py tools/verify_shader_pipeline_opengl.py
+      - run: ruff check --fix --diff src/swirengine/graphics/shader_pipeline.py src/swirengine/graphics/shader_mesh.py src/swirengine/graphics/shadow_renderer.py src/swirengine/graphics/stats.py tests/test_shader_pipeline.py tests/test_shader_mesh.py examples/demo_shader_variants.py tools/benchmark_shader_pipeline.py tools/verify_shader_pipeline_opengl.py
       - run: python -m compileall -q src/swirengine/graphics/shader_pipeline.py src/swirengine/graphics/shader_mesh.py src/swirengine/graphics/shadow_renderer.py src/swirengine/graphics/stats.py tests/test_shader_pipeline.py tests/test_shader_mesh.py examples/demo_shader_variants.py tools/benchmark_shader_pipeline.py tools/verify_shader_pipeline_opengl.py
       - run: python tools/benchmark_shader_pipeline.py
       - run: python examples/demo_shader_variants.py
