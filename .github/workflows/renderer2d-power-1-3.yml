@@ -1,0 +1,80 @@
+name: 2D Renderer Power 1.3 Validation
+
+on:
+  pull_request:
+    paths:
+      - "src/swirengine/core/scene.py"
+      - "src/swirengine/graphics/primitives.py"
+      - "src/swirengine/graphics/renderer2d_power.py"
+      - "src/swirengine/graphics/shadow_renderer.py"
+      - "src/swirengine/graphics/stats.py"
+      - "src/swirengine/tilemap.py"
+      - "tests/test_renderer2d_power.py"
+      - "tests/test_tilemap.py"
+      - "tests/test_scene.py"
+      - "tools/benchmark_renderer2d_power.py"
+      - "tools/verify_renderer2d_power_opengl.py"
+      - "examples/demo_renderer2d_power.py"
+      - "docs/RENDERER_2D_POWER_1_3.md"
+      - "CHANGELOG.d/1.3.0-renderer-2d-power.md"
+      - "ROADMAP_1_3.md"
+      - "README.md"
+      - ".github/workflows/renderer2d-power-1-3.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "src/swirengine/core/scene.py"
+      - "src/swirengine/graphics/primitives.py"
+      - "src/swirengine/graphics/renderer2d_power.py"
+      - "src/swirengine/graphics/shadow_renderer.py"
+      - "src/swirengine/graphics/stats.py"
+      - "src/swirengine/tilemap.py"
+      - "tests/test_renderer2d_power.py"
+      - "tests/test_tilemap.py"
+      - "tests/test_scene.py"
+      - "tools/benchmark_renderer2d_power.py"
+      - "tools/verify_renderer2d_power_opengl.py"
+      - "examples/demo_renderer2d_power.py"
+      - "docs/RENDERER_2D_POWER_1_3.md"
+      - "CHANGELOG.d/1.3.0-renderer-2d-power.md"
+      - "ROADMAP_1_3.md"
+      - "README.md"
+      - ".github/workflows/renderer2d-power-1-3.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  cpu-contract:
+    name: 2D renderer CPU/locality contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - run: pytest tests/test_renderer2d_power.py tests/test_tilemap.py tests/test_scene.py
+      - run: ruff check src/swirengine/core/scene.py src/swirengine/graphics/primitives.py src/swirengine/graphics/renderer2d_power.py src/swirengine/graphics/shadow_renderer.py src/swirengine/graphics/stats.py src/swirengine/tilemap.py tests/test_renderer2d_power.py tools/benchmark_renderer2d_power.py tools/verify_renderer2d_power_opengl.py
+      - run: python -m compileall -q src/swirengine/core/scene.py src/swirengine/graphics/primitives.py src/swirengine/graphics/renderer2d_power.py src/swirengine/graphics/shadow_renderer.py src/swirengine/graphics/stats.py src/swirengine/tilemap.py tests/test_renderer2d_power.py tools/benchmark_renderer2d_power.py tools/verify_renderer2d_power_opengl.py
+      - run: python tools/benchmark_renderer2d_power.py
+
+  opengl-smoke:
+    name: Real OpenGL 2D power-pass smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Install software OpenGL/Xvfb runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 libgl-dev libegl-dev
+      - name: Render moving-camera tilemap through production renderer
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: xvfb-run -a python tools/verify_renderer2d_power_opengl.py
