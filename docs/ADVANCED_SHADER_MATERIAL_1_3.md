@@ -87,8 +87,10 @@ The cache reports preparation requests, compile requests, hits, misses, compile 
 
 The 1.3 shader path is additive. Existing `Mesh3D` + `Material3D`, Phong/PBR materials, static batching, instancing and skeletal rendering keep their established paths.
 
-`ShaderMesh3D` currently participates in the production direct-forward pass with base color, normals/UVs available to hooks and one selected directional light. It does **not** silently claim support in auxiliary directional-shadow or additive cubemap-IBL passes, and this milestone does not yet provide creator texture/sampler binding for arbitrary custom samplers.
+`ShaderMesh3D` participates in the production direct-forward pass with base color, normals/UVs available to hooks and one selected directional light. It does **not** silently claim support in auxiliary directional-shadow or additive cubemap-IBL passes, and this milestone does not provide creator texture/sampler binding for arbitrary custom samplers.
 
-The roadmap checkbox remains open until the dedicated real-OpenGL smoke plus the full CI/runtime/demo/export matrix are green on the exact final head.
+## Validation status
+
+Milestone 6/10 is complete in the 1.3 development line. Dedicated regression coverage validates deterministic variants, safety policy, bounded program caching, custom uniforms and shared mesh/VAO resources. A real Xvfb/software-OpenGL smoke compiles and renders the production `ShaderMesh3D` path through `Game`, and the milestone is gated by the full CI/runtime/demo/export matrix before merge to `main`.
 
 See `examples/demo_shader_variants.py`, `tests/test_shader_pipeline.py`, `tests/test_shader_mesh.py`, `tools/benchmark_shader_pipeline.py` and `tools/verify_shader_pipeline_opengl.py`.
