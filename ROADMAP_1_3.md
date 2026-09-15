@@ -4,20 +4,20 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-70.0%25-0969da?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-7%2F10-0969da?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-80.0%25-0969da?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-8%2F10-0969da?style=for-the-badge">
   <img alt="Status" src="https://img.shields.io/badge/STATUS-ACTIVE-0969da?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-██████████████░░░░░░ 70.0%
+████████████████░░░░ 80.0%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **7** | **3** | **10** | **70.0%** |
+| **8** | **2** | **10** | **80.0%** |
 
 > Progress is derived only from the equal-weight verified deliverables below. A checkbox becomes
 > complete only after implementation, regression coverage, README/CHANGELOG synchronization and
@@ -37,7 +37,7 @@
       custom shader hooks and diagnostics without bypassing engine safety
 - [x] 2D Renderer Power Pass: stronger batching/culling, tilemap viewport locality and lower
       Python/per-frame overhead for very large 2D scenes
-- [ ] Advanced Gameplay Framework: timers, signals, object pools, cooldown/spawn helpers and
+- [x] Advanced Gameplay Framework: timers, signals, object pools, cooldown/spawn helpers and
       composition-friendly gameplay utilities
 - [ ] Creator / Editor Integration: expose 1.3 systems through the existing workspace, inspector,
       viewport and diagnostics without starting a separate 2.0 editor project
