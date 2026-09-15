@@ -152,6 +152,7 @@ class ShaderVariantSpec:
     """Prepared variant; source expansion happens once, not every frame."""
 
     template_name: str
+    template_fingerprint: str
     key: ShaderVariantKey
     vertex_source: str
     fragment_source: str
@@ -215,6 +216,43 @@ class ShaderMaterial3D:
         return name
 
 
+def prepare_shader_variant(
+    template: ShaderTemplate,
+    *,
+    defines: Mapping[str, DefineValue] | None = None,
+    hooks: Mapping[str, str] | None = None,
+    safety: ShaderSafetyPolicy | None = None,
+) -> ShaderVariantSpec:
+    """Prepare and validate a variant without requiring an OpenGL context."""
+
+    policy = safety or ShaderSafetyPolicy()
+    normalized_defines = _normalize_defines(defines or {}, policy)
+    normalized_hooks = _normalize_hooks(template, hooks or {}, policy)
+    vertex = template.vertex_source
+    fragment = template.fragment_source
+
+    hook_sources = dict(normalized_hooks)
+    for point in template.hook_points:
+        replacement = hook_sources.get(point.name, "")
+        if point.stage == "vertex":
+            vertex = vertex.replace(point.marker, replacement)
+        else:
+            fragment = fragment.replace(point.marker, replacement)
+
+    vertex = _inject_defines(vertex, normalized_defines)
+    fragment = _inject_defines(fragment, normalized_defines)
+    key = _variant_key(template, normalized_defines, normalized_hooks)
+    return ShaderVariantSpec(
+        template_name=template.name,
+        template_fingerprint=template.fingerprint,
+        key=key,
+        vertex_source=vertex,
+        fragment_source=fragment,
+        defines=normalized_defines,
+        hooks=tuple(name for name, _ in normalized_hooks),
+    )
+
+
 class ShaderProgramCache:
     """Bounded LRU cache for prepared shader variants."""
 
@@ -241,29 +279,11 @@ class ShaderProgramCache:
         hooks: Mapping[str, str] | None = None,
     ) -> ShaderVariantSpec:
         self.diagnostics.prepare_requests += 1
-        normalized_defines = _normalize_defines(defines or {}, self.safety)
-        normalized_hooks = _normalize_hooks(template, hooks or {}, self.safety)
-        vertex = template.vertex_source
-        fragment = template.fragment_source
-
-        hook_sources = dict(normalized_hooks)
-        for point in template.hook_points:
-            replacement = hook_sources.get(point.name, "")
-            if point.stage == "vertex":
-                vertex = vertex.replace(point.marker, replacement)
-            else:
-                fragment = fragment.replace(point.marker, replacement)
-
-        vertex = _inject_defines(vertex, normalized_defines)
-        fragment = _inject_defines(fragment, normalized_defines)
-        key = _variant_key(template, normalized_defines, normalized_hooks)
-        return ShaderVariantSpec(
-            template_name=template.name,
-            key=key,
-            vertex_source=vertex,
-            fragment_source=fragment,
-            defines=normalized_defines,
-            hooks=tuple(name for name, _ in normalized_hooks),
+        return prepare_shader_variant(
+            template,
+            defines=defines,
+            hooks=hooks,
+            safety=self.safety,
         )
 
     def resolve(self, variant: ShaderVariantSpec) -> object:
