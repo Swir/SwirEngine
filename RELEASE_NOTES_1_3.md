@@ -30,3 +30,7 @@ The final 1.3 release workflow requires:
 - public PyPI metadata, clean-install and runtime verification after publication
 
 Performance claims remain workload-specific and measurable; no FPS increase is claimed without direct evidence.
+
+## Publication
+
+This release is published only through the repository's guarded 1.3 Trusted Publishing workflow after the completed 10/10 roadmap and exact-head validation matrix are green.
