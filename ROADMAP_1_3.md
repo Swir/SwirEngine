@@ -4,20 +4,20 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-30.0%25-0969da?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-3%2F10-0969da?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-40.0%25-0969da?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-4%2F10-0969da?style=for-the-badge">
   <img alt="Status" src="https://img.shields.io/badge/STATUS-ACTIVE-0969da?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-██████░░░░░░░░░░░░░░ 30.0%
+████████░░░░░░░░░░░░ 40.0%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **3** | **7** | **10** | **30.0%** |
+| **4** | **6** | **10** | **40.0%** |
 
 > Progress is derived only from the equal-weight verified deliverables below. A checkbox becomes
 > complete only after implementation, regression coverage, README/CHANGELOG synchronization and
@@ -29,7 +29,7 @@
       animation control
 - [x] 3D Collision / Physics Foundation: 3D bounds, broad phase, ray/sphere/box queries and deterministic
       gameplay foundations
-- [ ] Navigation & Pathfinding: A* grid navigation, path queries, agents and a route toward authored or
+- [x] Navigation & Pathfinding: A* grid navigation, path queries, agents and a route toward authored or
       generated navigation meshes
 - [ ] Large World / Chunk Streaming: chunked residency, distance/visibility activation and streaming
       hooks for large 2D/3D scenes
