@@ -112,8 +112,10 @@ class Scene:
         self._render_snapshot_dirty = True
 
     def _objects_for_update(self) -> tuple[object, ...]:
-        if self._snapshot_dirty or len(self._update_snapshot) != len(self._objects):
-            self._update_snapshot = tuple(self._objects)
+        if self._snapshot_dirty:
+            self._update_snapshot = tuple(
+                obj for obj in self._objects if not getattr(obj, "update_managed", False)
+            )
             self._snapshot_dirty = False
             self.diagnostics.snapshot_rebuilds += 1
         return self._update_snapshot
