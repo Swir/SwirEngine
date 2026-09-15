@@ -1,130 +1,50 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from dataclasses import fields, is_dataclass
+from dataclasses import dataclass, fields, is_dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any
 
 
-class EditorSystemMetric(tuple):
-    """Immutable ``(name, value, display_value)`` metric row."""
+@dataclass(frozen=True, slots=True)
+class EditorSystemMetric:
+    """One immutable creator-facing diagnostics metric."""
 
-    __slots__ = ()
-
-    def __new__(cls, name: str, value: object, display_value: str) -> EditorSystemMetric:
-        return tuple.__new__(cls, (name, value, display_value))
-
-    @property
-    def name(self) -> str:
-        return self[0]
-
-    @property
-    def value(self) -> object:
-        return self[1]
-
-    @property
-    def display_value(self) -> str:
-        return self[2]
+    name: str
+    value: object
+    display_value: str
 
 
-class EditorSystemSnapshot(tuple):
+@dataclass(frozen=True, slots=True)
+class EditorSystemSnapshot:
     """Immutable creator-facing diagnostics snapshot for one engine subsystem."""
 
-    __slots__ = ()
-
-    def __new__(
-        cls,
-        system_id: str,
-        title: str,
-        category: str,
-        metrics: tuple[EditorSystemMetric, ...],
-    ) -> EditorSystemSnapshot:
-        return tuple.__new__(cls, (system_id, title, category, metrics))
-
-    @property
-    def system_id(self) -> str:
-        return self[0]
-
-    @property
-    def title(self) -> str:
-        return self[1]
-
-    @property
-    def category(self) -> str:
-        return self[2]
-
-    @property
-    def metrics(self) -> tuple[EditorSystemMetric, ...]:
-        return self[3]
+    system_id: str
+    title: str
+    category: str
+    metrics: tuple[EditorSystemMetric, ...]
 
 
-class EditorSystemFrame(tuple):
+@dataclass(frozen=True, slots=True)
+class EditorSystemFrame:
     """Immutable filtered editor snapshot across registered engine systems."""
 
-    __slots__ = ()
-
-    def __new__(
-        cls,
-        systems: tuple[EditorSystemSnapshot, ...],
-        total_systems: int,
-        categories: tuple[str, ...],
-        query: str = "",
-        category: str | None = None,
-    ) -> EditorSystemFrame:
-        return tuple.__new__(cls, (systems, total_systems, categories, query, category))
-
-    @property
-    def systems(self) -> tuple[EditorSystemSnapshot, ...]:
-        return self[0]
-
-    @property
-    def total_systems(self) -> int:
-        return self[1]
-
-    @property
-    def categories(self) -> tuple[str, ...]:
-        return self[2]
-
-    @property
-    def query(self) -> str:
-        return self[3]
-
-    @property
-    def category(self) -> str | None:
-        return self[4]
+    systems: tuple[EditorSystemSnapshot, ...]
+    total_systems: int
+    categories: tuple[str, ...]
+    query: str = ""
+    category: str | None = None
 
 
 DiagnosticsProvider = Callable[[], object]
 
 
-class _RegisteredSystem(tuple):
-    __slots__ = ()
-
-    def __new__(
-        cls,
-        system_id: str,
-        title: str,
-        category: str,
-        provider: DiagnosticsProvider,
-    ) -> _RegisteredSystem:
-        return tuple.__new__(cls, (system_id, title, category, provider))
-
-    @property
-    def system_id(self) -> str:
-        return self[0]
-
-    @property
-    def title(self) -> str:
-        return self[1]
-
-    @property
-    def category(self) -> str:
-        return self[2]
-
-    @property
-    def provider(self) -> DiagnosticsProvider:
-        return self[3]
+@dataclass(frozen=True, slots=True)
+class _RegisteredSystem:
+    system_id: str
+    title: str
+    category: str
+    provider: DiagnosticsProvider
 
 
 class EditorSystemRegistry:
@@ -153,7 +73,9 @@ class EditorSystemRegistry:
         normalized_category = category.strip().lower()
         if not normalized_category:
             raise ValueError("system category cannot be empty")
-        normalized_title = (title or normalized_id.replace("-", " ").replace("_", " ").title()).strip()
+        normalized_title = (
+            title or normalized_id.replace("-", " ").replace("_", " ").title()
+        ).strip()
         if not normalized_title:
             raise ValueError("system title cannot be empty")
         if provider is not None and source is not None:
@@ -221,8 +143,7 @@ class EditorSystemRegistry:
     @staticmethod
     def _provider_for(source: object) -> DiagnosticsProvider:
         def provider() -> object:
-            diagnostics = getattr(source, "diagnostics", source)
-            return diagnostics
+            return getattr(source, "diagnostics", source)
 
         return provider
 
@@ -273,21 +194,12 @@ class EditorSystemRegistry:
         return str(value)
 
 
-class CreatorEditorFrame(tuple):
+@dataclass(frozen=True, slots=True)
+class CreatorEditorFrame:
     """One combined snapshot of the existing editor frontend plus 1.3 system diagnostics."""
 
-    __slots__ = ()
-
-    def __new__(cls, frontend: object, systems: EditorSystemFrame) -> CreatorEditorFrame:
-        return tuple.__new__(cls, (frontend, systems))
-
-    @property
-    def frontend(self) -> object:
-        return self[0]
-
-    @property
-    def systems(self) -> EditorSystemFrame:
-        return self[1]
+    frontend: object
+    systems: EditorSystemFrame
 
 
 class CreatorEditorIntegration:
