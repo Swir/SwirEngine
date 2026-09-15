@@ -4,7 +4,6 @@ from time import perf_counter
 
 from swirengine.gameplay import ObjectPool, Scheduler
 
-
 DORMANT_TIMERS = 10_000
 IDLE_UPDATES = 1_000
 POOL_SIZE = 5_000
