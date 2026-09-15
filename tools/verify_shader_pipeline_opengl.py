@@ -1,6 +1,4 @@
-from swirengine import Color, Game, Vec3
-from swirengine.graphics.mesh import cube_mesh
-from swirengine.graphics.shader_mesh import ShaderMesh3D, shader_material_3d
+from swirengine import Color, Game, ShaderMesh3D, Vec3, cube_mesh, shader_material_3d
 
 
 game = Game(
