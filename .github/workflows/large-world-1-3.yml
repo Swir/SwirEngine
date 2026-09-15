@@ -7,6 +7,7 @@ on:
       - "src/swirengine/asset_streaming.py"
       - "src/swirengine/core/scene.py"
       - "tests/test_large_world.py"
+      - "tests/test_large_world_provider_cache.py"
       - "tests/test_asset_streaming.py"
       - "tests/test_scene_ecs_ergonomics.py"
       - "examples/demo_large_world_streaming.py"
@@ -23,6 +24,7 @@ on:
       - "src/swirengine/asset_streaming.py"
       - "src/swirengine/core/scene.py"
       - "tests/test_large_world.py"
+      - "tests/test_large_world_provider_cache.py"
       - "tests/test_asset_streaming.py"
       - "tests/test_scene_ecs_ergonomics.py"
       - "examples/demo_large_world_streaming.py"
@@ -47,8 +49,8 @@ jobs:
           python-version: "3.13"
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e ".[dev]"
-      - run: pytest tests/test_large_world.py tests/test_asset_streaming.py tests/test_scene_ecs_ergonomics.py
-      - run: ruff check src/swirengine/large_world.py tests/test_large_world.py examples/demo_large_world_streaming.py tools/benchmark_large_world.py
-      - run: python -m compileall -q src/swirengine/large_world.py examples/demo_large_world_streaming.py tools/benchmark_large_world.py
+      - run: pytest tests/test_large_world.py tests/test_large_world_provider_cache.py tests/test_asset_streaming.py tests/test_scene_ecs_ergonomics.py
+      - run: ruff check src/swirengine/large_world.py tests/test_large_world.py tests/test_large_world_provider_cache.py examples/demo_large_world_streaming.py tools/benchmark_large_world.py
+      - run: python -m compileall -q src/swirengine/large_world.py tests/test_large_world_provider_cache.py examples/demo_large_world_streaming.py tools/benchmark_large_world.py
       - run: python tools/benchmark_large_world.py
       - run: python examples/demo_large_world_streaming.py
