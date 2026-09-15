@@ -1,20 +1,17 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from concurrent.futures import Future
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from math import floor
 from pathlib import Path
-from typing import TYPE_CHECKING, TypeAlias
+from typing import TypeAlias
 
 from .asset_pipeline import AssetLoadResult
 from .asset_streaming import AssetStreamingManager
 from .core.scene import Scene, SceneMount
 from .ecs import Entity
 from .math.types import Vec2, Vec3
-
-if TYPE_CHECKING:
-    from collections.abc import Mapping
 
 
 @dataclass(frozen=True, order=True, slots=True)
@@ -134,7 +131,7 @@ class ChunkFailure:
 
 @dataclass(frozen=True, slots=True)
 class LargeWorldDiagnostics:
-    """Work counters from the most recent streaming update."""
+    """Work counters from the most recent 3D/2D streaming update."""
 
     focus_key: ChunkKey
     candidate_keys: int
@@ -175,11 +172,9 @@ class _ChunkState:
 class LargeWorldStreamer:
     """Budgeted chunk residency and activation for large 2D/3D scenes.
 
-    The streamer never scans the complete authored world. Each update enumerates only the local
-    preload window around the focus chunk and asks the provider for those keys. Chunk assets are
-    staged asynchronously when an :class:`AssetStreamingManager` is supplied, while scene content
-    is created only once the chunk becomes visible/near enough and an activation budget is
-    available.
+    Updates enumerate only the local preload window around the focus chunk; the complete authored
+    world is never scanned. Asset work can be staged through ``AssetStreamingManager`` and scene
+    content is created only when a ready chunk is admitted by the active-window budget.
     """
 
     def __init__(
@@ -196,7 +191,6 @@ class LargeWorldStreamer:
         self.asset_streamer = asset_streamer
         self._states: dict[ChunkKey, _ChunkState] = {}
         self._asset_refs: dict[Path, int] = {}
-        self._desired_preload: set[ChunkKey] = set()
         self._desired_active: set[ChunkKey] = set()
         self._activation_scratch: list[tuple[int, ChunkKey]] = []
         self._stale_scratch: list[ChunkKey] = []
@@ -229,7 +223,8 @@ class LargeWorldStreamer:
     def focus_key(self, focus: Vec2 | Vec3 | tuple[float, ...]) -> ChunkKey:
         x, y, z = self._focus_components(focus)
         size = self.settings.chunk_size
-        return ChunkKey(floor(x / size), floor(y / size), floor(z / size))
+        z_key = floor(z / size) if self.settings.dimensions == 3 else 0
+        return ChunkKey(floor(x / size), floor(y / size), z_key)
 
     def chunk_origin(self, key: ChunkKey) -> Vec3:
         size = self.settings.chunk_size
@@ -264,7 +259,6 @@ class LargeWorldStreamer:
                 max_completions=self.settings.max_asset_completions_per_update
             )
 
-        self._desired_preload.clear()
         self._desired_active.clear()
         self._activation_scratch.clear()
         self._stale_scratch.clear()
@@ -274,7 +268,6 @@ class LargeWorldStreamer:
         provider_queries = 0
         for key in self._iter_window(focus_key, self.settings.preload_radius_chunks):
             candidate_keys += 1
-            self._desired_preload.add(key)
             state = self._states.get(key)
             if state is None:
                 provider_queries += 1
@@ -288,8 +281,7 @@ class LargeWorldStreamer:
                 state = self._create_state(definition)
                 self._states[key] = state
 
-            became_ready = self._refresh_readiness(state)
-            if became_ready:
+            if self._refresh_readiness(state):
                 self._ready_scratch.append(key)
             if not state.ready or state.failed:
                 continue
@@ -318,8 +310,8 @@ class LargeWorldStreamer:
             state = self._states.get(key)
             if state is None or state.active or state.failed or not state.ready:
                 continue
-            self._activate(key, state)
-            activated.append(key)
+            if self._activate(key, state):
+                activated.append(key)
 
         for key in self._states:
             if self._key_distance(focus_key, key) > self.settings.retention_radius_chunks:
@@ -368,7 +360,7 @@ class LargeWorldStreamer:
         )
 
     def unload_all(self) -> tuple[ChunkKey, ...]:
-        """Deactivate and forget every tracked chunk while retaining shared asset-cache policy."""
+        """Deactivate and forget every tracked chunk while preserving asset-cache policy."""
         unloaded: list[ChunkKey] = []
         for key in sorted(tuple(self._states)):
             state = self._states[key]
@@ -381,13 +373,12 @@ class LargeWorldStreamer:
         return tuple(unloaded)
 
     def retry(self, key: ChunkKey) -> bool:
-        """Retry a failed tracked chunk without affecting unrelated chunk state."""
+        """Retry one failed tracked chunk without rebuilding unrelated chunk state."""
         state = self._states.get(key)
-        if state is None or not state.failed:
+        if state is None or not state.failed or state.active:
             return False
         self._release_state_assets(state)
-        replacement = self._create_state(state.definition)
-        self._states[key] = replacement
+        self._states[key] = self._create_state(state.definition)
         return True
 
     def _create_state(self, definition: ChunkDefinition) -> _ChunkState:
@@ -402,8 +393,7 @@ class LargeWorldStreamer:
                 for asset in definition.assets:
                     path = self.asset_streamer.assets.require(asset).expanduser().resolve()
                     canonical_assets.append(path)
-                    refs = self._asset_refs.get(path, 0)
-                    self._asset_refs[path] = refs + 1
+                    self._asset_refs[path] = self._asset_refs.get(path, 0) + 1
                     futures.append(self.asset_streamer.stage(path, pin=True))
             except Exception:
                 for path in canonical_assets:
@@ -423,49 +413,64 @@ class LargeWorldStreamer:
             return False
         try:
             results = tuple(future.result() for future in state.futures)
-        except Exception as exc:  # background loader exceptions must become creator-visible state
+        except Exception as exc:
             state.failed = True
             state.failure = f"asset staging failed: {exc}"
             return False
         failures = [result for result in results if not result.ok]
         if failures:
             first = failures[0]
+            detail = f": {first.error}" if first.error else ""
             state.failed = True
-            state.failure = f"asset staging failed for {first.path}"
+            state.failure = f"asset staging failed for {first.path}{detail}"
             return False
         state.ready = True
         return True
 
-    def _activate(self, key: ChunkKey, state: _ChunkState) -> None:
+    def _activate(self, key: ChunkKey, state: _ChunkState) -> bool:
         if self.asset_streamer is not None:
             for path in state.canonical_assets:
                 self.asset_streamer.touch(path)
         context = self.context(key)
+        content: ChunkContent | None = None
         try:
             content = state.definition.factory(context)
             if not isinstance(content, ChunkContent):
                 raise TypeError("chunk factory must return ChunkContent")
             mount = self.scene.mount(*content.objects, entities=content.entities)
         except Exception as exc:
+            if content is not None:
+                self.scene.remove_many(*content.objects)
+                for entity in content.entities:
+                    if self.scene.ecs.entity(entity.id) is entity:
+                        self.scene.ecs.destroy(entity)
             state.failed = True
             state.failure = f"chunk activation failed: {exc}"
-            return
+            return False
         state.content = content
         state.mount = mount
         state.active = True
         self._total_activations += 1
+        return True
 
     def _deactivate(self, key: ChunkKey, state: _ChunkState) -> None:
         content = state.content or ChunkContent()
         context = self.context(key)
+        hook_error: Exception | None = None
         if state.definition.on_deactivate is not None:
-            state.definition.on_deactivate(context, content)
+            try:
+                state.definition.on_deactivate(context, content)
+            except Exception as exc:
+                hook_error = exc
         if state.mount is not None:
             state.mount.unmount()
         state.mount = None
         state.content = None
         state.active = False
         self._total_deactivations += 1
+        if hook_error is not None:
+            state.failed = True
+            state.failure = f"chunk deactivation hook failed: {hook_error}"
 
     def _release_state_assets(self, state: _ChunkState) -> None:
         for path in state.canonical_assets:
@@ -506,9 +511,13 @@ class LargeWorldStreamer:
         dz = 0 if self.settings.dimensions == 2 else first.z - second.z
         return dx * dx + dy * dy + dz * dz
 
-    def _focus_components(self, focus: Vec2 | Vec3 | tuple[float, ...]) -> tuple[float, float, float]:
+    def _focus_components(
+        self,
+        focus: Vec2 | Vec3 | tuple[float, ...],
+    ) -> tuple[float, float, float]:
         if isinstance(focus, Vec3):
-            return float(focus.x), float(focus.y), float(focus.z)
+            z = float(focus.z) if self.settings.dimensions == 3 else 0.0
+            return float(focus.x), float(focus.y), z
         if isinstance(focus, Vec2):
             return float(focus.x), float(focus.y), 0.0
         values = tuple(float(value) for value in focus)
