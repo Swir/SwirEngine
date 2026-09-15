@@ -7,22 +7,25 @@ from tools.verify_1_3_release_candidate import audit, parse_roadmap
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_current_1_3_development_contract_is_valid() -> None:
-    report = audit(ROOT)
+def test_current_1_3_release_contract_is_complete() -> None:
+    report = audit(ROOT, require_complete=True)
 
-    assert report.version in {"1.2.0", "1.3.0"}
+    assert report.version == "1.3.0"
     assert report.roadmap.total == 10
-    assert report.roadmap.completed in {9, 10}
+    assert report.roadmap.completed == 10
+    assert report.roadmap.remaining == 0
+    assert report.roadmap.percent == 100.0
+    assert report.roadmap.bar == "████████████████████ 100.0%"
 
 
 def test_roadmap_parser_derives_exact_twenty_segment_bar() -> None:
-    state = parse_roadmap("\n".join(["- [x] done"] * 9 + ["- [ ] remaining"]))
+    state = parse_roadmap("\n".join(["- [x] done"] * 10))
 
-    assert state.completed == 9
-    assert state.remaining == 1
+    assert state.completed == 10
+    assert state.remaining == 0
     assert state.total == 10
-    assert state.percent == 90.0
-    assert state.bar == "██████████████████░░ 90.0%"
+    assert state.percent == 100.0
+    assert state.bar == "████████████████████ 100.0%"
 
 
 def test_final_game_contract_mentions_every_integrated_1_3_system() -> None:
@@ -50,9 +53,10 @@ def test_release_workflow_is_hard_gated_on_complete_1_3_contract() -> None:
     assert "skip-existing: true" not in workflow
 
 
-def test_full_game_workflow_has_real_opengl_and_packaged_windows_probe() -> None:
+def test_full_game_workflow_has_real_opengl_packaged_windows_and_complete_gate() -> None:
     workflow = (ROOT / ".github/workflows/full-game-1-3.yml").read_text(encoding="utf-8")
 
+    assert "verify_1_3_release_candidate.py --require-complete" in workflow
     assert "xvfb-run" in workflow
     assert "SWIR_1_3_SMOKE_FRAMES" in workflow
     assert "PyInstaller" in workflow
