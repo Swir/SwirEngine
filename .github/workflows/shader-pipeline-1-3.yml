@@ -4,21 +4,35 @@ on:
   pull_request:
     paths:
       - "src/swirengine/graphics/shader_pipeline.py"
+      - "src/swirengine/graphics/shader_mesh.py"
+      - "src/swirengine/graphics/shadow_renderer.py"
+      - "src/swirengine/graphics/stats.py"
       - "tests/test_shader_pipeline.py"
+      - "tests/test_shader_mesh.py"
       - "examples/demo_shader_variants.py"
       - "tools/benchmark_shader_pipeline.py"
+      - "tools/verify_shader_pipeline_opengl.py"
       - "docs/ADVANCED_SHADER_MATERIAL_1_3.md"
       - "CHANGELOG.d/1.3.0-advanced-shader-material.md"
+      - "ROADMAP_1_3.md"
+      - "README.md"
       - ".github/workflows/shader-pipeline-1-3.yml"
   push:
     branches: ["main"]
     paths:
       - "src/swirengine/graphics/shader_pipeline.py"
+      - "src/swirengine/graphics/shader_mesh.py"
+      - "src/swirengine/graphics/shadow_renderer.py"
+      - "src/swirengine/graphics/stats.py"
       - "tests/test_shader_pipeline.py"
+      - "tests/test_shader_mesh.py"
       - "examples/demo_shader_variants.py"
       - "tools/benchmark_shader_pipeline.py"
+      - "tools/verify_shader_pipeline_opengl.py"
       - "docs/ADVANCED_SHADER_MATERIAL_1_3.md"
       - "CHANGELOG.d/1.3.0-advanced-shader-material.md"
+      - "ROADMAP_1_3.md"
+      - "README.md"
       - ".github/workflows/shader-pipeline-1-3.yml"
 
 permissions:
@@ -35,8 +49,27 @@ jobs:
           python-version: "3.13"
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e ".[dev]"
-      - run: pytest tests/test_shader_pipeline.py
-      - run: ruff check src/swirengine/graphics/shader_pipeline.py tests/test_shader_pipeline.py examples/demo_shader_variants.py tools/benchmark_shader_pipeline.py
-      - run: python -m compileall -q src/swirengine/graphics/shader_pipeline.py tests/test_shader_pipeline.py examples/demo_shader_variants.py tools/benchmark_shader_pipeline.py
+      - run: pytest tests/test_shader_pipeline.py tests/test_shader_mesh.py
+      - run: ruff check src/swirengine/graphics/shader_pipeline.py src/swirengine/graphics/shader_mesh.py src/swirengine/graphics/shadow_renderer.py src/swirengine/graphics/stats.py tests/test_shader_pipeline.py tests/test_shader_mesh.py examples/demo_shader_variants.py tools/benchmark_shader_pipeline.py tools/verify_shader_pipeline_opengl.py
+      - run: python -m compileall -q src/swirengine/graphics/shader_pipeline.py src/swirengine/graphics/shader_mesh.py src/swirengine/graphics/shadow_renderer.py src/swirengine/graphics/stats.py tests/test_shader_pipeline.py tests/test_shader_mesh.py examples/demo_shader_variants.py tools/benchmark_shader_pipeline.py tools/verify_shader_pipeline_opengl.py
       - run: python tools/benchmark_shader_pipeline.py
       - run: python examples/demo_shader_variants.py
+
+  opengl-smoke:
+    name: Real OpenGL shader-material smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Install software OpenGL/Xvfb runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 libgl-dev libegl-dev
+      - name: Compile and render production ShaderMesh3D path
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: xvfb-run -a python tools/verify_shader_pipeline_opengl.py
