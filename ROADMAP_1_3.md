@@ -4,20 +4,20 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-20.0%25-0969da?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-2%2F10-0969da?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-30.0%25-0969da?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-3%2F10-0969da?style=for-the-badge">
   <img alt="Status" src="https://img.shields.io/badge/STATUS-ACTIVE-0969da?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-████░░░░░░░░░░░░░░░░ 20.0%
+██████░░░░░░░░░░░░░░ 30.0%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **2** | **8** | **10** | **20.0%** |
+| **3** | **7** | **10** | **30.0%** |
 
 > Progress is derived only from the equal-weight verified deliverables below. A checkbox becomes
 > complete only after implementation, regression coverage, README/CHANGELOG synchronization and
@@ -27,7 +27,7 @@
       CPU view-frustum rejection, diagnostics and performance gates
 - [x] 3D Skeletal Animation: glTF skins/skeletons, GPU skinning, clips, blending and creator-friendly
       animation control
-- [ ] 3D Collision / Physics Foundation: 3D bounds, broad phase, ray/sphere/box queries and deterministic
+- [x] 3D Collision / Physics Foundation: 3D bounds, broad phase, ray/sphere/box queries and deterministic
       gameplay foundations
 - [ ] Navigation & Pathfinding: A* grid navigation, path queries, agents and a route toward authored or
       generated navigation meshes
