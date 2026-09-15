@@ -16,13 +16,15 @@ T = TypeVar("T")
 
 @dataclass(slots=True)
 class SceneDiagnostics:
-    """Creator-visible counters for scene update work."""
+    """Creator-visible counters for scene update/render snapshot work."""
 
     snapshot_rebuilds: int = 0
+    render_snapshot_rebuilds: int = 0
     object_updates: int = 0
 
     def reset(self) -> None:
         self.snapshot_rebuilds = 0
+        self.render_snapshot_rebuilds = 0
         self.object_updates = 0
 
 
@@ -55,7 +57,9 @@ class Scene:
     def __init__(self) -> None:
         self._objects: list[object] = []
         self._update_snapshot: tuple[object, ...] = ()
+        self._render_snapshot: tuple[object, ...] = ()
         self._snapshot_dirty = False
+        self._render_snapshot_dirty = False
         self._started_ids: set[int] = set()
         self.ecs = ECSWorld()
         self.diagnostics = SceneDiagnostics()
@@ -63,6 +67,22 @@ class Scene:
     @property
     def objects(self) -> tuple[object, ...]:
         return tuple(self._objects)
+
+    @property
+    def render_objects(self) -> tuple[object, ...]:
+        """Return scene-level render roots without parent-managed child submissions.
+
+        Tilemaps and future aggregate render sources can keep their child objects registered for
+        compatibility/lifecycle purposes while the renderer avoids sorting/scanning those children
+        every frame. The snapshot rebuilds only when scene membership changes.
+        """
+        if self._render_snapshot_dirty:
+            self._render_snapshot = tuple(
+                obj for obj in self._objects if not getattr(obj, "render_managed", False)
+            )
+            self._render_snapshot_dirty = False
+            self.diagnostics.render_snapshot_rebuilds += 1
+        return self._render_snapshot
 
     @property
     def entities(self) -> tuple[Entity, ...]:
@@ -89,6 +109,7 @@ class Scene:
 
     def _invalidate_snapshot(self) -> None:
         self._snapshot_dirty = True
+        self._render_snapshot_dirty = True
 
     def _objects_for_update(self) -> tuple[object, ...]:
         if self._snapshot_dirty or len(self._update_snapshot) != len(self._objects):
