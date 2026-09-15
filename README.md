@@ -242,6 +242,24 @@ Current boundary: this milestone is not a coroutine engine, async task runtime, 
 
 See [`docs/ADVANCED_GAMEPLAY_FRAMEWORK_1_3.md`](docs/ADVANCED_GAMEPLAY_FRAMEWORK_1_3.md) and [`ROADMAP_1_3.md`](ROADMAP_1_3.md).
 
+### Creator / editor integration — milestone 9/10
+
+The ninth verified 1.3 milestone exposes runtime subsystem diagnostics through the editor model SwirEngine already ships instead of creating a separate editor architecture:
+
+- additive `swirengine.creator` namespace with `EditorSystemRegistry`, immutable system frames/snapshots/metrics and `CreatorEditorIntegration`
+- the creator bridge wraps the existing `EditorFrontendController`, preserving hierarchy, inspector, viewport, assets, console, profiler, undo/redo and reversible playtest behavior
+- diagnostics sources can be dataclasses, mappings, plain public-attribute objects or explicit provider callbacks
+- subsystem metadata is ordered deterministically and supports category/text filtering
+- category/query filtering occurs **before** provider invocation, so a hidden or unrelated subsystem is not polled for a filtered editor frame
+- registration performs no background/game-frame polling; diagnostics are captured only when an editor system frame is requested
+- the same generic seam can expose instancing, skeletal, physics, navigation, large-world, shader-cache, 2D-renderer and gameplay diagnostics without eight editor-specific copies of runtime state
+
+The performance contract registers **10,000 systems** in groups of 100 and requests one category. The benchmark requires exactly **100 provider calls**, not 10,000; elapsed host timing is diagnostic only and is not converted into an FPS claim.
+
+Current boundary: this milestone does not claim a new Qt/ImGui/web editor, visual shader graph, terrain editor, navmesh painting UI or a 2.0 editor rewrite. Existing editor APIs remain authoritative and the 1.3 systems frame is additive.
+
+See [`docs/CREATOR_EDITOR_INTEGRATION_1_3.md`](docs/CREATOR_EDITOR_INTEGRATION_1_3.md) and [`ROADMAP_1_3.md`](ROADMAP_1_3.md).
+
 ## Stable 1.2 feature set
 
 SwirEngine 1.2 is additive and preserves compatibility-sensitive 1.x behavior while filling major engine-level gaps beyond a low-level game library.
@@ -313,6 +331,7 @@ SwirEngine keeps performance claims narrow and reproducible:
 - **shader/material pipeline 1.3:** 1,000 resolves of one prepared variant must produce exactly one backend compile and 999 cache hits; two compatible `ShaderMesh3D` objects must share one mesh upload and one VAO binding
 - **2D renderer power 1.3:** a 192×192 tilemap (36,864 cells) must keep viewport work local; the dedicated benchmark observed at most 943 candidate cells per query, and repeated unchanged updates must perform zero full-pool transform visits
 - **gameplay framework 1.3:** 10,000 dormant timers across 1,000 idle updates must produce zero heap pops; a prewarmed 5,000-object pool must complete five full reuse cycles without additional factory calls
+- **creator/editor integration 1.3:** 10,000 registered systems grouped by 100 must invoke exactly 100 diagnostics providers when one category is requested; unrelated providers remain untouched
 - **static 3D batching:** 100 compatible static cubes map from 100 renderer-facing object draws to one combined mesh draw
 - **async preload:** a reproducible synthetic I/O-like benchmark must demonstrate real overlap/wait reduction
 - **asset streaming residency:** exact incremental byte accounting is verified through eviction
@@ -354,6 +373,7 @@ The shipping workflow builds and launches one-file and one-directory executables
 - `examples/demo_shader_variants.py` — active 1.3 deterministic shader variants, safe hooks, uniforms and bounded program-cache diagnostics
 - `examples/demo_renderer2d_power.py` — active 1.3 large-tilemap viewport culling, dirty transform sync and moving-camera diagnostics
 - `examples/demo_gameplay_framework.py` — active 1.3 timers, signals, cooldowns, spawning and allocation-free warm-pool reuse
+- `examples/demo_creator_editor_integration.py` — active 1.3 existing-editor bridge plus lazy subsystem diagnostics/filtering
 - `examples/demo_gamepad.py` — controller + keyboard fallback
 - `examples/demo_static_3d_batching.py` — static larger-batch rendering
 - `examples/demo_asset_streaming.py` — staged loading, residency budgets and eviction
@@ -396,6 +416,9 @@ python examples/demo_renderer2d_power.py
 pytest tests/test_gameplay_framework.py
 python tools/benchmark_gameplay_framework.py
 python examples/demo_gameplay_framework.py
+pytest tests/test_editor_systems_1_3.py tests/test_editor_workspace.py tests/test_editor_frontend.py
+python tools/benchmark_editor_systems_1_3.py
+python examples/demo_creator_editor_integration.py
 ```
 
 CI validates:
@@ -405,7 +428,7 @@ CI validates:
 - wheel/sdist metadata and clean-wheel installation
 - dedicated Windows CPython 3.14 native dependency/wheel selection and import checks
 - one-file and one-directory desktop executables on Windows/Linux/macOS Python 3.13
-- reproducible performance/regression gates, including 1.3 3D collision, navigation, large-world locality, shader-cache, 2D tilemap-locality and gameplay scheduler/pool workloads
+- reproducible performance/regression gates, including 1.3 3D collision, navigation, large-world locality, shader-cache, 2D tilemap-locality, gameplay scheduler/pool and creator/editor provider-locality workloads
 - real OpenGL paths through Neon Cube Hunt 3D, Neon Snake 3D, GPU instancing, skeletal GPU skinning, `ShaderMesh3D` and the 2D renderer power-pass moving-camera tilemap smoke
 
 ## Versioning and API stability
@@ -414,14 +437,14 @@ SwirEngine follows semantic versioning for the stable 1.x public API. Existing 1
 
 The installed/public package remains **1.2.0** during 1.3 development. The 1.3 release is frozen until its roadmap reaches exactly 10/10 = 100.0% and the final exact head passes CI/runtime/demo/packaging plus public-artifact post-release verification.
 
-See [`docs/API_STABILITY.md`](docs/API_STABILITY.md), [`docs/CREATOR_HARDENING_1_2.md`](docs/CREATOR_HARDENING_1_2.md), [`docs/GPU_INSTANCING_1_3.md`](docs/GPU_INSTANCING_1_3.md), [`docs/SKELETAL_ANIMATION_1_3.md`](docs/SKELETAL_ANIMATION_1_3.md), [`docs/COLLISION_PHYSICS_1_3.md`](docs/COLLISION_PHYSICS_1_3.md), [`docs/NAVIGATION_PATHFINDING_1_3.md`](docs/NAVIGATION_PATHFINDING_1_3.md), [`docs/LARGE_WORLD_STREAMING_1_3.md`](docs/LARGE_WORLD_STREAMING_1_3.md), [`docs/ADVANCED_SHADER_MATERIAL_1_3.md`](docs/ADVANCED_SHADER_MATERIAL_1_3.md), [`docs/RENDERER_2D_POWER_1_3.md`](docs/RENDERER_2D_POWER_1_3.md) and [`docs/ADVANCED_GAMEPLAY_FRAMEWORK_1_3.md`](docs/ADVANCED_GAMEPLAY_FRAMEWORK_1_3.md).
+See [`docs/API_STABILITY.md`](docs/API_STABILITY.md), [`docs/CREATOR_HARDENING_1_2.md`](docs/CREATOR_HARDENING_1_2.md), [`docs/GPU_INSTANCING_1_3.md`](docs/GPU_INSTANCING_1_3.md), [`docs/SKELETAL_ANIMATION_1_3.md`](docs/SKELETAL_ANIMATION_1_3.md), [`docs/COLLISION_PHYSICS_1_3.md`](docs/COLLISION_PHYSICS_1_3.md), [`docs/NAVIGATION_PATHFINDING_1_3.md`](docs/NAVIGATION_PATHFINDING_1_3.md), [`docs/LARGE_WORLD_STREAMING_1_3.md`](docs/LARGE_WORLD_STREAMING_1_3.md), [`docs/ADVANCED_SHADER_MATERIAL_1_3.md`](docs/ADVANCED_SHADER_MATERIAL_1_3.md), [`docs/RENDERER_2D_POWER_1_3.md`](docs/RENDERER_2D_POWER_1_3.md), [`docs/ADVANCED_GAMEPLAY_FRAMEWORK_1_3.md`](docs/ADVANCED_GAMEPLAY_FRAMEWORK_1_3.md) and [`docs/CREATOR_EDITOR_INTEGRATION_1_3.md`](docs/CREATOR_EDITOR_INTEGRATION_1_3.md).
 
 ## Roadmaps
 
 - SwirEngine 1.0: [`ROADMAP.md`](ROADMAP.md) — **31/31 = 100%**, historical and locked
 - SwirEngine 1.1: [`ROADMAP_1_1.md`](ROADMAP_1_1.md) — **10/10 = 100%**, released and locked
 - SwirEngine 1.2: [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **10/10 = 100.0%**, published and locked
-- SwirEngine 1.3: [`ROADMAP_1_3.md`](ROADMAP_1_3.md) — **8/10 = 80.0%**, active development
+- SwirEngine 1.3: [`ROADMAP_1_3.md`](ROADMAP_1_3.md) — **9/10 = 90.0%**, active development
 
 ## Links
 
