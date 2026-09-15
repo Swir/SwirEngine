@@ -32,10 +32,11 @@ jobs:
       - name: Focused 1.3 integration regressions
         run: >-
           pytest
-          tests/test_gpu_instancing.py
+          tests/test_instancing.py
           tests/test_collision3d.py
           tests/test_navigation.py
           tests/test_large_world.py
+          tests/test_large_world_provider_cache.py
           tests/test_shader_pipeline.py
           tests/test_shader_mesh.py
           tests/test_gameplay_framework.py
