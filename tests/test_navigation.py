@@ -1,15 +1,12 @@
 import pytest
 
-from swirengine import (
-    Cube3D,
+from swirengine import Cube3D, Rectangle2D, Vec2, Vec3
+from swirengine.navigation import (
     NavigationAgent2D,
     NavigationAgent3D,
     NavigationGrid2D,
     NavigationGrid3D,
     NavigationProvider2D,
-    Rectangle2D,
-    Vec2,
-    Vec3,
 )
 
 
@@ -152,8 +149,7 @@ def test_agent2d_follows_path_and_auto_repaths_after_revision_change():
 
     assert agent.set_destination(Vec2(5.1, 0.1))
     agent.update(0.5)
-    first_x = target.x
-    assert first_x > 0.1
+    assert target.x > 0.1
 
     grid.set_blocked((3, 0))
     previous_revision = grid.revision
