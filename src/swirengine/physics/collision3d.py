@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from math import floor, inf, isfinite, sqrt
-from typing import Any, Iterator, cast
+from typing import Any, cast
 
 from ..math.types import Vec3
 
@@ -133,7 +134,10 @@ def _target_box_size(
 ) -> tuple[float, float, float]:
     raw = cast(Any, target)
     if width is not None and height is not None and depth is not None:
-        return float(width), float(height), float(depth)
+        values = float(width), float(height), float(depth)
+        if min(values) < 0:
+            raise ValueError("3D box collider dimensions must be non-negative")
+        return values
 
     resolved_width = width
     resolved_height = height
@@ -482,17 +486,22 @@ class CollisionWorld3D:
         tag: str | None = None,
     ) -> tuple[Collider3D, ...]:
         """Return colliders containing one world-space point."""
-        tiny = AABB3D(float(point.x), float(point.y), float(point.z), 0.0, 0.0, 0.0)
-        candidates = self.overlap_box(tiny, layer_mask=layer_mask, tag=tag)
+        point_bounds = AABB3D(float(point.x), float(point.y), float(point.z), 0.0, 0.0, 0.0)
+        self._rebuild_index()
+        candidates = self._candidate_indexes(point_bounds)
         hits: list[Collider3D] = []
-        for collider in candidates:
-            if isinstance(collider, BoxCollider3D):
-                matched = collider.bounds.contains(point.x, point.y, point.z)
-            else:
-                matched = collider.bounds.contains(point.x, point.y, point.z)
-            if matched:
+        tests = 0
+        for index in candidates:
+            collider = self._colliders[index]
+            if not collider.enabled or not collider.layer & layer_mask:
+                continue
+            if tag is not None and collider.tag != tag:
+                continue
+            tests += 1
+            bounds = collider.bounds
+            if bounds.contains(point.x, point.y, point.z):
                 hits.append(collider)
-        self._set_diagnostics(self._diagnostics.candidate_count, len(candidates), len(hits))
+        self._set_diagnostics(len(candidates), tests, len(hits))
         return tuple(hits)
 
     def raycast(
