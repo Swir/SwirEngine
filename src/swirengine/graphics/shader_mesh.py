@@ -9,7 +9,6 @@ from .camera3d import Camera3D
 from .lights import DirectionalLight3D, select_lights
 from .mesh import MeshData
 
-
 SURFACE_3D_TEMPLATE = shader_pipeline.ShaderTemplate(
     "swir_surface_3d",
     """#version 330
