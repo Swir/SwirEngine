@@ -2,7 +2,6 @@ import pytest
 
 from swirengine.graphics import shader_pipeline as shader
 
-
 VERTEX = """#version 330
 in vec3 in_pos;
 /* SWIR_HOOK:vertex_body */
