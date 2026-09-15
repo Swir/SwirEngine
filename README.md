@@ -116,6 +116,24 @@ Current boundary: the new skinned path participates in the direct forward render
 
 See [`docs/SKELETAL_ANIMATION_1_3.md`](docs/SKELETAL_ANIMATION_1_3.md) and [`ROADMAP_1_3.md`](ROADMAP_1_3.md).
 
+### 3D collision / physics foundation — milestone 3/10
+
+The third verified 1.3 milestone brings gameplay collision queries and deterministic fixed-step movement into the 3D API without adding a heavyweight native physics dependency:
+
+- additive `AABB3D`, `SphereBounds3D`, `BoxCollider3D`, `SphereCollider3D` and `CollisionWorld3D`
+- live transform tracking for creator objects, with explicit collider dimensions available for arbitrary meshes
+- deterministic 3D spatial-hash broad phase plus box/box, sphere/sphere and sphere/box narrow phase
+- layer/mask/tag filtering, box/sphere/point overlaps, deterministic collision pairs and distance-sorted raycasts
+- finite raycasts restrict exact shape tests to intersected spatial cells instead of scanning the full registry
+- additive `RigidBody3D` / `PhysicsWorld3D` with dynamic, kinematic and static bodies, forces, impulses, gravity, damping and restitution
+- fixed substeps, catch-up caps, `dropped_time` diagnostics and interpolation alpha for stable gameplay simulation
+
+The performance contract keeps claims measurable: a sparse **1,000-collider** pair workload must stay at least **100x below brute-force candidate enumeration**, and a short finite ray through a 1,000-collider registry must visit fewer than ten candidates. The dedicated 10,000-collider benchmark reports host timing only as diagnostic data and does not claim an FPS uplift.
+
+Current boundary: box colliders are axis-aligned, rigid-body response is box-vs-box, and sphere colliders currently participate in queries rather than rigid-body response. This milestone does not claim OBB/mesh collision, CCD, joints or a full constraint solver.
+
+See [`docs/COLLISION_PHYSICS_1_3.md`](docs/COLLISION_PHYSICS_1_3.md) and [`ROADMAP_1_3.md`](ROADMAP_1_3.md).
+
 ## Stable 1.2 feature set
 
 SwirEngine 1.2 is additive and preserves compatibility-sensitive 1.x behavior while filling major engine-level gaps beyond a low-level game library.
@@ -146,7 +164,7 @@ SwirEngine 1.2 is additive and preserves compatibility-sensitive 1.x behavior wh
 - directional GPU shadows, post-processing, tone mapping and FXAA
 - sRGB/linear color-space handling
 - bounded transform caching and static larger-batch rendering
-- on active 1.3 development branches: native dynamic GPU instancing/frustum culling and GPU-skinned glTF skeletal animation
+- on active 1.3 development branches: native GPU instancing/frustum culling, GPU-skinned glTF skeletal animation and 3D collision/fixed-step gameplay physics
 
 ### Production systems
 
@@ -181,6 +199,7 @@ SwirEngine keeps performance claims narrow and reproducible:
 
 - **GPU instancing 1.3:** 1,000 visible compatible instances model 1,000 source submissions -> one instanced draw; a separate 1,000-instance case must cull exactly 900 outside the test frustum
 - **skeletal animation 1.3:** bind-pose palettes, normalized skin weights, clip sampling/crossfade and glTF skin import are deterministic regressions, while a real software-OpenGL smoke executes the production transform-feedback GPU skinning path
+- **3D collision 1.3:** a sparse 1,000-collider pair workload must reduce broad-phase candidates by at least 100x versus brute force; a short finite ray through 1,000 sparse colliders must visit fewer than ten candidates
 - **static 3D batching:** 100 compatible static cubes map from 100 renderer-facing object draws to one combined mesh draw
 - **async preload:** a reproducible synthetic I/O-like benchmark must demonstrate real overlap/wait reduction
 - **asset streaming residency:** exact incremental byte accounting is verified through eviction
@@ -216,6 +235,7 @@ The shipping workflow builds and launches one-file and one-directory executables
 - **Neon Snake 3D** — complete 3D Snake with growth, food, collision, score, PBR and post-processing
 - `examples/demo_gpu_instancing.py` — active 1.3 dynamic instancing/frustum-culling demo with 6,400 cubes
 - `examples/demo_skeletal_animation.py` — active 1.3 skinned-character animation and GPU-skinning demo
+- `examples/demo_collision3d_physics.py` — active 1.3 collision queries and fixed-step 3D gameplay physics
 - `examples/demo_gamepad.py` — controller + keyboard fallback
 - `examples/demo_static_3d_batching.py` — static larger-batch rendering
 - `examples/demo_asset_streaming.py` — staged loading, residency budgets and eviction
@@ -241,6 +261,8 @@ python -m compileall -q src examples demo_projects tools
 python tools/verify_1_2_release_candidate.py --require-complete
 python tools/benchmark_gpu_instancing.py
 pytest tests/test_skeletal_animation.py
+pytest tests/test_collision3d.py tests/test_rigidbody3d.py
+python tools/benchmark_collision3d.py
 ```
 
 CI validates:
@@ -250,7 +272,7 @@ CI validates:
 - wheel/sdist metadata and clean-wheel installation
 - dedicated Windows CPython 3.14 native dependency/wheel selection and import checks
 - one-file and one-directory desktop executables on Windows/Linux/macOS Python 3.13
-- reproducible performance/regression gates
+- reproducible performance/regression gates, including 1.3 3D collision broad-phase/raycast workloads
 - real OpenGL paths through Neon Cube Hunt 3D, Neon Snake 3D, GPU instancing and skeletal GPU skinning
 
 ## Versioning and API stability
@@ -259,14 +281,14 @@ SwirEngine follows semantic versioning for the stable 1.x public API. Existing 1
 
 The installed/public package remains **1.2.0** during 1.3 development. The 1.3 release is frozen until its roadmap reaches exactly 10/10 = 100.0% and the final exact head passes CI/runtime/demo/packaging plus public-artifact post-release verification.
 
-See [`docs/API_STABILITY.md`](docs/API_STABILITY.md), [`docs/CREATOR_HARDENING_1_2.md`](docs/CREATOR_HARDENING_1_2.md), [`docs/GPU_INSTANCING_1_3.md`](docs/GPU_INSTANCING_1_3.md) and [`docs/SKELETAL_ANIMATION_1_3.md`](docs/SKELETAL_ANIMATION_1_3.md).
+See [`docs/API_STABILITY.md`](docs/API_STABILITY.md), [`docs/CREATOR_HARDENING_1_2.md`](docs/CREATOR_HARDENING_1_2.md), [`docs/GPU_INSTANCING_1_3.md`](docs/GPU_INSTANCING_1_3.md), [`docs/SKELETAL_ANIMATION_1_3.md`](docs/SKELETAL_ANIMATION_1_3.md) and [`docs/COLLISION_PHYSICS_1_3.md`](docs/COLLISION_PHYSICS_1_3.md).
 
 ## Roadmaps
 
 - SwirEngine 1.0: [`ROADMAP.md`](ROADMAP.md) — **31/31 = 100%**, historical and locked
 - SwirEngine 1.1: [`ROADMAP_1_1.md`](ROADMAP_1_1.md) — **10/10 = 100%**, released and locked
 - SwirEngine 1.2: [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **10/10 = 100.0%**, published and locked
-- SwirEngine 1.3: [`ROADMAP_1_3.md`](ROADMAP_1_3.md) — **2/10 = 20.0%**, active development
+- SwirEngine 1.3: [`ROADMAP_1_3.md`](ROADMAP_1_3.md) — **3/10 = 30.0%**, active development
 
 ## Links
 
