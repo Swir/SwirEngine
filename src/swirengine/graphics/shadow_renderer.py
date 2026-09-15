@@ -170,7 +170,8 @@ class ShadowedImageBasedPostProcessRenderer(ImageBasedPostProcessRenderer):
         self.ctx.enable(self.ctx.DEPTH_TEST)
         self.ctx.enable(self.ctx.BLEND)
         self.ctx.blend_func = self.ctx.DST_COLOR, self.ctx.ZERO
-        self.ctx.depth_func = "<="n        self.ctx.depth_mask = False
+        self.ctx.depth_func = "<="
+        self.ctx.depth_mask = False
         try:
             for obj in getattr(scene, "objects", ()):
                 if not isinstance(obj, Mesh3D) or not obj.enabled or not obj.visible:
