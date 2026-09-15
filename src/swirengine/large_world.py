@@ -68,15 +68,27 @@ class ChunkRegistry:
 
     def __init__(self, definitions: Iterable[ChunkDefinition] = ()) -> None:
         self._definitions: dict[ChunkKey, ChunkDefinition] = {}
+        self._revision = 0
         for definition in definitions:
             self.add(definition)
 
+    @property
+    def revision(self) -> int:
+        """Monotonic mutation revision used to invalidate streamer miss caches."""
+        return self._revision
+
     def add(self, definition: ChunkDefinition) -> ChunkDefinition:
+        previous = self._definitions.get(definition.key)
         self._definitions[definition.key] = definition
+        if previous is not definition:
+            self._revision += 1
         return definition
 
     def remove(self, key: ChunkKey) -> ChunkDefinition | None:
-        return self._definitions.pop(key, None)
+        removed = self._definitions.pop(key, None)
+        if removed is not None:
+            self._revision += 1
+        return removed
 
     def get(self, key: ChunkKey) -> ChunkDefinition | None:
         return self._definitions.get(key)
@@ -141,6 +153,7 @@ class LargeWorldDiagnostics:
     active_chunks: int
     waiting_assets: int
     failed_chunks: int
+    cached_missing_chunks: int
     total_activations: int
     total_deactivations: int
     total_unloads: int
@@ -190,16 +203,19 @@ class LargeWorldStreamer:
         self.settings = settings or LargeWorldSettings()
         self.asset_streamer = asset_streamer
         self._states: dict[ChunkKey, _ChunkState] = {}
+        self._missing_keys: set[ChunkKey] = set()
         self._asset_refs: dict[Path, int] = {}
         self._desired_active: set[ChunkKey] = set()
         self._activation_scratch: list[tuple[int, ChunkKey]] = []
         self._stale_scratch: list[ChunkKey] = []
+        self._missing_stale_scratch: list[ChunkKey] = []
         self._ready_scratch: list[ChunkKey] = []
+        self._provider_revision = provider.revision if isinstance(provider, ChunkRegistry) else None
         self._total_activations = 0
         self._total_deactivations = 0
         self._total_unloads = 0
         zero = ChunkKey(0, 0, 0)
-        self._diagnostics = LargeWorldDiagnostics(zero, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+        self._diagnostics = LargeWorldDiagnostics(zero, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
     @property
     def diagnostics(self) -> LargeWorldDiagnostics:
@@ -219,6 +235,13 @@ class LargeWorldStreamer:
             for key, state in sorted(self._states.items())
             if state.failed
         )
+
+    def invalidate_provider_cache(self, key: ChunkKey | None = None) -> None:
+        """Forget cached provider misses after external procedural-world changes."""
+        if key is None:
+            self._missing_keys.clear()
+        else:
+            self._missing_keys.discard(key)
 
     def focus_key(self, focus: Vec2 | Vec3 | tuple[float, ...]) -> ChunkKey:
         x, y, z = self._focus_components(focus)
@@ -254,6 +277,7 @@ class LargeWorldStreamer:
         visibility: ChunkVisibility | None = None,
     ) -> ChunkUpdateResult:
         focus_key = self.focus_key(focus)
+        self._sync_provider_revision()
         if self.asset_streamer is not None:
             self.asset_streamer.pump(
                 max_completions=self.settings.max_asset_completions_per_update
@@ -262,6 +286,7 @@ class LargeWorldStreamer:
         self._desired_active.clear()
         self._activation_scratch.clear()
         self._stale_scratch.clear()
+        self._missing_stale_scratch.clear()
         self._ready_scratch.clear()
 
         candidate_keys = 0
@@ -270,14 +295,18 @@ class LargeWorldStreamer:
             candidate_keys += 1
             state = self._states.get(key)
             if state is None:
+                if key in self._missing_keys:
+                    continue
                 provider_queries += 1
                 definition = self.provider(key)
                 if definition is None:
+                    self._missing_keys.add(key)
                     continue
                 if definition.key != key:
                     raise ValueError(
                         f"chunk provider returned definition {definition.key!r} for requested {key!r}"
                     )
+                self._missing_keys.discard(key)
                 state = self._create_state(definition)
                 self._states[key] = state
 
@@ -316,6 +345,9 @@ class LargeWorldStreamer:
         for key in self._states:
             if self._key_distance(focus_key, key) > self.settings.retention_radius_chunks:
                 self._stale_scratch.append(key)
+        for key in self._missing_keys:
+            if self._key_distance(focus_key, key) > self.settings.retention_radius_chunks:
+                self._missing_stale_scratch.append(key)
 
         unloaded: list[ChunkKey] = []
         for key in self._stale_scratch:
@@ -326,6 +358,8 @@ class LargeWorldStreamer:
             del self._states[key]
             unloaded.append(key)
             self._total_unloads += 1
+        for key in self._missing_stale_scratch:
+            self._missing_keys.discard(key)
 
         ready_count = 0
         active_count = 0
@@ -346,6 +380,7 @@ class LargeWorldStreamer:
             active_chunks=active_count,
             waiting_assets=waiting_assets,
             failed_chunks=failed_count,
+            cached_missing_chunks=len(self._missing_keys),
             total_activations=self._total_activations,
             total_deactivations=self._total_deactivations,
             total_unloads=self._total_unloads,
@@ -370,6 +405,7 @@ class LargeWorldStreamer:
             del self._states[key]
             unloaded.append(key)
             self._total_unloads += 1
+        self._missing_keys.clear()
         return tuple(unloaded)
 
     def retry(self, key: ChunkKey) -> bool:
@@ -380,6 +416,15 @@ class LargeWorldStreamer:
         self._release_state_assets(state)
         self._states[key] = self._create_state(state.definition)
         return True
+
+    def _sync_provider_revision(self) -> None:
+        if not isinstance(self.provider, ChunkRegistry):
+            return
+        revision = self.provider.revision
+        if revision == self._provider_revision:
+            return
+        self._missing_keys.clear()
+        self._provider_revision = revision
 
     def _create_state(self, definition: ChunkDefinition) -> _ChunkState:
         if definition.assets and self.asset_streamer is None:
