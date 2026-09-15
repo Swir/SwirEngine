@@ -1,14 +1,6 @@
 import pytest
 
-from swirengine.graphics.shader_pipeline import (
-    ShaderCompileError,
-    ShaderHookPoint,
-    ShaderMaterial3D,
-    ShaderPipelineError,
-    ShaderProgramCache,
-    ShaderSafetyError,
-    ShaderTemplate,
-)
+from swirengine.graphics import shader_pipeline as shader
 
 
 VERTEX = """#version 330
@@ -58,21 +50,21 @@ class _Context:
         return program
 
 
-def _template(name: str = "forward") -> ShaderTemplate:
-    return ShaderTemplate(
+def _template(name: str = "forward") -> shader.ShaderTemplate:
+    return shader.ShaderTemplate(
         name=name,
         vertex_source=VERTEX,
         fragment_source=FRAGMENT,
         hook_points=(
-            ShaderHookPoint("vertex_body", "vertex"),
-            ShaderHookPoint("fragment_body", "fragment"),
+            shader.ShaderHookPoint("vertex_body", "vertex"),
+            shader.ShaderHookPoint("fragment_body", "fragment"),
         ),
     )
 
 
 def test_prepared_variant_resolves_1000_times_with_one_backend_compile():
     ctx = _Context()
-    cache = ShaderProgramCache(ctx)
+    cache = shader.ShaderProgramCache(ctx)
     variant = cache.prepare(_template(), defines={"USE_FOG": True})
 
     first = cache.resolve(variant)
@@ -87,7 +79,7 @@ def test_prepared_variant_resolves_1000_times_with_one_backend_compile():
 
 
 def test_defines_are_deterministic_and_inserted_after_glsl_version():
-    cache = ShaderProgramCache(_Context())
+    cache = shader.ShaderProgramCache(_Context())
     left = cache.prepare(_template(), defines={"QUALITY": 2, "USE_FOG": True})
     right = cache.prepare(_template(), defines={"USE_FOG": True, "QUALITY": 2})
 
@@ -98,7 +90,7 @@ def test_defines_are_deterministic_and_inserted_after_glsl_version():
 
 
 def test_safe_hook_is_injected_only_at_declared_point():
-    cache = ShaderProgramCache(_Context())
+    cache = shader.ShaderProgramCache(_Context())
     variant = cache.prepare(
         _template(),
         hooks={"fragment_body": "float creator_gain = 0.75;"},
@@ -111,31 +103,31 @@ def test_safe_hook_is_injected_only_at_declared_point():
 
 
 def test_unknown_hook_and_engine_state_bypass_are_rejected():
-    cache = ShaderProgramCache(_Context())
+    cache = shader.ShaderProgramCache(_Context())
 
-    with pytest.raises(ShaderSafetyError, match="unknown shader hook"):
+    with pytest.raises(shader.ShaderSafetyError, match="unknown shader hook"):
         cache.prepare(_template(), hooks={"not_exposed": "float x = 1.0;"})
 
-    with pytest.raises(ShaderSafetyError, match="blocked token"):
+    with pytest.raises(shader.ShaderSafetyError, match="blocked token"):
         cache.prepare(_template(), hooks={"fragment_body": "gl_FragDepth = 0.0;"})
 
-    with pytest.raises(ShaderSafetyError, match="blocked token"):
+    with pytest.raises(shader.ShaderSafetyError, match="blocked token"):
         cache.prepare(_template(), hooks={"fragment_body": "#extension GL_EXT_debug_printf : enable"})
 
 
 def test_define_tokens_cannot_inject_shader_source():
-    cache = ShaderProgramCache(_Context())
+    cache = shader.ShaderProgramCache(_Context())
 
-    with pytest.raises(ShaderSafetyError, match="must be"):
+    with pytest.raises(shader.ShaderSafetyError, match="must be"):
         cache.prepare(_template(), defines={"MODE": "PBR\n#define OWNED 1"})
 
-    with pytest.raises(ShaderSafetyError, match="invalid shader define name"):
+    with pytest.raises(shader.ShaderSafetyError, match="invalid shader define name"):
         cache.prepare(_template(), defines={"BAD-NAME": 1})
 
 
 def test_lru_eviction_releases_old_program_and_keeps_cache_bounded():
     ctx = _Context()
-    cache = ShaderProgramCache(ctx, max_programs=2)
+    cache = shader.ShaderProgramCache(ctx, max_programs=2)
     one = cache.prepare(_template(), defines={"MODE": 1})
     two = cache.prepare(_template(), defines={"MODE": 2})
     three = cache.prepare(_template(), defines={"MODE": 3})
@@ -152,11 +144,11 @@ def test_lru_eviction_releases_old_program_and_keeps_cache_bounded():
 
 def test_compile_failure_is_visible_and_does_not_poison_cache():
     ctx = _Context()
-    cache = ShaderProgramCache(ctx)
+    cache = shader.ShaderProgramCache(ctx)
     variant = cache.prepare(_template())
     ctx.fail_next = True
 
-    with pytest.raises(ShaderCompileError, match="compile failed"):
+    with pytest.raises(shader.ShaderCompileError, match="compile failed"):
         cache.resolve(variant)
 
     assert cache.diagnostics.compile_failures == 1
@@ -168,7 +160,7 @@ def test_compile_failure_is_visible_and_does_not_poison_cache():
 
 def test_invalidation_releases_program_and_forces_next_compile():
     ctx = _Context()
-    cache = ShaderProgramCache(ctx)
+    cache = shader.ShaderProgramCache(ctx)
     variant = cache.prepare(_template())
     first = cache.resolve(variant)
 
@@ -181,9 +173,9 @@ def test_invalidation_releases_program_and_forces_next_compile():
 
 
 def test_material_shader_uniforms_are_validated_and_applied():
-    cache = ShaderProgramCache(_Context())
+    cache = shader.ShaderProgramCache(_Context())
     variant = cache.prepare(_template())
-    material = ShaderMaterial3D(
+    material = shader.ShaderMaterial3D(
         variant,
         uniforms={"pulse": 0.25, "accent": (1.0, 0.5, 0.25)},
         strict_uniforms=False,
@@ -196,35 +188,35 @@ def test_material_shader_uniforms_are_validated_and_applied():
     assert material.apply_uniforms(program) == 1
     assert program["pulse"].value == 0.75
 
-    with pytest.raises(ShaderSafetyError, match="reserved gl_"):
+    with pytest.raises(shader.ShaderSafetyError, match="reserved gl_"):
         material.set_uniform("gl_Custom", 1.0)
 
 
 def test_strict_material_uniform_reports_missing_backend_uniform():
-    cache = ShaderProgramCache(_Context())
+    cache = shader.ShaderProgramCache(_Context())
     variant = cache.prepare(_template())
-    material = ShaderMaterial3D(variant, uniforms={"missing": 1.0})
+    material = shader.ShaderMaterial3D(variant, uniforms={"missing": 1.0})
 
-    with pytest.raises(ShaderPipelineError, match="missing"):
+    with pytest.raises(shader.ShaderPipelineError, match="missing"):
         material.apply_uniforms(_Program(()))
 
 
 def test_template_rejects_missing_or_duplicate_hook_contract():
     with pytest.raises(ValueError, match="exactly once"):
-        ShaderTemplate(
+        shader.ShaderTemplate(
             "broken",
             VERTEX.replace("/* SWIR_HOOK:vertex_body */", ""),
             FRAGMENT,
-            (ShaderHookPoint("vertex_body", "vertex"),),
+            (shader.ShaderHookPoint("vertex_body", "vertex"),),
         )
 
     with pytest.raises(ValueError, match="duplicate"):
-        ShaderTemplate(
+        shader.ShaderTemplate(
             "duplicate",
             VERTEX,
             FRAGMENT,
             (
-                ShaderHookPoint("vertex_body", "vertex"),
-                ShaderHookPoint("vertex_body", "vertex"),
+                shader.ShaderHookPoint("vertex_body", "vertex"),
+                shader.ShaderHookPoint("vertex_body", "vertex"),
             ),
         )
