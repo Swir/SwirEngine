@@ -1,61 +1,67 @@
 # Advanced Material & Shader Pipeline — SwirEngine 1.3
 
-SwirEngine 1.3 introduces a creator-facing shader-variant layer designed to add controlled customization without turning the renderer into an unbounded compile-per-frame system.
+SwirEngine 1.3 adds a creator-facing shader-variant layer for controlled material customization without turning the renderer into an unbounded compile-per-frame system. Existing `Material3D`, Phong and PBR rendering remain unchanged; custom shader materials use the additive `ShaderMesh3D` path.
 
-## Goals
+## Core contracts
 
-The pipeline is built around four contracts:
+The pipeline is built around five rules:
 
-1. **Prepare once, resolve cheaply** — source expansion, define normalization and hook validation happen in `ShaderProgramCache.prepare()`. A prepared `ShaderVariantSpec` is then resolved through a bounded LRU cache.
+1. **Prepare once, resolve cheaply** — source expansion, define normalization and hook validation happen before drawing. A prepared `ShaderVariantSpec` is resolved through a bounded LRU program cache.
 2. **Deterministic variants** — template source, sorted defines and normalized hooks produce a deterministic `ShaderVariantKey`.
-3. **Explicit customization seams** — creator GLSL can only be inserted at `ShaderHookPoint` markers declared by the engine template.
-4. **Creator-visible diagnostics** — cache hits/misses, compile failures, evictions, invalidations and live program count are tracked.
+3. **Engine-owned production template** — `ShaderMesh3D` only accepts variants derived from `SURFACE_3D_TEMPLATE`; creator code cannot replace the production vertex layout through this API.
+4. **Explicit customization seams** — creator GLSL is inserted only at declared `ShaderHookPoint` markers.
+5. **Creator-visible diagnostics** — cache hits/misses, compile failures, evictions, invalidations and live program count are tracked.
 
-## Basic use
+## Creator path
+
+The normal game-facing API does not require an OpenGL context while the scene is being authored:
 
 ```python
-from swirengine.graphics.shader_pipeline import (
-    ShaderHookPoint,
-    ShaderMaterial3D,
-    ShaderProgramCache,
-    ShaderTemplate,
+from swirengine import Color, ShaderMesh3D, Vec3, cube_mesh, shader_material_3d
+
+material = shader_material_3d(
+    hooks={
+        "fragment_globals": "uniform float pulse;",
+        "fragment_surface": "surface_rgba.rgb *= vec3(pulse, 1.0, 0.5);",
+    },
+    uniforms={"pulse": 0.75},
 )
 
-
-template = ShaderTemplate(
-    "surface",
-    "#version 330\n/* SWIR_HOOK:vertex_custom */\nvoid main(){gl_Position=vec4(0.0);}",
-    "#version 330\nuniform float pulse;\nout vec4 fragColor;\n/* SWIR_HOOK:fragment_custom */\nvoid main(){fragColor=vec4(pulse);}",
-    hook_points=(
-        ShaderHookPoint("vertex_custom", "vertex"),
-        ShaderHookPoint("fragment_custom", "fragment"),
-    ),
+obj = ShaderMesh3D(
+    cube_mesh(),
+    material,
+    position=Vec3(0.0, 0.0, -4.0),
+    color=Color(0.25, 0.75, 1.0, 1.0),
 )
-
-cache = ShaderProgramCache(ctx, max_programs=64)
-variant = cache.prepare(
-    template,
-    defines={"USE_FOG": True, "QUALITY": 2},
-    hooks={"fragment_custom": "float creator_gain = 1.0;"},
-)
-program = cache.resolve(variant)
-material = ShaderMaterial3D(variant, uniforms={"pulse": 0.5})
-material.apply_uniforms(program)
 ```
+
+`Game.add(obj)` places the object in the normal scene. The production `ShadowedImageBasedPostProcessRenderer` owns the `ShaderMaterialRenderPipeline` and renders `ShaderMesh3D` objects during its direct 3D pass.
+
+## Engine-owned hook surface
+
+`SURFACE_3D_TEMPLATE` exposes these points:
+
+- `vertex_globals` — declarations/functions needed by a vertex variant,
+- `vertex_surface` — modify `local_position` / `local_normal` before engine matrices are applied,
+- `fragment_globals` — declarations/functions needed by a fragment variant,
+- `fragment_surface` — modify `surface_rgba` / `surface_normal`,
+- `fragment_lighting` — post-process the direct-lighting result before final output.
+
+The template keeps `in_pos`, `in_normal`, `in_uv`, engine model/MVP transforms and direct directional-light integration under engine control. Vertex buffers are shared across variants; only the inexpensive VAO binding is cached per mesh/variant pair.
 
 ## Safe hook policy
 
-Hooks are intentionally not whole-shader replacements. A hook must target a marker explicitly declared by the template. Unknown hook names fail before compilation.
+Hooks are intentionally not whole-shader replacements. Unknown hook names fail before compilation.
 
-The default safety policy blocks directives and operations that could escape the intended material surface contract, including `#version`, `#extension`, `#include`, explicit `layout(...)`, `gl_FragDepth`, clip-distance writes, image stores, atomics, storage buffers and barrier primitives.
+The default policy blocks directives and operations that could escape the intended material surface contract, including `#version`, `#extension`, `#include`, explicit `layout(...)`, `gl_FragDepth`, clip-distance writes, image stores, atomics, storage buffers and barrier primitives.
 
-Defines are similarly normalized: names must be valid identifiers and values are limited to booleans, integers, finite floats or identifier-like tokens. Raw multiline define injection is rejected.
+Defines are normalized: names must be identifiers and values are limited to booleans, integers, finite floats or identifier-like tokens. Raw multiline define injection is rejected.
 
-These rules are a renderer-safety boundary, not a claim that arbitrary GLSL is sandboxed from the GPU driver. Backend compilation errors are wrapped as `ShaderCompileError` and surfaced to creators.
+These rules form an engine API safety boundary; they are not a claim that arbitrary GLSL is sandboxed from the GPU driver. Backend compilation errors are surfaced as `ShaderCompileError`.
 
-## Bounded compilation cache
+## Bounded compilation and GPU-resource cache
 
-`ShaderProgramCache` uses deterministic keys and LRU eviction. Evicted or invalidated backend program objects are released when the backend exposes `release()`.
+`ShaderProgramCache` uses deterministic keys and LRU eviction. Evicted or invalidated program objects are released. `ShaderMaterialRenderPipeline` separately shares one uploaded vertex buffer for compatible variants of the same `MeshData`, then caches VAOs by mesh/variant key.
 
 The regression contract resolves one prepared variant 1,000 times and requires exactly:
 
@@ -63,18 +69,26 @@ The regression contract resolves one prepared variant 1,000 times and requires e
 - 1 cache miss,
 - 999 cache hits.
 
-`tools/benchmark_shader_pipeline.py` repeats the same contract for 10,000 resolves. Its elapsed time is diagnostic only and is not converted into an FPS claim.
+The production-pipeline regression also requires two `ShaderMesh3D` objects using the same mesh and material to share one program compile, one VBO upload and one VAO binding.
+
+`tools/benchmark_shader_pipeline.py` repeats the program-cache contract for 10,000 resolves. Its elapsed time is diagnostic only and is not converted into an FPS claim.
 
 ## Custom uniforms
 
-`ShaderMaterial3D` stores a prepared variant plus creator uniform values. Supported values are booleans, integers, finite floats and float tuples of length 1–4. Names are validated and the reserved `gl_` prefix is rejected.
+`ShaderMaterial3D` supports booleans, integers, finite floats and float tuples of length 1–4. Names are validated and the reserved `gl_` prefix is rejected. Values can be changed while the game runs without recompiling the variant.
 
-Strict mode reports a missing backend uniform instead of silently dropping it. Non-strict mode can be used when a template intentionally compiles a uniform out in some variants.
+Strict mode reports a missing backend uniform. Non-strict mode can be used when a variant intentionally compiles a uniform out.
 
-## Current milestone boundary
+## Diagnostics
 
-This foundation provides deterministic variants, safe hook expansion, compile caching, diagnostics and validated creator uniforms. Existing `Material3D` behavior is unchanged.
+The cache reports preparation requests, compile requests, hits, misses, compile failures, evictions, invalidations and live programs. Production renderer stats also expose `shader_meshes`, while ordinary draw/triangle/mesh-upload counters continue to include the actual submitted work.
 
-Before the roadmap item is marked complete, the pipeline still needs production-renderer integration and a real OpenGL validation path proving that engine-owned vertex layout/state and existing Phong/PBR material behavior remain compatible while custom variants are active.
+## Compatibility and current boundaries
 
-See `examples/demo_shader_variants.py`, `tests/test_shader_pipeline.py` and `tools/benchmark_shader_pipeline.py`.
+The 1.3 shader path is additive. Existing `Mesh3D` + `Material3D`, Phong/PBR materials, static batching, instancing and skeletal rendering keep their established paths.
+
+`ShaderMesh3D` currently participates in the production direct-forward pass with base color, normals/UVs available to hooks and one selected directional light. It does **not** silently claim support in auxiliary directional-shadow or additive cubemap-IBL passes, and this milestone does not yet provide creator texture/sampler binding for arbitrary custom samplers.
+
+The roadmap checkbox remains open until the dedicated real-OpenGL smoke plus the full CI/runtime/demo/export matrix are green on the exact final head.
+
+See `examples/demo_shader_variants.py`, `tests/test_shader_pipeline.py`, `tests/test_shader_mesh.py`, `tools/benchmark_shader_pipeline.py` and `tools/verify_shader_pipeline_opengl.py`.
