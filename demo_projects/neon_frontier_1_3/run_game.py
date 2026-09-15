@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 
 from swirengine import (
+    AABB3D,
     BoxCollider3D,
     CollisionWorld3D,
     Color,
@@ -29,6 +30,21 @@ from swirengine.navigation import NavigationAgent3D, NavigationGrid3D
 SMOKE_FRAMES = int(os.environ.get("SWIR_1_3_SMOKE_FRAMES", "0"))
 
 
+def runtime_probe() -> int:
+    """Verify the packaged native renderer imports without opening a window."""
+    import glcontext
+    import glfw
+    import moderngl
+
+    version = glfw.get_version_string()
+    if isinstance(version, bytes):
+        version = version.decode("utf-8", errors="replace")
+    print(f"GLFW runtime OK: {version}")
+    print(f"ModernGL runtime OK: {moderngl.__version__}")
+    print(f"glcontext runtime OK: {glcontext.__file__}")
+    return 0
+
+
 class NeonFrontier13:
     """Integrated asset-free game used as the SwirEngine 1.3 final validation project."""
 
@@ -39,6 +55,7 @@ class NeonFrontier13:
         self.frames = 0
         self.elapsed = 0.0
         self.pulses = 0
+        self.collision_queries = 0
 
         self.gameplay = GameplayRuntime()
         self.gameplay.call_every(0.25, self._pulse)
@@ -145,6 +162,17 @@ class NeonFrontier13:
         self.gameplay.update(dt)
         self.agent.update(dt)
         self.streamer.update((self.player.position.x * 2.0, self.player.position.z * 2.0))
+        self.collisions.overlap_box(
+            AABB3D(
+                self.player.position.x,
+                self.player.position.y,
+                self.player.position.z,
+                3.0,
+                2.0,
+                3.0,
+            )
+        )
+        self.collision_queries += 1
         self.core.rotation.y += 45.0 * dt
         pulse = 0.55 + 0.35 * ((self.frames % 30) / 29.0)
         self.shader_material.set_uniform("pulse", pulse)
@@ -160,13 +188,17 @@ class NeonFrontier13:
             assert self.streamer.diagnostics.active_chunks > 0
             assert self.nav.diagnostics.searches >= 1
             assert self.collisions.diagnostics.collider_count == 4
+            assert self.collision_queries >= SMOKE_FRAMES
             print(
                 "Neon Frontier 1.3 smoke OK: "
                 f"frames={self.frames}, instances={self.instances.instance_count}, "
                 f"active_chunks={self.streamer.diagnostics.active_chunks}, "
-                f"nav_searches={self.nav.diagnostics.searches}, pulses={self.pulses}"
+                f"nav_searches={self.nav.diagnostics.searches}, "
+                f"collision_queries={self.collision_queries}, pulses={self.pulses}"
             )
 
 
 if __name__ == "__main__":
+    if os.environ.get("SWIR_DEMO_RUNTIME_PROBE") == "1":
+        raise SystemExit(runtime_probe())
     NeonFrontier13().run()
