@@ -299,7 +299,8 @@ jobs:
                   time.sleep(10)
           assert metadata is not None
           assert metadata["info"]["version"] == version
-          assert metadata["info"]["requires_python"] == ">=3.10,<3.15"
+          requires_python = {part.strip() for part in metadata["info"]["requires_python"].split(",")}
+          assert requires_python == {">=3.10", "<3.15"}, metadata["info"]["requires_python"]
           subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "pip"])
           subprocess.check_call([
               sys.executable,
