@@ -24,6 +24,19 @@ def test_grid2d_finds_deterministic_path_around_blockers():
     assert path.points[-1] == Vec2(5.1, 0.1)
 
 
+def test_same_cell_path_preserves_exact_destination_for_agents():
+    grid = NavigationGrid2D(2, 2, cell_size=10.0, diagonal=False)
+    start = Vec2(1.0, 1.0)
+    goal = Vec2(8.0, 6.0)
+
+    path = grid.find_path(start, goal)
+
+    assert path is not None
+    assert path.cells == ((0, 0),)
+    assert path.points == (start, goal)
+    assert path.cost == pytest.approx((7.0**2 + 5.0**2) ** 0.5)
+
+
 def test_weighted_cells_choose_cheaper_route():
     grid = NavigationGrid2D(3, 2, diagonal=False)
     grid.set_cost((1, 0), 100.0)
