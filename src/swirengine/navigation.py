@@ -239,9 +239,10 @@ class NavigationGrid2D:
             candidate = (x + dx, y + dy)
             if not self.in_bounds(candidate) or candidate in self._blocked:
                 continue
-            if not self.allow_corner_cutting:
-                if (x + dx, y) in self._blocked or (x, y + dy) in self._blocked:
-                    continue
+            if not self.allow_corner_cutting and (
+                (x + dx, y) in self._blocked or (x, y + dy) in self._blocked
+            ):
+                continue
             yield candidate, distance * self._costs.get(candidate, 1.0)
 
     def _remember(self, key: tuple[GridCell, GridCell, int], route: _CachedRoute | None) -> None:
@@ -353,10 +354,15 @@ class NavigationGrid2D:
 
         if route is None:
             return None
+        start_point = Vec2(float(start.x), float(start.y))
+        goal_point = Vec2(float(goal.x), float(goal.y))
+        if len(route.cells) == 1:
+            distance = math.hypot(goal_point.x - start_point.x, goal_point.y - start_point.y)
+            points = (start_point,) if distance == 0.0 else (start_point, goal_point)
+            return NavigationPath2D(route.cells, points, distance)
         points = [self.cell_center(cell) for cell in route.cells]
-        points[0] = Vec2(float(start.x), float(start.y))
-        if len(points) > 1:
-            points[-1] = Vec2(float(goal.x), float(goal.y))
+        points[0] = start_point
+        points[-1] = goal_point
         return NavigationPath2D(route.cells, tuple(points), route.cost * self.cell_size)
 
 
