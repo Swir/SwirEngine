@@ -1,6 +1,5 @@
 from swirengine import Color, Game, ShaderMesh3D, Vec3, cube_mesh, shader_material_3d
 
-
 game = Game(
     "SwirEngine shader material smoke",
     640,
