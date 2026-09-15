@@ -191,6 +191,25 @@ A dedicated Xvfb/software-OpenGL gate compiles and renders a real custom `Shader
 
 See [`docs/ADVANCED_SHADER_MATERIAL_1_3.md`](docs/ADVANCED_SHADER_MATERIAL_1_3.md) and [`ROADMAP_1_3.md`](ROADMAP_1_3.md).
 
+### 2D renderer power pass — milestone 7/10
+
+The seventh verified 1.3 milestone removes several frame-sized 2D hot paths while preserving the stable 1.x creator API:
+
+- `TileMap2D` keeps its fixed pooled children for compatibility but marks them as aggregate-managed so scene update/render-root scans do not visit every child every frame
+- scene render roots are cached and rebuilt only when membership changes
+- unchanged tilemap transforms perform zero full-pool sprite-transform visits; transform synchronization becomes dirty-driven
+- `tile_count` is maintained in O(1) instead of recounting the full map on every read
+- tilemap visibility is computed mathematically from camera bounds and visits only local viewport cells
+- world-space rectangles and explicit-size sprites receive conservative camera culling before batching
+- sprite CPU staging uses one geometrically grown reusable NumPy buffer and uploads through the buffer protocol rather than rebuilding frame-sized Python float lists
+- creator-visible renderer diagnostics report render roots, culled 2D objects and tilemap candidate/visible-cell work
+
+The locality benchmark uses a **192×192 map (36,864 cells)**. Across 500 moving-camera queries the CI runner reported at most **943 candidate cells per viewport**, while 1,000 unchanged tilemap updates performed no full-pool transform walk. The elapsed timings are diagnostic only and are not converted into an FPS claim.
+
+A dedicated Xvfb/software-OpenGL smoke renders a moving-camera tilemap through the production `Game` renderer, validating the reusable staging-buffer/VBO upload path rather than only testing helpers. Current boundary: the fixed child pool still exists by design for 1.x compatibility; this milestone targets per-frame CPU/render work, not construction-time memory reduction or GPU tilemap instancing.
+
+See [`docs/RENDERER_2D_POWER_1_3.md`](docs/RENDERER_2D_POWER_1_3.md) and [`ROADMAP_1_3.md`](ROADMAP_1_3.md).
+
 ## Stable 1.2 feature set
 
 SwirEngine 1.2 is additive and preserves compatibility-sensitive 1.x behavior while filling major engine-level gaps beyond a low-level game library.
@@ -260,6 +279,7 @@ SwirEngine keeps performance claims narrow and reproducible:
 - **navigation 1.3:** one cold 64x64 path plus 999 identical requests must produce one cache miss, 999 hits and zero node expansion on the final cached query
 - **large-world streaming 1.3:** radius-2 3D streaming must enumerate exactly 125 local candidate keys independent of world extent; sparse provider misses must be cached locally and pruned with retention rather than queried every frame or accumulated forever
 - **shader/material pipeline 1.3:** 1,000 resolves of one prepared variant must produce exactly one backend compile and 999 cache hits; two compatible `ShaderMesh3D` objects must share one mesh upload and one VAO binding
+- **2D renderer power 1.3:** a 192×192 tilemap (36,864 cells) must keep viewport work local; the dedicated benchmark observed at most 943 candidate cells per query, and repeated unchanged updates must perform zero full-pool transform visits
 - **static 3D batching:** 100 compatible static cubes map from 100 renderer-facing object draws to one combined mesh draw
 - **async preload:** a reproducible synthetic I/O-like benchmark must demonstrate real overlap/wait reduction
 - **asset streaming residency:** exact incremental byte accounting is verified through eviction
@@ -299,6 +319,7 @@ The shipping workflow builds and launches one-file and one-directory executables
 - `examples/demo_navigation_pathfinding.py` — active 1.3 weighted A*, dynamic obstacles and automatic 3D agent repathing
 - `examples/demo_large_world_streaming.py` — active 1.3 local-window residency, bounded chunk activation and reversible scene ownership
 - `examples/demo_shader_variants.py` — active 1.3 deterministic shader variants, safe hooks, uniforms and bounded program-cache diagnostics
+- `examples/demo_renderer2d_power.py` — active 1.3 large-tilemap viewport culling, dirty transform sync and moving-camera diagnostics
 - `examples/demo_gamepad.py` — controller + keyboard fallback
 - `examples/demo_static_3d_batching.py` — static larger-batch rendering
 - `examples/demo_asset_streaming.py` — staged loading, residency budgets and eviction
@@ -335,6 +356,9 @@ python examples/demo_large_world_streaming.py
 pytest tests/test_shader_pipeline.py tests/test_shader_mesh.py
 python tools/benchmark_shader_pipeline.py
 python examples/demo_shader_variants.py
+pytest tests/test_renderer2d_power.py tests/test_tilemap.py tests/test_scene.py
+python tools/benchmark_renderer2d_power.py
+python examples/demo_renderer2d_power.py
 ```
 
 CI validates:
@@ -344,8 +368,8 @@ CI validates:
 - wheel/sdist metadata and clean-wheel installation
 - dedicated Windows CPython 3.14 native dependency/wheel selection and import checks
 - one-file and one-directory desktop executables on Windows/Linux/macOS Python 3.13
-- reproducible performance/regression gates, including 1.3 3D collision, navigation, large-world locality and shader-cache workloads
-- real OpenGL paths through Neon Cube Hunt 3D, Neon Snake 3D, GPU instancing, skeletal GPU skinning and `ShaderMesh3D`
+- reproducible performance/regression gates, including 1.3 3D collision, navigation, large-world locality, shader-cache and 2D tilemap-locality workloads
+- real OpenGL paths through Neon Cube Hunt 3D, Neon Snake 3D, GPU instancing, skeletal GPU skinning, `ShaderMesh3D` and the 2D renderer power-pass moving-camera tilemap smoke
 
 ## Versioning and API stability
 
@@ -353,14 +377,14 @@ SwirEngine follows semantic versioning for the stable 1.x public API. Existing 1
 
 The installed/public package remains **1.2.0** during 1.3 development. The 1.3 release is frozen until its roadmap reaches exactly 10/10 = 100.0% and the final exact head passes CI/runtime/demo/packaging plus public-artifact post-release verification.
 
-See [`docs/API_STABILITY.md`](docs/API_STABILITY.md), [`docs/CREATOR_HARDENING_1_2.md`](docs/CREATOR_HARDENING_1_2.md), [`docs/GPU_INSTANCING_1_3.md`](docs/GPU_INSTANCING_1_3.md), [`docs/SKELETAL_ANIMATION_1_3.md`](docs/SKELETAL_ANIMATION_1_3.md), [`docs/COLLISION_PHYSICS_1_3.md`](docs/COLLISION_PHYSICS_1_3.md), [`docs/NAVIGATION_PATHFINDING_1_3.md`](docs/NAVIGATION_PATHFINDING_1_3.md), [`docs/LARGE_WORLD_STREAMING_1_3.md`](docs/LARGE_WORLD_STREAMING_1_3.md) and [`docs/ADVANCED_SHADER_MATERIAL_1_3.md`](docs/ADVANCED_SHADER_MATERIAL_1_3.md).
+See [`docs/API_STABILITY.md`](docs/API_STABILITY.md), [`docs/CREATOR_HARDENING_1_2.md`](docs/CREATOR_HARDENING_1_2.md), [`docs/GPU_INSTANCING_1_3.md`](docs/GPU_INSTANCING_1_3.md), [`docs/SKELETAL_ANIMATION_1_3.md`](docs/SKELETAL_ANIMATION_1_3.md), [`docs/COLLISION_PHYSICS_1_3.md`](docs/COLLISION_PHYSICS_1_3.md), [`docs/NAVIGATION_PATHFINDING_1_3.md`](docs/NAVIGATION_PATHFINDING_1_3.md), [`docs/LARGE_WORLD_STREAMING_1_3.md`](docs/LARGE_WORLD_STREAMING_1_3.md), [`docs/ADVANCED_SHADER_MATERIAL_1_3.md`](docs/ADVANCED_SHADER_MATERIAL_1_3.md) and [`docs/RENDERER_2D_POWER_1_3.md`](docs/RENDERER_2D_POWER_1_3.md).
 
 ## Roadmaps
 
 - SwirEngine 1.0: [`ROADMAP.md`](ROADMAP.md) — **31/31 = 100%**, historical and locked
 - SwirEngine 1.1: [`ROADMAP_1_1.md`](ROADMAP_1_1.md) — **10/10 = 100%**, released and locked
 - SwirEngine 1.2: [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **10/10 = 100.0%**, published and locked
-- SwirEngine 1.3: [`ROADMAP_1_3.md`](ROADMAP_1_3.md) — **6/10 = 60.0%**, active development
+- SwirEngine 1.3: [`ROADMAP_1_3.md`](ROADMAP_1_3.md) — **7/10 = 70.0%**, active development
 
 ## Links
 
