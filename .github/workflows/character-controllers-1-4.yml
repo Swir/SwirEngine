@@ -1,0 +1,50 @@
+name: Character Controllers 1.4 Validation
+
+on:
+  pull_request:
+    paths:
+      - "src/swirengine/character.py"
+      - "tests/test_character_controllers_1_4.py"
+      - "tools/benchmark_character_controllers_1_4.py"
+      - "examples/demo_character_controllers.py"
+      - "docs/CHARACTER_CONTROLLERS_1_4.md"
+      - "ROADMAP_1_4.md"
+      - ".github/workflows/character-controllers-1-4.yml"
+  push:
+    branches:
+      - "feat/1.4-character-controllers"
+    paths:
+      - "src/swirengine/character.py"
+      - "tests/test_character_controllers_1_4.py"
+      - "tools/benchmark_character_controllers_1_4.py"
+      - "examples/demo_character_controllers.py"
+      - "docs/CHARACTER_CONTROLLERS_1_4.md"
+      - "ROADMAP_1_4.md"
+      - ".github/workflows/character-controllers-1-4.yml"
+
+jobs:
+  character-controllers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Character-controller regressions
+        run: >-
+          pytest -q tests/test_character_controllers_1_4.py tests/test_physics2_1_4.py
+          tests/test_camera3d.py tests/test_camera_runtime.py tests/test_navigation.py
+      - name: Deterministic controller sweep-budget gate
+        run: python tools/benchmark_character_controllers_1_4.py --frames 600
+      - name: Character-controller integration demo
+        run: python examples/demo_character_controllers.py
+      - name: Strict lint
+        run: >-
+          ruff check src/swirengine/character.py tests/test_character_controllers_1_4.py
+          tools/benchmark_character_controllers_1_4.py examples/demo_character_controllers.py
+      - name: Compile controller path
+        run: >-
+          python -m compileall -q src/swirengine/character.py tests/test_character_controllers_1_4.py
+          tools/benchmark_character_controllers_1_4.py examples/demo_character_controllers.py
