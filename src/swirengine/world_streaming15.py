@@ -285,6 +285,9 @@ class WorldStreamingRuntime:
         self.registry = registry
         self.settings = settings or WorldStreamingSettings()
         self._states = {cell_id: _CellState() for cell_id in registry.cells}
+        self._active_ids: set[str] = set()
+        self._failed_ids: set[str] = set()
+        self._active_cost = 0
         self._update_index = 0
         self._total_activations = 0
         self._total_deactivations = 0
@@ -297,19 +300,16 @@ class WorldStreamingRuntime:
 
     @property
     def active_ids(self) -> tuple[str, ...]:
-        return tuple(
-            cell_id for cell_id in sorted(self._states) if self._states[cell_id].active
-        )
+        return tuple(sorted(self._active_ids))
 
     @property
     def active_cost(self) -> int:
-        return sum(self.registry.cell(cell_id).cost for cell_id in self.active_ids)
+        return self._active_cost
 
     def failures(self) -> tuple[WorldStreamingFailure, ...]:
         return tuple(
-            WorldStreamingFailure(cell_id, state.failure)
-            for cell_id, state in sorted(self._states.items())
-            if state.failure
+            WorldStreamingFailure(cell_id, self._states[cell_id].failure)
+            for cell_id in sorted(self._failed_ids)
         )
 
     def retry(self, cell_id: str) -> bool:
@@ -319,6 +319,7 @@ class WorldStreamingRuntime:
         if not state.failure or state.active:
             return False
         state.failure = ""
+        self._failed_ids.discard(cell_id)
         return True
 
     def focus_key(self, focus: Vec2 | Vec3 | Sequence[float]) -> ChunkKey:
@@ -437,11 +438,15 @@ class WorldStreamingRuntime:
                     if self.scene.ecs.entity(entity.id) is entity:
                         self.scene.ecs.destroy(entity)
             state.failure = f"activation failed: {exc}"
+            self._failed_ids.add(cell_id)
             return False
         state.active = True
         state.content = content
         state.mount = mount
         state.failure = ""
+        self._active_ids.add(cell_id)
+        self._active_cost += cell.cost
+        self._failed_ids.discard(cell_id)
         self._total_activations += 1
         return True
 
@@ -463,8 +468,14 @@ class WorldStreamingRuntime:
         state.active = False
         state.content = None
         state.mount = None
+        self._active_ids.discard(cell_id)
+        self._active_cost -= cell.cost
         if hook_error is not None:
             state.failure = f"deactivation failed: {hook_error}"
+            self._failed_ids.add(cell_id)
+        else:
+            state.failure = ""
+            self._failed_ids.discard(cell_id)
         self._total_deactivations += 1
         return True
 
@@ -514,6 +525,7 @@ class WorldStreamingRuntime:
         )
         activated: list[str] = []
         runtime_blocked: list[str] = []
+        runtime_budget_blocked: list[str] = []
         for cell_id in activation_candidates:
             if len(activated) >= self.settings.max_activations_per_update:
                 break
@@ -526,11 +538,15 @@ class WorldStreamingRuntime:
                 continue
             if self.active_cost + cell.cost > self.settings.max_active_cost:
                 runtime_blocked.append(cell_id)
+                runtime_budget_blocked.append(cell_id)
                 continue
             if self._activate(cell_id):
                 activated.append(cell_id)
 
         blocked = tuple(dict.fromkeys((*blocked_by_target_budget, *runtime_blocked)))
+        budget_blocked = tuple(
+            dict.fromkeys((*blocked_by_target_budget, *runtime_budget_blocked))
+        )
         failures = self.failures()
         active_ids = self.active_ids
         self._diagnostics = WorldStreamingDiagnostics(
@@ -541,7 +557,7 @@ class WorldStreamingRuntime:
             target_cells=len(target),
             active_cells=len(active_ids),
             active_cost=self.active_cost,
-            blocked_by_budget=len(blocked),
+            blocked_by_budget=len(budget_blocked),
             failed_cells=len(failures),
             total_activations=self._total_activations,
             total_deactivations=self._total_deactivations,
