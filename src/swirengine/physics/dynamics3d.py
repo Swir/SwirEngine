@@ -783,12 +783,10 @@ class PhysicsScene3D:
             a.velocity.x -= ix * inv_a
             a.velocity.y -= iy * inv_a
             a.velocity.z -= iz * inv_a
-            a.wake()
         if inv_b > 0.0:
             b.velocity.x += ix * inv_b
             b.velocity.y += iy * inv_b
             b.velocity.z += iz * inv_b
-            b.wake()
 
         rvx = b.velocity.x - a.velocity.x
         rvy = b.velocity.y - a.velocity.y
