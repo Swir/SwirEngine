@@ -3,6 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import moderngl
+import numpy as np
 
 from swirengine.graphics.camera3d import Camera3D
 from swirengine.graphics.csm_renderer import CascadedDirectionalShadowMap
@@ -56,6 +57,8 @@ def main() -> None:
     hdr_texture = ctx.texture((width, height), 4, dtype="f2")
     hdr_texture.filter = (ctx.LINEAR, ctx.LINEAR)
     hdr_framebuffer = ctx.framebuffer(color_attachments=[hdr_texture])
+    invalid_depth = None
+    invalid_normal = None
 
     try:
         shadow_frame = csm.render(scene, light, camera, width=width, height=height)
@@ -82,6 +85,31 @@ def main() -> None:
         )
         assert ao_texture is not None
         assert len(ao_texture.read()) == width * height
+
+        # Dynamic Renderer 1.3 paths can write depth after the static normal prepass. Alpha=0
+        # marks those pixels as lacking a valid normal; Renderer2 must leave their AO at 1.0.
+        mask_size = (8, 8)
+        invalid_depth = ctx.texture(
+            mask_size,
+            1,
+            np.full(mask_size[0] * mask_size[1], 0.5, dtype="f4").tobytes(),
+            dtype="f4",
+        )
+        invalid_normal = ctx.texture(
+            mask_size,
+            4,
+            bytes((128, 128, 255, 0)) * (mask_size[0] * mask_size[1]),
+            dtype="f1",
+        )
+        masked_ao = ssao.render(
+            depth_texture=invalid_depth,
+            normal_texture=invalid_normal,
+            camera=camera,
+            width=mask_size[0],
+            height=mask_size[1],
+            settings=settings,
+        )
+        assert set(masked_ao.read()) == {255}
 
         hdr_framebuffer.use()
         hdr_framebuffer.clear(2.4, 1.4, 0.35, 1.0)
@@ -112,6 +140,10 @@ def main() -> None:
         assert decal_draws == 1
         ctx.finish()
     finally:
+        if invalid_normal is not None:
+            invalid_normal.release()
+        if invalid_depth is not None:
+            invalid_depth.release()
         decals.release()
         bloom.release()
         ssao.release()
