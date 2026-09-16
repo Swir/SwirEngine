@@ -8,7 +8,7 @@ from swirengine.editor import SceneInspector
 from swirengine.editor_authoring import EditorAuthoringSession, EditorAuthoringTransaction
 
 TARGET_COUNT = 500
-MAX_AUTHORING_SECONDS = 5.0
+MAX_AUTHORING_SECONDS = 1.0
 
 
 @dataclass
