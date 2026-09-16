@@ -166,7 +166,7 @@ def run_showcase(*, render: bool = False, render_frames: int = 12) -> ShowcaseRe
     editor_cube = game.add(
         Cube3D(
             position=Vec3(0.0, ground.point.y + 1.0, -5.0),
-            scale=Vec3(1.5, 1.5, 1.5),
+            size=1.5,
             color=Color(0.12, 0.62, 1.0, 1.0),
         )
     )
