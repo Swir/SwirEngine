@@ -20,7 +20,12 @@ def test_hiz_builds_max_reduction_pyramid() -> None:
 
     assert pyramid.level_count == 3
     assert pyramid.size == (4, 4)
-    assert pyramid.levels[1].tolist() == pytest.approx([[0.6, 0.5], [0.7, 0.9]])
+    np.testing.assert_allclose(
+        pyramid.levels[1],
+        np.asarray([[0.6, 0.5], [0.7, 0.9]], dtype="f4"),
+        rtol=0.0,
+        atol=1e-6,
+    )
     assert float(pyramid.levels[-1][0, 0]) == pytest.approx(0.9)
 
 
