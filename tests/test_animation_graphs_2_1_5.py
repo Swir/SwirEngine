@@ -210,7 +210,7 @@ def test_wildcard_transition_and_bool_condition() -> None:
             AnimationTransition2(
                 "*",
                 "dead",
-                (AnimationCondition("idle", ConditionOperator.TRUE),),
+                (AnimationCondition("dead", ConditionOperator.TRUE),),
                 priority=1000,
             ),
         ),
