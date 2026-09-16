@@ -50,6 +50,12 @@ The normal CI and milestone workflows remain independent compatibility gates. A 
 
 The benchmark also reports terrain triangle workload, Renderer 2.0 estimated draw calls and Multiplayer 2.0 encoded bytes so a suspiciously cheap run cannot silently stop exercising core systems. Host timings are diagnostic and are not converted into unmeasured FPS claims.
 
+## Verified tag bridge
+
+`.github/workflows/tag-1-4.yml` exists only to create the immutable release tag after the final PR is merged. It is triggered by the one-shot `release/1.4.0-publish` branch. Before creating any tag it reruns the strict 10/10 contract, queries GitHub for the current `main` SHA and requires the publication branch SHA to match it exactly. It refuses to move or replace an existing `v1.4.0` tag. The workflow has no PyPI upload step; creating the verified tag merely starts the separate tag-only publication workflow.
+
+This bridge allows release automation to remain reproducible without giving normal pushes to `main` any publication behavior.
+
 ## Publication workflow
 
 Publication is possible only from the exact `v1.4.0` tag. The release workflow:
