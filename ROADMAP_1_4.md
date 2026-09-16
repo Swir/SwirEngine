@@ -4,26 +4,26 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-0.0%25-6e7781?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-0%2F10-6e7781?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-10.0%25-0969da?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-1%2F10-0969da?style=for-the-badge">
   <img alt="Status" src="https://img.shields.io/badge/STATUS-ACTIVE-0969da?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-░░░░░░░░░░░░░░░░░░░░ 0.0%
+██░░░░░░░░░░░░░░░░░░ 10.0%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **0** | **10** | **10** | **0.0%** |
+| **1** | **9** | **10** | **10.0%** |
 
 > Progress is derived only from the equal-weight verified deliverables below. A milestone becomes
 > complete only after implementation, regression coverage, documentation synchronization and the
 > relevant CI/runtime/performance validation are green.
 
-- [ ] **Terrain + World LOD** — heightmap terrain, chunked mesh generation, distance-based LOD,
+- [x] **Terrain + World LOD** — heightmap terrain, chunked mesh generation, distance-based LOD,
       terrain materials/splat layers, collision integration and large-world streaming compatibility.
 - [ ] **Physics 2.0** — contact generation/response, friction and restitution, shape sweeps,
       constraints/joints, sleeping, continuous-collision foundations and a backend-ready public API.
