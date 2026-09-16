@@ -1,0 +1,65 @@
+name: GPU VFX 1.4 Validation
+
+on:
+  pull_request:
+    paths:
+      - "src/swirengine/__init__.py"
+      - "src/swirengine/gpu_particles.py"
+      - "src/swirengine/graphics/gpu_particles.py"
+      - "src/swirengine/graphics/csm_renderer.py"
+      - "src/swirengine/core/game.py"
+      - "tests/test_gpu_particles_1_4.py"
+      - "tools/smoke_gpu_particles_gl.py"
+      - "examples/demo_gpu_particles_1_4.py"
+      - "docs/GPU_VFX_PARTICLES_1_4.md"
+      - "ROADMAP_1_4.md"
+      - ".github/workflows/gpu-vfx-1-4.yml"
+  push:
+    branches:
+      - "feat/1.4-gpu-vfx-particles"
+    paths:
+      - "src/swirengine/__init__.py"
+      - "src/swirengine/gpu_particles.py"
+      - "src/swirengine/graphics/gpu_particles.py"
+      - "src/swirengine/graphics/csm_renderer.py"
+      - "src/swirengine/core/game.py"
+      - "tests/test_gpu_particles_1_4.py"
+      - "tools/smoke_gpu_particles_gl.py"
+      - "examples/demo_gpu_particles_1_4.py"
+      - "docs/GPU_VFX_PARTICLES_1_4.md"
+      - "ROADMAP_1_4.md"
+      - ".github/workflows/gpu-vfx-1-4.yml"
+
+jobs:
+  gpu-vfx:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Install Mesa EGL runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1-mesa-dev libgl1-mesa-dri libglx-mesa0 mesa-utils
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: GPU particle regressions
+        run: pytest -q tests/test_gpu_particles_1_4.py tests/test_particles.py
+      - name: Real OpenGL 3.3 transform-feedback smoke
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          MESA_GL_VERSION_OVERRIDE: "3.3"
+        run: python tools/smoke_gpu_particles_gl.py
+      - name: Strict lint
+        run: >-
+          ruff check src/swirengine/__init__.py src/swirengine/gpu_particles.py
+          src/swirengine/graphics/gpu_particles.py src/swirengine/graphics/csm_renderer.py
+          src/swirengine/core/game.py tests/test_gpu_particles_1_4.py
+          tools/smoke_gpu_particles_gl.py
+      - name: Compile GPU VFX path
+        run: >-
+          python -m compileall -q src/swirengine/__init__.py src/swirengine/gpu_particles.py
+          src/swirengine/graphics/gpu_particles.py src/swirengine/graphics/csm_renderer.py
+          src/swirengine/core/game.py tests/test_gpu_particles_1_4.py
+          tools/smoke_gpu_particles_gl.py
