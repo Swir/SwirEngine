@@ -119,13 +119,9 @@ class HiZPyramidPass3D:
         try:
             for texture, framebuffer in self._targets:
                 target_width, target_height = texture.size
-                scope = self.ctx.scope(
-                    framebuffer=framebuffer,
-                    enable_only=self.ctx.NOTHING,
-                    textures=((source, 0),),
-                )
-                with scope:
+                with self.ctx.scope(framebuffer=framebuffer, enable_only=self.ctx.NOTHING):
                     self.ctx.viewport = (0, 0, target_width, target_height)
+                    source.use(location=0)
                     self.program["source_size"].value = (source_width, source_height)
                     self.vao.render(vertices=3)
                 source = texture
