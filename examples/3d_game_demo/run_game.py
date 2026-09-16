@@ -309,7 +309,8 @@ def run_headless_probe() -> dict[str, int | float | bool]:
     start_z = state.z
     for _ in range(30):
         state.step(0.0, 1.0, False, FIXED_DT)
-    if state.z >= start_z - 0.5:
+    movement = start_z - state.z
+    if movement <= 0.5:
         raise AssertionError("3D demo first-person movement did not advance")
 
     first = state.enemies[0]
@@ -341,7 +342,7 @@ def run_headless_probe() -> dict[str, int | float | bool]:
         raise AssertionError("3D demo exit did not unlock after all enemies were defeated")
 
     return {
-        "movement": round(start_z - state.enemies[0].z, 3),
+        "movement": round(movement, 3),
         "kills": state.kills,
         "ammo": state.ammo,
         "health": state.health,
