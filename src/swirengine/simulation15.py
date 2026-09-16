@@ -138,11 +138,11 @@ class ReplayFrame:
         if self.tick < 1:
             raise ValueError("replay frame tick must be at least 1")
         object.__setattr__(self, "input_payload", portable_state(self.input_payload))
-        if self.state_hash is not None:
-            if len(self.state_hash) != 64 or any(
-                ch not in "0123456789abcdef" for ch in self.state_hash
-            ):
-                raise ValueError("state_hash must be a lowercase SHA-256 hex digest")
+        if self.state_hash is not None and (
+            len(self.state_hash) != 64
+            or any(ch not in "0123456789abcdef" for ch in self.state_hash)
+        ):
+            raise ValueError("state_hash must be a lowercase SHA-256 hex digest")
 
     def to_payload(self) -> dict[str, Any]:
         result: dict[str, Any] = {"tick": self.tick, "input": self.input_payload}
