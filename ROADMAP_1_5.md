@@ -5,7 +5,7 @@ SwirEngine 1.5 builds on the released and locked 1.4 line. The compatibility rul
 Current development progress:
 
 ```text
-████████░░░░░░░░░░░░ 40.0% — 4/10
+██████████░░░░░░░░░░ 50.0% — 5/10
 ```
 
 ## Milestones
@@ -14,7 +14,7 @@ Current development progress:
 - [x] **2. Save & Profile 2.0** — versioned integrity-checked save envelopes, atomic backup recovery, ordered migrations, metadata/revisions, bounded autosave rotation, legacy 1.x import, health inspection and corruption-safe recovery.
 - [x] **3. Audio 2.0** — bounded SFX voice budgets, creator priorities, deterministic voice stealing/protection, mixer snapshots, stable spatial audio composition, headless diagnostics and portable state fingerprints.
 - [x] **4. Animation Graphs 2.0** — reusable clips/state graphs, transitions, parameters, blending contracts and headless validation.
-- [ ] **5. Navigation 2.0** — runtime navigation queries, agents, path following, avoidance contracts and scalable diagnostics.
+- [x] **5. Navigation 2.0** — runtime navigation queries, agents, path following, avoidance contracts and scalable diagnostics.
 - [ ] **6. World Streaming 2.0** — partitioned scene streaming, lifecycle hooks, budgets and deterministic activation/deactivation rules.
 - [ ] **7. UI Toolkit 2.0** — retained creator UI model, layout, focus/input navigation, theming and resolution-independent scaling.
 - [ ] **8. Editor Productivity 2.0** — prefab/variant authoring, safer batch workflows, command history improvements and creator diagnostics.
@@ -68,5 +68,18 @@ Animation Graphs 2.0 lives in the additive `swirengine.animation15` layer while 
 - renderer-independent headless diagnostics plus portable pose/runtime SHA-256 fingerprints;
 - focused Python 3.10/3.13/3.14 tests, strict Ruff, compile, runnable demo and a 5,000-update / 8-channel workload gate;
 - the repository's triggered compatibility/regression workflows remaining green on the final milestone head.
+
+## Milestone 5 contract
+
+Navigation 2.0 lives in the additive `swirengine.navigation15` layer while the stable 1.x navigation surface remains unchanged. Completion requires:
+
+- a validated deterministic waypoint graph with node-id and world-position path queries, bounded endpoint snapping and stable graph fingerprints;
+- deterministic lowest-cost routing with blocked-node/edge filters, allowed navigation areas and cached per-area traversal multipliers;
+- creator-facing agents with bounded multi-waypoint following, stable arrival semantics, target assignment and deterministic local separation avoidance;
+- snapshot-based crowd stepping so avoidance does not depend on agent update order, plus a spatial-bucket broad phase instead of unconditional all-pairs neighbor checks;
+- portable query/runtime diagnostics and state fingerprints covering route-search work, moving/arrived agents and avoidance candidate counts;
+- focused Python 3.10/3.13/3.14 tests, strict Ruff, compile and a runnable headless demo;
+- a 400-node / 208-query / 128-agent workload remaining below the documented 2.0-second CI budget without making an FPS claim;
+- the repository's normal CI, Desktop Export, game-demo and 1.4 compatibility/hardening regression workflows remaining green on the verified milestone head.
 
 Progress is based on milestone completion, not file count or commit count. A milestone is 10 percentage points. SwirEngine 1.5 must not be tagged or published until all 10 milestones are complete and the release gate is green.
