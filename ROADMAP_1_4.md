@@ -4,20 +4,20 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-70.0%25-0969da?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-7%2F10-0969da?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-80.0%25-0969da?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-8%2F10-0969da?style=for-the-badge">
   <img alt="Status" src="https://img.shields.io/badge/STATUS-ACTIVE-0969da?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-██████████████░░░░░░ 70.0%
+████████████████░░░░ 80.0%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **7** | **3** | **10** | **70.0%** |
+| **8** | **2** | **10** | **80.0%** |
 
 > Progress is derived only from the equal-weight verified deliverables below. A milestone becomes
 > complete only after implementation, regression coverage, documentation synchronization and the
@@ -61,8 +61,13 @@
       tests (99.80% object-test reduction for the validation layout), real Mesa EGL depth-texture Hi-Z
       reduction, integration demo, strict Ruff and compileall while preserving unsupported renderables
       through conservative fallback behavior.
-- [ ] **Editor Authoring Power** — transform gizmos, multi-select, undo/redo, drag-and-drop assets,
-      material/physics/navigation inspectors, scene authoring and safer play/edit round-trips.
+- [x] **Editor Authoring Power** — additive ordered multi-select and range/toggle selection, grouped
+      property/gizmo/asset authoring with transaction-safe undo/redo, persistent authoring sidecars,
+      drag-and-drop asset path safety, material/physics/navigation inspector adapters, workspace/frontend
+      integration, explicit Play/Edit authoring isolation and the opt-in `swirengine.editor14` public
+      facade. Verified by the dedicated Editor Authoring 1.4 regression/Ruff/compile/demo gate, a
+      500-target select/edit/undo/redo workload well below the 1.0s contract, plus the full CI, Creator
+      Editor 1.3, Desktop Export, Demo Game 3D, Neon Snake 3D and Full Game 1.3 compatibility matrix.
 - [ ] **Multiplayer 2.0** — replication components, snapshot interpolation, client prediction,
       reconciliation, lag-compensation foundations, bandwidth diagnostics and deterministic tests.
 - [ ] **1.4 Showcase + Hardening + Release Gate** — one integrated production-scale demo combining
