@@ -196,6 +196,18 @@ def test_focus_rejects_nonfinite_vec_coordinates() -> None:
         runtime_3d.focus_key(Vec3(0.0, float("inf"), 0.0))
 
 
+def test_2d_focus_rejects_vec3_nonzero_or_nonfinite_z() -> None:
+    runtime = WorldStreamingRuntime(
+        Scene(),
+        WorldPartitionRegistry(),
+        settings=WorldStreamingSettings(dimensions=2),
+    )
+    with pytest.raises(ValueError, match="z=0"):
+        runtime.focus_key(Vec3(0.0, 0.0, 1.0))
+    with pytest.raises(ValueError, match="finite"):
+        runtime.focus_key(Vec3(0.0, 0.0, float("nan")))
+
+
 def test_factory_failure_is_isolated_and_retryable() -> None:
     scene = Scene()
     attempts = 0
