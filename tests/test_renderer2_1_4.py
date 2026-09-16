@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import pairwise
 
 import pytest
 
@@ -132,7 +133,7 @@ def test_practical_cascade_splits_are_monotonic_and_cover_far_plane() -> None:
     splits = practical_cascade_splits(0.1, 100.0, 4, 0.72)
 
     assert len(splits) == 4
-    assert all(a < b for a, b in zip(splits, splits[1:]))
+    assert all(a < b for a, b in pairwise(splits))
     assert splits[-1] == pytest.approx(100.0)
 
 
