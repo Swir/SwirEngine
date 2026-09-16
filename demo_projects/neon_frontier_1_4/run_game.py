@@ -13,6 +13,7 @@ from swirengine.gpu_particles import GPUParticleBlendMode, GPUParticleEmitter3D
 from swirengine.graphics.camera3d import Camera3D
 from swirengine.graphics.lights import DirectionalLight3D
 from swirengine.graphics.renderer2 import Decal3D, Renderer2Planner, Renderer2Settings
+from swirengine.large_world import LargeWorldStreamer
 from swirengine.multiplayer14 import (
     LagCompensationHistory,
     MultiplayerBandwidthDiagnostics,
@@ -70,6 +71,24 @@ def _terrain() -> HeightmapTerrain:
     )
 
 
+def _stream_focus(terrain: HeightmapTerrain, x: float, z: float) -> tuple[float, float]:
+    """Map terrain world coordinates onto LargeWorld's zero-based chunk address plane."""
+    return float(x) - terrain.origin.x, float(z) - terrain.origin.z
+
+
+def _make_streamer(scene: Scene, terrain: HeightmapTerrain) -> LargeWorldStreamer:
+    return LargeWorldStreamer(
+        scene,
+        terrain.large_world_provider(lod=1),
+        settings=terrain.large_world_settings(
+            active_radius_chunks=1,
+            preload_radius_chunks=1,
+            retention_radius_chunks=2,
+            max_activations_per_update=9,
+        ),
+    )
+
+
 def _body(
     target: Cube3D,
     *,
@@ -86,11 +105,7 @@ def _registry() -> ReplicationRegistry:
     registry = ReplicationRegistry()
     registry.define(
         "transform",
-        (
-            ReplicationField("x"),
-            ReplicationField("y"),
-            ReplicationField("z"),
-        ),
+        (ReplicationField("x"), ReplicationField("y"), ReplicationField("z")),
     )
     registry.define("state", ("hp", "mode"))
     return registry
@@ -118,30 +133,60 @@ def _snapshot(
     return WorldSnapshot(tick, server_time, (entity,))
 
 
+def _configure_physics(
+    scene: Scene,
+) -> tuple[PhysicsScene3D, Cube3D, Cube3D, Cube3D, CharacterController3D]:
+    floor = scene.add(
+        Cube3D(
+            position=Vec3(0.0, -1.25, 0.0),
+            scale=Vec3(18.0, 0.5, 12.0),
+            color=Color(0.06, 0.08, 0.12, 1.0),
+            name="physics-floor",
+        )
+    )
+    player = scene.add(
+        Cube3D(
+            position=Vec3(0.0, 0.9, 0.0),
+            size=0.8,
+            color=Color(0.1, 0.85, 1.0, 1.0),
+            name="network-player",
+        )
+    )
+    crate = scene.add(
+        Cube3D(
+            position=Vec3(2.0, 3.0, -2.0),
+            size=0.9,
+            color=Color(1.0, 0.38, 0.1, 1.0),
+            name="physics-crate",
+        )
+    )
+    physics = PhysicsScene3D(fixed_dt=1.0 / 120.0, solver_iterations=6)
+    physics.add(_body(floor, width=18.0, height=0.5, depth=12.0, body_type="static"))
+    physics.add(_body(crate, width=0.9, height=0.9, depth=0.9, body_type="dynamic"))
+    controller = CharacterController3D(
+        player,
+        physics,
+        config=CharacterConfig3D(
+            walk_speed=4.0,
+            ground_acceleration=80.0,
+            step_height=0.35,
+        ),
+    )
+    return physics, floor, player, crate, controller
+
+
 def run_headless_probe() -> ShowcaseDiagnostics:
     """Exercise the complete 1.4 integration surface without creating an OpenGL context."""
     terrain = _terrain()
     scene = Scene()
-    streamer = terrain.large_world_provider(lod=1)
-    from swirengine.large_world import LargeWorldStreamer
-
-    world_streamer = LargeWorldStreamer(
-        scene,
-        streamer,
-        settings=terrain.large_world_settings(
-            active_radius_chunks=1,
-            preload_radius_chunks=1,
-            retention_radius_chunks=2,
-            max_activations_per_update=9,
-        ),
+    streamer = _make_streamer(scene, terrain)
+    stream_result = streamer.update(_stream_focus(terrain, 0.0, 0.0))
+    selections = terrain.select_chunks(0.0, 0.0, radius_chunks=1)
+    terrain_triangles = sum(
+        terrain.chunk_mesh(item.key, item.lod).triangle_count for item in selections
     )
-    stream_result = world_streamer.update((0.0, -18.0))
-    selections = terrain.select_chunks(0.0, -18.0, radius_chunks=1)
-    terrain_triangles = sum(terrain.chunk_mesh(item.key, item.lod).triangle_count for item in selections)
 
-    floor = scene.add(Cube3D(position=Vec3(0.0, -1.25, 0.0), scale=Vec3(18.0, 0.5, 12.0)))
-    player = scene.add(Cube3D(position=Vec3(0.0, 0.9, 0.0), size=0.8, name="showcase-player"))
-    crate = scene.add(Cube3D(position=Vec3(2.0, 3.0, -2.0), size=0.9, name="showcase-crate"))
+    physics, _floor, player, crate, controller = _configure_physics(scene)
     scene.add(DirectionalLight3D(direction=Vec3(-0.6, -1.0, -0.35), intensity=1.8))
     scene.add(
         Decal3D(
@@ -149,15 +194,6 @@ def run_headless_probe() -> ShowcaseDiagnostics:
             size=Vec3(4.0, 0.25, 4.0),
             color=Color(0.05, 0.75, 1.0, 0.55),
         )
-    )
-
-    physics = PhysicsScene3D(fixed_dt=1.0 / 120.0, solver_iterations=6)
-    physics.add(_body(floor, width=18.0, height=0.5, depth=12.0, body_type="static"))
-    physics.add(_body(crate, width=0.9, height=0.9, depth=0.9, body_type="dynamic"))
-    controller = CharacterController3D(
-        player,
-        physics,
-        config=CharacterConfig3D(walk_speed=4.0, ground_acceleration=80.0, step_height=0.35),
     )
     for frame in range(24):
         controller.update(CharacterInput3D(move_x=0.75, jump=frame == 12), FIXED_DT)
@@ -203,15 +239,13 @@ def run_headless_probe() -> ShowcaseDiagnostics:
     snapshots = SnapshotBuffer(registry=registry)
     snapshots.push(first)
     snapshots.push(second)
-    interpolated = snapshots.sample(5.025)
-    assert interpolated.entities
+    assert snapshots.sample(5.025).entities
     history = LagCompensationHistory(registry=registry)
     history.record(first)
     history.record(second)
     assert history.rewind(5.025).entities
-    packet = MultiplayerPacketCodec.delta_packet(delta)
+    encoded = MultiplayerPacketCodec.delta_packet(delta).to_bytes()
     bandwidth = MultiplayerBandwidthDiagnostics()
-    encoded = packet.to_bytes()
     bandwidth.record_sent(encoded, channel="delta")
 
     diagnostics = ShowcaseDiagnostics(
@@ -241,7 +275,7 @@ def run_headless_probe() -> ShowcaseDiagnostics:
 
 
 def runtime_probe() -> int:
-    """Verify the packaged native renderer and the headless 1.4 integration surface."""
+    """Verify packaged native renderer imports plus the complete headless integration path."""
     import glcontext
     import glfw
     import moderngl
@@ -277,7 +311,12 @@ class NeonFrontier14:
             max_decals=64,
             hdr=True,
         )
-        self.game.configure_postprocess(enabled=True, tone_mapping="aces", exposure=1.05, fxaa=True)
+        self.game.configure_postprocess(
+            enabled=True,
+            tone_mapping="aces",
+            exposure=1.05,
+            fxaa=True,
+        )
         self.frames = 0
         self.elapsed = 0.0
         self.network_updates = 0
@@ -287,44 +326,11 @@ class NeonFrontier14:
         self.bandwidth = MultiplayerBandwidthDiagnostics()
 
         self.terrain = _terrain()
-        from swirengine.large_world import LargeWorldStreamer
+        self.streamer = _make_streamer(self.game.scene, self.terrain)
+        self.streamer.update(_stream_focus(self.terrain, 0.0, 0.0))
 
-        self.streamer = LargeWorldStreamer(
-            self.game.scene,
-            self.terrain.large_world_provider(lod=1),
-            settings=self.terrain.large_world_settings(
-                active_radius_chunks=1,
-                preload_radius_chunks=1,
-                retention_radius_chunks=2,
-                max_activations_per_update=9,
-                max_deactivations_per_update=9,
-            ),
-        )
-        self.streamer.update((0.0, -18.0))
-
-        self.floor = self.game.add(
-            Cube3D(
-                position=Vec3(0.0, -1.25, 0.0),
-                scale=Vec3(18.0, 0.5, 12.0),
-                color=Color(0.06, 0.08, 0.12, 1.0),
-                name="physics-floor",
-            )
-        )
-        self.player = self.game.add(
-            Cube3D(
-                position=Vec3(0.0, 0.9, 0.0),
-                size=0.8,
-                color=Color(0.1, 0.85, 1.0, 1.0),
-                name="network-player",
-            )
-        )
-        self.crate = self.game.add(
-            Cube3D(
-                position=Vec3(2.0, 3.0, -2.0),
-                size=0.9,
-                color=Color(1.0, 0.38, 0.1, 1.0),
-                name="physics-crate",
-            )
+        self.physics, self.floor, self.player, self.crate, self.controller = _configure_physics(
+            self.game.scene
         )
         self.game.directional_light(direction=Vec3(-0.6, -1.0, -0.35), intensity=1.9)
         self.game.decal(
@@ -346,16 +352,10 @@ class NeonFrontier14:
         )
         self.effects.burst(1024)
 
-        self.physics = PhysicsScene3D(fixed_dt=1.0 / 120.0, solver_iterations=6)
-        self.physics.add(_body(self.floor, width=18.0, height=0.5, depth=12.0, body_type="static"))
-        self.physics.add(_body(self.crate, width=0.9, height=0.9, depth=0.9, body_type="dynamic"))
-        self.controller = CharacterController3D(
-            self.player,
-            self.physics,
-            config=CharacterConfig3D(walk_speed=4.0, ground_acceleration=80.0, step_height=0.35),
+        self.editor = EditorAuthoringWorkspace(
+            self.game.scene,
+            project_name="Neon Frontier 1.4",
         )
-
-        self.editor = EditorAuthoringWorkspace(self.game.scene, project_name="Neon Frontier 1.4")
         self.editor.select(self.player)
         self.editor.select(self.crate, mode="add")
         self.editor.configure_viewport(snap_enabled=True, translation_snap=0.25)
@@ -376,24 +376,30 @@ class NeonFrontier14:
         self.snapshots.push(snapshot)
         if self.last_snapshot is not None:
             delta = SnapshotDelta.between(self.last_snapshot, snapshot)
-            packet = MultiplayerPacketCodec.delta_packet(delta)
-            self.bandwidth.record_sent(packet.to_bytes(), channel="delta")
+            self.bandwidth.record_sent(
+                MultiplayerPacketCodec.delta_packet(delta).to_bytes(),
+                channel="delta",
+            )
             self.network_updates += 1
         self.last_snapshot = snapshot
 
     def _update(self, dt: float) -> None:
         self.frames += 1
         self.elapsed += dt
-        command = CharacterInput3D(
-            move_x=0.65,
-            move_z=0.18,
-            jump=self.frames == 45,
-            sprint=self.frames % 120 > 80,
+        self.controller.update(
+            CharacterInput3D(
+                move_x=0.65,
+                move_z=0.18,
+                jump=self.frames == 45,
+                sprint=self.frames % 120 > 80,
+            ),
+            dt,
         )
-        self.controller.update(command, dt)
         self.physics.step(dt)
         self.effects.update(dt)
-        self.streamer.update((self.player.position.x, self.player.position.z - 18.0))
+        self.streamer.update(
+            _stream_focus(self.terrain, self.player.position.x, self.player.position.z)
+        )
         if self.frames == 1 or self.frames % 6 == 0:
             self._replicate()
         if SMOKE_FRAMES and self.frames >= SMOKE_FRAMES:
@@ -401,25 +407,26 @@ class NeonFrontier14:
 
     def run(self) -> None:
         self.game.run()
-        if SMOKE_FRAMES:
-            if self.frames < SMOKE_FRAMES:
-                raise AssertionError("1.4 smoke stopped before the requested frame count")
-            if self.streamer.diagnostics.active_chunks < 1:
-                raise AssertionError("terrain streaming did not activate during the real render smoke")
-            if self.controller.diagnostics.sweeps < 1:
-                raise AssertionError("character controller did not execute during the real render smoke")
-            if self.effects.diagnostics.emitted_total < 1024:
-                raise AssertionError("GPU VFX scheduler did not emit during the real render smoke")
-            if self.network_updates < 1:
-                raise AssertionError("Multiplayer 2.0 did not produce deltas during the real render smoke")
-            print(
-                "Neon Frontier 1.4 smoke OK: "
-                f"frames={self.frames}, active_chunks={self.streamer.diagnostics.active_chunks}, "
-                f"physics_bodies={self.physics.diagnostics.body_count}, "
-                f"character_sweeps={self.controller.diagnostics.sweeps}, "
-                f"particles={self.effects.diagnostics.emitted_total}, "
-                f"editor_targets={self.editor.selection.count}, network_updates={self.network_updates}"
-            )
+        if not SMOKE_FRAMES:
+            return
+        if self.frames < SMOKE_FRAMES:
+            raise AssertionError("1.4 smoke stopped before the requested frame count")
+        if self.streamer.diagnostics.active_chunks < 1:
+            raise AssertionError("terrain streaming did not activate during real rendering")
+        if self.controller.diagnostics.sweeps < 1:
+            raise AssertionError("character controller did not execute during real rendering")
+        if self.effects.diagnostics.emitted_total < 1024:
+            raise AssertionError("GPU VFX scheduler did not emit during real rendering")
+        if self.network_updates < 1:
+            raise AssertionError("Multiplayer 2.0 did not produce deltas during real rendering")
+        print(
+            "Neon Frontier 1.4 smoke OK: "
+            f"frames={self.frames}, active_chunks={self.streamer.diagnostics.active_chunks}, "
+            f"physics_bodies={self.physics.diagnostics.body_count}, "
+            f"character_sweeps={self.controller.diagnostics.sweeps}, "
+            f"particles={self.effects.diagnostics.emitted_total}, "
+            f"editor_targets={self.editor.selection.count}, network_updates={self.network_updates}"
+        )
 
 
 def main() -> int:
