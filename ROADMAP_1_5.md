@@ -82,4 +82,19 @@ Navigation 2.0 lives in the additive `swirengine.navigation15` layer while the s
 - a 400-node / 208-query / 128-agent workload remaining below the documented 2.0-second CI budget without making an FPS claim;
 - the repository's normal CI, Desktop Export, game-demo and 1.4 compatibility/hardening regression workflows remaining green on the verified milestone head.
 
+## Milestone 6 contract
+
+World Streaming 2.0 lives in the additive `swirengine.world_streaming15` and `swirengine.world_streaming_easy15` layers while the stable 1.x `Scene`, `LargeWorldStreamer`, `ChunkRegistry` and asset-streaming APIs remain unchanged. Completion requires:
+
+- a finite partition registry with deterministic dependency validation, cycle/missing-dependency rejection, strict 2D `z=0` rules and stable registry fingerprints;
+- deterministic priority/distance admission with hard active-cost budgets, bounded activation/deactivation work and retention hysteresis;
+- dependency-first activation, safe reverse-order deactivation, lifecycle rollback, isolated failures and explicit retry without half-mounted scene content;
+- a creator-first `WorldStream` facade with decorator/direct registration, object/ECS content normalization, loading-screen warmup and registration-safe pre-start inspection;
+- Game-aware cleanup through the owner's `remove(...)` path during normal unload and activation rollback so Game-managed physics/UI resources are not stranded;
+- portable runtime diagnostics, deterministic state fingerprints, finite-focus validation and diagnostics that remain coherent after explicit `unload_all()`;
+- O(1) cell-id/key-bucket lookup plus maintained active/failure sets and active-cost accounting so per-update work is bounded by the local streaming window and resident state rather than total authored-world size;
+- focused Python 3.10/3.13/3.14 tests, strict Ruff, compile and a runnable creator demo;
+- a 10,000-cell / 1,200-focus-update workload remaining below the documented 3.0-second CI budget while preserving the bounded local-window contract, without making an FPS claim;
+- the repository's normal CI, Desktop Export, game-demo and 1.4 compatibility/hardening regression workflows remaining green on the verified milestone head.
+
 Progress is based on milestone completion, not file count or commit count. A milestone is 10 percentage points. SwirEngine 1.5 must not be tagged or published until all 10 milestones are complete and the release gate is green.
