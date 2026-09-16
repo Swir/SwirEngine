@@ -64,16 +64,21 @@ jobs:
           tests/test_multiplayer_2_1_4.py
           tests/test_network_gameplay.py
           tests/test_networking.py
+          tests/test_showcase_1_4.py
       - name: Strict release-readiness lint
         run: >-
           ruff check
           tools/verify_1_4_release_candidate.py
           tests/test_release_1_4_contract.py
+          tests/test_showcase_1_4.py
+          demo_projects/showcase_1_4/run_game.py
       - name: Compile release-readiness code
         run: >-
           python -m compileall -q
           tools/verify_1_4_release_candidate.py
           tests/test_release_1_4_contract.py
+          tests/test_showcase_1_4.py
+          demo_projects/showcase_1_4/run_game.py
 
   performance:
     name: Final 1.4 performance-contract matrix
@@ -127,20 +132,22 @@ jobs:
       - run: python examples/demo_editor_authoring_runtime_1_4.py
       - run: python examples/demo_editor_specialized_1_4.py
       - run: python examples/demo_multiplayer_2_1_4.py
+      - name: Integrated SwirEngine 1.4 production showcase
+        run: python demo_projects/showcase_1_4/run_game.py
 
   opengl:
     name: Real Mesa OpenGL 3.3 1.4 smokes
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
-      - name: Install Mesa EGL runtime
+      - name: Install Mesa EGL and Xvfb runtime
         run: |
           sudo apt-get update
-          sudo apt-get install -y libegl1-mesa-dev libgl1-mesa-dri libglx-mesa0 mesa-utils
+          sudo apt-get install -y xvfb libegl1-mesa-dev libgl1-mesa-dri libglx-mesa0 libgl-dev libegl-dev mesa-utils
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e ".[dev]"
       - name: Renderer 2.0 OpenGL smoke
@@ -158,6 +165,13 @@ jobs:
           LIBGL_ALWAYS_SOFTWARE: "1"
           MESA_GL_VERSION_OVERRIDE: "3.3"
         run: python tools/smoke_scene_acceleration_gl.py
+      - name: Integrated Renderer2/VFX showcase smoke
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          MESA_GL_VERSION_OVERRIDE: "3.3"
+          SWIR_1_4_SHOWCASE_RENDER: "1"
+          SWIR_1_4_SHOWCASE_FRAMES: "12"
+        run: xvfb-run -a python demo_projects/showcase_1_4/run_game.py
 
   package:
     name: Build, metadata, and clean-wheel install
