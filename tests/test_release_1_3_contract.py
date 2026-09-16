@@ -7,10 +7,10 @@ from tools.verify_1_3_release_candidate import audit, parse_roadmap
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_current_1_3_release_contract_is_complete() -> None:
-    report = audit(ROOT, require_complete=True)
+def test_locked_1_3_compatibility_contract_remains_complete_under_current_stable() -> None:
+    report = audit(ROOT)
 
-    assert report.version == "1.3.0"
+    assert report.version == "1.4.0"
     assert report.roadmap.total == 10
     assert report.roadmap.completed == 10
     assert report.roadmap.remaining == 0
@@ -44,19 +44,21 @@ def test_final_game_contract_mentions_every_integrated_1_3_system() -> None:
     assert required <= set(source.split()) | {token for token in required if token in source}
 
 
-def test_release_workflow_is_hard_gated_on_complete_1_3_contract() -> None:
+def test_active_release_workflow_has_moved_to_the_complete_1_4_contract() -> None:
     workflow = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
 
-    assert "verify_1_3_release_candidate.py --require-complete" in workflow
+    assert "verify_1_4_release_candidate.py --require-complete" in workflow
+    assert "verify_1_3_release_candidate.py --require-complete" not in workflow
     assert "pypa/gh-action-pypi-publish@release/v1" in workflow
     assert "id-token: write" in workflow
     assert "skip-existing: true" not in workflow
 
 
-def test_full_game_workflow_has_real_opengl_packaged_windows_and_complete_gate() -> None:
+def test_full_game_workflow_keeps_real_opengl_and_packaged_1_3_regression_gates() -> None:
     workflow = (ROOT / ".github/workflows/full-game-1-3.yml").read_text(encoding="utf-8")
 
-    assert "verify_1_3_release_candidate.py --require-complete" in workflow
+    assert "verify_1_3_release_candidate.py" in workflow
+    assert "verify_1_3_release_candidate.py --require-complete" not in workflow
     assert "xvfb-run" in workflow
     assert "SWIR_1_3_SMOKE_FRAMES" in workflow
     assert "PyInstaller" in workflow
