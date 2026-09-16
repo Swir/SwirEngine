@@ -5,17 +5,13 @@ from itertools import pairwise
 
 import pytest
 
-from swirengine import (
-    Decal3D as PublicDecal3D,
-    Game,
-    Renderer2 as PublicRenderer2,
-    Renderer2Settings as PublicRenderer2Settings,
-)
+from swirengine import Decal3D as PublicDecal3D
+from swirengine import Game
+from swirengine import Renderer2 as PublicRenderer2
+from swirengine import Renderer2Settings as PublicRenderer2Settings
 from swirengine.graphics.camera3d import Camera3D
-from swirengine.graphics.csm_renderer import (
-    CascadedDirectionalShadowMap,
-    Renderer2 as Renderer2Implementation,
-)
+from swirengine.graphics.csm_renderer import CascadedDirectionalShadowMap
+from swirengine.graphics.csm_renderer import Renderer2 as Renderer2Implementation
 from swirengine.graphics.lights import DirectionalLight3D, PointLight3D
 from swirengine.graphics.mesh import Mesh3D, cube_mesh
 from swirengine.graphics.primitives import Cube3D
