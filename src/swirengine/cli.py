@@ -151,6 +151,15 @@ def main(argv=None) -> int:
         project = Path(args.project).resolve()
         try:
             manifest = _project_for_export(project)
+            include = (
+                (
+                    manifest.assets_dir.as_posix(),
+                    manifest.scenes_dir.as_posix(),
+                    manifest.scripts_dir.as_posix(),
+                )
+                if manifest is not None
+                else ("assets", "scenes", "scripts")
+            )
             profile = PackagingProfile(
                 name=args.name or (manifest.name if manifest is not None else project.name),
                 target=ExportTarget(args.target),
@@ -159,6 +168,7 @@ def main(argv=None) -> int:
                     or (manifest.entrypoint.as_posix() if manifest is not None else "main.py")
                 ),
                 app_name=args.name,
+                include=include,
                 icon=args.icon,
                 onefile=args.onefile,
                 console=not args.windowed,
