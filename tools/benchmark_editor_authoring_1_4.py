@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from time import perf_counter
 
 from swirengine import Scene
-from swirengine.editor_authoring import EditorAuthoringSession, EditorAuthoringTransaction
 from swirengine.editor import SceneInspector
+from swirengine.editor_authoring import EditorAuthoringSession, EditorAuthoringTransaction
 
 TARGET_COUNT = 500
 MAX_AUTHORING_SECONDS = 5.0
