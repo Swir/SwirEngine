@@ -56,8 +56,10 @@ The facade converts all of those forms into the strict runtime contract.
 When created with `world_stream(game, ...)`, the facade also detects the owner's normal
 `remove(...)` path. Streamed scene objects are routed through it during normal unload and during
 activation-hook rollback before the Scene mount is released, so Game-managed resources such as
-registered 2D physics/UI ownership do not get stranded. Passing a raw `Scene` keeps pure scene
-ownership instead.
+registered 2D physics/UI ownership do not get stranded. Owner cleanup is best-effort across the
+whole chunk: if one `remove(...)` call raises, remaining objects are still offered to the owner,
+the first cleanup error is then reported by the streaming failure record, and the Scene mount is
+still released. Passing a raw `Scene` keeps pure scene ownership instead.
 
 ## Loading-screen warmup
 
@@ -238,7 +240,10 @@ portable diagnostics and deterministic fingerprints.
 `WorldStreamingSettings.dimensions` is an integer-only `2`/`3` contract. A 2D strict runtime rejects
 cells with nonzero `ChunkKey.z`, matching the creator facade instead of leaving unreachable cells in
 the registry. Focus coordinates are required to be finite for tuples/sequences and `Vec2`/`Vec3`
-inputs before chunk addressing reaches `floor()`.
+inputs before chunk addressing reaches `floor()`. In 2D, a supplied `Vec3` must also use `z=0`
+instead of silently discarding a nonzero third coordinate. Rejected focus updates are validated
+before the runtime update counter advances, so invalid input cannot perturb later deterministic
+contexts, diagnostics or fingerprints.
 
 ## Performance contract
 
