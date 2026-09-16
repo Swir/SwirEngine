@@ -1,5 +1,18 @@
 from .assets import AssetDiagnostics, AssetInfo, AssetManager, AssetReloadResult
 from .audio import AudioBackend, AudioEngine, AudioHandle, AudioReloadEvent, PygameAudioBackend
+from .character import (
+    CharacterActionBindings3D,
+    CharacterConfig3D,
+    CharacterController3D,
+    CharacterDiagnostics3D,
+    CharacterInput3D,
+    CharacterNavigationDriver3D,
+    CharacterState3D,
+    FirstPersonController3D,
+    PlatformerController3D,
+    ThirdPersonController3D,
+    follow_character_path,
+)
 from .core.events import EventBus
 from .core.game import Game
 from .core.scene import Scene, SceneDiagnostics, SceneMount
@@ -215,6 +228,13 @@ __all__ = [
     "BoxCollider3D",
     "Camera2D",
     "Camera3D",
+    "CharacterActionBindings3D",
+    "CharacterConfig3D",
+    "CharacterController3D",
+    "CharacterDiagnostics3D",
+    "CharacterInput3D",
+    "CharacterNavigationDriver3D",
+    "CharacterState3D",
     "Collider3D",
     "CollisionDiagnostics3D",
     "CollisionWorld2D",
@@ -264,6 +284,7 @@ __all__ = [
     "ExportResult",
     "ExportTarget",
     "FileChangeEvent",
+    "FirstPersonController3D",
     "FrameProfile",
     "FrontendHierarchyRow",
     "FrontendInspectorRow",
@@ -310,6 +331,7 @@ __all__ = [
     "ParticleEmitter2D",
     "PhysicsWorld2D",
     "PhysicsWorld3D",
+    "PlatformerController3D",
     "PluginAutoReloader",
     "PluginError",
     "PluginInfo",
@@ -366,6 +388,7 @@ __all__ = [
     "TCPPeer",
     "TCPServer",
     "Text2D",
+    "ThirdPersonController3D",
     "TileMap2D",
     "TkEditorApp",
     "ToneMapping",
@@ -391,6 +414,7 @@ __all__ = [
     "cube_mesh",
     "cubemap_asset_paths",
     "default_editor_panels",
+    "follow_character_path",
     "launch_editor",
     "load_cubemap_faces",
     "load_gltf",
