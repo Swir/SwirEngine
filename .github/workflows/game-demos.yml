@@ -1,0 +1,79 @@
+name: Game Demos Validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "examples/2d_game_demo/**"
+      - "examples/3d_game_demo/**"
+      - "examples/README.md"
+      - ".github/workflows/game-demos.yml"
+      - "src/swirengine/**"
+  pull_request:
+    paths:
+      - "examples/2d_game_demo/**"
+      - "examples/3d_game_demo/**"
+      - "examples/README.md"
+      - ".github/workflows/game-demos.yml"
+      - "src/swirengine/**"
+
+jobs:
+  headless-gameplay:
+    name: Headless gameplay / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install --upgrade pip
+      - name: Install Python 3.14 native renderer build headers
+        if: matrix.python-version == '3.14'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libgl-dev libegl-dev
+      - run: python -m pip install -e ".[dev]"
+      - name: Lint game demo sources
+        run: ruff check examples/2d_game_demo examples/3d_game_demo
+      - name: Compile game demo sources
+        run: python -m compileall -q examples/2d_game_demo examples/3d_game_demo
+      - name: Validate 2D gameplay model
+        env:
+          SWIR_GAME_DEMO_HEADLESS: "1"
+        run: python examples/2d_game_demo/run_game.py
+      - name: Validate 3D gameplay model
+        env:
+          SWIR_GAME_DEMO_HEADLESS: "1"
+        run: python examples/3d_game_demo/run_game.py
+
+  real-opengl-smoke:
+    name: Real OpenGL 3.3 source demos
+    needs: headless-gameplay
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Install software OpenGL/Xvfb runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 libgl-dev libegl-dev
+      - name: Boot SwirEngine 2D Game Demo
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          MESA_GL_VERSION_OVERRIDE: "3.3"
+          SWIR_GAME_DEMO_SMOKE_FRAMES: "24"
+        run: xvfb-run -a python examples/2d_game_demo/run_game.py
+      - name: Boot SwirEngine 3D Game Demo
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          MESA_GL_VERSION_OVERRIDE: "3.3"
+          SWIR_GAME_DEMO_SMOKE_FRAMES: "24"
+        run: xvfb-run -a python examples/3d_game_demo/run_game.py

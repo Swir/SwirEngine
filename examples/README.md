@@ -19,6 +19,38 @@ python demo_projects/neon_cube_hunt_3d/run_game.py
 The dedicated demo workflow also boots it under Xvfb/Mesa for multiple real OpenGL frames and
 publishes source plus Windows/Linux/macOS one-file builds as a GitHub Release.
 
+## Post-1.4 source game showcases
+
+After the SwirEngine 1.4.0 engine release, two larger examples were added specifically to make the
+2D/3D game-authoring range obvious from readable source code. These are repository examples only:
+they are **not separate game products and do not receive their own GitHub Releases**.
+
+### SwirEngine 2D Game Demo
+
+```bash
+python examples/2d_game_demo/run_game.py
+```
+
+`2d_game_demo` is an original, asset-free classic-platformer showcase with movement, jumping,
+gravity, platform/gap collision, patrolling enemies, health, collectibles, a gated exit objective,
+HUD state, restart flow and deterministic validation. It uses generated rectangles/colors rather
+than third-party art or audio.
+
+### SwirEngine 3D Game Demo
+
+```bash
+python examples/3d_game_demo/run_game.py
+```
+
+`3d_game_demo` is an original, asset-free classic corridor-FPS showcase with first-person camera
+movement, mouse/keyboard look, sprinting, wall-constrained movement, hitscan-style combat, enemy
+pursuit/attacks, health/ammo pickups, a gated exit, HUD/crosshair, Renderer 2.0, HDR post-processing,
+shadows, SSAO, bloom and dynamic lights. Its layout and generated visuals are original rather than
+copied from an existing game.
+
+Both examples expose deterministic headless probes and are also booted through the real OpenGL 3.3
+renderer by the dedicated game-demo validation workflow.
+
 ## Asset-free sample games
 
 These two samples require no image or audio assets, so they are useful immediately after a
