@@ -9,6 +9,7 @@ from .camera3d import Camera3D
 from .ibl_renderer import _read_context_state
 from .lights import DirectionalLight3D, select_lights
 from .mesh import Mesh3D, MeshData, cube_mesh
+from .postprocess import PostProcessSettings
 from .primitives import Cube3D
 from .renderer import Renderer
 from .renderer2 import (
@@ -18,6 +19,7 @@ from .renderer2 import (
     Renderer2Settings,
     build_cascaded_shadow_plan,
 )
+from .renderer2_effects import BloomPass3D, DecalPass3D, DepthNormalPrepass3D, SSAOPass3D
 from .shadow_renderer import ShadowedImageBasedPostProcessRenderer
 from .shadows import DirectionalShadowFrame, DirectionalShadowSettings, directional_shadow_frame
 
@@ -169,10 +171,11 @@ class CascadedDirectionalShadowMap:
 
 
 class Renderer2(ShadowedImageBasedPostProcessRenderer):
-    """Additive SwirEngine 1.4 renderer path with real cascaded directional shadow execution.
+    """Additive SwirEngine 1.4 production renderer path.
 
-    Existing renderer classes remain untouched and keep their 1.x behavior. Renderer2 starts from the
-    proven 1.3 renderer stack and layers new production passes behind explicit quality settings.
+    Renderer2 keeps the stable 1.x renderer hierarchy untouched while composing cascaded shadows,
+    a depth/normal prepass, SSAO, screen-space decals, HDR bloom and the existing color-grading/FXAA
+    controls in one opt-in renderer.
     """
 
     _CSM_TEXTURE_BASE = 5
@@ -189,9 +192,17 @@ class Renderer2(ShadowedImageBasedPostProcessRenderer):
         self._csm: CascadedDirectionalShadowMap | None = None
         self._csm_overlay_gpu: dict[int, tuple[object, object, int]] = {}
         self._csm_cube_mesh = cube_mesh()
+        if kwargs.get("postprocess") is None:
+            kwargs["postprocess"] = PostProcessSettings(enabled=True)
         kwargs["shadows_enabled"] = False
         super().__init__(*args, **kwargs)
+        self.postprocess.enabled = True
+        self._prepass = DepthNormalPrepass3D(self.ctx)
+        self._ssao_pass = SSAOPass3D(self.ctx)
+        self._bloom_pass = BloomPass3D(self.ctx)
+        self._decal_pass = DecalPass3D(self.ctx)
         self._init_csm_overlay()
+        self._init_renderer2_resolve()
 
     @property
     def renderer2_frame(self) -> Renderer2FramePlan | None:
@@ -200,6 +211,27 @@ class Renderer2(ShadowedImageBasedPostProcessRenderer):
     @property
     def renderer2_diagnostics(self):
         return None if self._renderer2_frame is None else self._renderer2_frame.diagnostics
+
+    def _ensure_post_target(self) -> None:
+        size = (self.width, self.height)
+        if self._post_framebuffer is not None and self._post_size == size:
+            return
+        self._release_post_target()
+        self._post_color = self.ctx.texture(size, 4, dtype="f2")
+        self._post_color.filter = (self.ctx.LINEAR, self.ctx.LINEAR)
+        self._post_color.repeat_x = False
+        self._post_color.repeat_y = False
+        self._post_depth = self.ctx.depth_texture(size)
+        self._post_depth.filter = (self.ctx.NEAREST, self.ctx.NEAREST)
+        self._post_depth.repeat_x = False
+        self._post_depth.repeat_y = False
+        if hasattr(self._post_depth, "compare_func"):
+            self._post_depth.compare_func = ""
+        self._post_framebuffer = self.ctx.framebuffer(
+            color_attachments=[self._post_color],
+            depth_attachment=self._post_depth,
+        )
+        self._post_size = size
 
     def _init_csm_overlay(self) -> None:
         self.csm_overlay_program = self.ctx.program(
@@ -296,6 +328,139 @@ class Renderer2(ShadowedImageBasedPostProcessRenderer):
         )
         for index in range(4):
             self.csm_overlay_program[f"shadow_map{index}"].value = self._CSM_TEXTURE_BASE + index
+
+    def _init_renderer2_resolve(self) -> None:
+        self.renderer2_resolve_program = self.ctx.program(
+            vertex_shader="""
+                #version 330
+                in vec2 in_pos;
+                out vec2 v_uv;
+                void main() {
+                    v_uv = in_pos * 0.5 + 0.5;
+                    gl_Position = vec4(in_pos, 0.0, 1.0);
+                }
+            """,
+            fragment_shader="""
+                #version 330
+                uniform sampler2D scene_image;
+                uniform sampler2D ao_image;
+                uniform sampler2D bloom_image;
+                uniform vec2 inverse_resolution;
+                uniform int tone_mapping_mode;
+                uniform float exposure;
+                uniform float gamma_value;
+                uniform float contrast;
+                uniform float saturation;
+                uniform float vignette;
+                uniform bool fxaa_enabled;
+                uniform bool ao_enabled;
+                uniform bool bloom_enabled;
+                uniform float bloom_intensity;
+                in vec2 v_uv;
+                out vec4 fragColor;
+
+                vec3 srgb_to_linear(vec3 value) {
+                    vec3 low = value / 12.92;
+                    vec3 high = pow((value + 0.055) / 1.055, vec3(2.4));
+                    return mix(low, high, step(vec3(0.04045), value));
+                }
+
+                vec3 sample_scene(vec2 uv) {
+                    if (!fxaa_enabled) return texture(scene_image, uv).rgb;
+                    vec3 rgb_m = texture(scene_image, uv).rgb;
+                    vec3 rgb_nw = texture(scene_image, uv + vec2(-1.0, 1.0) * inverse_resolution).rgb;
+                    vec3 rgb_ne = texture(scene_image, uv + vec2(1.0, 1.0) * inverse_resolution).rgb;
+                    vec3 rgb_sw = texture(scene_image, uv + vec2(-1.0, -1.0) * inverse_resolution).rgb;
+                    vec3 rgb_se = texture(scene_image, uv + vec2(1.0, -1.0) * inverse_resolution).rgb;
+                    vec3 luma = vec3(0.299, 0.587, 0.114);
+                    float luma_m = dot(rgb_m, luma);
+                    float luma_min = min(
+                        luma_m,
+                        min(
+                            min(dot(rgb_nw, luma), dot(rgb_ne, luma)),
+                            min(dot(rgb_sw, luma), dot(rgb_se, luma))
+                        )
+                    );
+                    float luma_max = max(
+                        luma_m,
+                        max(
+                            max(dot(rgb_nw, luma), dot(rgb_ne, luma)),
+                            max(dot(rgb_sw, luma), dot(rgb_se, luma))
+                        )
+                    );
+                    vec2 dir;
+                    dir.x = -(
+                        (dot(rgb_nw, luma) + dot(rgb_ne, luma))
+                        - (dot(rgb_sw, luma) + dot(rgb_se, luma))
+                    );
+                    dir.y = (
+                        (dot(rgb_nw, luma) + dot(rgb_sw, luma))
+                        - (dot(rgb_ne, luma) + dot(rgb_se, luma))
+                    );
+                    float reduce = max(
+                        (dot(rgb_nw + rgb_ne + rgb_sw + rgb_se, luma) * 0.25) * 0.03125,
+                        0.0078125
+                    );
+                    float reciprocal = 1.0 / (min(abs(dir.x), abs(dir.y)) + reduce);
+                    dir = clamp(dir * reciprocal, vec2(-8.0), vec2(8.0)) * inverse_resolution;
+                    vec3 rgb_a = 0.5 * (
+                        texture(scene_image, uv + dir * (1.0 / 3.0 - 0.5)).rgb
+                        + texture(scene_image, uv + dir * (2.0 / 3.0 - 0.5)).rgb
+                    );
+                    vec3 rgb_b = rgb_a * 0.5 + 0.25 * (
+                        texture(scene_image, uv + dir * -0.5).rgb
+                        + texture(scene_image, uv + dir * 0.5).rgb
+                    );
+                    float luma_b = dot(rgb_b, luma);
+                    return (luma_b < luma_min || luma_b > luma_max) ? rgb_a : rgb_b;
+                }
+
+                vec3 aces(vec3 color) {
+                    const float a = 2.51;
+                    const float b = 0.03;
+                    const float c = 2.43;
+                    const float d = 0.59;
+                    const float e = 0.14;
+                    return clamp(
+                        (color * (a * color + b)) / (color * (c * color + d) + e),
+                        0.0,
+                        1.0
+                    );
+                }
+
+                void main() {
+                    vec3 color = srgb_to_linear(sample_scene(v_uv));
+                    if (ao_enabled) {
+                        color *= texture(ao_image, v_uv).r;
+                    }
+                    if (bloom_enabled) {
+                        color += srgb_to_linear(texture(bloom_image, v_uv).rgb) * bloom_intensity;
+                    }
+                    color *= exposure;
+                    if (tone_mapping_mode == 1) {
+                        color = color / (vec3(1.0) + color);
+                    } else if (tone_mapping_mode == 2) {
+                        color = aces(color);
+                    }
+                    float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
+                    color = mix(vec3(luma), color, saturation);
+                    color = (color - 0.5) * contrast + 0.5;
+                    vec2 centered = v_uv * 2.0 - 1.0;
+                    float edge = smoothstep(0.25, 1.35, dot(centered, centered));
+                    color *= 1.0 - edge * vignette;
+                    color = pow(max(color, vec3(0.0)), vec3(1.0 / gamma_value));
+                    fragColor = vec4(color, 1.0);
+                }
+            """,
+        )
+        self.renderer2_resolve_program["scene_image"].value = 0
+        self.renderer2_resolve_program["ao_image"].value = 1
+        self.renderer2_resolve_program["bloom_image"].value = 2
+        self.renderer2_resolve_vao = self.ctx.simple_vertex_array(
+            self.renderer2_resolve_program,
+            self.post_vbo,
+            "in_pos",
+        )
 
     def _csm_resource(self) -> CascadedDirectionalShadowMap:
         if self._csm is None:
@@ -395,6 +560,20 @@ class Renderer2(ShadowedImageBasedPostProcessRenderer):
             self.ctx.disable(self.ctx.BLEND)
             self.ctx.disable(self.ctx.DEPTH_TEST)
 
+    def _render_base_color(self, scene: object, camera: Camera3D, *, prepassed: bool) -> None:
+        if not prepassed:
+            Renderer._render_3d(self, scene, camera)
+            return
+        previous_depth_func = _read_context_state(self.ctx, "depth_func", "<")
+        previous_depth_mask = _read_context_state(self.ctx, "depth_mask", True)
+        self.ctx.depth_func = "<="
+        self.ctx.depth_mask = False
+        try:
+            Renderer._render_3d(self, scene, camera)
+        finally:
+            self.ctx.depth_mask = previous_depth_mask
+            self.ctx.depth_func = previous_depth_func
+
     def _render_3d(self, scene: object, camera: Camera3D) -> None:
         self._renderer2_frame = self._renderer2_planner.plan(
             scene,
@@ -402,35 +581,134 @@ class Renderer2(ShadowedImageBasedPostProcessRenderer):
             width=self.width,
             height=self.height,
         )
-        if not self.renderer2.cascaded_shadows:
-            super()._render_3d(scene, camera)
-            return
+        prepassed = False
+        if self.renderer2.depth_prepass and self._post_depth is not None:
+            self._prepass.render(
+                scene,
+                camera,
+                width=self.width,
+                height=self.height,
+                depth_texture=self._post_depth,
+            )
+            prepassed = True
 
         light = self._renderer2_light(scene)
-        if light is None:
-            super()._render_3d(scene, camera)
+        csm_frame = None
+        if self.renderer2.cascaded_shadows and light is not None:
+            csm_frame = self._csm_resource().render(
+                scene,
+                light,
+                camera,
+                width=self.width,
+                height=self.height,
+            )
+
+        self._restore_scene_target()
+        self._render_base_color(scene, camera, prepassed=prepassed)
+        self._render_dynamic_13(scene, camera)
+        if csm_frame is not None:
+            self._render_csm_overlay(scene, camera, csm_frame)
+        self._render_ibl(scene, camera)
+
+    def _texture_for_decal(self, path: str):
+        return self._texture(path)[0]
+
+    def _resolve_renderer2(self, *, ao_texture: object | None, bloom_texture: object | None) -> None:
+        assert self._post_color is not None
+        self.ctx.screen.use()
+        self.ctx.viewport = (0, 0, self.width, self.height)
+        self.ctx.disable(self.ctx.DEPTH_TEST)
+        self._post_color.use(location=0)
+        (ao_texture or self._post_color).use(location=1)
+        (bloom_texture or self._post_color).use(location=2)
+        settings = self.postprocess
+        program = self.renderer2_resolve_program
+        program["inverse_resolution"].value = (
+            1.0 / max(1, self.width),
+            1.0 / max(1, self.height),
+        )
+        program["tone_mapping_mode"].value = (
+            settings.tone_mapping_mode if self.renderer2.hdr else 0
+        )
+        program["exposure"].value = float(settings.exposure if self.renderer2.hdr else 1.0)
+        program["gamma_value"].value = float(settings.gamma)
+        program["contrast"].value = float(settings.contrast)
+        program["saturation"].value = float(settings.saturation)
+        program["vignette"].value = float(settings.vignette)
+        program["fxaa_enabled"].value = bool(settings.fxaa)
+        program["ao_enabled"].value = ao_texture is not None
+        program["bloom_enabled"].value = bloom_texture is not None
+        program["bloom_intensity"].value = float(self.renderer2.bloom_intensity)
+        self.renderer2_resolve_vao.render(vertices=3)
+        self.stats.draw_calls += 1
+        self.stats.triangles += 1
+
+    def render(
+        self,
+        scene,
+        *,
+        camera=None,
+        clear_color=(0.035, 0.045, 0.07, 1.0),
+    ) -> None:
+        if self.mode != "3d":
+            super().render(scene, camera=camera, clear_color=clear_color)
             return
 
-        csm_frame = self._csm_resource().render(
-            scene,
-            light,
-            camera,
-            width=self.width,
-            height=self.height,
-        )
-        self._restore_scene_target()
-        Renderer._render_3d(self, scene, camera)
-        self._render_dynamic_13(scene, camera)
-        self._render_csm_overlay(scene, camera, csm_frame)
-        self._render_ibl(scene, camera)
+        active = camera if isinstance(camera, Camera3D) else Camera3D()
+        self._ensure_post_target()
+        assert self._post_framebuffer is not None
+        assert self._post_color is not None
+        assert self._post_depth is not None
+        self._post_framebuffer.use()
+        Renderer.render(self, scene, camera=active, clear_color=clear_color)
+
+        ao_texture = None
+        normal_texture = self._prepass.normal_texture
+        if self.renderer2.ssao and normal_texture is not None:
+            ao_texture = self._ssao_pass.render(
+                depth_texture=self._post_depth,
+                normal_texture=normal_texture,
+                camera=active,
+                width=self.width,
+                height=self.height,
+                settings=self.renderer2,
+            )
+
+        if self.renderer2.decals and self._renderer2_frame is not None:
+            self._decal_pass.render(
+                self._renderer2_frame.decals,
+                color_texture=self._post_color,
+                depth_texture=self._post_depth,
+                camera=active,
+                width=self.width,
+                height=self.height,
+                texture_loader=self._texture_for_decal,
+            )
+
+        bloom_texture = None
+        if self.renderer2.bloom:
+            bloom_texture = self._bloom_pass.render(
+                self._post_color,
+                width=self.width,
+                height=self.height,
+                settings=self.renderer2,
+            )
+
+        self._resolve_renderer2(ao_texture=ao_texture, bloom_texture=bloom_texture)
 
     def release(self) -> None:
         if self._csm is not None:
             self._csm.release()
             self._csm = None
+        self._prepass.release()
+        self._ssao_pass.release()
+        self._bloom_pass.release()
+        self._decal_pass.release()
         for vbo, vao, _ in self._csm_overlay_gpu.values():
             vao.release()
             vbo.release()
         self._csm_overlay_gpu.clear()
+        self.renderer2_resolve_vao.release()
+        self.renderer2_resolve_program.release()
         self.csm_overlay_program.release()
         super().release()
