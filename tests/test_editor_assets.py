@@ -1,3 +1,5 @@
+import pytest
+
 from swirengine import AssetManager
 from swirengine.editor_assets import (
     EditorAssetBrowser,
@@ -87,6 +89,32 @@ def test_asset_browser_drag_payload_is_portable_and_filter_independent(tmp_path)
         "audio/theme.ogg", "theme.ogg", "audio", ".ogg"
     )
     assert not selected_payload.relative_path.startswith(str(root))
+
+
+@pytest.mark.parametrize(
+    "unsafe_path",
+    [
+        "/tmp/hero.png",
+        "../hero.png",
+        r"C:\temp\hero.png",
+        r"\\server\share\hero.png",
+    ],
+)
+def test_asset_drag_payload_rejects_host_absolute_and_parent_paths(unsafe_path):
+    with pytest.raises(ValueError, match="project-relative"):
+        EditorAssetDragPayload(unsafe_path, "hero.png", "image", ".png")
+
+
+def test_asset_browser_rejects_host_absolute_lookup_even_if_basename_exists(tmp_path):
+    root = tmp_path / "assets"
+    root.mkdir()
+    (root / "player.png").write_bytes(b"data")
+    browser = EditorAssetBrowser(AssetManager(root))
+
+    with pytest.raises(ValueError, match="project-relative"):
+        browser.select("/player.png")
+    with pytest.raises(ValueError, match="project-relative"):
+        browser.drag_payload(r"C:\assets\player.png")
 
 
 def test_asset_browser_drag_requires_a_real_asset(tmp_path):
