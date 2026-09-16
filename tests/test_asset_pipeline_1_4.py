@@ -83,6 +83,28 @@ def test_background_loader_finalizes_on_caller_thread(tmp_path: Path) -> None:
     assert finalizer_threads == [main_thread]
 
 
+def test_reentrant_finalizer_can_read_pipeline_diagnostics(tmp_path: Path) -> None:
+    source = tmp_path / "scene.asset"
+    source.write_text("raw", encoding="utf-8")
+    manager = AssetManager(tmp_path)
+
+    with AssetPipeline(manager, max_workers=1) as pipeline:
+
+        def finalizer(value: str) -> tuple[str, int]:
+            return value.upper(), pipeline.diagnostics.max_workers
+
+        pipeline.register_processor(
+            "scene",
+            suffixes=["asset"],
+            loader=lambda path: path.read_text(encoding="utf-8"),
+            finalizer=finalizer,
+        )
+        result = pipeline.wait(pipeline.submit(source), timeout=2)
+
+    assert result.successful
+    assert result.value == ("RAW", 1)
+
+
 def test_asset_pipeline_reuses_content_aware_cache(tmp_path: Path) -> None:
     source = tmp_path / "config.txt"
     source.write_text("alpha", encoding="utf-8")
@@ -200,6 +222,40 @@ def test_import_is_stale_when_source_changes_during_worker(tmp_path: Path) -> No
     assert finalized == []
     assert diagnostics.stale == 1
     assert diagnostics.cached_entries == 0
+
+
+def test_import_is_stale_when_dependency_changes_during_worker(tmp_path: Path) -> None:
+    source = tmp_path / "slow.asset"
+    dependency = tmp_path / "texture.bin"
+    source.write_text("model", encoding="utf-8")
+    dependency.write_bytes(b"before")
+    manager = AssetManager(tmp_path)
+    started = Event()
+    release = Event()
+
+    def loader(path: Path) -> tuple[str, bytes]:
+        source_value = path.read_text(encoding="utf-8")
+        dependency_value = dependency.read_bytes()
+        started.set()
+        assert release.wait(timeout=2)
+        return source_value, dependency_value
+
+    with AssetPipeline(manager, max_workers=1) as pipeline:
+        pipeline.register_processor(
+            "slow",
+            suffixes=["asset"],
+            loader=loader,
+            dependencies=lambda _path: [dependency],
+        )
+        request = pipeline.submit(source)
+        assert started.wait(timeout=2)
+        dependency.write_bytes(b"after-change")
+        release.set()
+        result = pipeline.wait(request, timeout=2)
+
+    assert result.state is AssetImportState.STALE
+    assert result.successful is False
+    assert result.dependencies == (dependency.resolve(),)
 
 
 def test_failed_processor_does_not_poison_cache(tmp_path: Path) -> None:
