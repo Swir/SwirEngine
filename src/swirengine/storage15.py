@@ -23,7 +23,7 @@ class SaveIntegrityError(ValueError):
 
 
 class SaveRecoveryError(RuntimeError):
-    """Raised when neither the primary save nor its backup can be loaded safely."""
+    """Raised when neither the primary save nor its backup can be trusted."""
 
 
 @dataclass(slots=True, frozen=True)
@@ -124,16 +124,14 @@ def _digest(value: Mapping[str, Any]) -> str:
 
 def _file_bytes(value: Mapping[str, Any]) -> bytes:
     normalized = _portable_mapping(value, label="save payload")
-    return (
-        json.dumps(
-            normalized,
-            ensure_ascii=False,
-            allow_nan=False,
-            indent=2,
-            sort_keys=True,
-        )
-        + "\n"
-    ).encode("utf-8")
+    text = json.dumps(
+        normalized,
+        ensure_ascii=False,
+        allow_nan=False,
+        indent=2,
+        sort_keys=True,
+    )
+    return f"{text}\n".encode("utf-8")
 
 
 def _fsync_directory(path: Path) -> None:
@@ -144,7 +142,7 @@ def _fsync_directory(path: Path) -> None:
     try:
         os.fsync(descriptor)
     except OSError:
-        pass
+        return
     finally:
         os.close(descriptor)
 
@@ -228,6 +226,7 @@ def _decode_envelope(
         raise ValueError(
             f"save version {stored_version} is newer than supported {target_version}"
         )
+
     revision = envelope.get("revision")
     if not isinstance(revision, int) or isinstance(revision, bool) or revision < 1:
         raise TypeError("save revision must be a positive integer")
@@ -311,7 +310,7 @@ class SaveSlotStore2:
         return result
 
     def load(self, *, repair: bool = False, upgrade: bool = False) -> SaveLoadResult:
-        primary_error: Exception | None = None
+        primary_error: Exception | None
         if self.path.exists():
             try:
                 result = self._load_path(self.path)
@@ -326,7 +325,7 @@ class SaveSlotStore2:
 
         if self.backup_path.exists():
             try:
-                backup_result = self._load_path(self.backup_path)
+                backup = self._load_path(self.backup_path)
             except (OSError, TypeError, ValueError) as backup_error:
                 raise SaveRecoveryError(
                     f"save primary and backup are unreadable: {self.path}"
@@ -334,13 +333,13 @@ class SaveSlotStore2:
             self._loads += 1
             self._recoveries += 1
             result = SaveLoadResult(
-                data=backup_result.data,
-                metadata=backup_result.metadata,
-                stored_version=backup_result.stored_version,
-                target_version=backup_result.target_version,
-                revision=backup_result.revision,
+                data=backup.data,
+                metadata=backup.metadata,
+                stored_version=backup.stored_version,
+                target_version=backup.target_version,
+                revision=backup.revision,
                 source="backup",
-                migrations_applied=backup_result.migrations_applied,
+                migrations_applied=backup.migrations_applied,
             )
             if repair:
                 self.recover()
@@ -438,20 +437,7 @@ class SaveSlotStore2:
 
     def inspect(self, *, name: str | None = None) -> SaveSlotInfo:
         slot_name = name or self.path.stem
-        recovery_available = False
-        backup_result: SaveLoadResult | None = None
-        if self.backup_path.exists():
-            try:
-                backup_result = _decode_envelope(
-                    self.backup_path,
-                    target_version=self.version,
-                    migrations=self.migrations,
-                    defaults=self.defaults,
-                )
-                recovery_available = True
-            except (OSError, TypeError, ValueError):
-                pass
-
+        backup_result = self._inspect_backup()
         try:
             result = _decode_envelope(
                 self.path,
@@ -464,7 +450,7 @@ class SaveSlotStore2:
                 name=slot_name,
                 path=self.path,
                 healthy=False,
-                recovery_available=recovery_available,
+                recovery_available=backup_result is not None,
                 version=backup_result.stored_version if backup_result else None,
                 revision=backup_result.revision if backup_result else None,
                 metadata=backup_result.metadata if backup_result else None,
@@ -473,11 +459,24 @@ class SaveSlotStore2:
             name=slot_name,
             path=self.path,
             healthy=True,
-            recovery_available=recovery_available,
+            recovery_available=backup_result is not None,
             version=result.stored_version,
             revision=result.revision,
             metadata=result.metadata,
         )
+
+    def _inspect_backup(self) -> SaveLoadResult | None:
+        if not self.backup_path.exists():
+            return None
+        try:
+            return _decode_envelope(
+                self.backup_path,
+                target_version=self.version,
+                migrations=self.migrations,
+                defaults=self.defaults,
+            )
+        except (OSError, TypeError, ValueError):
+            return None
 
 
 class ProfileSaveManager2:
@@ -529,13 +528,11 @@ class ProfileSaveManager2:
     def list_slots(self) -> tuple[SaveSlotInfo, ...]:
         if not self.directory.exists():
             return ()
-        infos = []
-        for path in sorted(self.directory.glob("*.json")):
-            if not path.is_file():
-                continue
-            slot_name = path.stem
-            infos.append(self.slot(slot_name).inspect(name=slot_name))
-        return tuple(infos)
+        names = {path.stem for path in self.directory.glob("*.json") if path.is_file()}
+        for path in self.directory.glob("*.json.bak"):
+            if path.is_file():
+                names.add(path.name[: -len(".json.bak")])
+        return tuple(self.slot(name).inspect(name=name) for name in sorted(names))
 
     def delete(self, slot: str, *, include_backup: bool = True) -> bool:
         store = self.slot(slot)
@@ -554,6 +551,9 @@ class ProfileSaveManager2:
         *,
         metadata: Mapping[str, Any] | None = None,
     ) -> SaveSlotInfo:
+        legacy_path = self.legacy_profile.paths.save_slot(slot)
+        if not legacy_path.exists():
+            raise FileNotFoundError(legacy_path)
         legacy = self.legacy_profile.save_slot(slot)
         merged_metadata: dict[str, Any] = {"imported_from": "swirengine-1.x"}
         if metadata:
@@ -567,9 +567,10 @@ class ProfileSaveManager2:
         policy: AutosavePolicy = AutosavePolicy(),
         metadata: Mapping[str, Any] | None = None,
     ) -> SaveSlotInfo:
-        generations = []
+        generations: list[int] = []
         for index in range(1, policy.keep + 1):
-            info = self.slot(policy.slot_name(index)).inspect(name=policy.slot_name(index))
+            name = policy.slot_name(index)
+            info = self.slot(name).inspect(name=name)
             generation = 0
             if info.metadata is not None:
                 candidate = info.metadata.get("autosave_generation", 0)
@@ -594,7 +595,7 @@ class ProfileSaveManager2:
         *,
         policy: AutosavePolicy = AutosavePolicy(),
     ) -> tuple[SaveSlotInfo, ...]:
-        infos = []
+        infos: list[SaveSlotInfo] = []
         for index in range(1, policy.keep + 1):
             name = policy.slot_name(index)
             path = self.slot_path(name)
