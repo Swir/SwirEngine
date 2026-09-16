@@ -1,0 +1,60 @@
+name: One-shot World Streaming lint cleanup
+
+on:
+  push:
+    branches:
+      - "feat/1.5-world-streaming-creator-api"
+    paths:
+      - ".github/workflows/_temp_world_streaming_lint_fix.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/1.5-world-streaming-creator-api
+
+      - name: Apply exact lint corrections
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          strict = Path("src/swirengine/world_streaming15.py")
+          text = strict.read_text(encoding="utf-8")
+          old = 'raise ValueError("world streaming focus must contain numeric coordinates")'
+          new = 'raise TypeError("world streaming focus must contain numeric coordinates")'
+          if text.count(old) != 1:
+              raise SystemExit("strict TypeError replacement target was not unique")
+          strict.write_text(text.replace(old, new), encoding="utf-8")
+
+          easy = Path("src/swirengine/world_streaming_easy15.py")
+          text = easy.read_text(encoding="utf-8")
+          old = 'from typing import TypeAlias\n\nfrom .core.scene import Scene'
+          new = 'from typing import TypeAlias\n\nfrom typing_extensions import Self\n\nfrom .core.scene import Scene'
+          if text.count(old) != 1:
+              raise SystemExit("Self import insertion target was not unique")
+          text = text.replace(old, new)
+          old = 'raise ValueError("world stream chunk key must contain integer coordinates")'
+          new = 'raise TypeError("world stream chunk key must contain integer coordinates")'
+          if text.count(old) != 1:
+              raise SystemExit("easy TypeError replacement target was not unique")
+          text = text.replace(old, new)
+          old = 'def __enter__(self) -> WorldStream:'
+          new = 'def __enter__(self) -> Self:'
+          if text.count(old) != 1:
+              raise SystemExit("Self return annotation target was not unique")
+          easy.write_text(text.replace(old, new), encoding="utf-8")
+          PY
+
+      - name: Commit corrections
+        run: |
+          git config user.name "SwirEngine CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/swirengine/world_streaming15.py src/swirengine/world_streaming_easy15.py
+          git diff --cached --check
+          git commit -m "fix(streaming): satisfy strict typing and lint contract"
+          git push origin HEAD:feat/1.5-world-streaming-creator-api
