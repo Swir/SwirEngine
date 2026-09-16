@@ -1,4 +1,11 @@
 from .asset_cache import DerivedAssetCache, DerivedAssetCacheDiagnostics
+from .asset_optimization import (
+    MeshOptimizationResult,
+    TextureOptimizationResult,
+    optimize_mesh_data,
+    optimize_texture_bytes,
+    register_texture_optimizer,
+)
 from .asset_pipeline import (
     AssetDependencyGraph,
     AssetFingerprint,
@@ -357,6 +364,7 @@ __all__ = [
     "Material3D",
     "Mesh3D",
     "MeshData",
+    "MeshOptimizationResult",
     "MessageKind",
     "MessageRouter",
     "NativeBuildError",
@@ -428,6 +436,7 @@ __all__ = [
     "TCPPeer",
     "TCPServer",
     "Text2D",
+    "TextureOptimizationResult",
     "ThirdPersonController3D",
     "TileMap2D",
     "TkEditorApp",
@@ -465,10 +474,13 @@ __all__ = [
     "load_obj",
     "normalize_gamepad_axis",
     "normalize_gamepad_button",
+    "optimize_mesh_data",
+    "optimize_texture_bytes",
     "parse_editor_value",
     "place_control",
     "prepare_shader_variant",
     "register_gltf_asset_processor",
+    "register_texture_optimizer",
     "restore_editor_hierarchy",
     "select_lights",
     "shader_material_3d",
