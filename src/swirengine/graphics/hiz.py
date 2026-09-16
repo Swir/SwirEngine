@@ -73,7 +73,7 @@ class HiZDepthPyramid3D:
         u0, v0, u1, v1 = self._validated_rect(uv_rect)
         width, height = self.size
         pixel_span = max((u1 - u0) * width, (v1 - v0) * height, 1.0)
-        return min(self.level_count - 1, max(0, int(math.floor(math.log2(pixel_span)))))
+        return min(self.level_count - 1, max(0, math.floor(math.log2(pixel_span))))
 
     def conservative_max_depth(
         self,
@@ -87,10 +87,10 @@ class HiZDepthPyramid3D:
             raise ValueError("Hi-Z level is out of range")
         data = self._levels[selected]
         height, width = data.shape
-        x0 = min(width - 1, max(0, int(math.floor(u0 * width))))
-        y0 = min(height - 1, max(0, int(math.floor(v0 * height))))
-        x1 = min(width, max(x0 + 1, int(math.ceil(u1 * width))))
-        y1 = min(height, max(y0 + 1, int(math.ceil(v1 * height))))
+        x0 = min(width - 1, max(0, math.floor(u0 * width)))
+        y0 = min(height - 1, max(0, math.floor(v0 * height)))
+        x1 = min(width, max(x0 + 1, math.ceil(u1 * width)))
+        y1 = min(height, max(y0 + 1, math.ceil(v1 * height)))
         region = data[y0:y1, x0:x1]
         return float(np.max(region)), int(region.size), selected
 
