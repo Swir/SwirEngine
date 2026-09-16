@@ -6,7 +6,7 @@ import pytest
 
 from swirengine.graphics.camera3d import Camera3D
 from swirengine.graphics.csm_renderer import CascadedDirectionalShadowMap
-from swirengine.graphics.lights import DirectionalLight3D
+from swirengine.graphics.lights import DirectionalLight3D, PointLight3D
 from swirengine.graphics.mesh import Mesh3D, cube_mesh
 from swirengine.graphics.primitives import Cube3D
 from swirengine.graphics.renderer2 import (
@@ -211,8 +211,8 @@ def test_renderer2_planner_schedules_production_passes_and_diagnostics() -> None
     assert diagnostics.estimated_draw_calls == sum(item.draw_calls for item in plan.passes)
 
 
-def test_renderer2_planner_omits_shadow_pass_without_directional_light() -> None:
-    scene = SceneStub([Cube3D(position=Vec3(0.0, 0.0, -4.0))])
+def test_renderer2_planner_omits_shadow_pass_when_only_non_directional_light_is_active() -> None:
+    scene = SceneStub([PointLight3D(), Cube3D(position=Vec3(0.0, 0.0, -4.0))])
 
     plan = Renderer2Planner().plan(scene, Camera3D(), width=1280, height=720)
 
@@ -278,7 +278,7 @@ def test_csm_allocates_one_depth_target_per_cascade_and_renders_meshes_and_cubes
     assert all(texture.repeat_y is False for texture in ctx.depth_textures)
     assert all(texture.compare_func == "" for texture in ctx.depth_textures)
     assert all(framebuffer.clear_depths == [1.0] for framebuffer in ctx.framebuffers)
-    assert len(ctx.vaos) == 2  # one shared MeshData upload + one cached cube primitive
+    assert len(ctx.vaos) == 2
     assert all(vao.render_counts == [36, 36, 36, 36] for vao in ctx.vaos)
     assert len(ctx.program_obj.uniform.data) == 64
 
