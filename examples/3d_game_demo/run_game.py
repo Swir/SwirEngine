@@ -1,596 +1,395 @@
-"""SwirEngine 3D Game Demo — an asset-free classic corridor FPS showcase.
+"""SwirEngine 3D Game Demo — source-only mini FPS showcase.
 
-The demo is inspired by the feel of early fast-paced first-person shooters while using an original
-layout, generated geometry, colors, gameplay code, and no third-party game assets.
-
-Run from the repository root:
-    python examples/3d_game_demo/run_game.py
-
-Controls:
-    W / A / S / D         Move
-    Mouse / arrow keys    Look
-    Left mouse / Space    Fire
-    Left Shift            Sprint
-    R                     Restart
+Movement/collision use Physics 2.0 + FirstPersonController3D. Weapon hits, enemy obstacle checks and
+line-of-sight use PhysicsScene3D sweeps. The bunker, robots and weapon are generated from primitives.
 """
 
 from __future__ import annotations
 
+import math
 import os
-from dataclasses import dataclass
-from math import atan2, cos, radians, sin, sqrt
 
-from swirengine import Color, Cube3D, Game, Renderer2Settings, Vec3
+from swirengine import (
+    CharacterConfig3D,
+    CharacterInput3D,
+    Color,
+    Cube3D,
+    FirstPersonController3D,
+    Game,
+    Renderer2Settings,
+    Vec3,
+)
 from swirengine.graphics.camera3d import Camera3D
 from swirengine.graphics.mesh import Mesh3D, cube_mesh
+from swirengine.physics.collision3d import BoxCollider3D, SphereBounds3D
+from swirengine.physics.dynamics3d import PhysicsBody3D, PhysicsScene3D
 
-WIDTH = 960
-HEIGHT = 540
+W, H = 960, 540
+FIXED_DT = 1.0 / 120.0
 SMOKE_FRAMES = int(os.environ.get("SWIR_GAME_DEMO_SMOKE_FRAMES", "0"))
 HEADLESS = os.environ.get("SWIR_GAME_DEMO_HEADLESS") == "1"
-FIXED_DT = 1.0 / 120.0
-PLAYER_RADIUS = 0.32
-
-# Keep the live Renderer 2.0 settings in one shared mapping. The headless probe constructs
-# Renderer2Settings from this same mapping so invalid quality values fail before the OpenGL smoke job.
+WORLD, PLAYER, ENEMY = 1, 2, 4
+SPAWN = Vec3(0.0, 0.92, 8.5)
+EXIT = Vec3(8.2, 0.0, -21.6)
 RENDERER2_OPTIONS: dict[str, object] = {
-    "shadow_cascades": 3,
-    "shadow_resolution": 1024,
-    "shadow_distance": 80.0,
-    "ssao": True,
-    "ssao_samples": 16,
-    "bloom": True,
-    "bloom_levels": 4,
-    "decals": True,
-    "max_decals": 32,
-    "hdr": True,
+    "shadow_cascades": 3, "shadow_resolution": 1024, "shadow_distance": 80.0,
+    "ssao": True, "ssao_samples": 16, "bloom": True, "bloom_levels": 4,
+    "decals": True, "max_decals": 32, "hdr": True,
 }
 
-
-@dataclass(frozen=True, slots=True)
-class Wall:
-    x: float
-    z: float
-    width: float
-    depth: float
-
-    @property
-    def left(self) -> float:
-        return self.x - self.width / 2.0
-
-    @property
-    def right(self) -> float:
-        return self.x + self.width / 2.0
-
-    @property
-    def near(self) -> float:
-        return self.z - self.depth / 2.0
-
-    @property
-    def far(self) -> float:
-        return self.z + self.depth / 2.0
-
-
-@dataclass(slots=True)
-class Enemy:
-    x: float
-    z: float
-    hp: int = 3
-    attack_cooldown: float = 0.0
-
-    @property
-    def alive(self) -> bool:
-        return self.hp > 0
-
-
-@dataclass(slots=True)
-class Pickup:
-    x: float
-    z: float
-    kind: str
-    active: bool = True
-
-
-WALLS = (
-    Wall(-9.5, -5.0, 1.0, 30.0),
-    Wall(9.5, -5.0, 1.0, 30.0),
-    Wall(0.0, 9.5, 20.0, 1.0),
-    Wall(0.0, -19.5, 20.0, 1.0),
-    Wall(-3.5, -6.5, 0.8, 9.0),
-    Wall(3.5, -10.0, 0.8, 9.0),
-    Wall(0.0, -14.5, 6.0, 0.8),
-    Wall(-6.5, -1.0, 5.2, 0.8),
-    Wall(6.5, -4.0, 5.2, 0.8),
+BLOCKS = (
+    (0.0, -0.25, -6.0, 22.0, 0.5, 34.0, Color(0.055, 0.065, 0.085, 1), "floor"),
+    (-10.75, 1.7, -6.0, 0.5, 3.9, 34.0, Color(0.08, 0.12, 0.18, 1), "west-wall"),
+    (10.75, 1.7, -6.0, 0.5, 3.9, 34.0, Color(0.08, 0.12, 0.18, 1), "east-wall"),
+    (0.0, 1.7, 10.75, 22.0, 3.9, 0.5, Color(0.08, 0.12, 0.18, 1), "north-wall"),
+    (0.0, 1.7, -22.75, 22.0, 3.9, 0.5, Color(0.08, 0.12, 0.18, 1), "south-wall"),
+    (-4.8, 1.3, 3.0, 0.7, 2.6, 10.0, Color(0.10, 0.18, 0.28, 1), "divider-a"),
+    (4.2, 1.3, -1.5, 0.7, 2.6, 9.0, Color(0.10, 0.18, 0.28, 1), "divider-b"),
+    (-1.2, 1.3, -7.5, 7.0, 2.6, 0.7, Color(0.10, 0.18, 0.28, 1), "divider-c"),
+    (5.8, 0.75, -12.5, 2.2, 1.5, 2.2, Color(0.13, 0.21, 0.30, 1), "crate-a"),
+    (-6.7, 0.75, -13.8, 2.0, 1.5, 2.0, Color(0.13, 0.21, 0.30, 1), "crate-b"),
+    (1.6, 0.55, 5.5, 2.6, 1.1, 1.6, Color(0.13, 0.21, 0.30, 1), "console-cover"),
 )
-SPAWN_X = 0.0
-SPAWN_Z = 7.0
-EXIT_X = 7.2
-EXIT_Z = -18.1
+ENEMY_SPECS = ((0.0, 4.5, 2.0), (-7.4, -2.0, 2.7), (7.2, -6.5, 2.2), (-5.8, -16.4, 2.6), (5.8, -18.0, 2.4))
+PICKUPS = ((-7.8, 4.2, "ammo"), (7.8, 1.0, "health"), (0.0, -11.0, "ammo"), (-2.8, -19.0, "health"))
 
 
-def _distance(x0: float, z0: float, x1: float, z1: float) -> float:
-    dx = x1 - x0
-    dz = z1 - z0
-    return sqrt(dx * dx + dz * dz)
+def dist_xz(a: Vec3, b: Vec3) -> float:
+    return math.hypot(a.x - b.x, a.z - b.z)
 
 
-def _point_blocked(x: float, z: float, radius: float = PLAYER_RADIUS) -> bool:
-    for wall in WALLS:
-        if (
-            wall.left - radius < x < wall.right + radius
-            and wall.near - radius < z < wall.far + radius
-        ):
-            return True
-    return False
+def static_box(world: PhysicsScene3D, target: object, size: tuple[float, float, float], tag: str) -> None:
+    collider = BoxCollider3D(target, width=size[0], height=size[1], depth=size[2], layer=WORLD,
+                             mask=PLAYER | ENEMY, tag=tag)
+    world.add(PhysicsBody3D(target, collider, body_type="static"))
 
 
-def _segment_hits_wall(x0: float, z0: float, x1: float, z1: float) -> bool:
-    """Return whether a 2D X/Z segment crosses any wall using a slab intersection test."""
-    dx = x1 - x0
-    dz = z1 - z0
-    for wall in WALLS:
-        t_min = 0.0
-        t_max = 1.0
-        for origin, delta, low, high in (
-            (x0, dx, wall.left, wall.right),
-            (z0, dz, wall.near, wall.far),
-        ):
-            if abs(delta) < 1e-9:
-                if origin < low or origin > high:
-                    break
-                continue
-            inv = 1.0 / delta
-            near_t = (low - origin) * inv
-            far_t = (high - origin) * inv
-            if near_t > far_t:
-                near_t, far_t = far_t, near_t
-            t_min = max(t_min, near_t)
-            t_max = min(t_max, far_t)
-            if t_min > t_max:
-                break
-        else:
-            if 0.001 < t_max and t_min < 0.999:
-                return True
-    return False
-
-
-class FPSState:
-    """Deterministic gameplay model used by both the rendered example and CI validation."""
-
-    def __init__(self) -> None:
-        self.reset()
-
-    def reset(self) -> None:
-        self.x = SPAWN_X
-        self.z = SPAWN_Z
-        self.yaw = 0.0
-        self.pitch = 0.0
-        self.health = 100
-        self.ammo = 18
-        self.kills = 0
-        self.won = False
-        self.lost = False
-        self.enemies = [
-            Enemy(0.0, 2.0),
-            Enemy(-6.2, -8.0),
-            Enemy(6.2, -14.0),
-        ]
-        self.pickups = [
-            Pickup(-6.5, -4.8, "ammo"),
-            Pickup(6.3, -9.0, "health"),
-        ]
-
-    @property
-    def forward(self) -> tuple[float, float]:
-        return sin(self.yaw), -cos(self.yaw)
-
-    @property
-    def right(self) -> tuple[float, float]:
-        return cos(self.yaw), sin(self.yaw)
-
-    def look(self, dx: float, dy: float, *, sensitivity: float = 0.0025) -> None:
-        self.yaw += float(dx) * sensitivity
-        self.pitch -= float(dy) * sensitivity
-        limit = radians(82.0)
-        self.pitch = max(-limit, min(limit, self.pitch))
-
-    def look_at(self, x: float, z: float) -> None:
-        self.yaw = atan2(x - self.x, -(z - self.z))
-        self.pitch = 0.0
-
-    def _try_move(self, dx: float, dz: float) -> None:
-        candidate_x = self.x + dx
-        if not _point_blocked(candidate_x, self.z):
-            self.x = candidate_x
-        candidate_z = self.z + dz
-        if not _point_blocked(self.x, candidate_z):
-            self.z = candidate_z
-
-    def shoot(self) -> bool:
-        if self.won or self.lost or self.ammo <= 0:
-            return False
-        self.ammo -= 1
-        forward_x, forward_z = self.forward
-        hit: Enemy | None = None
-        hit_distance = 1e9
-        threshold = cos(radians(9.0))
-
-        for enemy in self.enemies:
-            if not enemy.alive:
-                continue
-            dx = enemy.x - self.x
-            dz = enemy.z - self.z
-            distance = sqrt(dx * dx + dz * dz)
-            if distance <= 0.001 or distance > 22.0:
-                continue
-            dot = (dx / distance) * forward_x + (dz / distance) * forward_z
-            if dot < threshold or _segment_hits_wall(self.x, self.z, enemy.x, enemy.z):
-                continue
-            if distance < hit_distance:
-                hit = enemy
-                hit_distance = distance
-
-        if hit is None:
-            return False
-        hit.hp -= 1
-        if hit.hp <= 0:
-            self.kills += 1
-        return True
-
-    def _update_enemies(self, dt: float) -> None:
-        for enemy in self.enemies:
-            if not enemy.alive:
-                continue
-            enemy.attack_cooldown = max(0.0, enemy.attack_cooldown - dt)
-            dx = self.x - enemy.x
-            dz = self.z - enemy.z
-            distance = sqrt(dx * dx + dz * dz)
-            if distance <= 0.001 or distance > 12.0:
-                continue
-            if _segment_hits_wall(enemy.x, enemy.z, self.x, self.z):
-                continue
-
-            if distance > 1.6:
-                step = min(1.35 * dt, max(0.0, distance - 1.45))
-                next_x = enemy.x + dx / distance * step
-                next_z = enemy.z + dz / distance * step
-                if not _point_blocked(next_x, next_z, 0.28):
-                    enemy.x = next_x
-                    enemy.z = next_z
-            elif enemy.attack_cooldown <= 0.0:
-                self.health = max(0, self.health - 12)
-                enemy.attack_cooldown = 0.65
-                if self.health <= 0:
-                    self.lost = True
-                    return
-
-    def _collect_pickups(self) -> None:
-        for pickup in self.pickups:
-            if not pickup.active or _distance(self.x, self.z, pickup.x, pickup.z) > 0.8:
-                continue
-            pickup.active = False
-            if pickup.kind == "ammo":
-                self.ammo = min(36, self.ammo + 12)
-            elif pickup.kind == "health":
-                self.health = min(100, self.health + 35)
-
-    def step(self, move_x: float, move_z: float, sprint: bool, dt: float) -> None:
-        if self.won or self.lost:
-            return
-        dt = max(0.0, min(float(dt), 1.0 / 20.0))
-        move_x = max(-1.0, min(1.0, float(move_x)))
-        move_z = max(-1.0, min(1.0, float(move_z)))
-        length = sqrt(move_x * move_x + move_z * move_z)
-        if length > 1.0:
-            move_x /= length
-            move_z /= length
-
-        forward_x, forward_z = self.forward
-        right_x, right_z = self.right
-        speed = 6.0 if sprint else 4.2
-        dx = (right_x * move_x + forward_x * move_z) * speed * dt
-        dz = (right_z * move_x + forward_z * move_z) * speed * dt
-        self._try_move(dx, dz)
-        self._update_enemies(dt)
-        self._collect_pickups()
-
-        if all(not enemy.alive for enemy in self.enemies) and _distance(
-            self.x, self.z, EXIT_X, EXIT_Z
-        ) < 1.2:
-            self.won = True
-
-
-def run_headless_probe() -> dict[str, int | float | bool]:
-    renderer_settings = Renderer2Settings(**RENDERER2_OPTIONS)
-    if renderer_settings.ssao_samples != 16:
-        raise AssertionError("3D demo Renderer 2.0 quality configuration drifted")
-
-    state = FPSState()
-    start_z = state.z
-    for _ in range(30):
-        state.step(0.0, 1.0, False, FIXED_DT)
-    movement = start_z - state.z
-    if movement <= 0.5:
-        raise AssertionError("3D demo first-person movement did not advance")
-
-    first = state.enemies[0]
-    state.x = 0.0
-    state.z = 7.0
-    state.look_at(first.x, first.z)
-    ammo_before = state.ammo
-    hits = 0
-    for _ in range(3):
-        hits += int(state.shoot())
-    if hits != 3 or first.alive or state.kills != 1 or state.ammo != ammo_before - 3:
-        raise AssertionError("3D demo shooting/damage loop did not defeat the target")
-
-    ammo_pickup = state.pickups[0]
-    state.ammo = 4
-    state.x = ammo_pickup.x
-    state.z = ammo_pickup.z
-    state.step(0.0, 0.0, False, FIXED_DT)
-    if ammo_pickup.active or state.ammo <= 4:
-        raise AssertionError("3D demo ammo pickup did not apply")
-
-    for enemy in state.enemies:
-        enemy.hp = 0
-    state.kills = len(state.enemies)
-    state.x = EXIT_X
-    state.z = EXIT_Z
-    state.step(0.0, 0.0, False, FIXED_DT)
-    if not state.won:
-        raise AssertionError("3D demo exit did not unlock after all enemies were defeated")
-
-    return {
-        "movement": round(movement, 3),
-        "kills": state.kills,
-        "ammo": state.ammo,
-        "health": state.health,
-        "won": state.won,
-    }
+def run_headless_probe() -> dict[str, float | int | bool]:
+    settings = Renderer2Settings(**RENDERER2_OPTIONS)
+    if settings.ssao_samples != 16:
+        raise AssertionError("3D demo Renderer 2.0 configuration drifted")
+    world = PhysicsScene3D(fixed_dt=FIXED_DT)
+    floor = Cube3D(position=Vec3(0, -0.25, 0), visible=False)
+    static_box(world, floor, (20, 0.5, 24), "world:floor")
+    side = Cube3D(position=Vec3(4, 1.5, -2), visible=False)
+    static_box(world, side, (0.6, 3, 8), "world:wall")
+    player = Cube3D(position=Vec3(0, 0.92, 4), visible=False)
+    player_collider = BoxCollider3D(player, width=0.72, height=1.8, depth=0.72, layer=PLAYER,
+                                    mask=WORLD, tag="player")
+    camera = Camera3D()
+    controller = FirstPersonController3D(
+        player, world, camera,
+        config=CharacterConfig3D(width=0.72, height=1.8, depth=0.72, walk_speed=4.8,
+                                 sprint_speed=7.4, gravity=24, jump_speed=7.4, collision_mask=WORLD),
+        collider=player_collider, eye_height=0.70, look_sensitivity=100,
+    )
+    start = player.position.z
+    for _ in range(90):
+        controller.update(CharacterInput3D(move_z=1), FIXED_DT)
+    movement = start - player.position.z
+    if movement < 2:
+        raise AssertionError("FirstPersonController3D did not move the demo player")
+    enemy = Cube3D(position=Vec3(player.position.x, 0.72, player.position.z - 5), visible=False)
+    enemy_collider = BoxCollider3D(enemy, width=0.82, height=1.85, depth=0.82,
+                                   offset=Vec3(0, 0.22, 0), layer=ENEMY, mask=0, tag="enemy:probe")
+    world.add(PhysicsBody3D(enemy, enemy_collider, body_type="kinematic"))
+    controller.update(CharacterInput3D(), FIXED_DT)
+    hit = world.sweep_sphere(SphereBounds3D(camera.position.x, camera.position.y, camera.position.z, 0.03),
+                             camera.forward * 12, mask=WORLD | ENEMY, ignore=player_collider)
+    if hit is None or hit.collider.tag != "enemy:probe":
+        raise AssertionError("PhysicsScene3D weapon sweep did not hit the enemy")
+    return {"movement": round(movement, 3), "grounded": controller.state.grounded,
+            "weapon_hit": True, "engine_controller": True}
 
 
 class FPSDemo:
     def __init__(self) -> None:
-        self.game = Game(
-            "SwirEngine 3D Game Demo",
-            WIDTH,
-            HEIGHT,
-            mode="3d",
-            vsync=False,
-            target_fps=144,
-        )
+        self.game = Game("SwirEngine 3D Game Demo", W, H, mode="3d", vsync=False, target_fps=144)
         self.game.configure_renderer2(True, **RENDERER2_OPTIONS)
-        self.game.configure_postprocess(
-            enabled=True,
-            tone_mapping="aces",
-            exposure=1.05,
-            fxaa=True,
-        )
-        self.state = FPSState()
-        self.frames = 0
-        self._shot_flash = 0.0
-
+        self.game.configure_postprocess(enabled=True, tone_mapping="aces", exposure=1.06, fxaa=True)
         camera = self.game.camera
         if not isinstance(camera, Camera3D):
             raise TypeError("3D game demo requires Camera3D")
-        camera.fov = 74.0
         self.camera = camera
-
-        cube = cube_mesh()
-        self.game.add(
-            Mesh3D(
-                cube,
-                position=Vec3(0.0, -0.25, -5.0),
-                scale=Vec3(20.0, 0.5, 30.0),
-                color=Color(0.055, 0.065, 0.085, 1.0),
-                name="arena-floor",
-            )
-        )
-        self.game.add(
-            Mesh3D(
-                cube,
-                position=Vec3(0.0, 3.8, -5.0),
-                scale=Vec3(20.0, 0.2, 30.0),
-                color=Color(0.035, 0.04, 0.055, 1.0),
-                name="arena-ceiling",
-            )
-        )
-        for index, wall in enumerate(WALLS):
-            self.game.add(
-                Mesh3D(
-                    cube,
-                    position=Vec3(wall.x, 1.7, wall.z),
-                    scale=Vec3(wall.width, 3.4, wall.depth),
-                    color=Color(
-                        0.09 + (index % 3) * 0.015,
-                        0.14 + (index % 2) * 0.025,
-                        0.22 + (index % 4) * 0.02,
-                        1.0,
-                    ),
-                    name=f"wall-{index}",
-                    tags={"wall"},
-                )
-            )
-
-        self.exit_node = self.game.add(
-            Mesh3D(
-                cube,
-                position=Vec3(EXIT_X, 1.2, EXIT_Z),
-                scale=Vec3(1.5, 2.4, 0.25),
-                color=Color(0.18, 0.28, 0.3, 1.0),
-                name="exit-gate",
-            )
-        )
-        self.enemy_nodes = [
-            self.game.add(
-                Cube3D(
-                    position=Vec3(enemy.x, 0.55, enemy.z),
-                    size=1.05,
-                    color=Color(1.0, 0.18, 0.28, 1.0),
-                    name=f"enemy-{index}",
-                    tags={"enemy"},
-                    visibility_dynamic=True,
-                )
-            )
-            for index, enemy in enumerate(self.state.enemies)
-        ]
-        self.pickup_nodes = [
-            self.game.add(
-                Cube3D(
-                    position=Vec3(pickup.x, 0.4, pickup.z),
-                    size=0.45,
-                    color=(
-                        Color(1.0, 0.72, 0.12, 1.0)
-                        if pickup.kind == "ammo"
-                        else Color(0.15, 1.0, 0.42, 1.0)
-                    ),
-                    name=f"{pickup.kind}-pickup-{index}",
-                    tags={"pickup"},
-                    visibility_dynamic=True,
-                )
-            )
-            for index, pickup in enumerate(self.state.pickups)
-        ]
-        self.weapon = self.game.add(
-            Cube3D(
-                position=Vec3(),
-                size=0.28,
-                color=Color(0.15, 0.55, 0.75, 1.0),
-                name="player-weapon",
-                visibility_dynamic=True,
-            )
-        )
-
-        self.game.directional_light(
-            direction=Vec3(-0.5, -1.0, -0.35),
-            intensity=1.35,
-        )
-        self.game.point_light(
-            position=Vec3(-6.5, 2.2, -4.8),
-            color=Color(0.2, 0.55, 1.0, 1.0),
-            intensity=9.0,
-            range=8.0,
-        )
-        self.game.point_light(
-            position=Vec3(6.3, 2.1, -9.0),
-            color=Color(0.15, 1.0, 0.42, 1.0),
-            intensity=8.0,
-            range=7.0,
-        )
-        self.game.point_light(
-            position=Vec3(EXIT_X, 2.0, EXIT_Z),
-            color=Color(0.2, 0.9, 1.0, 1.0),
-            intensity=10.0,
-            range=7.0,
-        )
-
-        self.hud = self.game.label("", -350.0, 238.0, font_size=20)
-        self.objective = self.game.label("", 190.0, 238.0, font_size=18)
-        self.crosshair = self.game.label("+", 0.0, 0.0, font_size=28)
-        self.help = self.game.label(
-            "WASD move | mouse/arrows look | click/SPACE fire | SHIFT sprint | R restart",
-            0.0,
-            -252.0,
-            font_size=15,
-        )
-
+        self.camera.fov = 76
+        self.cube = cube_mesh()
+        self.world = PhysicsScene3D(fixed_dt=FIXED_DT, max_substeps=8, cell_size=3)
+        self.frames = 0
+        self.phase = 0.0
+        self._world()
+        self._player()
+        self._enemies()
+        self._pickups()
+        self._weapon_lights_ui()
+        self._reset()
         self.game.update(self._update)
-        self._sync_visuals()
 
-    def _sync_camera(self) -> None:
-        horizontal = cos(self.state.pitch)
-        direction = Vec3(
-            sin(self.state.yaw) * horizontal,
-            sin(self.state.pitch),
-            -cos(self.state.yaw) * horizontal,
-        )
-        self.camera.position = Vec3(self.state.x, 1.62, self.state.z)
-        self.camera.look_at(self.camera.position + direction)
+    def mesh(self, pos: Vec3, scale: Vec3, color: Color, name: str, dynamic: bool = False) -> Mesh3D:
+        return self.game.add(Mesh3D(self.cube, position=pos, scale=scale, color=color, name=name,
+                                    visibility_dynamic=dynamic))
 
-        forward = self.camera.forward
-        right = self.camera.right
-        self.weapon.position = (
-            self.camera.position
-            + forward * 0.65
-            + right * 0.28
-            + Vec3(0.0, -0.28, 0.0)
-        )
-        self.weapon.color = (
-            Color(1.0, 0.72, 0.2, 1.0)
-            if self._shot_flash > 0.0
-            else Color(0.15, 0.55, 0.75, 1.0)
+    def _world(self) -> None:
+        for x, y, z, sx, sy, sz, color, name in BLOCKS:
+            node = self.mesh(Vec3(x, y, z), Vec3(sx, sy, sz), color, name)
+            static_box(self.world, node, (sx, sy, sz), f"world:{name}")
+        for lane in range(-4, 5):
+            self.mesh(Vec3(lane * 2.2, 0.018, -6), Vec3(0.035, 0.018, 31),
+                      Color(0.08, 0.20, 0.30, 1), f"floor-lane-{lane}")
+        for z in range(-20, 10, 4):
+            self.mesh(Vec3(-10.42, 2.65, z), Vec3(0.12, 0.18, 2), Color(0.12, 0.56, 0.82, 1), f"trim-l-{z}")
+            self.mesh(Vec3(10.42, 2.65, z), Vec3(0.12, 0.18, 2), Color(0.65, 0.14, 0.28, 1), f"trim-r-{z}")
+        for i, (x, z) in enumerate(((-8.5, 6.5), (8.5, 4), (-8.5, -8), (8.5, -15))):
+            self.mesh(Vec3(x, 1.25, z), Vec3(0.55, 2.5, 0.55), Color(0.10, 0.24, 0.34, 1), f"pylon-{i}")
+            self.mesh(Vec3(x, 2.25, z), Vec3(0.72, 0.18, 0.72), Color(0.18, 0.72, 1, 1), f"pylon-light-{i}")
+        self.mesh(Vec3(EXIT.x - 1, 1.2, EXIT.z), Vec3(0.45, 2.4, 0.35), Color(0.17, 0.22, 0.28, 1), "exit-l")
+        self.mesh(Vec3(EXIT.x + 1, 1.2, EXIT.z), Vec3(0.45, 2.4, 0.35), Color(0.17, 0.22, 0.28, 1), "exit-r")
+        self.exit_core = self.mesh(Vec3(EXIT.x, 1.25, EXIT.z), Vec3(1.45, 2.25, 0.22),
+                                   Color(0.25, 0.08, 0.10, 1), "exit-core", True)
+        self.exit_beacon = self.mesh(Vec3(EXIT.x, 2.72, EXIT.z), Vec3(0.55, 0.16, 0.32),
+                                     Color(0.78, 0.12, 0.18, 1), "exit-beacon", True)
+
+    def _player(self) -> None:
+        self.player = self.game.add(Cube3D(position=Vec3(SPAWN.x, SPAWN.y, SPAWN.z), size=0.72,
+                                           visible=False, name="player-root"))
+        self.player_collider = BoxCollider3D(self.player, width=0.72, height=1.8, depth=0.72,
+                                             layer=PLAYER, mask=WORLD, tag="player")
+        self.controller = FirstPersonController3D(
+            self.player, self.world, self.camera,
+            config=CharacterConfig3D(width=0.72, height=1.8, depth=0.72, walk_speed=4.8,
+                                     sprint_speed=7.4, ground_acceleration=44, air_acceleration=12,
+                                     gravity=24, jump_speed=7.3, step_height=0.35,
+                                     ground_snap_distance=0.14, collision_mask=WORLD),
+            collider=self.player_collider, eye_height=0.70, look_sensitivity=105,
         )
 
-    def _sync_visuals(self) -> None:
-        self._sync_camera()
-        for node, enemy in zip(self.enemy_nodes, self.state.enemies, strict=True):
-            node.position = Vec3(enemy.x, 0.55, enemy.z)
-            node.visible = enemy.alive
-            node.color = (
-                Color(1.0, 0.18, 0.28, 1.0)
-                if enemy.hp >= 2
-                else Color(1.0, 0.55, 0.18, 1.0)
-            )
-        for node, pickup in zip(self.pickup_nodes, self.state.pickups, strict=True):
-            node.visible = pickup.active
-            node.rotation.y += 1.5
+    def _enemies(self) -> None:
+        self.enemy_data: list[dict[str, object]] = []
+        for i, (x, z, radius) in enumerate(ENEMY_SPECS):
+            root = self.game.add(Cube3D(position=Vec3(x, 0.72, z), size=0.8, visible=False,
+                                        name=f"enemy-root-{i}"))
+            collider = BoxCollider3D(root, width=0.82, height=1.85, depth=0.82,
+                                     offset=Vec3(0, 0.22, 0), layer=ENEMY, mask=0, tag=f"enemy:{i}")
+            body = self.world.add(PhysicsBody3D(root, collider, body_type="kinematic"))
+            visual = [
+                self.mesh(Vec3(), Vec3(0.72, 0.82, 0.46), Color(0.70, 0.08, 0.16, 1), f"e{i}-torso", True),
+                self.mesh(Vec3(), Vec3(0.62, 0.46, 0.54), Color(0.94, 0.20, 0.24, 1), f"e{i}-head", True),
+                self.mesh(Vec3(), Vec3(0.36, 0.08, 0.06), Color(1, 0.72, 0.12, 1), f"e{i}-eye", True),
+                self.mesh(Vec3(), Vec3(0.16, 0.62, 0.18), Color(0.45, 0.05, 0.11, 1), f"e{i}-arm-l", True),
+                self.mesh(Vec3(), Vec3(0.16, 0.62, 0.18), Color(0.45, 0.05, 0.11, 1), f"e{i}-arm-r", True),
+                self.mesh(Vec3(), Vec3(0.20, 0.42, 0.20), Color(0.28, 0.04, 0.08, 1), f"e{i}-leg-l", True),
+                self.mesh(Vec3(), Vec3(0.20, 0.42, 0.20), Color(0.28, 0.04, 0.08, 1), f"e{i}-leg-r", True),
+            ]
+            self.enemy_data.append({"root": root, "collider": collider, "body": body, "visual": visual,
+                                    "origin": Vec3(x, 0.72, z), "radius": radius, "hp": 4,
+                                    "alive": True, "cooldown": 0.0, "flash": 0.0, "phase": i * 1.1})
 
-        unlocked = all(not enemy.alive for enemy in self.state.enemies)
-        self.exit_node.color = (
-            Color(0.1, 1.0, 0.45, 1.0) if unlocked else Color(0.18, 0.28, 0.3, 1.0)
-        )
-        self.hud.text = (
-            f"HP {self.state.health:03d}   AMMO {self.state.ammo:02d}   "
-            f"KILLS {self.state.kills}/3"
-        )
-        if self.state.won:
-            self.objective.text = "SECTOR CLEAR - press R to restart"
-        elif self.state.lost:
-            self.objective.text = "YOU ARE DOWN - press R to restart"
+    def _pickups(self) -> None:
+        self.pickup_data: list[dict[str, object]] = []
+        for i, (x, z, kind) in enumerate(PICKUPS):
+            color = Color(1, 0.62, 0.08, 1) if kind == "ammo" else Color(0.10, 1, 0.48, 1)
+            core = self.mesh(Vec3(x, 0.48, z), Vec3(0.42, 0.42, 0.42), color, f"pickup-{i}", True)
+            halo = self.mesh(Vec3(x, 0.18, z), Vec3(0.62, 0.06, 0.62),
+                             Color(color.r * 0.65, color.g * 0.65, color.b * 0.65, 1), f"pickup-halo-{i}", True)
+            self.pickup_data.append({"x": x, "z": z, "kind": kind, "core": core, "halo": halo,
+                                     "active": True, "phase": i * 0.8})
+
+    def _weapon_lights_ui(self) -> None:
+        self.weapon = [
+            self.mesh(Vec3(), Vec3(0.22, 0.18, 0.62), Color(0.10, 0.30, 0.46, 1), "gun-body", True),
+            self.mesh(Vec3(), Vec3(0.14, 0.09, 0.40), Color(0.12, 0.62, 0.82, 1), "gun-top", True),
+            self.mesh(Vec3(), Vec3(0.10, 0.10, 0.42), Color(0.05, 0.09, 0.13, 1), "gun-barrel", True),
+            self.mesh(Vec3(), Vec3(0.18, 0.18, 0.08), Color(1, 0.72, 0.12, 1), "gun-muzzle", True),
+        ]
+        self.game.directional_light(direction=Vec3(-0.45, -1, -0.35), intensity=0.55)
+        self.game.point_light(position=Vec3(-7.8, 2.5, 4.2), color=Color(0.10, 0.48, 1, 1), intensity=9.5, range=8.5)
+        self.game.point_light(position=Vec3(7.8, 2.5, -6.5), color=Color(0.85, 0.12, 0.25, 1), intensity=8.5, range=8)
+        self.game.point_light(position=Vec3(0, 2.6, -14), color=Color(0.10, 0.95, 0.62, 1), intensity=7.5, range=7.5)
+        self.muzzle_light = self.game.point_light(position=Vec3(), color=Color(1, 0.46, 0.08, 1), intensity=0, range=4)
+        self.hud = self.game.label("", -340, 238, font_size=20)
+        self.objective = self.game.label("", 190, 238, font_size=18)
+        self.crosshair = self.game.label("+", 0, 0, font_size=30)
+        self.help = self.game.label("WASD move   mouse/arrows look   click/SPACE fire   SHIFT sprint   R restart", 0, -252, font_size=14)
+        self.center = self.game.label("", 0, 175, font_size=24)
+
+    def _reset(self) -> None:
+        self.health, self.ammo, self.kills = 100, 30, 0
+        self.won = self.lost = False
+        self.shot_cooldown = self.muzzle_flash = self.damage_flash = 0.0
+        self.controller.teleport(Vec3(SPAWN.x, SPAWN.y, SPAWN.z))
+        self.controller.yaw = self.controller.pitch = 0.0
+        for i, enemy in enumerate(self.enemy_data):
+            x, z, _ = ENEMY_SPECS[i]
+            enemy["root"].position = Vec3(x, 0.72, z)  # type: ignore[union-attr]
+            enemy.update({"hp": 4, "alive": True, "cooldown": 0.0, "flash": 0.0, "phase": i * 1.1})
+            enemy["collider"].enabled = True  # type: ignore[union-attr]
+            enemy["body"].enabled = True  # type: ignore[union-attr]
+        for pickup in self.pickup_data:
+            pickup["active"] = True
+            pickup["core"].visible = pickup["halo"].visible = True  # type: ignore[union-attr]
+        self.controller.update(CharacterInput3D(), FIXED_DT)
+
+    def _clear_view(self, enemy: dict[str, object]) -> bool:
+        root = enemy["root"]
+        start = Vec3(root.position.x, 1.25, root.position.z)  # type: ignore[union-attr]
+        delta = self.player.position + Vec3(0, 0.65, 0) - start
+        return self.world.sweep_sphere(SphereBounds3D(start.x, start.y, start.z, 0.03), delta,
+                                       mask=WORLD, ignore=enemy["collider"]) is None  # type: ignore[arg-type]
+
+    def _enemy_ai(self, dt: float) -> None:
+        for enemy in self.enemy_data:
+            if not enemy["alive"]:
+                continue
+            enemy["cooldown"] = max(0.0, float(enemy["cooldown"]) - dt)
+            enemy["flash"] = max(0.0, float(enemy["flash"]) - dt)
+            enemy["phase"] = float(enemy["phase"]) + dt * 4.5
+            root, origin = enemy["root"], enemy["origin"]
+            pos = root.position  # type: ignore[union-attr]
+            distance = dist_xz(pos, self.player.position)
+            if distance < 13.5 and self._clear_view(enemy):
+                delta = self.player.position - pos
+                length = max(0.001, math.hypot(delta.x, delta.z))
+                if distance > 1.55:
+                    move = Vec3(delta.x / length * 1.65 * dt, 0, delta.z / length * 1.65 * dt)
+                    hit = self.world.sweep_sphere(SphereBounds3D(pos.x, 0.72, pos.z, 0.31), move,
+                                                  mask=WORLD, ignore=enemy["collider"])  # type: ignore[arg-type]
+                    if hit is None:
+                        root.position = pos + move  # type: ignore[union-attr]
+                elif float(enemy["cooldown"]) <= 0:
+                    self.health = max(0, self.health - 13)
+                    self.damage_flash, enemy["cooldown"] = 0.18, 0.72
+                    if self.health <= 0:
+                        self.lost = True
+            else:
+                phase, radius = float(enemy["phase"]), float(enemy["radius"])
+                desired = Vec3(origin.x + math.sin(phase * 0.35) * radius, 0.72,
+                               origin.z + math.cos(phase * 0.35) * radius)  # type: ignore[union-attr]
+                delta = desired - pos
+                length = math.hypot(delta.x, delta.z)
+                if length > 0.05:
+                    step = min(0.65 * dt, length)
+                    move = Vec3(delta.x / length * step, 0, delta.z / length * step)
+                    hit = self.world.sweep_sphere(SphereBounds3D(pos.x, 0.72, pos.z, 0.31), move,
+                                                  mask=WORLD, ignore=enemy["collider"])  # type: ignore[arg-type]
+                    if hit is None:
+                        root.position = pos + move  # type: ignore[union-attr]
+
+    def _shoot(self) -> None:
+        if self.won or self.lost or self.shot_cooldown > 0 or self.ammo <= 0:
+            return
+        self.ammo -= 1
+        self.shot_cooldown, self.muzzle_flash = 0.12, 0.075
+        origin = self.camera.position + self.camera.forward * 0.20
+        hit = self.world.sweep_sphere(SphereBounds3D(origin.x, origin.y, origin.z, 0.025),
+                                      self.camera.forward * 28, mask=WORLD | ENEMY, ignore=self.player_collider)
+        if hit is None or not hit.collider.tag.startswith("enemy:"):
+            return
+        try:
+            index = int(hit.collider.tag.split(":", 1)[1])
+        except (ValueError, IndexError):
+            return
+        enemy = self.enemy_data[index]
+        if not enemy["alive"]:
+            return
+        enemy["hp"] = int(enemy["hp"]) - 1
+        enemy["flash"] = 0.10
+        if int(enemy["hp"]) <= 0:
+            enemy["alive"] = False
+            enemy["collider"].enabled = False  # type: ignore[union-attr]
+            enemy["body"].enabled = False  # type: ignore[union-attr]
+            self.kills += 1
+
+    def _collect(self) -> None:
+        for pickup in self.pickup_data:
+            if not pickup["active"]:
+                continue
+            point = Vec3(float(pickup["x"]), 0, float(pickup["z"]))
+            if dist_xz(self.player.position, point) > 0.85:
+                continue
+            pickup["active"] = False
+            pickup["core"].visible = pickup["halo"].visible = False  # type: ignore[union-attr]
+            if pickup["kind"] == "ammo":
+                self.ammo = min(60, self.ammo + 18)
+            else:
+                self.health = min(100, self.health + 35)
+
+    def _input(self, dt: float) -> CharacterInput3D:
+        mx = float(self.game.key("D")) - float(self.game.key("A"))
+        mz = float(self.game.key("W")) - float(self.game.key("S"))
+        ky = float(self.game.key("RIGHT")) - float(self.game.key("LEFT"))
+        kp = float(self.game.key("UP")) - float(self.game.key("DOWN"))
+        mdx, mdy = max(-45.0, min(45.0, self.game.input.mouse_dx)), max(-45.0, min(45.0, self.game.input.mouse_dy))
+        safe = max(dt, 1 / 500)
+        return CharacterInput3D(move_x=mx, move_z=mz,
+                                sprint=self.game.key("LEFT_SHIFT") or self.game.key("RIGHT_SHIFT"),
+                                look_yaw=ky + mdx * 0.00115 / safe, look_pitch=kp - mdy * 0.00115 / safe)
+
+    def _sync(self, dt: float) -> None:
+        self.phase += dt * (9 + self.controller.state.horizontal_speed * 1.2)
+        for i, enemy in enumerate(self.enemy_data):
+            vis = enemy["visual"]
+            for node in vis:  # type: ignore[union-attr]
+                node.visible = bool(enemy["alive"])
+            if not enemy["alive"]:
+                continue
+            p = enemy["root"].position  # type: ignore[union-attr]
+            bob, walk = math.sin(float(enemy["phase"]) * 1.8 + i) * 0.035, math.sin(float(enemy["phase"]) * 3 + i) * 0.08
+            positions = (Vec3(p.x, 0.82 + bob, p.z), Vec3(p.x, 1.43 + bob, p.z), Vec3(p.x, 1.47 + bob, p.z - 0.285),
+                         Vec3(p.x - 0.47, 0.89 + bob + walk, p.z), Vec3(p.x + 0.47, 0.89 + bob - walk, p.z),
+                         Vec3(p.x - 0.20, 0.25 + walk, p.z), Vec3(p.x + 0.20, 0.25 - walk, p.z))
+            for node, pos in zip(vis, positions, strict=True):  # type: ignore[arg-type]
+                node.position = pos
+            vis[0].color = Color(1, 0.52, 0.16, 1) if float(enemy["flash"]) > 0 else Color(0.70, 0.08, 0.16, 1)  # type: ignore[index]
+        for i, pickup in enumerate(self.pickup_data):
+            if not pickup["active"]:
+                continue
+            pickup["phase"] = float(pickup["phase"]) + dt * (2 + i * 0.15)
+            y = 0.50 + math.sin(float(pickup["phase"])) * 0.10
+            core, halo = pickup["core"], pickup["halo"]
+            core.position = Vec3(float(pickup["x"]), y, float(pickup["z"]))  # type: ignore[union-attr]
+            core.rotation.y += dt * 70  # type: ignore[union-attr]
+            halo.rotation.y -= dt * 45  # type: ignore[union-attr]
+        forward, right = self.camera.forward, self.camera.right
+        base = self.camera.position + forward * 0.72 + right * 0.28 + Vec3(0, -0.25 - math.sin(self.phase) * 0.018, 0)
+        rot = Vec3(-self.controller.pitch, self.controller.yaw, 0)
+        self.weapon[0].position, self.weapon[0].rotation = base, rot
+        self.weapon[1].position, self.weapon[1].rotation = base + Vec3(0, 0.11, 0) + forward * 0.02, rot
+        self.weapon[2].position, self.weapon[2].rotation = base + forward * 0.39, rot
+        muzzle = base + forward * 0.64
+        self.weapon[3].position, self.weapon[3].rotation, self.weapon[3].visible = muzzle, rot, self.muzzle_flash > 0
+        self.muzzle_light.position, self.muzzle_light.intensity = muzzle, (12 if self.muzzle_flash > 0 else 0)
+        unlocked = self.kills == len(self.enemy_data)
+        self.exit_core.color = Color(0.08, 0.82, 0.38, 1) if unlocked else Color(0.25, 0.08, 0.10, 1)
+        self.exit_beacon.color = Color(0.16, 1, 0.58, 1) if unlocked else Color(0.78, 0.12, 0.18, 1)
+        self.hud.text = f"HP {self.health:03d}   AMMO {self.ammo:02d}   HOSTILES {len(self.enemy_data) - self.kills}"
+        if self.won:
+            self.objective.text, self.center.text = "SECTOR CLEAR", "SWIRENGINE 3D — MISSION COMPLETE"
+        elif self.lost:
+            self.objective.text, self.center.text = "PLAYER DOWN — press R", "SYSTEM FAILURE"
         elif unlocked:
-            self.objective.text = "Exit unlocked - reach the green gate"
+            self.objective.text, self.center.text = "Exit unlocked — reach the green door", ""
         else:
-            self.objective.text = "Clear the arena"
+            self.objective.text, self.center.text = "Clear the bunker", ("DAMAGE" if self.damage_flash > 0 else "")
 
     def _update(self, dt: float) -> None:
         self.frames += 1
-        self._shot_flash = max(0.0, self._shot_flash - dt)
+        dt = max(0.0, min(float(dt), 1 / 20))
+        self.shot_cooldown = max(0.0, self.shot_cooldown - dt)
+        self.muzzle_flash = max(0.0, self.muzzle_flash - dt)
+        self.damage_flash = max(0.0, self.damage_flash - dt)
         if self.game.key_pressed("R"):
-            self.state.reset()
-
-        mouse_dx = max(-40.0, min(40.0, self.game.input.mouse_dx))
-        mouse_dy = max(-40.0, min(40.0, self.game.input.mouse_dy))
-        keyboard_dx = 0.0
-        keyboard_dy = 0.0
-        if self.game.key("LEFT"):
-            keyboard_dx -= 130.0 * dt
-        if self.game.key("RIGHT"):
-            keyboard_dx += 130.0 * dt
-        if self.game.key("UP"):
-            keyboard_dy -= 110.0 * dt
-        if self.game.key("DOWN"):
-            keyboard_dy += 110.0 * dt
-        self.state.look(mouse_dx + keyboard_dx, mouse_dy + keyboard_dy)
-
-        move_x = 0.0
-        move_z = 0.0
-        if self.game.key("A"):
-            move_x -= 1.0
-        if self.game.key("D"):
-            move_x += 1.0
-        if self.game.key("W"):
-            move_z += 1.0
-        if self.game.key("S"):
-            move_z -= 1.0
-        sprint = self.game.key("LEFT_SHIFT") or self.game.key("RIGHT_SHIFT")
-        self.state.step(move_x, move_z, sprint, dt)
-
-        if self.game.input.mouse_button_pressed(0) or self.game.key_pressed("SPACE"):
-            self.state.shoot()
-            self._shot_flash = 0.08
-
-        self._sync_visuals()
+            self._reset()
+        if not self.won and not self.lost:
+            self.controller.update(self._input(dt), dt)
+            self._enemy_ai(dt)
+            self.world.step(dt)
+            self._collect()
+            if self.game.input.mouse_button_pressed(0) or self.game.key_pressed("SPACE"):
+                self._shoot()
+            if self.kills == len(self.enemy_data) and dist_xz(self.player.position, EXIT) < 1.25:
+                self.won = True
+            if self.player.position.y < -4:
+                self.health, self.lost = 0, True
+        self._sync(dt)
         if SMOKE_FRAMES and self.frames >= SMOKE_FRAMES:
             self.game.stop()
 
@@ -599,21 +398,15 @@ class FPSDemo:
         if SMOKE_FRAMES and self.frames < SMOKE_FRAMES:
             raise AssertionError("3D game demo stopped before the requested smoke frame count")
         if SMOKE_FRAMES:
-            print(
-                "SwirEngine 3D Game Demo smoke OK: "
-                f"frames={self.frames}, hp={self.state.health}, ammo={self.state.ammo}, "
-                f"kills={self.state.kills}"
-            )
+            print(f"SwirEngine 3D Game Demo smoke OK: frames={self.frames}, hp={self.health}, ammo={self.ammo}, kills={self.kills}")
 
 
-def main() -> int:
+def main() -> None:
     if HEADLESS:
-        diagnostics = run_headless_probe()
-        print(f"SwirEngine 3D Game Demo headless OK: {diagnostics}")
-        return 0
-    FPSDemo().run()
-    return 0
+        print(f"SwirEngine 3D Game Demo headless OK: {run_headless_probe()}")
+    else:
+        FPSDemo().run()
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()
