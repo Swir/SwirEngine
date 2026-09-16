@@ -1,22 +1,37 @@
-# PyPI and GitHub release workflow for SwirEngine 1.4.0.
-# Publication is tag-only and hard-gated by the complete 10/10 1.4 contract.
+# One-shot publication recovery for SwirEngine 1.4.0.
+# The original immutable v1.4.0 tag is always the artifact source; this branch only
+# provides a workflow event after GitHub correctly suppresses GITHUB_TOKEN fan-out.
 name: Release
 
 on:
   push:
-    tags:
-      - "v1.4.0"
+    branches:
+      - "release/1.4.0-publish"
+
+concurrency:
+  group: swirengine-1.4.0-publication
+  cancel-in-progress: false
 
 jobs:
   build-release:
+    name: Validate and build immutable v1.4.0
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: "v1.4.0"
+          fetch-depth: 0
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
+      - name: Verify immutable tag identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$(git rev-list -n 1 v1.4.0)"
+          test "$(git rev-parse HEAD)" = "4173955cb12f6b152aa6c4b126efbf633a48acfe"
       - run: python -m pip install --upgrade pip build twine
       - name: Install release validation dependencies
         run: python -m pip install -e ".[dev]"
@@ -48,22 +63,17 @@ jobs:
         run: python -m build
       - name: Validate distribution metadata
         run: python -m twine check dist/*
-      - name: Verify tag and package/runtime versions agree
+      - name: Verify package/runtime versions agree with v1.4.0
         shell: python
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          import os
           import tomllib
           from pathlib import Path
           import swirengine
 
           version = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
-          expected = f"v{version}"
-          actual = os.environ["RELEASE_TAG"]
-          if version != "1.4.0" or swirengine.__version__ != version or actual != expected:
+          if version != "1.4.0" or swirengine.__version__ != version:
               raise SystemExit(
-                  f"release identity mismatch: tag={actual!r}, project={version!r}, runtime={swirengine.__version__!r}"
+                  f"release identity mismatch: project={version!r}, runtime={swirengine.__version__!r}"
               )
       - uses: actions/upload-artifact@v4
         with:
@@ -77,6 +87,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: "v1.4.0"
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
@@ -109,6 +121,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: "v1.4.0"
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
@@ -128,10 +142,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Neon Frontier 1.4 probe failed: $LASTEXITCODE" }
 
   build-windows-cp314:
+    name: Build native Windows CPython 3.14 wheel
     needs: build-release
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: "v1.4.0"
       - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
@@ -200,6 +217,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: "v1.4.0"
       - name: Download portable distributions
         uses: actions/download-artifact@v4
         with:
@@ -244,6 +263,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: "v1.4.0"
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
