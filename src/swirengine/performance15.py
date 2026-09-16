@@ -11,12 +11,12 @@ from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, fields, is_dataclass
 from pathlib import Path
-from typing import Any, TypeAlias
+from typing import Any
 
 
-MetricNumber: TypeAlias = int | float
-Clock: TypeAlias = Callable[[], float]
-DiagnosticsProvider: TypeAlias = Callable[[], object]
+MetricNumber = int | float
+Clock = Callable[[], float]
+DiagnosticsProvider = Callable[[], object]
 
 
 def _metric_name(value: str, *, label: str) -> str:
@@ -36,6 +36,13 @@ def _metric_number(value: MetricNumber, *, label: str) -> MetricNumber:
     if isinstance(value, float) and not math.isfinite(value):
         raise ValueError(f"{label} must be finite")
     return value
+
+
+def _milliseconds(value: float, *, label: str) -> float:
+    result = float(value)
+    if not math.isfinite(result) or result < 0.0:
+        raise ValueError(f"{label} must be finite and >= 0")
+    return result
 
 
 def _nonnegative_int(value: int, *, label: str) -> int:
@@ -75,9 +82,7 @@ def _numeric_items(
             continue
         if isinstance(value, bool):
             yield path, int(value)
-        elif isinstance(value, int):
-            yield path, value
-        elif isinstance(value, float) and math.isfinite(value):
+        elif isinstance(value, int) or isinstance(value, float) and math.isfinite(value):
             yield path, value
 
 
@@ -125,16 +130,12 @@ class PerformanceMemory:
     peak_bytes: int
 
     def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            "current_bytes",
-            _nonnegative_int(self.current_bytes, label="current memory bytes"),
-        )
-        object.__setattr__(
-            self,
-            "peak_bytes",
-            _nonnegative_int(self.peak_bytes, label="peak memory bytes"),
-        )
+        current = _nonnegative_int(self.current_bytes, label="current memory bytes")
+        peak = _nonnegative_int(self.peak_bytes, label="peak memory bytes")
+        if peak < current:
+            raise ValueError("peak memory bytes must be >= current memory bytes")
+        object.__setattr__(self, "current_bytes", current)
+        object.__setattr__(self, "peak_bytes", peak)
 
     def portable(self) -> dict[str, int]:
         return {"current_bytes": self.current_bytes, "peak_bytes": self.peak_bytes}
@@ -151,6 +152,26 @@ class PerformanceFrame:
     counters: tuple[PerformanceMetric, ...] = ()
     resources: tuple[PerformanceResource, ...] = ()
     memory: PerformanceMemory | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "index", _nonnegative_int(self.index, label="frame index"))
+        for field_name in ("frame_ms", "update_ms", "physics_ms", "render_ms"):
+            object.__setattr__(
+                self,
+                field_name,
+                _milliseconds(getattr(self, field_name), label=field_name),
+            )
+        object.__setattr__(self, "timings", tuple(self.timings))
+        object.__setattr__(self, "counters", tuple(self.counters))
+        object.__setattr__(self, "resources", tuple(self.resources))
+        if not all(isinstance(item, PerformanceMetric) for item in self.timings):
+            raise TypeError("frame timings must contain PerformanceMetric values")
+        if not all(isinstance(item, PerformanceMetric) for item in self.counters):
+            raise TypeError("frame counters must contain PerformanceMetric values")
+        if not all(isinstance(item, PerformanceResource) for item in self.resources):
+            raise TypeError("frame resources must contain PerformanceResource values")
+        if self.memory is not None and not isinstance(self.memory, PerformanceMemory):
+            raise TypeError("frame memory must be PerformanceMemory or None")
 
     @property
     def fps(self) -> float:
@@ -184,6 +205,9 @@ class PerformanceCapture:
     def __post_init__(self) -> None:
         if self.format_version != 1:
             raise ValueError("unsupported performance capture format version")
+        frames = tuple(self.frames)
+        if not all(isinstance(frame, PerformanceFrame) for frame in frames):
+            raise TypeError("performance capture frames must contain PerformanceFrame values")
         normalized = tuple(
             sorted(
                 (
@@ -195,7 +219,7 @@ class PerformanceCapture:
         )
         if len({key for key, _value in normalized}) != len(normalized):
             raise ValueError("capture metadata keys must be unique")
-        object.__setattr__(self, "frames", tuple(self.frames))
+        object.__setattr__(self, "frames", frames)
         object.__setattr__(self, "metadata", normalized)
 
     def portable(self) -> dict[str, object]:
@@ -278,6 +302,7 @@ class PerformanceDiagnostics2:
         self._resources: dict[str, PerformanceResource] = {}
         self._provider_errors = 0
         self._capture_memory = False
+        self._owns_tracemalloc = False
 
     @property
     def active(self) -> bool:
@@ -342,6 +367,9 @@ class PerformanceDiagnostics2:
 
     @contextmanager
     def measure(self, section: str) -> Iterator[None]:
+        if not self.enabled:
+            yield
+            return
         section = _metric_name(section, label="performance frame section")
         if section not in self._FRAME_SECTIONS:
             raise ValueError(f"unknown performance frame section: {section}")
@@ -408,14 +436,17 @@ class PerformanceDiagnostics2:
     def enable_memory_tracking(self, *, reset_peak: bool = True) -> None:
         if not tracemalloc.is_tracing():
             tracemalloc.start()
+            self._owns_tracemalloc = True
         elif reset_peak:
             tracemalloc.reset_peak()
         self._capture_memory = True
 
     def disable_memory_tracking(self, *, stop_tracing: bool = False) -> None:
         self._capture_memory = False
-        if stop_tracing and tracemalloc.is_tracing():
+        if stop_tracing and self._owns_tracemalloc and tracemalloc.is_tracing():
             tracemalloc.stop()
+        if not tracemalloc.is_tracing():
+            self._owns_tracemalloc = False
 
     def _memory_snapshot(self) -> PerformanceMemory | None:
         if not self._capture_memory or not tracemalloc.is_tracing():
@@ -427,7 +458,7 @@ class PerformanceDiagnostics2:
         for domain, provider in sorted(self._providers.items()):
             try:
                 self.sample_diagnostics(domain, provider())
-            except Exception:  # noqa: BLE001 - diagnostics must not destabilize game runtime.
+            except Exception:
                 self._provider_errors += 1
                 if self.strict_providers:
                     raise
