@@ -5,7 +5,7 @@ SwirEngine 1.5 builds on the released and locked 1.4 line. The compatibility rul
 Current development progress:
 
 ```text
-██████████░░░░░░░░░░ 50.0% — 5/10
+████████████░░░░░░░░ 60.0% — 6/10
 ```
 
 ## Milestones
@@ -15,7 +15,7 @@ Current development progress:
 - [x] **3. Audio 2.0** — bounded SFX voice budgets, creator priorities, deterministic voice stealing/protection, mixer snapshots, stable spatial audio composition, headless diagnostics and portable state fingerprints.
 - [x] **4. Animation Graphs 2.0** — reusable clips/state graphs, transitions, parameters, blending contracts and headless validation.
 - [x] **5. Navigation 2.0** — runtime navigation queries, agents, path following, avoidance contracts and scalable diagnostics.
-- [ ] **6. World Streaming 2.0** — partitioned scene streaming, lifecycle hooks, budgets and deterministic activation/deactivation rules.
+- [x] **6. World Streaming 2.0** — partitioned scene streaming, lifecycle hooks, budgets and deterministic activation/deactivation rules.
 - [ ] **7. UI Toolkit 2.0** — retained creator UI model, layout, focus/input navigation, theming and resolution-independent scaling.
 - [ ] **8. Editor Productivity 2.0** — prefab/variant authoring, safer batch workflows, command history improvements and creator diagnostics.
 - [ ] **9. Runtime Diagnostics & Profiling 2.0** — structured frame/runtime counters, capture/export surfaces and regression-friendly performance contracts.
@@ -80,6 +80,21 @@ Navigation 2.0 lives in the additive `swirengine.navigation15` layer while the s
 - portable query/runtime diagnostics and state fingerprints covering route-search work, moving/arrived agents and avoidance candidate counts;
 - focused Python 3.10/3.13/3.14 tests, strict Ruff, compile and a runnable headless demo;
 - a 400-node / 208-query / 128-agent workload remaining below the documented 2.0-second CI budget without making an FPS claim;
+- the repository's normal CI, Desktop Export, game-demo and 1.4 compatibility/hardening regression workflows remaining green on the verified milestone head.
+
+## Milestone 6 contract
+
+World Streaming 2.0 lives in the additive `swirengine.world_streaming15` and `swirengine.world_streaming_easy15` layers while the stable 1.x `Scene`, `LargeWorldStreamer`, `ChunkRegistry` and asset-streaming APIs remain unchanged. Completion requires:
+
+- a finite partition registry with deterministic dependency validation, cycle/missing-dependency rejection, strict 2D `z=0` rules and stable registry fingerprints;
+- deterministic priority/distance admission with hard active-cost budgets, bounded activation/deactivation work and retention hysteresis;
+- dependency-first activation, safe reverse-order deactivation, lifecycle rollback, isolated failures and explicit retry without half-mounted scene content;
+- a creator-first `WorldStream` facade with decorator/direct registration, object/ECS content normalization, loading-screen warmup and registration-safe pre-start inspection;
+- Game-aware cleanup through the owner's `remove(...)` path during normal unload and activation rollback so Game-managed physics/UI resources are not stranded;
+- portable runtime diagnostics, deterministic state fingerprints, finite-focus validation and diagnostics that remain coherent after explicit `unload_all()`;
+- O(1) cell-id/key-bucket lookup plus maintained active/failure sets and active-cost accounting so per-update work is bounded by the local streaming window and resident state rather than total authored-world size;
+- focused Python 3.10/3.13/3.14 tests, strict Ruff, compile and a runnable creator demo;
+- a 10,000-cell / 1,200-focus-update workload remaining below the documented 3.0-second CI budget while preserving the bounded local-window contract, without making an FPS claim;
 - the repository's normal CI, Desktop Export, game-demo and 1.4 compatibility/hardening regression workflows remaining green on the verified milestone head.
 
 Progress is based on milestone completion, not file count or commit count. A milestone is 10 percentage points. SwirEngine 1.5 must not be tagged or published until all 10 milestones are complete and the release gate is green.
