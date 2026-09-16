@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Callable, Iterable
-from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError as FutureTimeoutError
+from concurrent.futures import Future, ThreadPoolExecutor, wait as wait_futures
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from threading import Lock
+from threading import Lock, RLock
 from time import perf_counter, perf_counter_ns
 from typing import Any
 
@@ -428,7 +428,7 @@ class AssetPipeline:
         self._cache_hits = 0
         self._cache_misses = 0
         self._invalidated_entries = 0
-        self._lock = Lock()
+        self._lock = RLock()
 
     @staticmethod
     def _normalize_suffix(suffix: str) -> str:
@@ -525,8 +525,8 @@ class AssetPipeline:
                 if candidate != request.source:
                     resolved.add(candidate)
             dependency_paths = tuple(sorted(resolved, key=lambda item: item.as_posix().lower()))
-        value = processor.loader(request.source)
         dependency_fingerprints = tuple(AssetFingerprint.capture(path) for path in dependency_paths)
+        value = processor.loader(request.source)
         return _WorkerProduct(
             value=value,
             source_fingerprint=request.source_fingerprint,
@@ -664,7 +664,7 @@ class AssetPipeline:
     def poll(self) -> tuple[AssetImportResult, ...]:
         """Finalize finished worker jobs and return results once, ordered by request id."""
         with self._lock:
-            for request_id in sorted(tuple(self._jobs)):
+            for request_id in sorted(self._jobs):
                 future = self._jobs[request_id][2]
                 if future.done():
                     self._finalize_job(request_id)
@@ -690,12 +690,9 @@ class AssetPipeline:
                 future = self._jobs[request_id][2]
             except KeyError as exc:
                 raise KeyError(f"unknown asset import request {request_id}") from exc
-        try:
-            future.result(timeout=timeout)
-        except FutureTimeoutError as exc:
-            raise TimeoutError(f"asset import request {request_id} did not finish in time") from exc
-        except Exception:
-            pass
+        done, _pending = wait_futures((future,), timeout=timeout)
+        if future not in done:
+            raise TimeoutError(f"asset import request {request_id} did not finish in time")
         with self._lock:
             result = self._finalize_job(request_id)
             if request_id in self._delivery:
@@ -773,7 +770,7 @@ class AssetPipeline:
         self._executor.shutdown(wait=wait, cancel_futures=cancel_futures)
         self._closed = True
 
-    def __enter__(self) -> AssetPipeline:
+    def __enter__(self) -> AssetPipeline:  # noqa: PYI034 - Self is Python 3.11+, engine supports 3.10.
         return self.bind()
 
     def __exit__(self, _exc_type, _exc, _tb) -> None:
