@@ -181,6 +181,12 @@ class WorldStream:
                 "register chunks before gameplay starts"
             )
 
+    def _remove_owned_objects(self, content: ChunkContent) -> None:
+        if self._remover is None:
+            return
+        for obj in content.objects:
+            self._remover(obj)
+
     def add_chunk(
         self,
         cell_id: str,
@@ -201,15 +207,29 @@ class WorldStream:
         def strict_factory(context: WorldCellContext) -> ChunkContent:
             return _normalize_content(factory(context))
 
+        def strict_activate(context: WorldCellContext, content: ChunkContent) -> None:
+            if on_activate is None:
+                return
+            try:
+                on_activate(context, content)
+            except Exception as activation_error:  # noqa: BLE001 - creator hook boundary
+                try:
+                    self._remove_owned_objects(content)
+                except Exception as cleanup_error:  # noqa: BLE001 - preserve both failures
+                    raise RuntimeError(
+                        "world stream activation hook failed and owner cleanup also failed: "
+                        f"{cleanup_error}"
+                    ) from activation_error
+                raise
+
         def strict_deactivate(context: WorldCellContext, content: ChunkContent) -> None:
             try:
                 if on_deactivate is not None:
                     on_deactivate(context, content)
             finally:
-                if self._remover is not None:
-                    for obj in content.objects:
-                        self._remover(obj)
+                self._remove_owned_objects(content)
 
+        activate = strict_activate if on_activate is not None else None
         deactivate = (
             strict_deactivate
             if on_deactivate is not None or self._remover is not None
@@ -222,7 +242,7 @@ class WorldStream:
             cost=cost,
             priority=priority,
             dependencies=_dependencies(dependencies),
-            on_activate=on_activate,
+            on_activate=activate,
             on_deactivate=deactivate,
         )
         return self.registry.add(cell)
@@ -335,8 +355,9 @@ def world_stream(
 
     This allows the natural ``world_stream(game, ...)`` form without changing the stable ``Game``
     API while SwirEngine 1.5 remains additive. If the owner exposes a callable ``remove`` method,
-    streamed scene objects are routed through that method during unload before the Scene mount is
-    released, preserving owner-specific cleanup such as Game physics/UI registration.
+    streamed scene objects are routed through that method during unload and activation rollback
+    before the Scene mount is released, preserving owner-specific cleanup such as Game physics/UI
+    registration.
     """
     scene = owner if isinstance(owner, Scene) else getattr(owner, "scene", None)
     if not isinstance(scene, Scene):
