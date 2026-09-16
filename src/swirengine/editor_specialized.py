@@ -3,7 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import PurePath
-from typing import Literal
+from typing import Any, Literal, cast
 
 from .ecs import Entity
 from .editor import PropertyEdit
@@ -138,9 +138,6 @@ class EditorSpecializedInspectors:
         if name not in self._field_names(kind):
             raise AttributeError(name)
         normalized = self._normalize(kind, name, value)
-
-        # Build every replacement first. A bad mixed selection or invalid value therefore cannot
-        # leave the scene partially edited.
         planned: list[tuple[_Binding, object]] = []
         if kind == "material":
             for binding in bindings:
@@ -179,11 +176,7 @@ class EditorSpecializedInspectors:
     def _targets(self) -> tuple[object, ...]:
         return self.authoring._require_selection()
 
-    def _bindings(
-        self,
-        kind: SpecializedInspectorKind,
-        targets: tuple[object, ...],
-    ) -> tuple[_Binding, ...]:
+    def _bindings(self, kind: SpecializedInspectorKind, targets: tuple[object, ...]) -> tuple[_Binding, ...]:
         if kind == "material":
             return tuple(self._material_binding(target) for target in targets)
         if kind == "physics":
@@ -204,25 +197,20 @@ class EditorSpecializedInspectors:
             raise TypeError(
                 f"{type(target).__name__} does not expose a Material3D-compatible 'material' field"
             )
-        material = getattr(target, "material")
+        material = cast(Any, target).material
         if material is None:
             material = Material3D()
         if not isinstance(material, Material3D):
-            raise TypeError(
-                f"{type(target).__name__}.material is not Material3D-compatible"
-            )
+            raise TypeError(f"{type(target).__name__}.material is not Material3D-compatible")
         return _Binding(target, material, None)
 
     @staticmethod
-    def _component_binding(
-        target: object,
-        component_types: tuple[type[object], ...],
-        kind: SpecializedInspectorKind,
-    ) -> _Binding:
+    def _component_binding(target: object, component_types: tuple[type[object], ...], kind: SpecializedInspectorKind) -> _Binding:
         if not isinstance(target, Entity):
             raise TypeError(f"{kind} inspector requires ECS Entity selections")
         matches = tuple(
-            component for component_type in component_types
+            component
+            for component_type in component_types
             if (component := target.get(component_type)) is not None
         )
         unique = tuple(dict.fromkeys(id(component) for component in matches))
@@ -240,12 +228,7 @@ class EditorSpecializedInspectors:
         mixed = any(value != first for value in values[1:])
         type_names = {type(value).__name__ for value in values}
         type_name = next(iter(type_names)) if len(type_names) == 1 else "mixed"
-        return EditorSpecializedField(
-            name,
-            None if mixed else deepcopy(first),
-            type_name,
-            mixed,
-        )
+        return EditorSpecializedField(name, None if mixed else deepcopy(first), type_name, mixed)
 
     @staticmethod
     def _field_names(kind: SpecializedInspectorKind) -> tuple[str, ...]:
@@ -259,19 +242,10 @@ class EditorSpecializedInspectors:
 
     @staticmethod
     def _label(kind: SpecializedInspectorKind) -> str:
-        return {
-            "material": "Material",
-            "physics": "Physics",
-            "navigation": "Navigation",
-        }[kind]
+        return {"material": "Material", "physics": "Physics", "navigation": "Navigation"}[kind]
 
     @classmethod
-    def _normalize(
-        cls,
-        kind: SpecializedInspectorKind,
-        name: str,
-        value: object,
-    ) -> object:
+    def _normalize(cls, kind: SpecializedInspectorKind, name: str, value: object) -> object:
         if kind == "material":
             return cls._normalize_material(name, value)
         if kind == "physics":
@@ -311,15 +285,12 @@ class EditorSpecializedInspectors:
             return value
         if name in {"metallic", "roughness"} and value is None:
             return None
-
         number = cls._number(value, name)
         if name in {"ambient", "diffuse", "specular", "normal_scale"} and number < 0.0:
             raise ValueError(f"{name} must be >= 0")
         if name == "shininess" and number < 1.0:
             raise ValueError("shininess must be >= 1")
-        if name in {"metallic", "roughness", "occlusion_strength", "alpha_cutoff"} and not (
-            0.0 <= number <= 1.0
-        ):
+        if name in {"metallic", "roughness", "occlusion_strength", "alpha_cutoff"} and not (0.0 <= number <= 1.0):
             raise ValueError(f"{name} must be within 0..1")
         return number
 
