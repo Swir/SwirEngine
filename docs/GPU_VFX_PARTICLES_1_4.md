@@ -1,6 +1,6 @@
 # SwirEngine 1.4 — GPU VFX + Particle Power
 
-This document tracks milestone #5 of the guarded SwirEngine 1.4 roadmap. The implementation scope is complete on the feature branch, but the roadmap remains **4/10 = 40.0% until the final branch-wide validation gate is green and the milestone is merged**.
+This document covers milestone #5 of the guarded SwirEngine 1.4 roadmap. The implementation and required validation gates are complete on the feature branch, so the synchronized 1.4 development roadmap is now **5/10 = 50.0%**. Stable SwirEngine remains 1.3.0 until the full 1.4 roadmap reaches its guarded release gate.
 
 ## Goal
 
@@ -147,6 +147,6 @@ The milestone gate also runs focused unit regressions, the capacity-independence
 
 The existing `ParticleEmitter2D` path is untouched. `GPUParticleEmitter3D` is additive and requires Renderer2. Stable SwirEngine remains version 1.3.0 while the guarded 1.4 roadmap is under development.
 
-## Completion gate
+## Milestone result
 
-The feature scope for milestone #5 is implemented. The roadmap moves from **4/10 = 40.0%** to **5/10 = 50.0%** only after the final head passes the dedicated GPU VFX gate and repository-wide regression matrix and the milestone is merged to `main`.
+Milestone #5 passed its dedicated Mesa EGL/OpenGL 3.3 GPU gate, scheduler performance contract, full Python/OS CI matrix, Windows Python 3.14 native-wheel path, Desktop Export and existing Renderer2, physics, instancing, Demo Game 3D and Neon Snake 3D regressions. The synchronized SwirEngine 1.4 roadmap therefore advances to **5/10 = 50.0%**. The next guarded milestone is **Asset Pipeline 2.0**.
