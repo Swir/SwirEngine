@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import pytest
 
-from swirengine.gpu_particles import (
+from swirengine import (
+    Color,
+    Game,
     GPUParticleBlendMode,
     GPUParticleEmissionShape3D,
     GPUParticleEmitter3D,
+    Vec3,
 )
-from swirengine.math.types import Color, Vec3
 
 
 def test_gpu_particle_emitter_validates_configuration() -> None:
@@ -33,6 +35,16 @@ def test_gpu_particle_emitter_normalizes_public_values() -> None:
     assert emitter.emission_shape is GPUParticleEmissionShape3D.SPHERE
     assert emitter.blend_mode is GPUParticleBlendMode.ALPHA
     assert emitter.start_color == Color(1.0, 0.0, 0.5, 1.0)
+
+
+def test_game_gpu_particles_is_creator_facing_and_3d_only() -> None:
+    game = Game(mode="3d")
+    emitter = game.gpu_particles(capacity=256, rate=0.0)
+    assert isinstance(emitter, GPUParticleEmitter3D)
+    assert emitter in game.scene
+
+    with pytest.raises(RuntimeError, match="mode='3d'"):
+        Game(mode="2d").gpu_particles()
 
 
 def test_gpu_particle_update_only_schedules_gpu_work() -> None:
