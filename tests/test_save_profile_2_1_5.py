@@ -9,7 +9,6 @@ from swirengine.storage import MigrationRegistry, ProfileStore
 from swirengine.storage15 import (
     AutosavePolicy,
     ProfileSaveManager2,
-    SaveIntegrityError,
     SaveRecoveryError,
     SaveSlotStore2,
 )
