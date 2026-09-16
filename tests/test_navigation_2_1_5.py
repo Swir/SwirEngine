@@ -73,6 +73,15 @@ def test_graph_prefers_lowest_cost_and_area_costs_can_reroute() -> None:
     assert rerouted.path.total_cost > direct.path.total_cost
 
 
+def test_query_filter_normalizes_cached_area_costs() -> None:
+    query_filter = NavigationQueryFilter(area_costs=(("road", 1.25), ("mud", 2.5)))
+    assert query_filter.area_costs == (("mud", 2.5), ("road", 1.25))
+    assert query_filter.multiplier("mud") == pytest.approx(2.5)
+    assert query_filter.multiplier("road") == pytest.approx(1.25)
+    assert query_filter.multiplier("unknown") == pytest.approx(1.0)
+    assert query_filter.minimum_multiplier == pytest.approx(1.0)
+
+
 def test_query_filters_block_nodes_edges_and_areas() -> None:
     graph = sample_graph()
     blocked_node = graph.find_path(
@@ -196,6 +205,8 @@ def test_arrived_agent_does_not_drift_due_to_avoidance() -> None:
     agent = NavigationAgent("idle", (0.0, 0.0, 0.0))
     neighbor = NavigationNeighbor("other", (0.0, 0.0, 0.0))
     before = agent.position
+    assert agent.compute_velocity((neighbor,)) == NavPoint(0.0, 0.0, 0.0)
+    assert agent.avoidance_neighbors == 0
     agent.step(1.0, (neighbor,))
     assert agent.position == before
     assert agent.velocity == NavPoint(0.0, 0.0, 0.0)
