@@ -224,7 +224,7 @@ def run_headless_probe() -> ShowcaseDiagnostics:
         renderer_draw_calls=plan.diagnostics.estimated_draw_calls,
         particle_emitted=emitter.diagnostics.emitted_total,
         editor_targets=editor.selection.count,
-        network_delta_entities=len(delta.entities),
+        network_delta_entities=len(delta.upserts),
         network_bytes=len(encoded),
     )
     if diagnostics.terrain_chunks < 1 or diagnostics.streamed_chunks < 1:
