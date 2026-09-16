@@ -557,6 +557,7 @@ class AudioEngine2:
         if fade_in < 0.0:
             raise ValueError("audio fade duration must not be negative")
         normalized_position = _position(position) if position is not None else None
+        resolved_asset = self.assets.require(asset)
 
         self._prune_voices()
         if len(self._voices) >= self.max_voices:
@@ -568,7 +569,7 @@ class AudioEngine2:
             self._stolen_voices += 1
 
         handle = self.engine.play(
-            asset,
+            resolved_asset,
             volume=volume,
             loop=loop,
             bus=bus,
