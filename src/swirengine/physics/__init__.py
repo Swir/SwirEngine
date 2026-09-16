@@ -15,6 +15,16 @@ from .collision3d import (
     SphereBounds3D,
     SphereCollider3D,
 )
+from .dynamics3d import (
+    Contact3D,
+    DistanceJoint3D,
+    PhysicsBackend3D,
+    PhysicsBody3D,
+    PhysicsDiagnostics3D,
+    PhysicsMaterial3D,
+    PhysicsScene3D,
+    SweepHit3D,
+)
 from .rigidbody2d import PhysicsWorld2D, RigidBody2D
 from .rigidbody3d import PhysicsWorld3D, RigidBody3D
 
@@ -28,6 +38,13 @@ __all__ = [
     "CollisionDiagnostics3D",
     "CollisionWorld2D",
     "CollisionWorld3D",
+    "Contact3D",
+    "DistanceJoint3D",
+    "PhysicsBackend3D",
+    "PhysicsBody3D",
+    "PhysicsDiagnostics3D",
+    "PhysicsMaterial3D",
+    "PhysicsScene3D",
     "PhysicsWorld2D",
     "PhysicsWorld3D",
     "RaycastHit2D",
@@ -36,4 +53,5 @@ __all__ = [
     "RigidBody3D",
     "SphereBounds3D",
     "SphereCollider3D",
+    "SweepHit3D",
 ]
