@@ -112,8 +112,8 @@ class TerrainSplatMap:
         height, width, _ = self.weights.shape
         x = u * (width - 1)
         z = v * (height - 1)
-        x0 = int(floor(x))
-        z0 = int(floor(z))
+        x0 = floor(x)
+        z0 = floor(z)
         x1 = min(x0 + 1, width - 1)
         z1 = min(z0 + 1, height - 1)
         tx = x - x0
@@ -275,8 +275,8 @@ class HeightmapTerrain:
 
         gx = local_x / self.config.cell_size
         gz = local_z / self.config.cell_size
-        x0 = min(int(floor(gx)), self.cells_x)
-        z0 = min(int(floor(gz)), self.cells_z)
+        x0 = min(floor(gx), self.cells_x)
+        z0 = min(floor(gz), self.cells_z)
         x1 = min(x0 + 1, self.cells_x)
         z1 = min(z0 + 1, self.cells_z)
         tx = gx - x0
@@ -434,12 +434,25 @@ class HeightmapTerrain:
             samples.append(end)
         return samples
 
-    def _vertex(self, col: int, row: int, chunk_origin: Vec3) -> tuple[tuple[float, float, float], tuple[float, float, float], tuple[float, float]]:
+    def _vertex(
+        self,
+        col: int,
+        row: int,
+        chunk_origin: Vec3,
+    ) -> tuple[
+        tuple[float, float, float],
+        tuple[float, float, float],
+        tuple[float, float],
+    ]:
         world_x = self.origin.x + col * self.config.cell_size
         world_z = self.origin.z + row * self.config.cell_size
         world_y = self.origin.y + float(self.heightmap[row, col]) * self.config.height_scale
         normal = self.sample_normal(world_x, world_z)
-        position = (world_x - chunk_origin.x, world_y - chunk_origin.y, world_z - chunk_origin.z)
+        position = (
+            world_x - chunk_origin.x,
+            world_y - chunk_origin.y,
+            world_z - chunk_origin.z,
+        )
         uv = (col / self.cells_x, row / self.cells_z)
         return position, (normal.x, normal.y, normal.z), uv
 
@@ -453,7 +466,14 @@ class HeightmapTerrain:
         normals: list[tuple[float, float, float]] = []
         uvs: list[tuple[float, float]] = []
 
-        vertex_cache: dict[tuple[int, int], tuple[tuple[float, float, float], tuple[float, float, float], tuple[float, float]]] = {}
+        vertex_cache: dict[
+            tuple[int, int],
+            tuple[
+                tuple[float, float, float],
+                tuple[float, float, float],
+                tuple[float, float],
+            ],
+        ] = {}
 
         def emit(col: int, row: int) -> None:
             sample_key = (col, row)
@@ -509,7 +529,13 @@ class TerrainCollider3D:
             return None
         return self.terrain.sample_normal(x, z)
 
-    def raycast_down(self, x: float, y: float, z: float, max_distance: float) -> TerrainHit3D | None:
+    def raycast_down(
+        self,
+        x: float,
+        y: float,
+        z: float,
+        max_distance: float,
+    ) -> TerrainHit3D | None:
         if max_distance < 0.0:
             raise ValueError("max_distance must be non-negative")
         height = self.height_at(x, z)
