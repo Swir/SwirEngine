@@ -4,7 +4,6 @@ import math
 
 from swirengine import Color, Game, GPUParticleBlendMode, GPUParticleEmissionShape3D, Vec3
 
-
 game = Game("SwirEngine 1.4 — GPU VFX", 1280, 720, mode="3d")
 game.configure_renderer2(
     True,
