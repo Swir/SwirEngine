@@ -258,7 +258,6 @@ def test_warmup_respects_runtime_budget_but_resolves_multiple_updates() -> None:
     assert result.deactivated == ()
 
 
-
 def test_creator_introspection_does_not_start_or_seal_registration() -> None:
     world = WorldStream(Scene(), dimensions=2, radius=0)
     assert not world.started
@@ -269,6 +268,29 @@ def test_creator_introspection_does_not_start_or_seal_registration() -> None:
     assert not world.started
     world.add_chunk("still-open", (0, 0), lambda _ctx: None)
     assert not world.started
+
+
+def test_context_and_retry_before_start_keep_registration_open() -> None:
+    world = WorldStream(Scene(), dimensions=2, chunk_size=10.0, radius=0)
+    world.add_chunk("probe", (2, 3), lambda _ctx: None)
+
+    context = world.context("probe")
+    assert (context.origin.x, context.origin.y, context.origin.z) == (20.0, 30.0, 0.0)
+    assert (context.center.x, context.center.y, context.center.z) == (25.0, 35.0, 0.0)
+    assert context.update_index == 0
+    assert not world.started
+    assert not world.retry("probe")
+    assert not world.started
+
+    world.add_chunk("still-open", (4, 3), lambda _ctx: None)
+    assert not world.started
+
+
+def test_dependency_string_is_rejected_instead_of_becoming_character_ids() -> None:
+    world = WorldStream(Scene(), dimensions=2, radius=0)
+    with pytest.raises(TypeError):
+        world.add_chunk("child", (0, 0), lambda _ctx: None, dependencies="base")
+
 
 def test_registration_closes_after_streaming_starts() -> None:
     world = WorldStream(Scene(), dimensions=2, radius=0)
