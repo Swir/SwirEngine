@@ -7,10 +7,12 @@ from tools.verify_1_3_release_candidate import audit, parse_roadmap
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_current_1_3_release_contract_is_complete() -> None:
+def test_completed_1_3_contract_remains_valid_on_current_1x_line() -> None:
     report = audit(ROOT, require_complete=True)
 
-    assert report.version == "1.3.0"
+    major, minor, _patch = (int(part) for part in report.version.split(".", 2))
+    assert major == 1
+    assert minor >= 3
     assert report.roadmap.total == 10
     assert report.roadmap.completed == 10
     assert report.roadmap.remaining == 0
@@ -44,13 +46,16 @@ def test_final_game_contract_mentions_every_integrated_1_3_system() -> None:
     assert required <= set(source.split()) | {token for token in required if token in source}
 
 
-def test_release_workflow_is_hard_gated_on_complete_1_3_contract() -> None:
+def test_release_workflow_is_hard_gated_on_complete_stable_1x_contract() -> None:
     workflow = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
 
-    assert "verify_1_3_release_candidate.py --require-complete" in workflow
+    legacy_gate = "verify_1_3_release_candidate.py --require-complete" in workflow
+    successor_gate = "verify_1_4_release_candidate.py --require-complete" in workflow
+    assert legacy_gate or successor_gate
     assert "pypa/gh-action-pypi-publish@release/v1" in workflow
     assert "id-token: write" in workflow
     assert "skip-existing: true" not in workflow
+    assert "neon_frontier_1_3/run_game.py" in workflow
 
 
 def test_full_game_workflow_has_real_opengl_packaged_windows_and_complete_gate() -> None:
