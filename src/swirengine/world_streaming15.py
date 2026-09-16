@@ -628,10 +628,15 @@ class WorldStreamingRuntime:
         focus: Vec2 | Vec3 | Sequence[float],
     ) -> tuple[float, float, float]:
         if isinstance(focus, Vec3):
+            raw_values = (float(focus.x), float(focus.y), float(focus.z))
+            if not all(math.isfinite(value) for value in raw_values):
+                raise ValueError("world streaming focus coordinates must be finite")
+            if self.settings.dimensions == 2 and raw_values[2] != 0.0:
+                raise ValueError("2D world streaming focus must use z=0")
             values = (
-                float(focus.x),
-                float(focus.y),
-                float(focus.z) if self.settings.dimensions == 3 else 0.0,
+                raw_values
+                if self.settings.dimensions == 3
+                else (raw_values[0], raw_values[1], 0.0)
             )
         elif isinstance(focus, Vec2):
             values = (float(focus.x), float(focus.y), 0.0)
