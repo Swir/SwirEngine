@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import math
 from collections.abc import Callable
+import math
 
 import numpy as np
 
@@ -212,12 +212,13 @@ class SSAOPass3D:
 
                 void main() {
                     float center_depth = texture(depth_image, v_uv).r;
-                    if (center_depth >= 0.999999) {
+                    vec4 normal_sample = texture(normal_image, v_uv);
+                    if (center_depth >= 0.999999 || normal_sample.a < 0.5) {
                         fragAO = 1.0;
                         return;
                     }
                     vec3 center = view_position(v_uv, center_depth);
-                    vec3 normal = normalize(texture(normal_image, v_uv).xyz * 2.0 - 1.0);
+                    vec3 normal = normalize(normal_sample.xyz * 2.0 - 1.0);
                     float depth_scale = radius / max(-center.z, 0.35);
                     float occlusion = 0.0;
                     for (int i = 0; i < 64; ++i) {
@@ -257,12 +258,14 @@ class SSAOPass3D:
                 #version 330
                 uniform sampler2D ao_image;
                 uniform sampler2D depth_image;
+                uniform sampler2D normal_image;
                 uniform vec2 inverse_resolution;
                 in vec2 v_uv;
                 out float fragAO;
                 void main() {
                     float center_depth = texture(depth_image, v_uv).r;
-                    if (center_depth >= 0.999999) {
+                    float center_valid = texture(normal_image, v_uv).a;
+                    if (center_depth >= 0.999999 || center_valid < 0.5) {
                         fragAO = 1.0;
                         return;
                     }
@@ -271,6 +274,7 @@ class SSAOPass3D:
                     for (int x = -1; x <= 1; ++x) {
                         for (int y = -1; y <= 1; ++y) {
                             vec2 uv = v_uv + vec2(float(x), float(y)) * inverse_resolution;
+                            if (texture(normal_image, uv).a < 0.5) continue;
                             float depth = texture(depth_image, uv).r;
                             float depth_weight = exp(-abs(depth - center_depth) * 180.0);
                             float spatial = (x == 0 && y == 0) ? 2.0 : 1.0;
@@ -287,6 +291,7 @@ class SSAOPass3D:
         self.program["normal_image"].value = self._TEXTURE_NORMAL
         self.blur_program["ao_image"].value = self._TEXTURE_AO
         self.blur_program["depth_image"].value = self._TEXTURE_DEPTH
+        self.blur_program["normal_image"].value = self._TEXTURE_NORMAL
         vertices = self.ctx.buffer(_FULLSCREEN_VERTICES.tobytes())
         self._vbo = vertices
         self._vao = self.ctx.simple_vertex_array(self.program, vertices, "in_pos")
@@ -370,6 +375,7 @@ class SSAOPass3D:
         assert self._blur_framebuffer is not None
         self._ao_texture.use(location=self._TEXTURE_AO)
         depth_texture.use(location=self._TEXTURE_DEPTH)
+        normal_texture.use(location=self._TEXTURE_NORMAL)
         self.blur_program["inverse_resolution"].value = (
             1.0 / max(1, size[0]),
             1.0 / max(1, size[1]),
