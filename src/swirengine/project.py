@@ -88,8 +88,9 @@ def _portable_relative_path(value: Any, *, field: str) -> Path:
     if not isinstance(value, str) or not value.strip():
         raise ProjectConfigError(f"{field} must be a non-empty relative path")
     raw = value.strip()
-    posix = PurePosixPath(raw)
     windows = PureWindowsPath(raw)
+    normalized = raw.replace("\\", "/")
+    posix = PurePosixPath(normalized)
     if (
         posix.is_absolute()
         or windows.is_absolute()
@@ -99,7 +100,7 @@ def _portable_relative_path(value: Any, *, field: str) -> Path:
         raise ProjectConfigError(f"{field} must stay inside the project root: {value!r}")
     if ".." in posix.parts or ".." in windows.parts:
         raise ProjectConfigError(f"{field} may not contain parent traversal: {value!r}")
-    if raw in {".", "./", ".\\"}:
+    if normalized in {".", "./"}:
         raise ProjectConfigError(f"{field} must identify a project-relative child path")
     return Path(*posix.parts)
 
