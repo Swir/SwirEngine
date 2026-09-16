@@ -21,6 +21,18 @@ class GameLikeOwner:
         return self.scene.remove(obj)
 
 
+class FailingRemoveOwner(GameLikeOwner):
+    def __init__(self) -> None:
+        super().__init__()
+        self.fail_on: object | None = None
+
+    def remove(self, obj: object) -> bool:
+        self.removed.append(obj)
+        if obj is self.fail_on:
+            raise RuntimeError("owner cleanup failed")
+        return self.scene.remove(obj)
+
+
 def test_world_stream_uses_owner_remove_for_streamed_object_cleanup() -> None:
     owner = GameLikeOwner()
     marker = Marker("game-managed")
@@ -70,6 +82,31 @@ def test_owner_remove_is_used_when_activation_hook_rolls_back() -> None:
     assert owner.removed == [marker]
     assert len(world.failures) == 1
     assert "creator hook failed" in world.failures[0].message
+
+
+def test_owner_cleanup_continues_after_one_remover_error() -> None:
+    owner = FailingRemoveOwner()
+    first = Marker("first")
+    second = Marker("second")
+    owner.fail_on = first
+    world = world_stream(
+        owner,
+        dimensions=2,
+        chunk_size=10,
+        radius=0,
+        budget=1,
+        retention_updates=0,
+    )
+    world.add_chunk("managed", (0, 0), lambda _ctx: [first, second])
+
+    world.update((1.0, 1.0))
+    result = world.update((21.0, 1.0))
+
+    assert first not in owner.scene
+    assert second not in owner.scene
+    assert owner.removed == [first, second]
+    assert len(result.failed) == 1
+    assert "owner cleanup failed" in result.failed[0].message
 
 
 def test_raw_scene_keeps_plain_scene_ownership() -> None:
