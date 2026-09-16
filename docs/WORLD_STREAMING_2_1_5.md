@@ -53,6 +53,11 @@ A creator factory may return:
 
 The facade converts all of those forms into the strict runtime contract.
 
+When created with `world_stream(game, ...)`, the facade also detects the owner's normal
+`remove(...)` path. Streamed scene objects are routed through it during unload before the mount is
+released, so Game-managed resources such as registered 2D physics/UI ownership do not get stranded.
+Passing a raw `Scene` keeps pure scene ownership instead.
+
 ## Loading-screen warmup
 
 Runtime work budgets are deliberately bounded so normal frames cannot suddenly activate a huge
@@ -129,7 +134,7 @@ A creator factory failure does not leave a half-mounted cell behind. The runtime
 failure and skips repeated activation attempts until the creator explicitly retries it:
 
 ```python
-for failure in world.runtime.failures():
+for failure in world.failures:
     print(failure.cell_id, failure.message)
 
 world.retry("forest")
@@ -140,7 +145,15 @@ is recorded.
 
 ## Diagnostics
 
-`world.diagnostics` exposes bounded, portable counters:
+The creator facade exposes safe inspection helpers that do not start the runtime or close chunk
+registration merely because code reads them:
+
+- `world.active` — currently resident cell IDs;
+- `world.active_cost` — current hard-budget cost;
+- `world.diagnostics` — latest runtime diagnostics, or `None` before the first update;
+- `world.failures` — current isolated cell failures.
+
+The diagnostics record includes:
 
 - current focus key;
 - local keys inspected;
@@ -155,7 +168,8 @@ verification and deterministic diagnostics.
 
 ```python
 print(world.active)
-print(world.diagnostics.active_cost)
+print(world.active_cost)
+print(world.diagnostics)
 print(world.state_fingerprint())
 ```
 
@@ -211,10 +225,14 @@ portable diagnostics and deterministic fingerprints.
 
 ## Performance contract
 
-The registry keeps O(1) cell-id lookup and O(1) chunk-key buckets. An update enumerates only the
-fixed local chunk window around the current focus; it does not scan the complete authored world.
+The registry keeps O(1) cell-id lookup and O(1) chunk-key buckets. Each runtime update enumerates
+only the fixed local chunk window plus the small resident/failed sets; it does not scan the complete
+authored world to discover active cells, failures or current budget usage. Active cost is maintained
+incrementally in O(1).
+
 The dedicated benchmark registers 10,000 cells and repeatedly moves the focus while enforcing a
-generous regression budget in CI.
+strict regression budget in CI. This prevents a creator-friendly API from hiding an O(total world)
+hot path that would later become a frame-time problem in a real large game.
 
 ## Compatibility rule
 
