@@ -5,7 +5,6 @@ from time import perf_counter
 from swirengine.core.scene import Scene
 from swirengine.ui15 import UIAxis, UIToolkit
 
-
 WIDGETS = 240
 LAYOUT_PASSES = 320
 BUDGET_SECONDS = 5.0
