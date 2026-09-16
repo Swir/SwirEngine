@@ -44,6 +44,12 @@ jobs:
       - name: Upgrade pip
         run: python -m pip install --upgrade pip
 
+      - name: Install CPython 3.14 native build prerequisites
+        if: matrix.python-version == '3.14'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev
+
       - name: Install development dependencies
         run: python -m pip install -e ".[dev]"
 
