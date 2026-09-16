@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import argparse
 import re
-import tomllib
 from dataclasses import dataclass
 from pathlib import Path
+
+import tomllib
 
 EXPECTED_TOTAL = 10
 TARGET_VERSION = "1.4.0"
