@@ -13,6 +13,7 @@ on:
       - "README.md"
       - "pyproject.toml"
       - ".github/workflows/showcase-hardening-1-4.yml"
+      - ".github/workflows/tag-1-4.yml"
       - ".github/workflows/release.yml"
   workflow_dispatch:
 
