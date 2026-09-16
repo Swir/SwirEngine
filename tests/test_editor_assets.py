@@ -1,5 +1,11 @@
+import pytest
+
 from swirengine import AssetManager
-from swirengine.editor_assets import EditorAssetBrowser, classify_editor_asset
+from swirengine.editor_assets import (
+    EditorAssetBrowser,
+    EditorAssetDragPayload,
+    classify_editor_asset,
+)
 
 
 def test_classify_editor_asset_covers_creator_facing_types():
@@ -61,6 +67,74 @@ def test_asset_browser_selection_survives_refresh_and_clears_when_deleted(tmp_pa
     frame = browser.refresh()
     assert frame.selected_key is None
     assert browser.selected_entry is None
+
+
+def test_asset_browser_drag_payload_is_portable_and_filter_independent(tmp_path):
+    root = tmp_path / "assets"
+    (root / "textures").mkdir(parents=True)
+    (root / "audio").mkdir()
+    (root / "textures" / "hero.png").write_bytes(b"png")
+    (root / "audio" / "theme.ogg").write_bytes(b"ogg")
+    browser = EditorAssetBrowser(AssetManager(root))
+    browser.select("textures/hero.png")
+
+    browser.set_filter(kind="audio")
+    selected_payload = browser.drag_payload()
+    explicit_payload = browser.drag_payload("audio/theme.ogg")
+
+    assert selected_payload == EditorAssetDragPayload(
+        "textures/hero.png", "hero.png", "image", ".png"
+    )
+    assert explicit_payload == EditorAssetDragPayload(
+        "audio/theme.ogg", "theme.ogg", "audio", ".ogg"
+    )
+    assert not selected_payload.relative_path.startswith(str(root))
+
+
+@pytest.mark.parametrize(
+    "unsafe_path",
+    [
+        "/tmp/hero.png",
+        "../hero.png",
+        r"C:\temp\hero.png",
+        r"\\server\share\hero.png",
+    ],
+)
+def test_asset_drag_payload_rejects_host_absolute_and_parent_paths(unsafe_path):
+    with pytest.raises(ValueError, match="project-relative"):
+        EditorAssetDragPayload(unsafe_path, "hero.png", "image", ".png")
+
+
+def test_asset_browser_rejects_host_absolute_lookup_even_if_basename_exists(tmp_path):
+    root = tmp_path / "assets"
+    root.mkdir()
+    (root / "player.png").write_bytes(b"data")
+    browser = EditorAssetBrowser(AssetManager(root))
+
+    with pytest.raises(ValueError, match="project-relative"):
+        browser.select("/player.png")
+    with pytest.raises(ValueError, match="project-relative"):
+        browser.drag_payload(r"C:\assets\player.png")
+
+
+def test_asset_browser_drag_requires_a_real_asset(tmp_path):
+    root = tmp_path / "assets"
+    root.mkdir()
+    browser = EditorAssetBrowser(AssetManager(root))
+
+    try:
+        browser.drag_payload()
+    except RuntimeError as exc:
+        assert "no editor asset selected" in str(exc)
+    else:
+        raise AssertionError("drag without a selection should fail")
+
+    try:
+        browser.drag_payload("missing.png")
+    except KeyError as exc:
+        assert "unknown editor asset" in str(exc)
+    else:
+        raise AssertionError("dragging a missing asset should fail")
 
 
 def test_asset_browser_reports_missing_aliases_without_loading_assets(tmp_path):

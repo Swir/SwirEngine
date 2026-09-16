@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from .assets import AssetInfo, AssetManager
 
@@ -13,6 +13,24 @@ _FONT_SUFFIXES = {".ttf", ".otf", ".woff", ".woff2"}
 _DATA_SUFFIXES = {".json", ".toml", ".yaml", ".yml", ".csv"}
 _SHADER_SUFFIXES = {".glsl", ".vert", ".frag", ".geom", ".comp"}
 _SCRIPT_SUFFIXES = {".py"}
+
+
+def _normalize_project_relative_path(value: str | Path, *, label: str) -> str:
+    raw = str(value).strip()
+    normalized = raw.replace("\\", "/")
+    if not normalized or normalized == ".":
+        raise ValueError(f"{label} cannot be empty")
+    posix = PurePosixPath(normalized)
+    windows = PureWindowsPath(raw)
+    if (
+        posix.is_absolute()
+        or windows.is_absolute()
+        or bool(windows.drive)
+        or bool(windows.root)
+        or ".." in posix.parts
+    ):
+        raise ValueError(f"{label} must stay project-relative")
+    return posix.as_posix()
 
 
 def classify_editor_asset(path: str | Path) -> str:
@@ -49,6 +67,31 @@ class EditorAssetEntry:
     aliases: tuple[str, ...] = ()
     cached: bool = False
     loadable: bool = False
+
+    @property
+    def key(self) -> str:
+        return self.relative_path
+
+
+@dataclass(frozen=True, slots=True)
+class EditorAssetDragPayload:
+    """Portable drag payload for editor asset authoring.
+
+    Only project-relative metadata is carried. Front-ends can therefore move the payload between
+    panels without leaking host-specific absolute paths into scene/editor state.
+    """
+
+    relative_path: str
+    name: str
+    kind: str
+    suffix: str
+
+    def __post_init__(self) -> None:
+        normalized = _normalize_project_relative_path(
+            self.relative_path,
+            label="asset drag path",
+        )
+        object.__setattr__(self, "relative_path", normalized)
 
     @property
     def key(self) -> str:
@@ -168,6 +211,30 @@ class EditorAssetBrowser:
         self._selected_key = key
         return entry
 
+    def drag_payload(self, asset: str | Path | None = None) -> EditorAssetDragPayload:
+        """Create a toolkit-neutral payload for a selected or explicit project asset.
+
+        The payload is intentionally independent from the current browser filter and contains no
+        loaded resource object. Dragging therefore stays cheap for large assets and remains valid
+        while a front-end changes tabs or filters during the gesture.
+        """
+
+        if asset is None:
+            entry = self.selected_entry
+            if entry is None:
+                raise RuntimeError("no editor asset selected for drag")
+        else:
+            key = self._normalize_relative(asset)
+            entry = next((item for item in self._entries if item.key == key), None)
+            if entry is None:
+                raise KeyError(f"unknown editor asset {key!r}")
+        return EditorAssetDragPayload(
+            entry.relative_path,
+            entry.name,
+            entry.kind,
+            entry.suffix,
+        )
+
     def resolve_selected(self) -> Path | None:
         entry = self.selected_entry
         if entry is None:
@@ -238,20 +305,11 @@ class EditorAssetBrowser:
 
     @staticmethod
     def _normalize_relative(asset: str | Path) -> str:
-        value = str(asset).replace("\\", "/").strip("/")
-        if not value or value == ".":
-            raise ValueError("asset path cannot be empty")
-        path = PurePosixPath(value)
-        if path.is_absolute() or ".." in path.parts:
-            raise ValueError("asset path must stay inside the asset root")
-        return path.as_posix()
+        return _normalize_project_relative_path(asset, label="asset path")
 
     @classmethod
     def _normalize_folder(cls, folder: str | Path) -> str:
-        value = str(folder).replace("\\", "/").strip("/")
+        value = str(folder).strip()
         if not value or value == ".":
             return ""
-        path = PurePosixPath(value)
-        if path.is_absolute() or ".." in path.parts:
-            raise ValueError("asset folder must stay inside the asset root")
-        return path.as_posix()
+        return _normalize_project_relative_path(folder, label="asset folder")
