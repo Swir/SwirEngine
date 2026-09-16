@@ -1,0 +1,100 @@
+name: One-shot WorldStream ergonomics cleanup
+
+on:
+  push:
+    branches:
+      - "feat/1.5-world-streaming-creator-api"
+    paths:
+      - ".github/workflows/_temp_world_streaming_ergonomics_fix.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/1.5-world-streaming-creator-api
+
+      - name: Apply creator ergonomics corrections
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          easy = Path("src/swirengine/world_streaming_easy15.py")
+          text = easy.read_text(encoding="utf-8")
+          old = '''    @property
+              def active(self) -> tuple[str, ...]:
+                  return self.runtime.active_ids
+
+              @property
+              def diagnostics(self) -> WorldStreamingDiagnostics:
+                  return self.runtime.diagnostics
+          '''.replace("              ", "")
+          new = '''    @property
+              def active(self) -> tuple[str, ...]:
+                  if self._runtime is None:
+                      return ()
+                  return self._runtime.active_ids
+
+              @property
+              def active_cost(self) -> int:
+                  if self._runtime is None:
+                      return 0
+                  return self._runtime.active_cost
+
+              @property
+              def diagnostics(self) -> WorldStreamingDiagnostics | None:
+                  if self._runtime is None:
+                      return None
+                  return self._runtime.diagnostics
+
+              @property
+              def failures(self) -> tuple[object, ...]:
+                  if self._runtime is None:
+                      return ()
+                  return self._runtime.failures()
+          '''.replace("              ", "")
+          if text.count(old) != 1:
+              raise SystemExit("WorldStream introspection target was not unique")
+          easy.write_text(text.replace(old, new), encoding="utf-8")
+
+          tests = Path("tests/test_world_streaming_2_1_5.py")
+          text = tests.read_text(encoding="utf-8")
+          marker = '\ndef test_registration_closes_after_streaming_starts() -> None:\n'
+          addition = '''
+
+          def test_creator_introspection_does_not_start_or_seal_registration() -> None:
+              world = WorldStream(Scene(), dimensions=2, radius=0)
+              assert not world.started
+              assert world.active == ()
+              assert world.active_cost == 0
+              assert world.diagnostics is None
+              assert world.failures == ()
+              assert not world.started
+              world.add_chunk("still-open", (0, 0), lambda _ctx: None)
+              assert not world.started
+          '''.replace("          ", "")
+          if text.count(marker) != 1:
+              raise SystemExit("test insertion target was not unique")
+          tests.write_text(text.replace(marker, addition + marker), encoding="utf-8")
+
+          demo = Path("examples/demo_world_streaming_2_1_5.py")
+          text = demo.read_text(encoding="utf-8")
+          old = '    print("active cost:", world.diagnostics.active_cost)'
+          new = '    print("active cost:", world.active_cost)'
+          if text.count(old) != 1:
+              raise SystemExit("demo diagnostics target was not unique")
+          demo.write_text(text.replace(old, new), encoding="utf-8")
+          PY
+
+      - name: Commit corrections
+        run: |
+          git config user.name "SwirEngine CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/swirengine/world_streaming_easy15.py tests/test_world_streaming_2_1_5.py examples/demo_world_streaming_2_1_5.py
+          git diff --cached --check
+          git commit -m "fix(streaming): keep creator introspection side-effect free"
+          git push origin HEAD:feat/1.5-world-streaming-creator-api
