@@ -96,6 +96,20 @@ def test_stopping_voice_immediately_releases_budget(tmp_path: Path) -> None:
     assert audio.diagnostics().active_voices == 1
 
 
+def test_missing_incoming_asset_never_steals_an_existing_voice(tmp_path: Path) -> None:
+    _asset(tmp_path)
+    audio = AudioEngine2.headless(tmp_path, max_voices=1)
+    existing = audio.play("tone.wav", priority=1)
+
+    assert existing is not None
+    with pytest.raises(FileNotFoundError):
+        audio.play("missing.wav", priority=255)
+
+    assert existing.active
+    assert audio.voices == (existing,)
+    assert audio.diagnostics().stolen_voices == 0
+
+
 def test_music_is_managed_separately_from_sfx_voice_budget(tmp_path: Path) -> None:
     _asset(tmp_path, "tone.wav")
     _asset(tmp_path, "music.wav")
@@ -353,9 +367,7 @@ def test_voice_budget_requires_positive_integer(tmp_path: Path, value: int) -> N
 
 
 @pytest.mark.parametrize("value", [float("nan"), float("inf"), -0.1])
-def test_update_rejects_invalid_delta(
-    tmp_path: Path, value: float
-) -> None:
+def test_update_rejects_invalid_delta(tmp_path: Path, value: float) -> None:
     audio = AudioEngine2.headless(tmp_path)
     with pytest.raises(ValueError, match="audio update delta"):
         audio.update(value)
