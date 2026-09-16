@@ -4,7 +4,6 @@ import time
 
 from swirengine import GPUParticleEmitter3D
 
-
 ITERATIONS = 50_000
 DT = 1.0 / 120.0
 
