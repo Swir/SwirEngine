@@ -26,13 +26,21 @@ def box_body(
     z: float,
     *,
     size: float = 1.0,
+    width: float | None = None,
+    height: float | None = None,
+    depth: float | None = None,
     body_type: str = "dynamic",
     friction: float = 0.5,
     restitution: float = 0.0,
     continuous: bool = False,
 ) -> PhysicsBody3D:
     target = Target3D(Vec3(x, y, z))
-    collider = BoxCollider3D(target, width=size, height=size, depth=size)
+    collider = BoxCollider3D(
+        target,
+        width=size if width is None else width,
+        height=size if height is None else height,
+        depth=size if depth is None else depth,
+    )
     return PhysicsBody3D(
         target,
         collider,
@@ -109,7 +117,16 @@ def test_restitution_reverses_normal_velocity() -> None:
 
 def _sliding_speed(friction: float) -> float:
     scene = PhysicsScene3D(gravity=Vec3(0.0, -10.0, 0.0), fixed_dt=1.0 / 120.0)
-    floor_body = box_body(0.0, -0.5, 0.0, size=20.0, body_type="static", friction=friction)
+    floor_body = box_body(
+        0.0,
+        -0.5,
+        0.0,
+        width=20.0,
+        height=1.0,
+        depth=20.0,
+        body_type="static",
+        friction=friction,
+    )
     slider = box_body(0.0, 0.52, 0.0, friction=friction)
     slider.set_velocity(5.0, 0.0, 0.0)
     scene.add(floor_body)
@@ -193,7 +210,17 @@ def test_distance_joint_corrects_distance() -> None:
 
 def test_resting_body_can_sleep_and_external_impulse_wakes_it() -> None:
     scene = PhysicsScene3D(gravity=Vec3(0.0, -10.0, 0.0), fixed_dt=1.0 / 120.0)
-    scene.add(box_body(0.0, -0.5, 0.0, size=20.0, body_type="static"))
+    scene.add(
+        box_body(
+            0.0,
+            -0.5,
+            0.0,
+            width=20.0,
+            height=1.0,
+            depth=20.0,
+            body_type="static",
+        )
+    )
     sleeper = box_body(0.0, 0.51, 0.0)
     sleeper.sleep_speed_threshold = 0.2
     sleeper.sleep_time_threshold = 0.2
