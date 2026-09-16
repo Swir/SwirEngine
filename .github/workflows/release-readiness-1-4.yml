@@ -1,0 +1,195 @@
+name: 1.4 Release Readiness
+
+on:
+  pull_request:
+    paths:
+      - "ROADMAP_1_4.md"
+      - "pyproject.toml"
+      - "README.md"
+      - "CHANGELOG.d/**"
+      - "src/**"
+      - "tests/**"
+      - "tools/**"
+      - "examples/**"
+      - "demo_projects/**"
+      - "docs/**"
+      - ".github/workflows/release.yml"
+      - ".github/workflows/release-readiness-1-4.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-readiness-1-4-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    name: Active 1.4 contract and focused regressions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Verify active 1.4 development contract
+        run: python tools/verify_1_4_release_candidate.py
+      - name: Release-contract regressions
+        run: pytest -q tests/test_release_1_4_contract.py tests/test_release_1_3_contract.py tests/test_release_contract.py
+      - name: Focused 1.4 milestone regressions
+        run: >-
+          pytest -q
+          tests/test_terrain_world_lod.py
+          tests/test_physics2_1_4.py
+          tests/test_character_controllers_1_4.py
+          tests/test_renderer2_1_4.py
+          tests/test_gpu_particles_1_4.py
+          tests/test_asset_pipeline_1_4.py
+          tests/test_asset_pipeline_hotreload_1_4.py
+          tests/test_asset_cache_1_4.py
+          tests/test_asset_optimization_1_4.py
+          tests/test_gltf_dependencies_1_4.py
+          tests/test_scene_visibility_1_4.py
+          tests/test_scene_acceleration_1_4.py
+          tests/test_accelerated_renderer2_1_4.py
+          tests/test_hiz_1_4.py
+          tests/test_editor14_public_api.py
+          tests/test_editor_authoring_1_4.py
+          tests/test_editor_authoring_runtime_1_4.py
+          tests/test_editor_specialized_1_4.py
+          tests/test_multiplayer_2_1_4.py
+          tests/test_network_gameplay.py
+          tests/test_networking.py
+      - name: Strict release-readiness lint
+        run: >-
+          ruff check
+          tools/verify_1_4_release_candidate.py
+          tests/test_release_1_4_contract.py
+      - name: Compile release-readiness code
+        run: >-
+          python -m compileall -q
+          tools/verify_1_4_release_candidate.py
+          tests/test_release_1_4_contract.py
+
+  performance:
+    name: Final 1.4 performance-contract matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Terrain and streaming
+        run: python tools/benchmark_terrain_world_lod.py --chunks 32 --chunk-cells 16 --radius 2 --frames 120
+      - name: Physics 2.0
+        run: python tools/benchmark_physics2_1_4.py --static-bodies 2000 --frames 120
+      - name: Character controllers
+        run: python tools/benchmark_character_controllers_1_4.py --frames 600
+      - name: Renderer 2.0
+        run: python tools/benchmark_renderer2_1_4.py --frames 5000
+      - name: GPU VFX scheduler
+        run: python tools/benchmark_gpu_particles_1_4.py
+      - name: Asset Pipeline 2.0
+        run: python tools/benchmark_asset_pipeline_1_4.py --assets 128 --workers 4
+      - name: Scene acceleration
+        run: >-
+          python tools/benchmark_scene_visibility_1_4.py
+          --side 128 --queries 150 --max-leaf-tests 256
+      - name: Editor authoring
+        run: python tools/benchmark_editor_authoring_1_4.py
+      - name: Multiplayer 2.0
+        run: python tools/benchmark_multiplayer_2_1_4.py
+
+  integration-demos:
+    name: Headless 1.4 integration demos
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - run: python examples/demo_terrain_world_lod.py
+      - run: python examples/demo_physics2_contacts.py
+      - run: python examples/demo_character_controllers.py
+      - run: python examples/demo_asset_pipeline2.py
+      - run: python examples/demo_scene_acceleration_1_4.py
+      - run: python examples/demo_editor_authoring_1_4.py
+      - run: python examples/demo_editor_authoring_runtime_1_4.py
+      - run: python examples/demo_editor_specialized_1_4.py
+      - run: python examples/demo_multiplayer_2_1_4.py
+
+  opengl:
+    name: Real Mesa OpenGL 3.3 1.4 smokes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Install Mesa EGL runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1-mesa-dev libgl1-mesa-dri libglx-mesa0 mesa-utils
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Renderer 2.0 OpenGL smoke
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          MESA_GL_VERSION_OVERRIDE: "3.3"
+        run: python tools/smoke_renderer2_gl.py
+      - name: GPU particles transform-feedback smoke
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          MESA_GL_VERSION_OVERRIDE: "3.3"
+        run: python tools/smoke_gpu_particles_gl.py
+      - name: Scene acceleration Hi-Z smoke
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          MESA_GL_VERSION_OVERRIDE: "3.3"
+        run: python tools/smoke_scene_acceleration_gl.py
+
+  package:
+    name: Build, metadata, and clean-wheel install
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip build twine
+      - run: python -m build
+      - run: python -m twine check dist/*
+      - name: Install wheel without the source tree
+        shell: bash
+        run: |
+          python -m venv .release-readiness-venv
+          .release-readiness-venv/bin/python -m pip install --upgrade pip
+          .release-readiness-venv/bin/python -m pip install dist/*.whl
+          cd /tmp
+          "$GITHUB_WORKSPACE/.release-readiness-venv/bin/python" - <<'PY'
+          import swirengine
+          import swirengine.editor14
+          import swirengine.multiplayer14
+          from swirengine import Game, Scene
+
+          assert Game is not None
+          assert Scene is not None
+          print("clean wheel:", swirengine.__version__, swirengine.__file__)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: swirengine-1-4-readiness-dist
+          path: dist/*
+          if-no-files-found: error
