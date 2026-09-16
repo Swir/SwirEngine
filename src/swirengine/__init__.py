@@ -1,3 +1,20 @@
+from .asset_cache import DerivedAssetCache, DerivedAssetCacheDiagnostics
+from .asset_optimization import (
+    MeshOptimizationResult,
+    TextureOptimizationResult,
+    optimize_mesh_data,
+    optimize_texture_bytes,
+    register_texture_optimizer,
+)
+from .asset_pipeline import (
+    AssetDependencyGraph,
+    AssetFingerprint,
+    AssetImportDiagnostics,
+    AssetImportRequest,
+    AssetImportResult,
+    AssetImportState,
+    AssetPipeline,
+)
 from .assets import AssetDiagnostics, AssetInfo, AssetManager, AssetReloadResult
 from .audio import AudioBackend, AudioEngine, AudioHandle, AudioReloadEvent, PygameAudioBackend
 from .character import (
@@ -111,6 +128,8 @@ from .graphics.cubemap import (
 from .graphics.environment import Environment3D, EnvironmentInstallation, Skybox3D, skybox_mesh_data
 from .graphics.gltf import GltfSceneMesh, load_gltf, load_gltf_scene
 from .graphics.gltf_asset import GltfPrimitiveAsset, load_gltf_material, load_gltf_primitives
+from .graphics.gltf_dependencies import gltf_asset_dependencies
+from .graphics.gltf_pipeline import register_gltf_asset_processor
 from .graphics.ibl_renderer import ImageBasedPostProcessRenderer
 from .graphics.instancing import (
     Frustum3D,
@@ -226,9 +245,16 @@ __all__ = [
     "SURFACE_3D_TEMPLATE",
     "AnimatedSprite2D",
     "AnimationClip",
+    "AssetDependencyGraph",
     "AssetDiagnostics",
+    "AssetFingerprint",
+    "AssetImportDiagnostics",
+    "AssetImportRequest",
+    "AssetImportResult",
+    "AssetImportState",
     "AssetInfo",
     "AssetManager",
+    "AssetPipeline",
     "AssetReloadResult",
     "AudioBackend",
     "AudioEngine",
@@ -257,6 +283,8 @@ __all__ = [
     "CubemapImageData",
     "DebugOverlay",
     "Decal3D",
+    "DerivedAssetCache",
+    "DerivedAssetCacheDiagnostics",
     "DirectionalLight3D",
     "ECSDiagnostics",
     "ECSWorld",
@@ -336,6 +364,7 @@ __all__ = [
     "Material3D",
     "Mesh3D",
     "MeshData",
+    "MeshOptimizationResult",
     "MessageKind",
     "MessageRouter",
     "NativeBuildError",
@@ -407,6 +436,7 @@ __all__ = [
     "TCPPeer",
     "TCPServer",
     "Text2D",
+    "TextureOptimizationResult",
     "ThirdPersonController3D",
     "TileMap2D",
     "TkEditorApp",
@@ -434,6 +464,7 @@ __all__ = [
     "cubemap_asset_paths",
     "default_editor_panels",
     "follow_character_path",
+    "gltf_asset_dependencies",
     "launch_editor",
     "load_cubemap_faces",
     "load_gltf",
@@ -443,9 +474,13 @@ __all__ = [
     "load_obj",
     "normalize_gamepad_axis",
     "normalize_gamepad_button",
+    "optimize_mesh_data",
+    "optimize_texture_bytes",
     "parse_editor_value",
     "place_control",
     "prepare_shader_variant",
+    "register_gltf_asset_processor",
+    "register_texture_optimizer",
     "restore_editor_hierarchy",
     "select_lights",
     "shader_material_3d",

@@ -166,7 +166,26 @@ def test_metallic_roughness_texture_rejects_nonzero_texcoord(tmp_path):
         load_gltf_material(path)
 
 
-def test_non_opaque_gltf_material_fails_explicitly(tmp_path):
-    path = _write_asset(tmp_path, alpha_mode="BLEND")
+@pytest.mark.parametrize("alpha_mode", ["MASK", "BLEND"])
+def test_non_opaque_gltf_material_metadata_is_preserved(tmp_path, alpha_mode):
+    path = _write_asset(tmp_path, alpha_mode=alpha_mode)
+    document = json.loads(path.read_text(encoding="utf-8"))
+    document["materials"][0]["alphaCutoff"] = 0.35
+    document["materials"][0]["doubleSided"] = True
+    path.write_text(json.dumps(document), encoding="utf-8")
+
+    material = load_gltf_material(path)
+
+    assert material.alpha_mode == alpha_mode
+    assert material.alpha_cutoff == pytest.approx(0.35)
+    assert material.double_sided is True
+
+
+def test_invalid_gltf_alpha_metadata_fails_explicitly(tmp_path):
+    path = _write_asset(tmp_path)
+    document = json.loads(path.read_text(encoding="utf-8"))
+    document["materials"][0]["alphaMode"] = "UNKNOWN"
+    path.write_text(json.dumps(document), encoding="utf-8")
+
     with pytest.raises(ValueError, match="alphaMode"):
-        load_gltf_primitives(path)
+        load_gltf_material(path)

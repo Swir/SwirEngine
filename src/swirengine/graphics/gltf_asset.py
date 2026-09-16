@@ -161,11 +161,15 @@ def _material(
     except (IndexError, TypeError) as exc:
         raise ValueError(f"invalid glTF material index {material_index}") from exc
 
-    alpha_mode = str(spec.get("alphaMode", "OPAQUE"))
-    if alpha_mode != "OPAQUE":
+    alpha_mode = str(spec.get("alphaMode", "OPAQUE")).upper()
+    if alpha_mode not in {"OPAQUE", "MASK", "BLEND"}:
         raise ValueError(
-            f"glTF material {material_index}: alphaMode {alpha_mode!r} is not supported yet"
+            f"glTF material {material_index}: invalid alphaMode {alpha_mode!r}"
         )
+    alpha_cutoff = float(spec.get("alphaCutoff", 0.5))
+    if not 0.0 <= alpha_cutoff <= 1.0:
+        raise ValueError(f"glTF material {material_index}: alphaCutoff must be within 0..1")
+    double_sided = bool(spec.get("doubleSided", False))
 
     emissive = np.asarray(spec.get("emissiveFactor", (0.0, 0.0, 0.0)), dtype="f4")
     if emissive.shape != (3,) or np.any(emissive < 0.0):
@@ -255,6 +259,9 @@ def _material(
             float(emissive[2]),
             1.0,
         ),
+        alpha_mode=alpha_mode,
+        alpha_cutoff=alpha_cutoff,
+        double_sided=double_sided,
     )
     return material, metallic, roughness
 

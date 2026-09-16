@@ -4,20 +4,20 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-50.0%25-0969da?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-5%2F10-0969da?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-60.0%25-0969da?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-6%2F10-0969da?style=for-the-badge">
   <img alt="Status" src="https://img.shields.io/badge/STATUS-ACTIVE-0969da?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-██████████░░░░░░░░░░ 50.0%
+████████████░░░░░░░░ 60.0%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **5** | **5** | **10** | **50.0%** |
+| **6** | **4** | **10** | **60.0%** |
 
 > Progress is derived only from the equal-weight verified deliverables below. A milestone becomes
 > complete only after implementation, regression coverage, documentation synchronization and the
@@ -46,8 +46,13 @@
       the capacity-independence scheduler performance contract, strict Ruff/compileall, full Python/OS
       CI including Windows Python 3.14 native-wheel validation, Desktop Export and real demo/Snake/
       Renderer2/instancing regression gates.
-- [ ] **Asset Pipeline 2.0** — stronger glTF/PBR import, texture/mesh optimization, dependency tracking,
-      background import, hot reload, cache invalidation and creator-friendly asset diagnostics.
+- [x] **Asset Pipeline 2.0** — dependency-aware bounded background import with caller-thread finalization,
+      SHA-256 source/dependency fingerprints, transitive hot-reload/cache invalidation, persistent
+      content-addressed derived artifacts, dependency-aware glTF/GLB import, stronger PBR preservation,
+      conservative mesh cleanup, opt-in texture optimization and creator diagnostics. Verified by the
+      dedicated Asset Pipeline 2.0 cold/warm/invalidate/refill workload, integration demo, focused
+      race/cache/hot-reload/glTF/optimization regressions, strict Ruff/compileall, full Python/OS CI,
+      native Windows cp314 wheel selection, Desktop Export and existing renderer/VFX/demo regressions.
 - [ ] **Scene Acceleration + Occlusion** — BVH/spatial scene indexing, broad visibility pruning,
       occlusion-ready visibility stages and measurable reductions in per-frame object work.
 - [ ] **Editor Authoring Power** — transform gizmos, multi-select, undo/redo, drag-and-drop assets,
