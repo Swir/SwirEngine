@@ -6,6 +6,7 @@ on:
       - "src/swirengine/__init__.py"
       - "src/swirengine/asset_pipeline.py"
       - "src/swirengine/asset_cache.py"
+      - "src/swirengine/asset_optimization.py"
       - "src/swirengine/assets.py"
       - "src/swirengine/graphics/gltf.py"
       - "src/swirengine/graphics/gltf_asset.py"
@@ -16,11 +17,13 @@ on:
       - "tests/test_asset_pipeline_1_4.py"
       - "tests/test_asset_pipeline_public_api_1_4.py"
       - "tests/test_asset_cache_1_4.py"
+      - "tests/test_asset_optimization_1_4.py"
       - "tests/test_assets.py"
       - "tests/test_gltf.py"
       - "tests/test_gltf_materials.py"
       - "tests/test_gltf_dependencies_1_4.py"
       - "tests/test_gltf_pipeline_1_4.py"
+      - "tests/test_material3d.py"
       - "tools/benchmark_asset_pipeline_1_4.py"
       - "examples/demo_asset_pipeline2.py"
       - "docs/ASSET_PIPELINE_2_1_4.md"
@@ -59,11 +62,12 @@ jobs:
             echo "present=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Baseline asset and glTF regressions
+      - name: Baseline asset, material and glTF regressions
         run: >-
           pytest -q
           tests/test_asset_pipeline.py
           tests/test_assets.py
+          tests/test_material3d.py
           tests/test_gltf.py
           tests/test_gltf_materials.py
 
@@ -74,6 +78,7 @@ jobs:
           tests/test_asset_pipeline_1_4.py
           tests/test_asset_pipeline_public_api_1_4.py
           tests/test_asset_cache_1_4.py
+          tests/test_asset_optimization_1_4.py
           tests/test_gltf_dependencies_1_4.py
           tests/test_gltf_pipeline_1_4.py
 
@@ -92,6 +97,7 @@ jobs:
           src/swirengine/__init__.py
           src/swirengine/asset_pipeline.py
           src/swirengine/asset_cache.py
+          src/swirengine/asset_optimization.py
           src/swirengine/graphics/gltf_asset.py
           src/swirengine/graphics/gltf_dependencies.py
           src/swirengine/graphics/gltf_pipeline.py
@@ -99,6 +105,7 @@ jobs:
           tests/test_asset_pipeline_1_4.py
           tests/test_asset_pipeline_public_api_1_4.py
           tests/test_asset_cache_1_4.py
+          tests/test_asset_optimization_1_4.py
           tests/test_gltf_materials.py
           tests/test_gltf_dependencies_1_4.py
           tests/test_gltf_pipeline_1_4.py
@@ -111,6 +118,7 @@ jobs:
           python -m compileall -q
           src/swirengine/asset_pipeline.py
           src/swirengine/asset_cache.py
+          src/swirengine/asset_optimization.py
           src/swirengine/graphics/gltf_asset.py
           src/swirengine/graphics/gltf_dependencies.py
           src/swirengine/graphics/gltf_pipeline.py
