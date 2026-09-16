@@ -124,6 +124,46 @@ def test_batch_property_edit_undoes_and_redoes_as_one_authoring_transaction() ->
     assert not inspector.can_redo
 
 
+def test_batch_property_transaction_tracks_only_real_history_edits() -> None:
+    scene = Scene()
+    unchanged = scene.add(Actor("Unchanged", health=25))
+    changed = scene.add(Actor("Changed", health=80))
+    inspector = SceneInspector(scene)
+    authoring = EditorAuthoringSession(inspector)
+    authoring.select(unchanged)
+    authoring.select(changed, mode="add")
+
+    result = authoring.set_property("health", 25)
+
+    assert result.target_keys == (inspector.key_for(unchanged), inspector.key_for(changed))
+    assert result.transaction.edit_count == 1
+    assert len(inspector.undo_history) == 1
+    assert (unchanged.health, changed.health) == (25, 25)
+
+    undone = authoring.undo()
+    assert isinstance(undone, EditorAuthoringTransaction)
+    assert (unchanged.health, changed.health) == (25, 80)
+    redone = authoring.redo()
+    assert isinstance(redone, EditorAuthoringTransaction)
+    assert (unchanged.health, changed.health) == (25, 25)
+
+
+def test_all_noop_batch_does_not_create_authoring_or_inspector_history() -> None:
+    scene = Scene()
+    first = scene.add(Actor("First", health=25))
+    second = scene.add(Actor("Second", health=25))
+    inspector = SceneInspector(scene)
+    authoring = EditorAuthoringSession(inspector)
+    authoring.select(first)
+    authoring.select(second, mode="add")
+
+    result = authoring.set_property("health", 25)
+
+    assert result.transaction.edit_count == 0
+    assert not inspector.can_undo
+    assert authoring.undo() is None
+
+
 def test_multi_gizmo_preflights_selection_and_groups_history() -> None:
     scene = Scene()
     first = scene.add(Cube3D(position=Vec3(0.0, 0.0, -5.0)))
