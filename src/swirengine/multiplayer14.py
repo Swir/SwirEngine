@@ -194,17 +194,17 @@ class ReplicationRegistry:
                 )
                 continue
             state: State = {}
-            for field in spec.fields:
-                left = older_state.get(field.name)
-                right = newer_state.get(field.name)
-                if field.name not in older_state or field.name not in newer_state:
-                    state[field.name] = _portable(
-                        right if alpha >= 1.0 and field.name in newer_state else left
+            for field_spec in spec.fields:
+                left = older_state.get(field_spec.name)
+                right = newer_state.get(field_spec.name)
+                if field_spec.name not in older_state or field_spec.name not in newer_state:
+                    state[field_spec.name] = _portable(
+                        right if alpha >= 1.0 and field_spec.name in newer_state else left
                     )
-                elif field.interpolate:
-                    state[field.name] = _lerp_value(left, right, alpha)
+                elif field_spec.interpolate:
+                    state[field_spec.name] = _lerp_value(left, right, alpha)
                 else:
-                    state[field.name] = _portable(right if alpha >= 1.0 else left)
+                    state[field_spec.name] = _portable(right if alpha >= 1.0 else left)
             result[name] = state
         return ReplicatedEntity(net_id=older.net_id, components=result)
 
@@ -720,9 +720,10 @@ class MultiplayerPacketCodec:
 
 
 __all__ = [
+    "DELTA_PACKET_KIND",
+    "SNAPSHOT_PACKET_KIND",
     "BandwidthReport",
     "ClientPredictor",
-    "DELTA_PACKET_KIND",
     "LagCompensationHistory",
     "MultiplayerBandwidthDiagnostics",
     "MultiplayerPacketCodec",
@@ -732,7 +733,6 @@ __all__ = [
     "ReplicationComponent",
     "ReplicationField",
     "ReplicationRegistry",
-    "SNAPSHOT_PACKET_KIND",
     "SnapshotBuffer",
     "SnapshotDelta",
     "SnapshotSample",
