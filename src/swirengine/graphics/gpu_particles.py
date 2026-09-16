@@ -6,8 +6,8 @@ import numpy as np
 
 from ..gpu_particles import (
     GPUParticleBlendMode,
-    GPUParticleEmitter3D,
     GPUParticleEmissionShape3D,
+    GPUParticleEmitter3D,
 )
 from ..math.types import perspective
 from .camera3d import Camera3D
