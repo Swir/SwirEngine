@@ -3,6 +3,7 @@ name: Renderer 2.0 1.4 Validation
 on:
   pull_request:
     paths:
+      - "src/swirengine/__init__.py"
       - "src/swirengine/graphics/renderer2.py"
       - "src/swirengine/graphics/csm_renderer.py"
       - "src/swirengine/graphics/renderer2_effects.py"
@@ -10,6 +11,7 @@ on:
       - "tests/test_renderer2_1_4.py"
       - "tools/smoke_renderer2_gl.py"
       - "tools/benchmark_renderer2_1_4.py"
+      - "examples/demo_renderer2_1_4.py"
       - "docs/RENDERER2_1_4.md"
       - "ROADMAP_1_4.md"
       - ".github/workflows/renderer2-1-4.yml"
@@ -17,6 +19,7 @@ on:
     branches:
       - "feat/1.4-renderer-2"
     paths:
+      - "src/swirengine/__init__.py"
       - "src/swirengine/graphics/renderer2.py"
       - "src/swirengine/graphics/csm_renderer.py"
       - "src/swirengine/graphics/renderer2_effects.py"
@@ -24,6 +27,7 @@ on:
       - "tests/test_renderer2_1_4.py"
       - "tools/smoke_renderer2_gl.py"
       - "tools/benchmark_renderer2_1_4.py"
+      - "examples/demo_renderer2_1_4.py"
       - "docs/RENDERER2_1_4.md"
       - "ROADMAP_1_4.md"
       - ".github/workflows/renderer2-1-4.yml"
@@ -55,13 +59,15 @@ jobs:
         run: python tools/benchmark_renderer2_1_4.py --frames 5000
       - name: Strict lint
         run: >-
-          ruff check src/swirengine/graphics/renderer2.py
+          ruff check src/swirengine/__init__.py src/swirengine/graphics/renderer2.py
           src/swirengine/graphics/csm_renderer.py src/swirengine/graphics/renderer2_effects.py
           src/swirengine/core/game.py tests/test_renderer2_1_4.py
           tools/smoke_renderer2_gl.py tools/benchmark_renderer2_1_4.py
+          examples/demo_renderer2_1_4.py
       - name: Compile Renderer 2.0 path
         run: >-
-          python -m compileall -q src/swirengine/graphics/renderer2.py
-          src/swirengine/graphics/csm_renderer.py src/swirengine/graphics/renderer2_effects.py
-          src/swirengine/core/game.py tests/test_renderer2_1_4.py
-          tools/smoke_renderer2_gl.py tools/benchmark_renderer2_1_4.py
+          python -m compileall -q src/swirengine/__init__.py
+          src/swirengine/graphics/renderer2.py src/swirengine/graphics/csm_renderer.py
+          src/swirengine/graphics/renderer2_effects.py src/swirengine/core/game.py
+          tests/test_renderer2_1_4.py tools/smoke_renderer2_gl.py
+          tools/benchmark_renderer2_1_4.py examples/demo_renderer2_1_4.py
