@@ -3,7 +3,6 @@ from __future__ import annotations
 import math
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from typing import Any
 
 import numpy as np
 
@@ -92,6 +91,7 @@ class VisibilityEntry3D:
 
     item: object
     bounds: VisibilityAABB3D
+    registration_order: int = 0
     dynamic: bool = False
     enabled: bool = True
 
@@ -149,7 +149,6 @@ def visibility_bounds_for(item: object) -> VisibilityAABB3D:
         return value
 
     if isinstance(item, Cube3D):
-        # A sphere-derived AABB stays conservative for every cube rotation.
         radius = abs(float(item.size)) * math.sqrt(3.0) * 0.5
         return VisibilityAABB3D.from_center_extent(item.position, Vec3(radius, radius, radius))
 
@@ -220,6 +219,7 @@ class SceneVisibilityIndex3D:
         self._bvh_nodes = 0
         self._rebuilds = 0
         self._refits = 0
+        self._next_registration_order = 0
 
     @property
     def rebuilds(self) -> int:
@@ -246,7 +246,13 @@ class SceneVisibilityIndex3D:
             raise RuntimeError("visibility index identity collision")
         resolved = bounds or self.bounds_provider(item)
         if existing is None:
-            self._entries[key] = VisibilityEntry3D(item, resolved, bool(dynamic))
+            self._entries[key] = VisibilityEntry3D(
+                item=item,
+                bounds=resolved,
+                registration_order=self._next_registration_order,
+                dynamic=bool(dynamic),
+            )
+            self._next_registration_order += 1
         else:
             if existing.dynamic != bool(dynamic):
                 self._static_dirty = True
@@ -281,6 +287,7 @@ class SceneVisibilityIndex3D:
         self._static_count = 0
         self._dynamic_count = 0
         self._bvh_nodes = 0
+        self._next_registration_order = 0
 
     def refit(self, item: object, bounds: VisibilityAABB3D | None = None) -> None:
         entry = self._entries.get(id(item))
@@ -388,14 +395,17 @@ class SceneVisibilityIndex3D:
         bounds = _combined_bounds(entries)
         self._bvh_nodes += 1
         if len(entries) <= self.leaf_size:
-            ordered = tuple(sorted(entries, key=lambda entry: id(entry.item)))
+            ordered = tuple(sorted(entries, key=lambda entry: entry.registration_order))
             return _BVHNode3D(bounds=bounds, entries=ordered)
 
         axis = _widest_axis(bounds)
         ordered = tuple(
             sorted(
                 entries,
-                key=lambda entry: (_axis_value(entry.bounds, axis), id(entry.item)),
+                key=lambda entry: (
+                    _axis_value(entry.bounds, axis),
+                    entry.registration_order,
+                ),
             )
         )
         midpoint = len(ordered) // 2
