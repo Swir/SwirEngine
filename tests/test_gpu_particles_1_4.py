@@ -8,6 +8,7 @@ from swirengine import (
     GPUParticleBlendMode,
     GPUParticleEmissionShape3D,
     GPUParticleEmitter3D,
+    GPUParticleRenderMode3D,
     Vec3,
 )
 
@@ -21,6 +22,12 @@ def test_gpu_particle_emitter_validates_configuration() -> None:
         GPUParticleEmitter3D(lifetime=(0.0, 1.0))
     with pytest.raises(ValueError, match="size_pixels"):
         GPUParticleEmitter3D(size_pixels=(-1.0, 2.0))
+    with pytest.raises(ValueError, match="emissive_strength"):
+        GPUParticleEmitter3D(emissive_strength=-0.1)
+    with pytest.raises(ValueError, match="mesh_scale"):
+        GPUParticleEmitter3D(mesh_scale=-0.1)
+    with pytest.raises(ValueError, match="trail_alpha_scale"):
+        GPUParticleEmitter3D(trail_alpha_scale=1.1)
     with pytest.raises(ValueError, match="emission_extent"):
         GPUParticleEmitter3D(emission_extent=Vec3(-1.0, 0.0, 0.0))
 
@@ -30,17 +37,24 @@ def test_gpu_particle_emitter_normalizes_public_values() -> None:
         capacity=64,
         emission_shape="sphere",
         blend_mode="alpha",
+        render_mode="mesh",
+        texture="assets/fx/spark.png",
+        emissive_strength=4.0,
         start_color=Color(2.0, -1.0, 0.5, 1.5),
     )
     assert emitter.emission_shape is GPUParticleEmissionShape3D.SPHERE
     assert emitter.blend_mode is GPUParticleBlendMode.ALPHA
+    assert emitter.render_mode is GPUParticleRenderMode3D.MESH
+    assert emitter.texture == "assets/fx/spark.png"
+    assert emitter.emissive_strength == 4.0
     assert emitter.start_color == Color(1.0, 0.0, 0.5, 1.0)
 
 
 def test_game_gpu_particles_is_creator_facing_and_3d_only() -> None:
     game = Game(mode="3d")
-    emitter = game.gpu_particles(capacity=256, rate=0.0)
+    emitter = game.gpu_particles(capacity=256, rate=0.0, trail_enabled=True)
     assert isinstance(emitter, GPUParticleEmitter3D)
+    assert emitter.trail_enabled is True
     assert emitter in game.scene
 
     with pytest.raises(RuntimeError, match="mode='3d'"):
