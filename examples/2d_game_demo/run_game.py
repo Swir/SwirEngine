@@ -18,7 +18,10 @@ from swirengine import (
     PhysicsWorld2D,
     Rectangle2D,
     RigidBody2D,
+    Sprite2D,
 )
+
+from procedural_art import ensure_art
 
 W, H = 960, 540
 FIXED_DT = 1.0 / 120.0
@@ -81,6 +84,8 @@ class PlatformerDemo:
     def __init__(self) -> None:
         self.game = Game("SwirEngine 2D Game Demo", W, H, target_fps=144, fixed_hz=120)
         self.game.physics.gravity = (0.0, -1800.0)
+        self.art = ensure_art()
+        self.audio_enabled = True
         self.frames = 0
         self.phase = 0.0
         self._background()
@@ -132,49 +137,92 @@ class PlatformerDemo:
         self.flag = self.rect(CHECKPOINT_X + 28, -90, 56, 30, Color(0.18, 0.45, 0.62, 1))
 
     def _player(self) -> None:
-        self.player = self.rect(*SPAWN, PW, PH, Color(0.08, 0.72, 1, 1), visible=False, name="player-root")
+        self.player = self.rect(
+            *SPAWN, PW, PH, Color(0.08, 0.72, 1, 1), visible=False, name="player-root"
+        )
         self.player_collider = self.game.collider(
             self.player, width=PW, height=PH, layer=PLAYER, mask=SOLID, tag="player"
         )
         self.body = self.game.rigidbody(self.player, collider=self.player_collider)
-        self.pv = {
-            "body": self.rect(0, 0, 25, 28, Color(0.08, 0.72, 1, 1), layer=8),
-            "head": self.rect(0, 0, 23, 19, Color(0.88, 0.95, 1, 1), layer=9),
-            "visor": self.rect(0, 0, 16, 6, Color(0.04, 0.18, 0.32, 1), layer=10),
-            "leg_l": self.rect(0, 0, 8, 15, Color(0.04, 0.30, 0.55, 1), layer=7),
-            "leg_r": self.rect(0, 0, 8, 15, Color(0.04, 0.30, 0.55, 1), layer=7),
-            "scarf": self.rect(0, 0, 18, 6, Color(1, 0.28, 0.38, 1), layer=7),
-        }
+        self.player_sprite = self.game.add(
+            Sprite2D(
+                self.art["player_idle"],
+                x=self.player.x,
+                y=self.player.y + 8,
+                width=54,
+                height=68,
+                name="player-art",
+                layer=12,
+            )
+        )
 
     def _enemies(self) -> None:
         self.enemy_data: list[dict[str, object]] = []
         for i, (x, y, patrol, speed) in enumerate(ENEMIES):
             root = self.rect(x, y, 36, 38, Color(), visible=False, name=f"enemy-root-{i}")
-            collider = self.game.collider(root, width=36, height=38, layer=ENEMY, mask=0, tag="enemy")
-            visual = [
-                self.rect(0, 0, 34, 25, Color(0.82, 0.16, 0.28, 1), layer=6),
-                self.rect(0, 0, 28, 16, Color(0.98, 0.34, 0.40, 1), layer=7),
-                self.rect(0, 0, 15, 5, Color(1, 0.82, 0.18, 1), layer=8),
-                self.rect(0, 0, 11, 7, Color(0.30, 0.06, 0.12, 1), layer=5),
-                self.rect(0, 0, 11, 7, Color(0.30, 0.06, 0.12, 1), layer=5),
-            ]
-            self.enemy_data.append({
-                "root": root, "collider": collider, "visual": visual, "origin": x, "patrol": patrol,
-                "speed": speed, "direction": 1.0, "alive": True, "phase": i * 1.3,
-            })
+            collider = self.game.collider(
+                root, width=36, height=38, layer=ENEMY, mask=0, tag="enemy"
+            )
+            sprite = self.game.add(
+                Sprite2D(
+                    self.art["enemy_a"],
+                    x=x,
+                    y=y + 7,
+                    width=54,
+                    height=54,
+                    name=f"enemy-art-{i}",
+                    layer=10,
+                )
+            )
+            self.enemy_data.append(
+                {
+                    "root": root,
+                    "collider": collider,
+                    "sprite": sprite,
+                    "origin": x,
+                    "patrol": patrol,
+                    "speed": speed,
+                    "direction": 1.0,
+                    "alive": True,
+                    "phase": i * 1.3,
+                }
+            )
 
     def _pickups_goal(self) -> None:
         self.shard_active = [True] * len(SHARDS)
         self.shard_nodes = []
         for i, (x, y) in enumerate(SHARDS):
-            glow = self.rect(x, y, 34, 34, Color(0.08, 0.58, 1, 0.22), rotation=45, layer=2)
-            core = self.rect(x, y, 17, 24, Color(0.25, 0.90, 1, 1), rotation=45, layer=3,
-                             name=f"energy-shard-{i}")
+            glow = self.rect(x, y, 42, 42, Color(0.08, 0.58, 1, 0.18), rotation=45, layer=2)
+            core = self.game.add(
+                Sprite2D(
+                    self.art["shard"],
+                    x=x,
+                    y=y,
+                    width=36,
+                    height=42,
+                    name=f"energy-shard-{i}",
+                    layer=4,
+                )
+            )
             self.shard_nodes.append((glow, core))
         self.goal = self.rect(GOAL_X, -145, 45, 82, Color(0.20, 0.26, 0.32, 1), layer=0)
         self.rect(GOAL_X - 30, -153, 12, 110, Color(0.16, 0.25, 0.32, 1), layer=1)
         self.rect(GOAL_X + 30, -153, 12, 110, Color(0.16, 0.25, 0.32, 1), layer=1)
-        self.beacon = self.rect(GOAL_X, -83, 22, 22, Color(0.22, 0.32, 0.40, 1), rotation=45, layer=2)
+        self.portal_sprite = self.game.add(
+            Sprite2D(
+                self.art["portal"],
+                x=GOAL_X,
+                y=-145,
+                width=74,
+                height=112,
+                tint=Color(0.30, 0.45, 0.50, 0.42),
+                name="portal-art",
+                layer=3,
+            )
+        )
+        self.beacon = self.rect(
+            GOAL_X, -83, 22, 22, Color(0.22, 0.32, 0.40, 1), rotation=45, layer=5
+        )
 
     def _vfx_ui(self) -> None:
         self.dust = self.game.particles(max_particles=48, rate=0, lifetime=(0.18, 0.42), speed=(45, 120),
@@ -187,6 +235,15 @@ class PlatformerDemo:
         self.objective = self.game.label("", 120, 238, font_size=18)
         self.help = self.game.label("A/D or arrows: move   SPACE: jump   R: restart", 0, -252, font_size=15)
         self.banner = self.game.label("", 0, 190, font_size=26)
+
+    def _sound(self, name: str, volume: float = 0.34) -> None:
+        if not self.audio_enabled:
+            return
+        try:
+            self.game.sound(self.art[name], volume=volume)
+        except RuntimeError:
+            # Audio is an optional SwirEngine extra; the visual demo stays fully playable without it.
+            self.audio_enabled = False
 
     def _reset(self) -> None:
         self.health, self.shards = 3, 0
@@ -201,6 +258,8 @@ class PlatformerDemo:
             enemy["root"].x, enemy["root"].y = x, y  # type: ignore[union-attr]
             enemy["direction"], enemy["alive"] = 1.0, True
             enemy["collider"].enabled = True  # type: ignore[union-attr]
+            enemy["sprite"].visible = True  # type: ignore[union-attr]
+        self.player_sprite.tint = Color(1, 1, 1, 1)
         self.dust.clear()
         self.spark.clear()
 
@@ -212,6 +271,7 @@ class PlatformerDemo:
         if self.invulnerable > 0 or self.won or self.lost:
             return
         self.health -= 1
+        self._sound("hit", 0.28)
         if self.health <= 0:
             self.lost = True
             self.body.set_velocity(0, 0)
@@ -251,6 +311,7 @@ class PlatformerDemo:
                 self.body.velocity_y = 470
                 self.spark.x, self.spark.y = root.x, root.y  # type: ignore[union-attr]
                 self.spark.burst(18)
+                self._sound("hit", 0.22)
             else:
                 self._damage()
             break
@@ -260,11 +321,13 @@ class PlatformerDemo:
                 self.shards += 1
                 self.spark.x, self.spark.y = x, y
                 self.spark.burst(14)
+                self._sound("pickup", 0.25)
         if not self.checkpoint_active and self.player.x >= CHECKPOINT_X:
             self.checkpoint_active = True
             self.checkpoint = (CHECKPOINT_X, SPAWN[1])
             self.spark.x, self.spark.y = CHECKPOINT_X, -90
             self.spark.burst(22)
+            self._sound("pickup", 0.20)
         if self.player.y < -360:
             self._damage()
         if self.shards == len(SHARDS) and abs(self.player.x - GOAL_X) < 38:
@@ -272,42 +335,74 @@ class PlatformerDemo:
             self.body.set_velocity(0, 0)
             self.spark.x, self.spark.y = GOAL_X, -125
             self.spark.burst(36)
+            self._sound("pickup", 0.32)
 
     def _sync(self, dt: float) -> None:
         moving = abs(self.body.velocity_x) > 5 and self._grounded()
         self.phase += dt * (12 if moving else 4)
-        bob, stride = math.sin(self.phase) * (2 if moving else 0.7), math.sin(self.phase) * (5 if moving else 1)
+        bob = math.sin(self.phase) * (2 if moving else 0.7)
         facing = -1 if self.body.velocity_x < -1 else 1
         px, py = self.player.x, self.player.y
-        self.pv["body"].x, self.pv["body"].y = px, py + bob
-        self.pv["head"].x, self.pv["head"].y = px, py + 22 + bob
-        self.pv["visor"].x, self.pv["visor"].y = px + facing * 3, py + 23 + bob
-        self.pv["leg_l"].x, self.pv["leg_l"].y = px - 7 + stride, py - 20
-        self.pv["leg_r"].x, self.pv["leg_r"].y = px + 7 - stride, py - 20
-        self.pv["scarf"].x, self.pv["scarf"].y = px - facing * 17, py + 9 + bob
-        self.pv["scarf"].rotation = -12 * facing
-        self.pv["body"].color = Color(1, 0.45, 0.25, 1) if self.invulnerable > 0 and int(self.invulnerable * 10) % 2 == 0 else Color(0.08, 0.72, 1, 1)
+
+        self.player_sprite.x = px
+        self.player_sprite.y = py + 8 + bob
+        if moving:
+            self.player_sprite.texture = (
+                self.art["player_run_a"] if int(self.phase * 1.35) % 2 == 0
+                else self.art["player_run_b"]
+            )
+        else:
+            self.player_sprite.texture = self.art["player_idle"]
+        self.player_sprite.uv_rect = (1.0, 0.0, 0.0, 1.0) if facing < 0 else (0.0, 0.0, 1.0, 1.0)
+        hurt_flash = self.invulnerable > 0 and int(self.invulnerable * 10) % 2 == 0
+        self.player_sprite.tint = Color(1.0, 0.55, 0.45, 1.0) if hurt_flash else Color(1, 1, 1, 1)
+
         for i, enemy in enumerate(self.enemy_data):
-            root, vis = enemy["root"], enemy["visual"]
+            root = enemy["root"]
+            sprite = enemy["sprite"]
             alive, phase = bool(enemy["alive"]), float(enemy["phase"])
-            for node in vis:  # type: ignore[union-attr]
-                node.visible = alive
+            sprite.visible = alive  # type: ignore[union-attr]
             if alive:
-                ex, ey, bounce = root.x, root.y, math.sin(phase + i) * 2.5  # type: ignore[union-attr]
-                positions = ((ex, ey + bounce), (ex, ey + 17 + bounce), (ex + float(enemy["direction"]) * 4, ey + 18 + bounce), (ex - 9, ey - 17), (ex + 9, ey - 17))
-                for node, pos in zip(vis, positions, strict=True):  # type: ignore[arg-type]
-                    node.x, node.y = pos
+                bounce = math.sin(phase + i) * 2.0
+                sprite.x = root.x  # type: ignore[union-attr]
+                sprite.y = root.y + 7 + bounce  # type: ignore[union-attr]
+                sprite.texture = (  # type: ignore[union-attr]
+                    self.art["enemy_a"] if int(phase * 1.2) % 2 == 0 else self.art["enemy_b"]
+                )
+                sprite.uv_rect = (  # type: ignore[union-attr]
+                    (1.0, 0.0, 0.0, 1.0)
+                    if float(enemy["direction"]) < 0
+                    else (0.0, 0.0, 1.0, 1.0)
+                )
+
         pulse = 34 + (0.85 + math.sin(self.phase * 0.55) * 0.15) * 8
-        for i, ((glow, core), active) in enumerate(zip(self.shard_nodes, self.shard_active, strict=True)):
+        for i, ((glow, core), active) in enumerate(
+            zip(self.shard_nodes, self.shard_active, strict=True)
+        ):
             glow.visible = core.visible = active
             glow.width = glow.height = pulse
             glow.rotation -= dt * 24
-            core.rotation += dt * (55 + i * 3)
+            core.rotation += dt * (35 + i * 2)
+            core.y = SHARDS[i][1] + math.sin(self.phase * 0.45 + i) * 5
+
         unlocked = self.shards == len(SHARDS)
-        self.goal.color = Color(0.16, 1, 0.55, 1) if unlocked else Color(0.20, 0.26, 0.32, 1)
-        self.beacon.color = Color(0.20, 1, 0.72, 1) if unlocked else Color(0.22, 0.32, 0.40, 1)
+        self.goal.color = (
+            Color(0.16, 1, 0.55, 0.16) if unlocked else Color(0.20, 0.26, 0.32, 1)
+        )
+        self.portal_sprite.tint = (
+            Color(0.72, 1.0, 0.90, 1.0) if unlocked else Color(0.26, 0.38, 0.42, 0.42)
+        )
+        self.portal_sprite.rotation = math.sin(self.phase * 0.18) * 1.5
+        self.beacon.color = (
+            Color(0.20, 1, 0.72, 1) if unlocked else Color(0.22, 0.32, 0.40, 1)
+        )
         self.beacon.rotation += dt * 45
-        self.flag.color = Color(0.18, 1, 0.68, 1) if self.checkpoint_active else Color(0.18, 0.45, 0.62, 1)
+        self.flag.color = (
+            Color(0.18, 1, 0.68, 1)
+            if self.checkpoint_active
+            else Color(0.18, 0.45, 0.62, 1)
+        )
+
         camera = self.game.camera
         target = max(WORLD_LEFT + W / 2, min(WORLD_RIGHT - W / 2, px))
         camera.x += (target - camera.x) * min(1, dt * 5)
@@ -320,17 +415,27 @@ class PlatformerDemo:
             node.x = camera.x * 0.35 - 720 + i * 150
         for i, node in enumerate(self.city):
             node.x = camera.x * 0.62 - 680 + i * 60
+
         self.hud.text = f"HP {self.health}    ENERGY {self.shards}/{len(SHARDS)}"
         if self.won:
-            self.objective.text, self.banner.text = "LEVEL COMPLETE", "SWIRENGINE 2D — SECTOR CLEARED"
+            self.objective.text, self.banner.text = (
+                "LEVEL COMPLETE",
+                "SWIRENGINE 2D — SECTOR CLEARED",
+            )
         elif self.lost:
             self.objective.text, self.banner.text = "GAME OVER — press R", "SYSTEM OFFLINE"
         elif unlocked:
             self.objective.text, self.banner.text = "Portal online — reach the green gate", ""
         elif self.checkpoint_active:
-            self.objective.text, self.banner.text = "Checkpoint active — recover all energy shards", ""
+            self.objective.text, self.banner.text = (
+                "Checkpoint active — recover all energy shards",
+                "",
+            )
         else:
-            self.objective.text, self.banner.text = "Recover every energy shard and reach the portal", ""
+            self.objective.text, self.banner.text = (
+                "Recover every energy shard and reach the portal",
+                "",
+            )
 
     def _update(self, dt: float) -> None:
         self.frames += 1
@@ -342,6 +447,7 @@ class PlatformerDemo:
                 self.body.velocity_y = JUMP_SPEED
                 self.dust.x, self.dust.y = self.player.x, self.player.y - PH / 2
                 self.dust.burst(8)
+                self._sound("jump", 0.24)
             self._gameplay(dt)
         self._sync(dt)
         if SMOKE_FRAMES and self.frames >= SMOKE_FRAMES:
