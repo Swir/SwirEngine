@@ -24,7 +24,9 @@ publishes source plus Windows/Linux/macOS one-file builds as a GitHub Release.
 After the SwirEngine 1.4.0 engine release, two repository-only game examples were added to make the
 2D/3D authoring range obvious from source. They are **not separate products and do not receive their
 own GitHub Releases**. The showcase-quality pass intentionally uses SwirEngine runtime systems for
-core gameplay instead of reimplementing a mini engine inside each example.
+core gameplay instead of reimplementing a mini engine inside each example. Both examples also
+generate their own original visual/audio assets from source at runtime, so they remain easy to
+inspect and redistribute without depending on a third-party game asset pack.
 
 ### SwirEngine 2D Game Demo
 
@@ -34,9 +36,10 @@ python examples/2d_game_demo/run_game.py
 
 `2d_game_demo` is an original source-only scrolling platformer. The player is driven by
 `PhysicsWorld2D` / `RigidBody2D` / `CollisionWorld2D`, while the game adds a multi-screen route,
-checkpoint, stompable enemies, damage/respawn, collectible energy shards, a gated portal, layered
-character visuals, parallax scenery, pooled VFX and a proper HUD. Its headless probe validates the
-same engine physics stack used by the rendered demo.
+checkpoint, stompable enemies, damage/respawn, collectible energy shards, a gated portal,
+procedurally generated `Sprite2D` character/enemy/pickup art, parallax scenery, pooled VFX,
+optional generated sound cues and a proper HUD. Its headless probe validates the same engine
+physics stack used by the rendered demo.
 
 ### SwirEngine 3D Game Demo
 
@@ -46,8 +49,9 @@ python examples/3d_game_demo/run_game.py
 
 `3d_game_demo` is an original source-only bunker FPS. Movement and collision use Physics 2.0 plus
 `FirstPersonController3D`; weapon hits, AI obstacle avoidance and line-of-sight use engine sweeps.
-The rendered example adds an authored bunker, composite robot enemies, chase/attack combat,
-health/ammo pickups, a multi-part first-person weapon with muzzle light, an extraction objective,
+The rendered example adds an authored bunker with runtime-generated textured `Material3D`
+surfaces, composite robot enemies, chase/attack combat, health/ammo pickups, a multi-part
+first-person weapon with muzzle light, optional generated sound cues, an extraction objective,
 HUD/crosshair, Renderer 2.0, HDR tone mapping, SSAO, bloom and colored dynamic lighting.
 
 Both examples expose deterministic headless probes and are also booted through the real OpenGL 3.3
