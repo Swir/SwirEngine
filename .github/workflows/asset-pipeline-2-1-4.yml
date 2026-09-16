@@ -3,6 +3,7 @@ name: Asset Pipeline 2.0 1.4 Validation
 on:
   pull_request:
     paths:
+      - "src/swirengine/__init__.py"
       - "src/swirengine/asset_pipeline.py"
       - "src/swirengine/asset_cache.py"
       - "src/swirengine/assets.py"
@@ -10,8 +11,10 @@ on:
       - "src/swirengine/graphics/gltf_asset.py"
       - "src/swirengine/graphics/gltf_dependencies.py"
       - "src/swirengine/graphics/gltf_pipeline.py"
+      - "src/swirengine/graphics/material.py"
       - "tests/test_asset_pipeline.py"
       - "tests/test_asset_pipeline_1_4.py"
+      - "tests/test_asset_pipeline_public_api_1_4.py"
       - "tests/test_asset_cache_1_4.py"
       - "tests/test_assets.py"
       - "tests/test_gltf.py"
@@ -46,44 +49,71 @@ jobs:
       - name: Install SwirEngine dev dependencies
         run: python -m pip install -e ".[dev]"
 
-      - name: Asset Pipeline and glTF regressions
+      - name: Detect Asset Pipeline 2.0 implementation
+        id: milestone
+        shell: bash
+        run: |
+          if [[ -f tests/test_asset_pipeline_1_4.py && -f src/swirengine/asset_cache.py ]]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Baseline asset and glTF regressions
         run: >-
           pytest -q
           tests/test_asset_pipeline.py
-          tests/test_asset_pipeline_1_4.py
-          tests/test_asset_cache_1_4.py
           tests/test_assets.py
           tests/test_gltf.py
           tests/test_gltf_materials.py
+
+      - name: Asset Pipeline 2.0 regressions
+        if: steps.milestone.outputs.present == 'true'
+        run: >-
+          pytest -q
+          tests/test_asset_pipeline_1_4.py
+          tests/test_asset_pipeline_public_api_1_4.py
+          tests/test_asset_cache_1_4.py
           tests/test_gltf_dependencies_1_4.py
           tests/test_gltf_pipeline_1_4.py
 
       - name: Deterministic asset workload gate
+        if: steps.milestone.outputs.present == 'true'
         run: python tools/benchmark_asset_pipeline_1_4.py --assets 128 --workers 4
 
       - name: Asset Pipeline integration demo
+        if: steps.milestone.outputs.present == 'true'
         run: python examples/demo_asset_pipeline2.py
 
-      - name: Strict lint
+      - name: Strict milestone lint
+        if: steps.milestone.outputs.present == 'true'
         run: >-
           ruff check
+          src/swirengine/__init__.py
           src/swirengine/asset_pipeline.py
           src/swirengine/asset_cache.py
+          src/swirengine/graphics/gltf_asset.py
           src/swirengine/graphics/gltf_dependencies.py
           src/swirengine/graphics/gltf_pipeline.py
+          src/swirengine/graphics/material.py
           tests/test_asset_pipeline_1_4.py
+          tests/test_asset_pipeline_public_api_1_4.py
           tests/test_asset_cache_1_4.py
+          tests/test_gltf_materials.py
           tests/test_gltf_dependencies_1_4.py
           tests/test_gltf_pipeline_1_4.py
           tools/benchmark_asset_pipeline_1_4.py
           examples/demo_asset_pipeline2.py
 
       - name: Compile Asset Pipeline path
+        if: steps.milestone.outputs.present == 'true'
         run: >-
           python -m compileall -q
           src/swirengine/asset_pipeline.py
           src/swirengine/asset_cache.py
+          src/swirengine/graphics/gltf_asset.py
           src/swirengine/graphics/gltf_dependencies.py
           src/swirengine/graphics/gltf_pipeline.py
+          src/swirengine/graphics/material.py
           tools/benchmark_asset_pipeline_1_4.py
           examples/demo_asset_pipeline2.py
