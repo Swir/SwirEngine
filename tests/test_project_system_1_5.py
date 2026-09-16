@@ -66,6 +66,25 @@ def test_discover_project_walks_up_from_nested_path(tmp_path):
     assert manifest.name == "Nested"
 
 
+def test_windows_relative_separators_are_normalized_portably(tmp_path):
+    root = tmp_path / "portable"
+    _write_manifest(
+        root,
+        "\n".join(
+            (
+                'name = "Portable"',
+                'mode = "2d"',
+                'engine = ">=1.0,<2.0"',
+                'entrypoint = "scripts\\\\start.py"',
+            )
+        ),
+    )
+
+    manifest = load_project_manifest(root)
+    assert manifest.entrypoint == Path("scripts") / "start.py"
+    assert manifest.entrypoint.as_posix() == "scripts/start.py"
+
+
 @pytest.mark.parametrize(
     "unsafe",
     (
@@ -119,7 +138,7 @@ def test_diagnostics_report_incomplete_layout(tmp_path):
     assert not manifest.layout_ok
 
 
-def test_export_uses_manifest_name_and_entrypoint_by_default(tmp_path, monkeypatch, capsys):
+def test_export_uses_manifest_defaults_and_content_paths(tmp_path, monkeypatch, capsys):
     root = tmp_path / "game"
     _write_manifest(
         root,
@@ -133,7 +152,7 @@ def test_export_uses_manifest_name_and_entrypoint_by_default(tmp_path, monkeypat
                 "",
                 "[paths]",
                 'assets = "content"',
-                'scenes = "scenes"',
+                'scenes = "worlds"',
                 'scripts = "scripts"',
             )
         ),
@@ -160,6 +179,7 @@ def test_export_uses_manifest_name_and_entrypoint_by_default(tmp_path, monkeypat
     profile = captured_profile["value"]
     assert profile.name == "Manifest Name"
     assert profile.entrypoint == "scripts/start.py"
+    assert profile.include == ("content", "worlds", "scripts")
     assert "Exported windows" in capsys.readouterr().out
 
 
