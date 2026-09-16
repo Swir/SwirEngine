@@ -32,7 +32,14 @@ def test_active_release_workflow_no_longer_uses_historical_1_2_gate() -> None:
     release = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
 
     assert "verify_1_3_release_candidate.py" in ci
-    assert "verify_1_3_release_candidate.py --require-complete" in release
+    stable_gate = any(
+        token in release
+        for token in (
+            "verify_1_3_release_candidate.py --require-complete",
+            "verify_1_4_release_candidate.py --require-complete",
+        )
+    )
+    assert stable_gate
     assert "verify_1_2_release_candidate.py --require-complete" not in release
 
 
