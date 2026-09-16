@@ -11,15 +11,15 @@ Asset Pipeline 2.0 is the sixth milestone of the SwirEngine 1.4 roadmap. It exte
 - reject stale results when a source or dependency changes while an import is running;
 - provide deterministic diagnostics for scheduling, cache use and invalidation;
 - support persistent, content-addressed derived artifacts without executable serialization;
-- make glTF imports dependency-aware, including external buffers and images.
+- make glTF imports dependency-aware, including external buffers and images;
+- provide opt-in mesh and texture optimization without destructive source rewrites.
 
 ## Core API
 
 `AssetPipeline` is layered on top of `AssetManager`:
 
 ```python
-from swirengine.asset_pipeline import AssetPipeline
-from swirengine.assets import AssetManager
+from swirengine import AssetManager, AssetPipeline
 
 assets = AssetManager("assets")
 with AssetPipeline(assets, max_workers=4) as pipeline:
@@ -71,11 +71,11 @@ Terminal states are:
 - `STALE`
 - `CANCELLED`
 
-## Dependency graph
+## Dependency graph and hot reload
 
 `AssetDependencyGraph` stores source-to-dependency edges and reverse edges. `affected_by()` walks reverse edges transitively and is cycle-safe.
 
-When `AssetPipeline.bind()` is active, existing `AssetManager.invalidate()` notifications propagate into the pipeline. Invalidating a texture can therefore evict a material import, a glTF import or another higher-level derived asset that depends on it.
+When `AssetPipeline.bind()` is active, existing `AssetManager.invalidate()` notifications propagate into the pipeline. `AssetManager.poll_changes()` already invalidates changed watched files and calls registered invalidators, so filesystem-driven hot reload uses the same dependency-aware eviction path. Invalidating a texture can therefore evict a material import, a glTF import or another higher-level derived asset that depends on it.
 
 ## glTF / GLB integration
 
@@ -89,6 +89,38 @@ When `AssetPipeline.bind()` is active, existing `AssetManager.invalidate()` noti
 Data URIs and embedded GLB chunks are part of the source container and do not create external dependency edges.
 
 Changing an external `.bin` file or texture invalidates the derived glTF import on the next dependency notification or fingerprint check.
+
+The 1.4 importer also preserves more glTF PBR material intent:
+
+- `OPAQUE`, `MASK` and `BLEND` alpha modes;
+- `alphaCutoff`;
+- `doubleSided`;
+- base color, metallic/roughness, normal, occlusion and emissive channels already supported by the existing importer.
+
+Preserving material metadata does not imply that every renderer backend already renders every alpha mode differently. The CPU asset keeps the intent so renderer support can evolve without destructive re-import. `KHR_texture_transform` is still rejected explicitly and is not claimed as supported.
+
+## Mesh optimization
+
+`optimize_mesh_data()` performs a conservative optimization compatible with the current expanded-triangle `MeshData` representation. It removes degenerate triangles while preserving the order, normals and UVs of surviving vertices.
+
+`register_gltf_asset_processor(..., optimize_meshes=True)` enables that cleanup for imported glTF primitives. The option defaults to `False` so existing 1.x behavior does not silently change.
+
+The optimizer reports input/output triangle counts and the number of removed degenerates. It raises instead of producing an empty mesh when every triangle is degenerate.
+
+## Texture optimization
+
+`optimize_texture_bytes()` is an opt-in CPU preprocessing utility. It:
+
+- never enlarges the source texture;
+- preserves aspect ratio when applying a maximum dimension;
+- supports PNG, JPEG and WebP output;
+- applies EXIF orientation before encoding;
+- reports input/output dimensions and byte counts;
+- returns bytes instead of overwriting the source asset.
+
+`register_texture_optimizer()` exposes the operation as an Asset Pipeline processor for PNG/JPEG/WebP files. Because processor suffix ownership is exclusive, projects explicitly choose whether the optimizer owns those suffixes.
+
+JPEG cannot preserve alpha. When JPEG output is selected, alpha is flattened onto a black RGB background before encoding. PNG/WebP should be used when alpha preservation is required.
 
 ## Persistent derived-asset cache
 
@@ -104,7 +136,7 @@ Properties:
 - least-recently-touched pruning behavior;
 - no `pickle` and no executable deserialization format.
 
-This cache is intentionally separate from the in-memory object cache: arbitrary runtime Python objects are not persisted automatically.
+This cache is intentionally separate from the in-memory object cache: arbitrary runtime Python objects are not persisted automatically. Texture-optimization output can be stored in this cache explicitly by creator/export tooling.
 
 ## Diagnostics
 
@@ -118,11 +150,11 @@ This cache is intentionally separate from the in-memory object cache: arbitrary 
 - invalidated entries;
 - dependency graph node count.
 
-`DerivedAssetCacheDiagnostics` reports disk-cache entries, bytes used, hits, misses, writes and evictions.
+`DerivedAssetCacheDiagnostics` reports disk-cache entries, bytes used, hits, misses, writes and evictions. Mesh and texture optimization result objects expose their own before/after statistics for creator tooling.
 
 ## Compatibility
 
-The existing `AssetManager` and `AssetPreloader` remain available. Asset Pipeline 2.0 is additive and does not change the stable package version during 1.4 development.
+The existing `AssetManager` and `AssetPreloader` remain available. Asset Pipeline 2.0 is additive and does not change the stable package version during 1.4 development. Mesh optimization remains opt-in, texture optimization never rewrites source files and persistent derived caching does not serialize arbitrary runtime objects.
 
 ## Validation contract
 
@@ -130,7 +162,9 @@ The milestone validation covers:
 
 - legacy asset/preloader regressions;
 - Asset Pipeline 2.0 unit and race tests;
-- glTF dependency discovery and processor integration;
+- public API exports;
+- glTF dependency discovery, stronger PBR metadata preservation and processor integration;
+- texture/mesh optimization behavior and diagnostics;
 - persistent derived-cache behavior and eviction;
 - deterministic cold/warm/invalidate/refill workload gate;
 - integration demo;
