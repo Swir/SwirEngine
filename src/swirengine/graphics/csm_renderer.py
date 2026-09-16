@@ -6,6 +6,7 @@ from typing import Any
 import numpy as np
 
 from .camera3d import Camera3D
+from .gpu_particles import GPUParticlePass3D
 from .ibl_renderer import _read_context_state
 from .lights import DirectionalLight3D, select_lights
 from .mesh import Mesh3D, MeshData, cube_mesh
@@ -174,8 +175,8 @@ class Renderer2(ShadowedImageBasedPostProcessRenderer):
     """Additive SwirEngine 1.4 production renderer path.
 
     Renderer2 keeps the stable 1.x renderer hierarchy untouched while composing cascaded shadows,
-    a depth/normal prepass, SSAO, screen-space decals, HDR bloom and the existing color-grading/FXAA
-    controls in one opt-in renderer.
+    a depth/normal prepass, SSAO, screen-space decals, GPU VFX, HDR bloom and the existing
+    color-grading/FXAA controls in one opt-in renderer.
     """
 
     _CSM_TEXTURE_BASE = 5
@@ -201,6 +202,7 @@ class Renderer2(ShadowedImageBasedPostProcessRenderer):
         self._ssao_pass = SSAOPass3D(self.ctx)
         self._bloom_pass = BloomPass3D(self.ctx)
         self._decal_pass = DecalPass3D(self.ctx)
+        self._gpu_particle_pass = GPUParticlePass3D(self.ctx)
         self._init_csm_overlay()
         self._init_renderer2_resolve()
 
@@ -211,6 +213,10 @@ class Renderer2(ShadowedImageBasedPostProcessRenderer):
     @property
     def renderer2_diagnostics(self):
         return None if self._renderer2_frame is None else self._renderer2_frame.diagnostics
+
+    @property
+    def gpu_particle_diagnostics(self):
+        return self._gpu_particle_pass.diagnostics
 
     def _ensure_post_target(self) -> None:
         size = (self.width, self.height)
@@ -685,6 +691,16 @@ class Renderer2(ShadowedImageBasedPostProcessRenderer):
                 texture_loader=self._texture_for_decal,
             )
 
+        particle_diagnostics = self._gpu_particle_pass.render(
+            scene,
+            active,
+            color_texture=self._post_color,
+            depth_texture=self._post_depth,
+            width=self.width,
+            height=self.height,
+        )
+        self.stats.draw_calls += particle_diagnostics.draw_calls
+
         bloom_texture = None
         if self.renderer2.bloom:
             bloom_texture = self._bloom_pass.render(
@@ -704,6 +720,7 @@ class Renderer2(ShadowedImageBasedPostProcessRenderer):
         self._ssao_pass.release()
         self._bloom_pass.release()
         self._decal_pass.release()
+        self._gpu_particle_pass.release()
         for vbo, vao, _ in self._csm_overlay_gpu.values():
             vao.release()
             vbo.release()

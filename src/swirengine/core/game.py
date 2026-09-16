@@ -9,6 +9,7 @@ from typing import Literal, TypeVar
 from ..assets import AssetManager
 from ..audio import AudioEngine, AudioHandle
 from ..debug import DebugOverlay
+from ..gpu_particles import GPUParticleEmitter3D
 from ..graphics.camera import Camera2D
 from ..graphics.camera3d import Camera3D
 from ..graphics.csm_renderer import Renderer2
@@ -216,6 +217,12 @@ class Game:
         self.add(emitter)
         self.add_many(*emitter.children)
         return emitter
+
+    def gpu_particles(self, **kwargs: object) -> GPUParticleEmitter3D:
+        """Create a Renderer2 GPU-simulated 3D particle emitter."""
+        if self.mode != "3d":
+            raise RuntimeError("Game.gpu_particles(...) requires mode='3d'")
+        return self.add(GPUParticleEmitter3D(**kwargs))
 
     def collider(self, target: object, **kwargs: object) -> BoxCollider2D:
         """Create and register a box collider for an existing scene object."""

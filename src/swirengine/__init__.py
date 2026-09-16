@@ -87,6 +87,13 @@ from .exporting import (
     ProjectExporter,
 )
 from .filewatch import FileChangeEvent, PluginAutoReloader, PollingFileWatcher, ReloadResult
+from .gpu_particles import (
+    GPUParticleBlendMode,
+    GPUParticleDiagnostics,
+    GPUParticleEmitter3D,
+    GPUParticleEmissionShape3D,
+    GPUParticleFrame,
+)
 from .graphics.animation import AnimatedSprite2D, AnimationClip, SpriteSheet, animated_sprite
 from .graphics.camera import Camera2D
 from .graphics.camera3d import Camera3D
@@ -292,6 +299,11 @@ __all__ = [
     "FrontendHierarchyRow",
     "FrontendInspectorRow",
     "Frustum3D",
+    "GPUParticleBlendMode",
+    "GPUParticleDiagnostics",
+    "GPUParticleEmitter3D",
+    "GPUParticleEmissionShape3D",
+    "GPUParticleFrame",
     "GPUTextureInvalidation",
     "Game",
     "GamepadSnapshot",
