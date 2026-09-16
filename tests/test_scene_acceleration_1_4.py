@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import swirengine as swir
+
 from swirengine.core.scene import Scene
 from swirengine.graphics.camera3d import Camera3D
 from swirengine.graphics.primitives import Cube3D
@@ -91,3 +93,13 @@ def test_enable_and_disable_scene_acceleration_attach_runtime() -> None:
     assert disable_scene_acceleration(scene) is True
     assert not hasattr(scene, "scene_acceleration")
     assert disable_scene_acceleration(scene) is False
+
+
+def test_scene_acceleration_public_api_is_top_level() -> None:
+    assert swir.SceneAccelerationRuntime3D is SceneAccelerationRuntime3D
+    assert swir.SceneVisibilityIndex3D.__name__ == "SceneVisibilityIndex3D"
+    assert swir.SceneAcceleratedRenderer2.__name__ == "SceneAcceleratedRenderer2"
+    assert swir.HiZDepthPyramid3D.__name__ == "HiZDepthPyramid3D"
+    assert swir.HiZPyramidPass3D.__name__ == "HiZPyramidPass3D"
+    assert swir.enable_scene_acceleration is enable_scene_acceleration
+    assert swir.disable_scene_acceleration is disable_scene_acceleration
