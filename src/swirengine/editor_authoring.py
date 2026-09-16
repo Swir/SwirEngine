@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
+from pathlib import PurePath, PurePosixPath
 from typing import Literal
 
 from .editor import HistoryEdit, PropertyEdit, SceneInspector
@@ -38,6 +39,16 @@ class EditorAuthoringTransaction:
 class EditorBatchPropertyResult:
     property_name: str
     value: object
+    target_keys: tuple[str, ...]
+    transaction: EditorAuthoringTransaction
+
+
+@dataclass(frozen=True, slots=True)
+class EditorAssetPropertyDropResult:
+    """Result of assigning one project-relative asset to the selected inspector targets."""
+
+    property_name: str
+    relative_path: str
     target_keys: tuple[str, ...]
     transaction: EditorAuthoringTransaction
 
@@ -232,10 +243,58 @@ class EditorAuthoringSession:
             self.inspector.set_property(name, deepcopy(value), target=target)
             for target in targets
         )
-        transaction = self._record(f"Set {name}", edits)
+        transaction = self._record(
+            f"Set {name}",
+            tuple(edit for edit in edits if edit.before != edit.after),
+        )
         return EditorBatchPropertyResult(
             name,
             deepcopy(value),
+            tuple(edit.target_key for edit in edits),
+            transaction,
+        )
+
+    def set_asset_path(self, name: str, relative_path: str | PurePath) -> EditorAssetPropertyDropResult:
+        """Assign one portable asset path across the current selection atomically.
+
+        String/``None`` fields receive a POSIX project-relative string. Existing ``PurePath`` fields
+        retain their concrete path type. Every target is validated before the first mutation so a
+        mixed incompatible selection cannot be left partially edited by a failed drop gesture.
+        """
+
+        normalized = self._normalize_asset_path(relative_path)
+        targets = self._require_selection()
+        planned: list[tuple[object, object]] = []
+        for target in targets:
+            snapshot = self.inspector.inspect(target)
+            assert snapshot is not None
+            field = next((item for item in snapshot.fields if item.name == name), None)
+            if field is None:
+                raise AttributeError(name)
+            if not field.editable:
+                raise AttributeError(f"property {name!r} is read-only")
+            current = field.value
+            if isinstance(current, PurePath):
+                value: object = type(current)(normalized)
+            elif current is None or isinstance(current, str):
+                value = normalized
+            else:
+                raise TypeError(
+                    f"property {name!r} on {snapshot.type_name} cannot receive an asset path"
+                )
+            planned.append((target, value))
+
+        edits = tuple(
+            self.inspector.set_property(name, value, target=target)
+            for target, value in planned
+        )
+        transaction = self._record(
+            f"Drop asset on {name}",
+            tuple(edit for edit in edits if edit.before != edit.after),
+        )
+        return EditorAssetPropertyDropResult(
+            name,
+            normalized,
             tuple(edit.target_key for edit in edits),
             transaction,
         )
@@ -281,7 +340,10 @@ class EditorAuthoringSession:
                     edit,
                 )
             )
-        transaction = self._record(f"{mode.title()} selection", tuple(edits))
+        transaction = self._record(
+            f"{mode.title()} selection",
+            tuple(edit for edit in edits if edit.before != edit.after),
+        )
         return EditorMultiGizmoResult(mode, axis, tuple(results), transaction)
 
     def undo(self) -> HistoryEdit | EditorAuthoringTransaction | None:
@@ -334,3 +396,13 @@ class EditorAuthoringSession:
         if len(targets) > self.inspector.history_limit:
             raise RuntimeError("selection exceeds the inspector history limit for one grouped edit")
         return targets
+
+    @staticmethod
+    def _normalize_asset_path(relative_path: str | PurePath) -> str:
+        value = str(relative_path).replace("\\", "/").strip()
+        if not value:
+            raise ValueError("asset path cannot be empty")
+        path = PurePosixPath(value)
+        if path.is_absolute() or ".." in path.parts:
+            raise ValueError("asset path must stay project-relative")
+        return path.as_posix()
