@@ -4,20 +4,20 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-60.0%25-0969da?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-6%2F10-0969da?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-70.0%25-0969da?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-7%2F10-0969da?style=for-the-badge">
   <img alt="Status" src="https://img.shields.io/badge/STATUS-ACTIVE-0969da?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-████████████░░░░░░░░ 60.0%
+██████████████░░░░░░ 70.0%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **6** | **4** | **10** | **60.0%** |
+| **7** | **3** | **10** | **70.0%** |
 
 > Progress is derived only from the equal-weight verified deliverables below. A milestone becomes
 > complete only after implementation, regression coverage, documentation synchronization and the
@@ -53,8 +53,14 @@
       dedicated Asset Pipeline 2.0 cold/warm/invalidate/refill workload, integration demo, focused
       race/cache/hot-reload/glTF/optimization regressions, strict Ruff/compileall, full Python/OS CI,
       native Windows cp314 wheel selection, Desktop Export and existing renderer/VFX/demo regressions.
-- [ ] **Scene Acceleration + Occlusion** — BVH/spatial scene indexing, broad visibility pruning,
-      occlusion-ready visibility stages and measurable reductions in per-frame object work.
+- [x] **Scene Acceleration + Occlusion** — conservative world AABBs, deterministic static BVH,
+      dynamic refit layer, cached scene-membership synchronization, broad frustum pruning, additive
+      Renderer2 candidate-view integration, conservative CPU Hi-Z reference queries and a real
+      OpenGL 3.3 GPU maximum-depth pyramid without CPU readback. Verified by focused visibility/
+      runtime/Renderer2/Hi-Z regressions, a deterministic 16,384-object workload with only 32 leaf
+      tests (99.80% object-test reduction for the validation layout), real Mesa EGL depth-texture Hi-Z
+      reduction, integration demo, strict Ruff and compileall while preserving unsupported renderables
+      through conservative fallback behavior.
 - [ ] **Editor Authoring Power** — transform gizmos, multi-select, undo/redo, drag-and-drop assets,
       material/physics/navigation inspectors, scene authoring and safer play/edit round-trips.
 - [ ] **Multiplayer 2.0** — replication components, snapshot interpolation, client prediction,
