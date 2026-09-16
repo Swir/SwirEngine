@@ -1,0 +1,72 @@
+name: Editor Authoring 1.4 Validation
+
+on:
+  push:
+    branches:
+      - feat/1.4-editor-authoring-power
+  pull_request:
+    paths:
+      - "src/swirengine/editor_assets.py"
+      - "src/swirengine/editor_authoring*.py"
+      - "src/swirengine/editor_frontend.py"
+      - "src/swirengine/editor_runtime.py"
+      - "src/swirengine/editor_workspace.py"
+      - "tests/test_editor_assets.py"
+      - "tests/test_editor_authoring*.py"
+      - "tests/test_editor_frontend.py"
+      - "tests/test_editor_runtime.py"
+      - "tests/test_editor_workspace.py"
+      - "tools/benchmark_editor_authoring_1_4.py"
+      - "examples/demo_editor_authoring_1_4.py"
+      - "docs/EDITOR_AUTHORING_1_4.md"
+      - ".github/workflows/editor-authoring-1-4.yml"
+
+jobs:
+  editor-authoring-contract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Editor authoring regression suite
+        run: >-
+          pytest
+          tests/test_editor_assets.py
+          tests/test_editor_authoring_1_4.py
+          tests/test_editor_authoring_state_1_4.py
+          tests/test_editor_authoring_workspace_1_4.py
+          tests/test_editor_frontend.py
+          tests/test_editor_runtime.py
+          tests/test_editor_workspace.py
+      - name: Strict Ruff gate
+        run: >-
+          ruff check
+          src/swirengine/editor_assets.py
+          src/swirengine/editor_authoring.py
+          src/swirengine/editor_authoring_state.py
+          src/swirengine/editor_authoring_workspace.py
+          tests/test_editor_assets.py
+          tests/test_editor_authoring_1_4.py
+          tests/test_editor_authoring_state_1_4.py
+          tests/test_editor_authoring_workspace_1_4.py
+          tools/benchmark_editor_authoring_1_4.py
+          examples/demo_editor_authoring_1_4.py
+      - name: Compile authoring files
+        run: >-
+          python -m compileall -q
+          src/swirengine/editor_assets.py
+          src/swirengine/editor_authoring.py
+          src/swirengine/editor_authoring_state.py
+          src/swirengine/editor_authoring_workspace.py
+          tests/test_editor_authoring_1_4.py
+          tests/test_editor_authoring_state_1_4.py
+          tests/test_editor_authoring_workspace_1_4.py
+          tools/benchmark_editor_authoring_1_4.py
+          examples/demo_editor_authoring_1_4.py
+      - name: Multi-selection workload benchmark
+        run: python tools/benchmark_editor_authoring_1_4.py
+      - name: Editor authoring demo
+        run: python examples/demo_editor_authoring_1_4.py
