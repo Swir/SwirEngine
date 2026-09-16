@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import pytest
 
-from swirengine import Cube3D, Scene, Vec3
+from swirengine import AssetManager, Cube3D, Scene, Sprite2D, Vec3
+from swirengine.editor_assets import EditorAssetBrowser
 from swirengine.editor_authoring import EditorAuthoringTransaction
 from swirengine.editor_authoring_workspace import (
     EditorAuthoringFrontendController,
@@ -16,6 +18,13 @@ from swirengine.editor_authoring_workspace import (
 class Actor:
     name: str
     health: int = 100
+    enabled: bool = True
+
+
+@dataclass
+class AssetHolder:
+    name: str
+    resource: object
     enabled: bool = True
 
 
@@ -75,6 +84,58 @@ def test_frontend_range_select_and_property_edit_are_one_logical_undo() -> None:
     assert (first.health, second.health, third.health) == (100, 80, 60)
     assert controller.redo() is True
     assert (first.health, second.health, third.health) == (25, 25, 25)
+
+
+def test_asset_drop_updates_mixed_string_and_path_targets_as_one_transaction(tmp_path) -> None:
+    root = tmp_path / "assets"
+    (root / "textures").mkdir(parents=True)
+    (root / "textures" / "hero.png").write_bytes(b"png")
+    browser = EditorAssetBrowser(AssetManager(root))
+    payload = browser.drag_payload("textures/hero.png")
+
+    scene = Scene()
+    first = scene.add(Sprite2D("textures/old.png", name="First"))
+    second = scene.add(Sprite2D(Path("textures/other.png"), name="Second"))
+    workspace = EditorAuthoringWorkspace(scene)
+    controller = EditorAuthoringFrontendController(workspace)
+    controller.select(workspace.inspector.key_for(first))
+    controller.select(workspace.inspector.key_for(second), mode="add")
+
+    result = controller.drop_asset_on_property("texture", payload)
+
+    assert result.relative_path == "textures/hero.png"
+    assert result.transaction.edit_count == 2
+    assert first.texture == "textures/hero.png"
+    assert second.texture == Path("textures/hero.png")
+    assert controller.status == "Dropped hero.png on texture for 2 items"
+
+    assert controller.undo() is True
+    assert first.texture == "textures/old.png"
+    assert second.texture == Path("textures/other.png")
+    assert controller.redo() is True
+    assert first.texture == "textures/hero.png"
+    assert second.texture == Path("textures/hero.png")
+
+
+def test_asset_drop_preflights_mixed_selection_before_first_mutation(tmp_path) -> None:
+    root = tmp_path / "assets"
+    root.mkdir()
+    (root / "theme.dat").write_bytes(b"data")
+    payload = EditorAssetBrowser(AssetManager(root)).drag_payload("theme.dat")
+
+    scene = Scene()
+    compatible = scene.add(AssetHolder("Compatible", "old.dat"))
+    incompatible = scene.add(AssetHolder("Incompatible", 42))
+    workspace = EditorAuthoringWorkspace(scene)
+    workspace.select(compatible)
+    workspace.select(incompatible, mode="add")
+
+    with pytest.raises(TypeError, match="cannot receive an asset path"):
+        workspace.drop_asset_on_selected_property(payload, "resource")
+
+    assert compatible.resource == "old.dat"
+    assert incompatible.resource == 42
+    assert not workspace.inspector.can_undo
 
 
 def test_workspace_multi_gizmo_uses_viewport_snap_settings() -> None:
