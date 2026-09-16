@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 import math
+from collections.abc import Callable
 
 import numpy as np
 
@@ -11,7 +11,6 @@ from .ibl_renderer import _read_context_state
 from .mesh import Mesh3D, MeshData, cube_mesh
 from .primitives import Cube3D
 from .renderer2 import Decal3D, Renderer2Settings
-
 
 _FULLSCREEN_VERTICES = np.asarray((-1.0, -1.0, 3.0, -1.0, -1.0, 3.0), dtype="f4")
 
