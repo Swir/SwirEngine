@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 import json
+import tracemalloc
 from dataclasses import dataclass
 
 import pytest
 
-from swirengine.performance15 import PerformanceDiagnostics2
+from swirengine.performance15 import (
+    PerformanceCapture,
+    PerformanceDiagnostics2,
+    PerformanceFrame,
+    PerformanceMemory,
+)
 
 
 class _Clock:
@@ -153,6 +159,46 @@ def test_memory_tracking_is_explicit_and_records_snapshot() -> None:
     assert frame.memory is not None
     assert frame.memory.current_bytes >= 0
     assert frame.memory.peak_bytes >= frame.memory.current_bytes
+    assert not tracemalloc.is_tracing()
+
+
+def test_memory_tracking_does_not_stop_external_tracemalloc_owner() -> None:
+    if tracemalloc.is_tracing():
+        tracemalloc.stop()
+    tracemalloc.start()
+    try:
+        profiler = PerformanceDiagnostics2()
+        profiler.enable_memory_tracking()
+        profiler.begin_frame()
+        assert profiler.end_frame(0.016).memory is not None
+        profiler.disable_memory_tracking(stop_tracing=True)
+        assert tracemalloc.is_tracing()
+    finally:
+        tracemalloc.stop()
+
+
+def test_disabled_recorder_is_a_true_noop() -> None:
+    profiler = PerformanceDiagnostics2(enabled=False)
+    profiler.begin_frame()
+    with profiler.measure("not-a-standard-section"):
+        profiler.set_counter("", "", float("nan"))
+        profiler.record_resource("", count=-1)
+    frame = profiler.end_frame(float("nan"))
+
+    assert not profiler.active
+    assert profiler.frames == ()
+    assert frame.frame_ms == 0.0
+
+
+def test_public_capture_values_validate_invariants() -> None:
+    with pytest.raises(ValueError, match="peak memory"):
+        PerformanceMemory(current_bytes=20, peak_bytes=10)
+    with pytest.raises(ValueError, match="frame index"):
+        PerformanceFrame(-1, 1.0, 0.0, 0.0, 0.0)
+    with pytest.raises(ValueError, match="frame_ms"):
+        PerformanceFrame(0, float("nan"), 0.0, 0.0, 0.0)
+    with pytest.raises(TypeError, match="PerformanceFrame"):
+        PerformanceCapture(frames=(object(),))  # type: ignore[arg-type]
 
 
 def test_invalid_metrics_and_frame_lifecycle_are_rejected() -> None:
@@ -165,9 +211,10 @@ def test_invalid_metrics_and_frame_lifecycle_are_rejected() -> None:
         profiler.begin_frame()
     with pytest.raises(ValueError, match="finite"):
         profiler.set_counter("physics", "contacts", float("nan"))
-    with pytest.raises(ValueError, match="unknown performance frame section"):
-        with profiler.measure("network"):
-            pass
+    with pytest.raises(ValueError, match="unknown performance frame section"), profiler.measure(
+        "network"
+    ):
+        pass
     with pytest.raises(ValueError, match="frame seconds"):
         profiler.end_frame(float("inf"))
 
