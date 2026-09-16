@@ -81,9 +81,6 @@ class AutosavePolicy:
         return f"{self.prefix}-{index}"
 
 
-_DEFAULT_AUTOSAVE_POLICY = AutosavePolicy()
-
-
 def _portable(value: Any) -> JSONValue:
     if value is None or isinstance(value, (bool, str, int)):
         return value
@@ -567,9 +564,11 @@ class ProfileSaveManager2:
         self,
         data: Mapping[str, Any],
         *,
-        policy: AutosavePolicy = _DEFAULT_AUTOSAVE_POLICY,
+        policy: AutosavePolicy | None = None,
         metadata: Mapping[str, Any] | None = None,
     ) -> SaveSlotInfo:
+        if policy is None:
+            policy = AutosavePolicy()
         generations: list[int] = []
         for index in range(1, policy.keep + 1):
             name = policy.slot_name(index)
@@ -596,8 +595,10 @@ class ProfileSaveManager2:
     def list_autosaves(
         self,
         *,
-        policy: AutosavePolicy = _DEFAULT_AUTOSAVE_POLICY,
+        policy: AutosavePolicy | None = None,
     ) -> tuple[SaveSlotInfo, ...]:
+        if policy is None:
+            policy = AutosavePolicy()
         infos: list[SaveSlotInfo] = []
         for index in range(1, policy.keep + 1):
             name = policy.slot_name(index)
