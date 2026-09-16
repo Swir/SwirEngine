@@ -1,0 +1,83 @@
+name: One-shot World Streaming performance cleanup
+
+on:
+  push:
+    branches:
+      - "feat/1.5-world-streaming-creator-api"
+    paths:
+      - ".github/workflows/_temp_world_streaming_perf_fix.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/1.5-world-streaming-creator-api
+
+      - name: Remove hidden global scans from hot update path
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/swirengine/world_streaming15.py")
+          text = path.read_text(encoding="utf-8")
+
+          replacements = [
+              (
+                  '''        self._states = {cell_id: _CellState() for cell_id in registry.cells}\n        self._update_index = 0\n''',
+                  '''        self._states = {cell_id: _CellState() for cell_id in registry.cells}\n        self._active_ids: set[str] = set()\n        self._failed_ids: set[str] = set()\n        self._active_cost = 0\n        self._update_index = 0\n''',
+              ),
+              (
+                  '''    @property\n    def active_ids(self) -> tuple[str, ...]:\n        return tuple(\n            cell_id for cell_id in sorted(self._states) if self._states[cell_id].active\n        )\n\n    @property\n    def active_cost(self) -> int:\n        return sum(self.registry.cell(cell_id).cost for cell_id in self.active_ids)\n\n    def failures(self) -> tuple[WorldStreamingFailure, ...]:\n        return tuple(\n            WorldStreamingFailure(cell_id, state.failure)\n            for cell_id, state in sorted(self._states.items())\n            if state.failure\n        )\n''',
+                  '''    @property\n    def active_ids(self) -> tuple[str, ...]:\n        return tuple(sorted(self._active_ids))\n\n    @property\n    def active_cost(self) -> int:\n        return self._active_cost\n\n    def failures(self) -> tuple[WorldStreamingFailure, ...]:\n        return tuple(\n            WorldStreamingFailure(cell_id, self._states[cell_id].failure)\n            for cell_id in sorted(self._failed_ids)\n        )\n''',
+              ),
+              (
+                  '''        state.failure = ""\n        return True\n\n    def focus_key''',
+                  '''        state.failure = ""\n        self._failed_ids.discard(cell_id)\n        return True\n\n    def focus_key''',
+              ),
+              (
+                  '''            state.failure = f"activation failed: {exc}"\n            return False\n        state.active = True\n        state.content = content\n        state.mount = mount\n        state.failure = ""\n        self._total_activations += 1\n''',
+                  '''            state.failure = f"activation failed: {exc}"\n            self._failed_ids.add(cell_id)\n            return False\n        state.active = True\n        state.content = content\n        state.mount = mount\n        state.failure = ""\n        self._active_ids.add(cell_id)\n        self._active_cost += cell.cost\n        self._failed_ids.discard(cell_id)\n        self._total_activations += 1\n''',
+              ),
+              (
+                  '''        state.active = False\n        state.content = None\n        state.mount = None\n        if hook_error is not None:\n            state.failure = f"deactivation failed: {hook_error}"\n        self._total_deactivations += 1\n''',
+                  '''        state.active = False\n        state.content = None\n        state.mount = None\n        self._active_ids.discard(cell_id)\n        self._active_cost -= cell.cost\n        if hook_error is not None:\n            state.failure = f"deactivation failed: {hook_error}"\n            self._failed_ids.add(cell_id)\n        else:\n            state.failure = ""\n            self._failed_ids.discard(cell_id)\n        self._total_deactivations += 1\n''',
+              ),
+              (
+                  '''        activated: list[str] = []\n        runtime_blocked: list[str] = []\n''',
+                  '''        activated: list[str] = []\n        runtime_blocked: list[str] = []\n        runtime_budget_blocked: list[str] = []\n''',
+              ),
+              (
+                  '''            if self.active_cost + cell.cost > self.settings.max_active_cost:\n                runtime_blocked.append(cell_id)\n                continue\n''',
+                  '''            if self.active_cost + cell.cost > self.settings.max_active_cost:\n                runtime_blocked.append(cell_id)\n                runtime_budget_blocked.append(cell_id)\n                continue\n''',
+              ),
+              (
+                  '''        blocked = tuple(dict.fromkeys((*blocked_by_target_budget, *runtime_blocked)))\n        failures = self.failures()\n''',
+                  '''        blocked = tuple(dict.fromkeys((*blocked_by_target_budget, *runtime_blocked)))\n        budget_blocked = tuple(\n            dict.fromkeys((*blocked_by_target_budget, *runtime_budget_blocked))\n        )\n        failures = self.failures()\n''',
+              ),
+              (
+                  '''            blocked_by_budget=len(blocked),\n''',
+                  '''            blocked_by_budget=len(budget_blocked),\n''',
+              ),
+          ]
+
+          for old, new in replacements:
+              if text.count(old) != 1:
+                  raise SystemExit(f"performance replacement target was not unique: {old[:80]!r}")
+              text = text.replace(old, new)
+
+          path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Commit optimization
+        run: |
+          git config user.name "SwirEngine CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/swirengine/world_streaming15.py
+          git diff --cached --check
+          git commit -m "perf(streaming): remove global scans from residency updates"
+          git push origin HEAD:feat/1.5-world-streaming-creator-api
