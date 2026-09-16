@@ -1,0 +1,53 @@
+name: Create SwirEngine 1.4 Release Tag
+
+on:
+  push:
+    branches:
+      - "release/1.4.0-publish"
+
+jobs:
+  create-tag:
+    name: Verify final main commit and create v1.4.0
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Enforce complete 1.4 release contract before tagging
+        run: python tools/verify_1_4_release_candidate.py --require-complete
+      - name: Prove publication branch points at the exact current main commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "release/1.4.0-publish"
+          main_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
+          if [ "$main_sha" != "$GITHUB_SHA" ]; then
+            echo "Publication branch is not the exact current main commit: main=$main_sha branch=$GITHUB_SHA"
+            exit 1
+          fi
+      - name: Refuse an existing v1.4.0 tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/v1.4.0" >/dev/null 2>&1; then
+            echo "Tag v1.4.0 already exists; refusing to move or replace it."
+            exit 1
+          fi
+      - name: Create immutable release tag at verified main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+            -f ref='refs/tags/v1.4.0' \
+            -f sha="$GITHUB_SHA"

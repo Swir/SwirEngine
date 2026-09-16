@@ -11,7 +11,7 @@ except ModuleNotFoundError:  # Python 3.10
     import tomli as tomllib
 
 TARGET_VERSION = "1.4.0"
-CURRENT_STABLE_VERSION = "1.3.0"
+PREVIOUS_STABLE_VERSION = "1.3.0"
 EXPECTED_TOTAL = 10
 EXPECTED_PYTHON_RANGE = ">=3.10,<3.15"
 REQUIRED_1_4_DOCS = (
@@ -75,6 +75,7 @@ def _require(condition: bool, message: str, checks: list[str]) -> None:
 def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditReport:
     root = Path(root or Path(__file__).resolve().parents[1]).resolve()
     checks: list[str] = []
+
     project = tomllib.loads(_read(root, "pyproject.toml"))["project"]
     version = str(project["version"])
     _require(
@@ -89,6 +90,12 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             f"PyPI classifier includes Python 3.{minor}",
             checks,
         )
+    urls = project.get("urls", {})
+    _require(
+        str(urls.get("Roadmap", "")).endswith("/ROADMAP_1_4.md"),
+        "project metadata points at the 1.4 roadmap",
+        checks,
+    )
 
     roadmap_text = _read(root, "ROADMAP_1_4.md")
     roadmap = parse_roadmap(roadmap_text)
@@ -135,16 +142,23 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             checks,
         )
         _require(
-            version in {CURRENT_STABLE_VERSION, TARGET_VERSION},
+            version in {PREVIOUS_STABLE_VERSION, TARGET_VERSION},
             f"package version is valid for the 1.4 hardening phase: {version}",
             checks,
         )
         if roadmap.completed < 10:
             _require(
-                version == CURRENT_STABLE_VERSION,
+                version == PREVIOUS_STABLE_VERSION,
                 "stable package remains 1.3.0 before 10/10",
                 checks,
             )
+
+    init_text = _read(root, "src/swirengine/__init__.py")
+    _require(
+        f'__version__ = "{version}"' in init_text,
+        "runtime __version__ matches project metadata",
+        checks,
+    )
 
     for relative in REQUIRED_1_4_DOCS:
         _read(root, relative)
@@ -177,6 +191,12 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         "SWIR_DEMO_RUNTIME_PROBE",
     ):
         _require(token in hardening, f"1.4 hardening workflow includes {token}", checks)
+    if require_complete:
+        _require(
+            "verify_1_4_release_candidate.py --require-complete" in hardening,
+            "final hardening workflow runs the strict complete contract",
+            checks,
+        )
 
     release = _read(root, ".github/workflows/release.yml")
     _require(
@@ -193,7 +213,7 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
     if require_complete:
         _require(
             "verify_1_4_release_candidate.py --require-complete" in release,
-            "release workflow hard-gates complete 1.4 contract",
+            "release workflow hard-gates the complete 1.4 contract",
             checks,
         )
         _require(
@@ -201,13 +221,40 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             "release workflow validates Neon Frontier 1.4",
             checks,
         )
+        _require(
+            "RELEASE_NOTES_1_4.md" in release,
+            "GitHub release is wired to the 1.4 release notes",
+            checks,
+        )
+        _require(
+            "branches:" not in release.split("jobs:", 1)[0],
+            "publication workflow has no main-branch publish trigger",
+            checks,
+        )
 
     ci = _read(root, ".github/workflows/ci.yml")
     _require(
         "verify_1_3_release_candidate.py" in ci,
-        "stable 1.3 release contract remains protected during 1.4 development",
+        "historical 1.3 compatibility contract remains protected",
         checks,
     )
+    _require(
+        "verify_1_4_release_candidate.py" in ci,
+        "normal CI audits the 1.4 release contract",
+        checks,
+    )
+
+    readme = _read(root, "README.md")
+    if require_complete:
+        _require(
+            f"# SwirEngine {TARGET_VERSION}" in readme,
+            "README title matches the final 1.4 version",
+            checks,
+        )
+        _require("10/10 = 100.0%" in readme, "README reports verified 10/10 progress", checks)
+        _require("Neon Frontier 1.4" in readme, "README documents the final showcase", checks)
+        notes = _read(root, "RELEASE_NOTES_1_4.md")
+        _require(TARGET_VERSION in notes, "1.4 release notes name the release version", checks)
 
     return AuditReport(version=version, roadmap=roadmap, checks=tuple(checks))
 

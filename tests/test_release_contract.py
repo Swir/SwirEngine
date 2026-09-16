@@ -15,7 +15,7 @@ def test_public_api_exports_are_unique_and_resolvable():
 
 
 def test_target_minor_release_version():
-    assert swirengine.__version__ == "1.3.0"
+    assert swirengine.__version__ == "1.4.0"
 
 
 def test_supported_python_range_is_explicit():
@@ -23,11 +23,15 @@ def test_supported_python_range_is_explicit():
     assert {item.strip() for item in requires_python.split(",")} == {">=3.10", "<3.15"}
 
 
-def test_readme_tracks_current_release_and_support_window():
+def test_readme_tracks_current_release_support_window_and_major_1_4_systems():
     readme = Path("README.md").read_text(encoding="utf-8")
     assert f"# SwirEngine {swirengine.__version__}" in readme
     assert "Python 3.10-3.13" in readme
     assert "Python 3.14 on Windows x86-64" in readme
     assert "gamepad" in readme.lower()
-    assert "shadows, post-processing" in readme
+    assert "Renderer 2.0" in readme
+    assert "Physics 2.0" in readme
+    assert "Multiplayer 2.0" in readme
+    assert "Neon Frontier 1.4" in readme
+    assert "10/10 = 100.0%" in readme
     assert "remain roadmap work" not in readme
