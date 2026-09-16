@@ -5,6 +5,8 @@ from __future__ import annotations
 import math
 import os
 
+from procedural_art import ensure_art
+
 from swirengine import (
     CharacterConfig3D,
     CharacterInput3D,
@@ -20,8 +22,6 @@ from swirengine.graphics.material import Material3D
 from swirengine.graphics.mesh import Mesh3D, cube_mesh
 from swirengine.physics.collision3d import BoxCollider3D, SphereBounds3D
 from swirengine.physics.dynamics3d import PhysicsBody3D, PhysicsScene3D
-
-from procedural_art import ensure_art
 
 W, H = 960, 540
 FIXED_DT = 1.0 / 120.0
