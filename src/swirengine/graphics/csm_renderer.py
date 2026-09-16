@@ -8,7 +8,8 @@ import numpy as np
 from .camera3d import Camera3D
 from .ibl_renderer import _read_context_state
 from .lights import DirectionalLight3D, select_lights
-from .mesh import Mesh3D
+from .mesh import Mesh3D, MeshData, cube_mesh
+from .primitives import Cube3D
 from .renderer import Renderer
 from .renderer2 import (
     CascadedShadowPlan3D,
@@ -35,6 +36,7 @@ class CascadedDirectionalShadowMap:
         self.settings = settings or Renderer2Settings()
         self._targets: list[tuple[object, object]] = []
         self._mesh_gpu: dict[int, tuple[object, object, int]] = {}
+        self._cube_mesh = cube_mesh()
         self._released = False
         self.program = self.ctx.program(
             vertex_shader="""
@@ -80,16 +82,23 @@ class CascadedDirectionalShadowMap:
             depth.release()
         self._targets.clear()
 
-    def _gpu_mesh(self, obj: Mesh3D) -> tuple[object, int]:
-        key = id(obj.mesh)
+    def _gpu_mesh(self, mesh: MeshData) -> tuple[object, int]:
+        key = id(mesh)
         cached = self._mesh_gpu.get(key)
         if cached is None:
-            vertices = np.ascontiguousarray(obj.mesh.vertices, dtype="f4")
+            vertices = np.ascontiguousarray(mesh.vertices, dtype="f4")
             vbo = self.ctx.buffer(vertices.tobytes())
             vao = self.ctx.vertex_array(self.program, [(vbo, "3f", "in_pos")])
-            cached = (vbo, vao, obj.mesh.vertex_count)
+            cached = (vbo, vao, mesh.vertex_count)
             self._mesh_gpu[key] = cached
         return cached[1], cached[2]
+
+    def _shadow_geometry(self, obj: object) -> tuple[MeshData, np.ndarray] | None:
+        if isinstance(obj, Mesh3D):
+            return obj.mesh, obj.transform.matrix()
+        if isinstance(obj, Cube3D):
+            return self._cube_mesh, obj.transform.matrix()
+        return None
 
     def render(
         self,
@@ -128,12 +137,14 @@ class CascadedDirectionalShadowMap:
                 framebuffer.clear(depth=1.0)
                 self.ctx.enable(self.ctx.DEPTH_TEST)
                 for obj in getattr(scene, "objects", ()):
-                    if not isinstance(obj, Mesh3D):
-                        continue
                     if not getattr(obj, "enabled", True) or not getattr(obj, "visible", True):
                         continue
-                    vao, count = self._gpu_mesh(obj)
-                    matrix = frame.view_projection @ obj.transform.matrix()
+                    geometry = self._shadow_geometry(obj)
+                    if geometry is None:
+                        continue
+                    mesh, model = geometry
+                    vao, count = self._gpu_mesh(mesh)
+                    matrix = frame.view_projection @ model
                     self._write_mat4(self.program["light_mvp"], matrix)
                     vao.render(vertices=count)
         finally:
@@ -177,6 +188,7 @@ class Renderer2(ShadowedImageBasedPostProcessRenderer):
         self._renderer2_frame: Renderer2FramePlan | None = None
         self._csm: CascadedDirectionalShadowMap | None = None
         self._csm_overlay_gpu: dict[int, tuple[object, object, int]] = {}
+        self._csm_cube_mesh = cube_mesh()
         kwargs["shadows_enabled"] = False
         super().__init__(*args, **kwargs)
         self._init_csm_overlay()
@@ -295,20 +307,27 @@ class Renderer2(ShadowedImageBasedPostProcessRenderer):
         selection = select_lights(getattr(scene, "objects", ()))
         return selection.directional[0] if selection.directional else None
 
-    def _csm_overlay_vao(self, obj: Mesh3D) -> tuple[object, int]:
-        key = id(obj.mesh)
+    def _csm_overlay_vao(self, mesh: MeshData) -> tuple[object, int]:
+        key = id(mesh)
         cached = self._csm_overlay_gpu.get(key)
         if cached is None:
-            interleaved = obj.mesh.interleaved(include_uvs=True).reshape((-1, 8))
+            interleaved = mesh.interleaved(include_uvs=True).reshape((-1, 8))
             position_normal = np.ascontiguousarray(interleaved[:, :6], dtype="f4")
             vbo = self.ctx.buffer(position_normal.tobytes())
             vao = self.ctx.vertex_array(
                 self.csm_overlay_program,
                 [(vbo, "3f 3f", "in_pos", "in_normal")],
             )
-            cached = (vbo, vao, obj.mesh.vertex_count)
+            cached = (vbo, vao, mesh.vertex_count)
             self._csm_overlay_gpu[key] = cached
         return cached[1], cached[2]
+
+    def _receiver_geometry(self, obj: object) -> tuple[MeshData, np.ndarray] | None:
+        if isinstance(obj, Mesh3D):
+            return obj.mesh, obj.transform.matrix()
+        if isinstance(obj, Cube3D):
+            return self._csm_cube_mesh, obj.transform.matrix()
+        return None
 
     def _render_csm_overlay(
         self,
@@ -322,7 +341,6 @@ class Renderer2(ShadowedImageBasedPostProcessRenderer):
         count = len(frame.light_frames)
         for index in range(count):
             resource.use(index, location=self._CSM_TEXTURE_BASE + index)
-        # Fill unused sampler slots with the last valid cascade so every sampler is complete.
         for index in range(count, 4):
             resource.use(count - 1, location=self._CSM_TEXTURE_BASE + index)
 
@@ -342,10 +360,11 @@ class Renderer2(ShadowedImageBasedPostProcessRenderer):
         self.csm_overlay_program["shadow_bias"].value = 0.0015
         self.csm_overlay_program["normal_bias"].value = 0.003
         self.csm_overlay_program["shadow_floor"].value = 0.18
-        self._write_mat4(self.csm_overlay_program["view_matrix"], camera.view_matrix())
+        view_matrix = camera.view_matrix()
+        self._write_mat4(self.csm_overlay_program["view_matrix"], view_matrix)
 
         projection = self._shadow_projection(camera)
-        view_projection = projection @ camera.view_matrix()
+        view_projection = projection @ view_matrix
         previous_depth_func = _read_context_state(self.ctx, "depth_func", "<")
         previous_depth_mask = _read_context_state(self.ctx, "depth_mask", True)
         self.ctx.enable(self.ctx.DEPTH_TEST)
@@ -355,10 +374,13 @@ class Renderer2(ShadowedImageBasedPostProcessRenderer):
         self.ctx.depth_mask = False
         try:
             for obj in getattr(scene, "objects", ()):
-                if not isinstance(obj, Mesh3D) or not obj.enabled or not obj.visible:
+                if not getattr(obj, "enabled", True) or not getattr(obj, "visible", True):
                     continue
-                vao, vertices = self._csm_overlay_vao(obj)
-                model = obj.transform.matrix()
+                geometry = self._receiver_geometry(obj)
+                if geometry is None:
+                    continue
+                mesh, model = geometry
+                vao, vertices = self._csm_overlay_vao(mesh)
                 self._write_mat4(self.csm_overlay_program["model"], model)
                 self._write_mat4(
                     self.csm_overlay_program["mvp"],
