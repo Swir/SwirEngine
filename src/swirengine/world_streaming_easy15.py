@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable, Sequence
 from typing import TypeAlias
 
+from typing_extensions import Self
+
 from .core.scene import Scene
 from .ecs import Entity
 from .large_world import ChunkContent, ChunkKey
@@ -58,7 +60,7 @@ def _chunk_key(value: ChunkKey | Sequence[int], *, dimensions: int) -> ChunkKey:
             raise ValueError("2D world stream chunk keys must use z=0")
         return value
     if isinstance(value, (str, bytes)):
-        raise ValueError("world stream chunk key must contain integer coordinates")
+        raise TypeError("world stream chunk key must contain integer coordinates")
     coords = tuple(value)
     expected = 2 if dimensions == 2 else 3
     if len(coords) != expected:
@@ -256,7 +258,7 @@ class WorldStream:
     def context(self, cell_id: str) -> WorldCellContext:
         return self.runtime.context(cell_id)
 
-    def __enter__(self) -> WorldStream:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *_exc: object) -> None:

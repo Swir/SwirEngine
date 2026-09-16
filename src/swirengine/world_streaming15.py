@@ -594,7 +594,7 @@ class WorldStreamingRuntime:
         if isinstance(focus, Vec2):
             return float(focus.x), float(focus.y), 0.0
         if isinstance(focus, (str, bytes)):
-            raise ValueError("world streaming focus must contain numeric coordinates")
+            raise TypeError("world streaming focus must contain numeric coordinates")
         values = tuple(float(value) for value in focus)
         if len(values) != self.settings.dimensions:
             raise ValueError(
