@@ -184,8 +184,15 @@ class WorldStream:
     def _remove_owned_objects(self, content: ChunkContent) -> None:
         if self._remover is None:
             return
+        first_error: Exception | None = None
         for obj in content.objects:
-            self._remover(obj)
+            try:
+                self._remover(obj)
+            except Exception as exc:  # noqa: BLE001 - cleanup must continue for remaining objects
+                if first_error is None:
+                    first_error = exc
+        if first_error is not None:
+            raise first_error
 
     def add_chunk(
         self,
