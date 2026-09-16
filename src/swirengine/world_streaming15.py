@@ -75,6 +75,8 @@ class WorldPartitionCell:
         object.__setattr__(self, "cost", _positive_int(self.cost, label="world cell cost"))
         if not isinstance(self.priority, int) or isinstance(self.priority, bool):
             raise TypeError("world cell priority must be an integer")
+        if isinstance(self.dependencies, (str, bytes)):
+            raise TypeError("world cell dependencies must be an iterable of cell ids, not a string")
         dependencies = tuple(_cell_id(value) for value in self.dependencies)
         if len(set(dependencies)) != len(dependencies):
             raise ValueError("world cell dependencies must not contain duplicates")
@@ -174,6 +176,8 @@ class WorldStreamingSettings:
         if not math.isfinite(chunk_size) or chunk_size <= 0.0:
             raise ValueError("world streaming chunk_size must be finite and greater than zero")
         object.__setattr__(self, "chunk_size", chunk_size)
+        if not isinstance(self.dimensions, int) or isinstance(self.dimensions, bool):
+            raise TypeError("world streaming dimensions must be an integer")
         if self.dimensions not in (2, 3):
             raise ValueError("world streaming dimensions must be 2 or 3")
         if not isinstance(self.active_radius_chunks, int) or isinstance(
@@ -284,6 +288,14 @@ class WorldStreamingRuntime:
         self.scene = scene
         self.registry = registry
         self.settings = settings or WorldStreamingSettings()
+        if self.settings.dimensions == 2:
+            invalid_2d = sorted(
+                cell.cell_id for cell in registry.cells.values() if cell.key.z != 0
+            )
+            if invalid_2d:
+                raise ValueError(
+                    "2D world streaming cells must use z=0: " + ", ".join(invalid_2d)
+                )
         self._states = {cell_id: _CellState() for cell_id in registry.cells}
         self._active_ids: set[str] = set()
         self._failed_ids: set[str] = set()
@@ -581,6 +593,20 @@ class WorldStreamingRuntime:
         for cell_id in active:
             if self._deactivate(cell_id):
                 unloaded.append(cell_id)
+        failures = self.failures()
+        self._diagnostics = WorldStreamingDiagnostics(
+            update_index=self._update_index,
+            focus_key=self._diagnostics.focus_key,
+            local_keys=0,
+            desired_cells=0,
+            target_cells=0,
+            active_cells=len(self._active_ids),
+            active_cost=self._active_cost,
+            blocked_by_budget=0,
+            failed_cells=len(failures),
+            total_activations=self._total_activations,
+            total_deactivations=self._total_deactivations,
+        )
         return tuple(unloaded)
 
     def state_fingerprint(self) -> str:
@@ -602,22 +628,26 @@ class WorldStreamingRuntime:
         focus: Vec2 | Vec3 | Sequence[float],
     ) -> tuple[float, float, float]:
         if isinstance(focus, Vec3):
-            return (
+            values = (
                 float(focus.x),
                 float(focus.y),
                 float(focus.z) if self.settings.dimensions == 3 else 0.0,
             )
-        if isinstance(focus, Vec2):
-            return float(focus.x), float(focus.y), 0.0
-        if isinstance(focus, (str, bytes)):
-            raise TypeError("world streaming focus must contain numeric coordinates")
-        values = tuple(float(value) for value in focus)
-        if len(values) != self.settings.dimensions:
-            raise ValueError(
-                f"world streaming focus must contain exactly {self.settings.dimensions} coordinates"
+        elif isinstance(focus, Vec2):
+            values = (float(focus.x), float(focus.y), 0.0)
+        else:
+            if isinstance(focus, (str, bytes)):
+                raise TypeError("world streaming focus must contain numeric coordinates")
+            raw_values = tuple(float(value) for value in focus)
+            if len(raw_values) != self.settings.dimensions:
+                raise ValueError(
+                    f"world streaming focus must contain exactly {self.settings.dimensions} coordinates"
+                )
+            values = (
+                (raw_values[0], raw_values[1], 0.0)
+                if self.settings.dimensions == 2
+                else (raw_values[0], raw_values[1], raw_values[2])
             )
         if not all(math.isfinite(value) for value in values):
             raise ValueError("world streaming focus coordinates must be finite")
-        if self.settings.dimensions == 2:
-            return values[0], values[1], 0.0
-        return values[0], values[1], values[2]
+        return values
