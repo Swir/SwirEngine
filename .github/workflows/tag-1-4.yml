@@ -6,48 +6,31 @@ on:
       - "release/1.4.0-publish"
 
 jobs:
-  create-tag:
-    name: Verify final main commit and create v1.4.0
+  verify-tag:
+    name: Verify immutable v1.4.0 tag for publication recovery
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: "v1.4.0"
           fetch-depth: 0
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
-      - name: Enforce complete 1.4 release contract before tagging
+      - name: Enforce complete 1.4 release contract at the immutable tag
         run: python tools/verify_1_4_release_candidate.py --require-complete
-      - name: Prove publication branch points at the exact current main commit
+      - name: Prove v1.4.0 still points at the final main release commit
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          test "$GITHUB_REF_NAME" = "release/1.4.0-publish"
           main_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
-          if [ "$main_sha" != "$GITHUB_SHA" ]; then
-            echo "Publication branch is not the exact current main commit: main=$main_sha branch=$GITHUB_SHA"
+          tag_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/v1.4.0" --jq '.object.sha')"
+          if [ "$tag_sha" != "$main_sha" ]; then
+            echo "Immutable release tag no longer matches the final main release commit: main=$main_sha tag=$tag_sha"
             exit 1
           fi
-      - name: Refuse an existing v1.4.0 tag
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/v1.4.0" >/dev/null 2>&1; then
-            echo "Tag v1.4.0 already exists; refusing to move or replace it."
-            exit 1
-          fi
-      - name: Create immutable release tag at verified main
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
-            -f ref='refs/tags/v1.4.0' \
-            -f sha="$GITHUB_SHA"
+          echo "Verified immutable v1.4.0 tag at $tag_sha."
