@@ -12,6 +12,7 @@ except ModuleNotFoundError:  # Python 3.10
 
 TARGET_VERSION = "1.3.0"
 CURRENT_STABLE_VERSION = "1.2.0"
+ACTIVE_STABLE_VERSIONS = {CURRENT_STABLE_VERSION, TARGET_VERSION, "1.4.0"}
 EXPECTED_TOTAL = 10
 EXPECTED_PYTHON_RANGE = ">=3.10,<3.15"
 REQUIRED_1_3_DOCS = (
@@ -85,8 +86,8 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
     version = project["version"]
 
     _require(
-        version in {CURRENT_STABLE_VERSION, TARGET_VERSION},
-        f"package version is valid for the 1.3 release phase: {version}",
+        version in ACTIVE_STABLE_VERSIONS,
+        f"package version preserves the locked 1.3 compatibility phase: {version}",
         checks,
     )
     _require(
@@ -118,17 +119,16 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
     if require_complete:
         _require(roadmap.completed == 10 and roadmap.remaining == 0, "release gate requires exactly 10/10 completed deliverables", checks)
         _require("STATUS-COMPLETE" in roadmap_text, "completed 1.3 roadmap status is COMPLETE", checks)
-        _require(version == TARGET_VERSION, f"final package version is {TARGET_VERSION}", checks)
+        _require(version == TARGET_VERSION, f"historical 1.3 publication version is {TARGET_VERSION}", checks)
     else:
         _require(roadmap.completed <= 10, "development roadmap cannot exceed 10 deliverables", checks)
 
     readme = _read(root, "README.md")
     _require("Python 3.10-3.13" in readme, "README documents cross-platform Python support", checks)
     _require("Python 3.14 on Windows" in readme, "README documents verified Windows Python 3.14 scope", checks)
-    _require("Neon Frontier 1.3" in readme or roadmap.completed < 10, "README names final Neon Frontier 1.3 validation game", checks)
+    _require("Neon Frontier 1.3" in readme or roadmap.completed < 10, "README keeps the locked Neon Frontier 1.3 regression game documented", checks)
     if require_complete:
-        _require(f"# SwirEngine {TARGET_VERSION}" in readme, "README title matches final 1.3 version", checks)
-        _require("current stable release" in readme.lower() and TARGET_VERSION in readme, "README identifies 1.3.0 as stable", checks)
+        _require(f"# SwirEngine {TARGET_VERSION}" in readme, "README title matches historical 1.3 publication", checks)
 
     init_text = _read(root, "src/swirengine/__init__.py")
     for symbol in REQUIRED_PUBLIC_SYMBOLS:
@@ -151,36 +151,29 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         "SWIR_1_3_SMOKE_FRAMES",
         "SWIR_DEMO_RUNTIME_PROBE",
     ):
-        _require(token in frontier, f"Neon Frontier exercises {token}", checks)
+        _require(token in frontier, f"Neon Frontier 1.3 exercises {token}", checks)
     _read(root, "demo_projects/neon_frontier_1_3/README.md")
 
-    release = _read(root, ".github/workflows/release.yml")
-    _require("verify_1_3_release_candidate.py --require-complete" in release, "release workflow requires complete 1.3 contract", checks)
-    _require("pypa/gh-action-pypi-publish@release/v1" in release and "id-token: write" in release, "PyPI publication uses Trusted Publishing", checks)
-    _require("skip-existing: true" not in release, "publication cannot hide duplicate artifacts", checks)
-    _require("neon_frontier_1_3/run_game.py" in release, "release workflow validates Neon Frontier 1.3", checks)
-    _require("python-version: \"3.14\"" in release and "cp314-cp314-win_amd64" in release, "release keeps Windows CPython 3.14 native wheel gate", checks)
-
     ci = _read(root, ".github/workflows/ci.yml")
-    _require("verify_1_3_release_candidate.py" in ci, "normal CI runs the 1.3 release-contract verifier", checks)
+    _require("verify_1_3_release_candidate.py" in ci, "normal CI runs the locked 1.3 compatibility verifier", checks)
     full_game = _read(root, ".github/workflows/full-game-1-3.yml")
-    _require("xvfb-run" in full_game, "full-game gate has real OpenGL smoke", checks)
-    _require("PyInstaller" in full_game, "full-game gate bundles Windows validation game", checks)
+    _require("xvfb-run" in full_game, "full-game 1.3 gate keeps real OpenGL smoke", checks)
+    _require("PyInstaller" in full_game, "full-game 1.3 gate keeps packaged Windows validation", checks)
 
     return AuditReport(version, roadmap, tuple(checks))
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Verify the SwirEngine 1.3 final release contract.")
+    parser = argparse.ArgumentParser(description="Verify the locked SwirEngine 1.3 compatibility contract.")
     parser.add_argument("--require-complete", action="store_true")
     args = parser.parse_args()
     try:
         report = audit(require_complete=args.require_complete)
     except (AssertionError, KeyError, tomllib.TOMLDecodeError) as exc:
-        print(f"1.3 RELEASE CONTRACT FAILED: {exc}")
+        print(f"1.3 COMPATIBILITY CONTRACT FAILED: {exc}")
         return 1
     print(
-        "SwirEngine 1.3 release contract OK: "
+        "SwirEngine 1.3 compatibility contract OK: "
         f"version={report.version}, roadmap={report.roadmap.completed}/{report.roadmap.total} "
         f"({report.roadmap.percent:.1f}%), checks={len(report.checks)}"
     )
