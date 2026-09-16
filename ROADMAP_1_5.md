@@ -5,7 +5,7 @@ SwirEngine 1.5 builds on the released and locked 1.4 line. The compatibility rul
 Current development progress:
 
 ```text
-████████████░░░░░░░░ 60.0% — 6/10
+██████████████░░░░░░ 70.0% — 7/10
 ```
 
 ## Milestones
@@ -16,7 +16,7 @@ Current development progress:
 - [x] **4. Animation Graphs 2.0** — reusable clips/state graphs, transitions, parameters, blending contracts and headless validation.
 - [x] **5. Navigation 2.0** — runtime navigation queries, agents, path following, avoidance contracts and scalable diagnostics.
 - [x] **6. World Streaming 2.0** — partitioned scene streaming, lifecycle hooks, budgets and deterministic activation/deactivation rules.
-- [ ] **7. UI Toolkit 2.0** — retained creator UI model, layout, focus/input navigation, theming and resolution-independent scaling.
+- [x] **7. UI Toolkit 2.0** — retained creator UI model, layout, focus/input navigation, theming and resolution-independent scaling.
 - [ ] **8. Editor Productivity 2.0** — prefab/variant authoring, safer batch workflows, command history improvements and creator diagnostics.
 - [ ] **9. Runtime Diagnostics & Profiling 2.0** — structured frame/runtime counters, capture/export surfaces and regression-friendly performance contracts.
 - [ ] **10. Showcase, Hardening & 1.5 Release Gate** — integrated 2D/3D validation, complete compatibility matrix, documentation closeout, packaging and strict release/PyPI verification.
@@ -96,5 +96,19 @@ World Streaming 2.0 lives in the additive `swirengine.world_streaming15` and `sw
 - focused Python 3.10/3.13/3.14 tests, strict Ruff, compile and a runnable creator demo;
 - a 10,000-cell / 1,200-focus-update workload remaining below the documented 3.0-second CI budget while preserving the bounded local-window contract, without making an FPS claim;
 - the repository's normal CI, Desktop Export, game-demo and 1.4 compatibility/hardening regression workflows remaining green on the verified milestone head.
+
+## Milestone 7 contract
+
+UI Toolkit 2.0 lives in the additive `swirengine.ui15` layer and composes the released 1.x `UILabel`, `UIPanel`, `UIButton`, `UIProgressBar` and `UIManager` controls instead of changing their public behavior. Completion requires:
+
+- a retained widget tree with stable unique ids, explicit parentage, cycle-safe reparenting and recursive renderer-control cleanup;
+- deterministic vertical/horizontal layout with padding, gaps, start/center/end/stretch alignment and start/center/end/space-between justification;
+- reference-resolution scaling with configurable finite scale limits and inherited visibility/enabled state;
+- one focus model shared by direct creator calls, mouse press/release activation, `Tab`/`Shift+Tab`, arrow-key spatial navigation and standardized gamepad D-pad/A navigation;
+- centralized theme propagation, including a built-in high-contrast preset, without changing global stable 1.x defaults;
+- portable creator-state snapshots/fingerprints plus runtime diagnostics covering layout generations, focus, pointer hits, activations, visibility and effective scale;
+- focused Python 3.10/3.13/3.14 tests, strict Ruff, compile and a runnable creator demo;
+- a 240-button / 320-responsive-layout workload remaining below the documented 5.0-second CI budget while making no renderer-FPS claim;
+- the repository's full CI, Desktop Export, Full Game 1.3, game-demo and 1.4 compatibility/hardening regression workflows remaining green on the verified milestone head.
 
 Progress is based on milestone completion, not file count or commit count. A milestone is 10 percentage points. SwirEngine 1.5 must not be tagged or published until all 10 milestones are complete and the release gate is green.
