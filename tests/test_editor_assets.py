@@ -1,5 +1,9 @@
 from swirengine import AssetManager
-from swirengine.editor_assets import EditorAssetBrowser, EditorAssetDragPayload, classify_editor_asset
+from swirengine.editor_assets import (
+    EditorAssetBrowser,
+    EditorAssetDragPayload,
+    classify_editor_asset,
+)
 
 
 def test_classify_editor_asset_covers_creator_facing_types():
