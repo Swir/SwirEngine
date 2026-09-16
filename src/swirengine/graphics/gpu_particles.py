@@ -4,6 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
+from PIL import Image
 
 from ..gpu_particles import (
     GPUParticleBlendMode,
@@ -52,6 +53,7 @@ class GPUParticlePass3D:
     def __init__(self, ctx) -> None:
         self.ctx = ctx
         self._resources: dict[int, _EmitterGPU] = {}
+        self._particle_textures: dict[str, object] = {}
         self._framebuffer = None
         self._target_identity = (0, 0)
         self._released = False
@@ -395,6 +397,20 @@ class GPUParticlePass3D:
         )
         self._target_identity = identity
 
+    def _particle_texture(self, path: str) -> object:
+        key = str(path)
+        cached = self._particle_textures.get(key)
+        if cached is not None:
+            return cached
+        with Image.open(key) as source:
+            image = source.convert("RGBA").transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+            texture = self.ctx.texture(image.size, 4, image.tobytes())
+        texture.filter = (self.ctx.LINEAR, self.ctx.LINEAR)
+        texture.repeat_x = False
+        texture.repeat_y = False
+        self._particle_textures[key] = texture
+        return texture
+
     def _simulate(self, emitter: GPUParticleEmitter3D, resource: _EmitterGPU) -> int:
         frame = emitter._consume_gpu_frame()
         if frame.dt <= 0.0 and frame.spawn_count == 0:
@@ -492,10 +508,13 @@ class GPUParticlePass3D:
         program["end_size_scale"].value = float(emitter.end_size_scale)
         use_texture = emitter.texture is not None
         program["use_texture"].value = use_texture
-        if use_texture:
-            if texture_loader is None:
-                raise RuntimeError("texture_loader is required for textured GPU particles")
-            texture_loader(emitter.texture).use(location=0)
+        if emitter.texture is not None:
+            texture = (
+                texture_loader(emitter.texture)
+                if texture_loader is not None
+                else self._particle_texture(emitter.texture)
+            )
+            texture.use(location=0)
         self._configure_blend(emitter)
         resource.sprite_vaos[resource.source_index].render(
             mode=self.ctx.POINTS,
@@ -619,6 +638,9 @@ class GPUParticlePass3D:
         for resource in self._resources.values():
             resource.release()
         self._resources.clear()
+        for texture in self._particle_textures.values():
+            texture.release()
+        self._particle_textures.clear()
         if self._framebuffer is not None:
             self._framebuffer.release()
             self._framebuffer = None
