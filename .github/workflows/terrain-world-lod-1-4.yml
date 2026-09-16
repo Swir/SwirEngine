@@ -1,0 +1,44 @@
+name: Terrain World LOD 1.4 Validation
+
+on:
+  push:
+    branches:
+      - "feat/1.4-terrain-world-lod"
+    paths:
+      - "src/swirengine/terrain.py"
+      - "tests/test_terrain_world_lod.py"
+      - "tools/benchmark_terrain_world_lod.py"
+      - "examples/demo_terrain_world_lod.py"
+      - "docs/TERRAIN_WORLD_LOD_1_4.md"
+      - "ROADMAP_1_4.md"
+      - ".github/workflows/terrain-world-lod-1-4.yml"
+  pull_request:
+    paths:
+      - "src/swirengine/terrain.py"
+      - "tests/test_terrain_world_lod.py"
+      - "tools/benchmark_terrain_world_lod.py"
+      - "examples/demo_terrain_world_lod.py"
+      - "docs/TERRAIN_WORLD_LOD_1_4.md"
+      - "ROADMAP_1_4.md"
+      - ".github/workflows/terrain-world-lod-1-4.yml"
+
+jobs:
+  terrain-world-lod:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Terrain + World LOD regressions
+        run: pytest -q tests/test_terrain_world_lod.py tests/test_large_world.py tests/test_large_world_provider_cache.py
+      - name: Deterministic terrain performance gate
+        run: python tools/benchmark_terrain_world_lod.py --chunks 32 --chunk-cells 16 --radius 2 --frames 120
+      - name: Asset-free integration demo
+        run: python examples/demo_terrain_world_lod.py
+      - name: Strict lint
+        run: ruff check src/swirengine/terrain.py tests/test_terrain_world_lod.py tools/benchmark_terrain_world_lod.py examples/demo_terrain_world_lod.py
+      - name: Compile terrain path
+        run: python -m compileall -q src/swirengine/terrain.py tests/test_terrain_world_lod.py tools/benchmark_terrain_world_lod.py examples/demo_terrain_world_lod.py
