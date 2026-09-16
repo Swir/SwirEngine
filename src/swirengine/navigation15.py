@@ -5,7 +5,7 @@ import heapq
 import json
 import math
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import pairwise
 from types import MappingProxyType
 from typing import Any
@@ -122,6 +122,7 @@ class NavigationQueryFilter:
     blocked_edges: frozenset[tuple[str, str]] = frozenset()
     allowed_areas: frozenset[str] | None = None
     area_costs: tuple[tuple[str, float], ...] = ()
+    _area_cost_map: Mapping[str, float] = field(init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         blocked_nodes = frozenset(
@@ -148,16 +149,18 @@ class NavigationQueryFilter:
             if multiplier <= 0.0:
                 raise ValueError("navigation area cost multipliers must be > 0")
             costs[area] = multiplier
+        ordered_costs = tuple(sorted(costs.items()))
         object.__setattr__(self, "blocked_nodes", blocked_nodes)
         object.__setattr__(self, "blocked_edges", blocked_edges)
         object.__setattr__(self, "allowed_areas", allowed_areas)
-        object.__setattr__(self, "area_costs", tuple(sorted(costs.items())))
+        object.__setattr__(self, "area_costs", ordered_costs)
+        object.__setattr__(self, "_area_cost_map", MappingProxyType(dict(ordered_costs)))
 
     def allows_area(self, area: str) -> bool:
         return self.allowed_areas is None or area in self.allowed_areas
 
     def multiplier(self, area: str) -> float:
-        return dict(self.area_costs).get(area, 1.0)
+        return self._area_cost_map.get(area, 1.0)
 
     @property
     def minimum_multiplier(self) -> float:
@@ -625,6 +628,9 @@ class NavigationAgent:
         self, neighbors: Iterable[NavigationNeighbor] = ()
     ) -> NavPoint:
         desired = self.desired_velocity()
+        if self.arrived:
+            self.avoidance_neighbors = 0
+            return desired
         influential = self._neighbors(neighbors)
         self.avoidance_neighbors = len(influential)
         if not influential or self.settings.avoidance_strength <= 0.0:
