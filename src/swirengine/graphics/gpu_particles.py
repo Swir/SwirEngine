@@ -284,6 +284,7 @@ class GPUParticlePass3D:
                 uniform vec4 end_color;
                 uniform float end_size_scale;
                 uniform float mesh_scale;
+                uniform float mesh_size_reference;
                 uniform float emissive_strength;
                 out vec4 v_color;
                 void main() {
@@ -295,7 +296,9 @@ class GPUParticlePass3D:
                         return;
                     }
                     float t = clamp(age / lifetime, 0.0, 1.0);
-                    float scale = mesh_scale * mix(1.0, end_size_scale, t);
+                    float size_factor = max(in_misc.x, 0.0001)
+                        / max(mesh_size_reference, 0.0001);
+                    float scale = mesh_scale * size_factor * mix(1.0, end_size_scale, t);
                     vec3 world = in_position_age.xyz + in_pos * scale;
                     gl_Position = view_projection * vec4(world, 1.0);
                     v_color = mix(start_color, end_color, t);
@@ -548,6 +551,10 @@ class GPUParticlePass3D:
         self._set_color_uniforms(program, emitter)
         program["end_size_scale"].value = float(emitter.end_size_scale)
         program["mesh_scale"].value = float(emitter.mesh_scale)
+        program["mesh_size_reference"].value = max(
+            0.0001,
+            (float(emitter.size_pixels[0]) + float(emitter.size_pixels[1])) * 0.5,
+        )
         self._configure_blend(emitter)
         resource.mesh_vaos[resource.source_index].render(
             vertices=self._mesh_vertex_count,
