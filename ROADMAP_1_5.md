@@ -5,7 +5,7 @@ SwirEngine 1.5 builds on the released and locked 1.4 line. The compatibility rul
 Current development progress:
 
 ```text
-██████░░░░░░░░░░░░░░ 30.0% — 3/10
+████████░░░░░░░░░░░░ 40.0% — 4/10
 ```
 
 ## Milestones
@@ -13,7 +13,7 @@ Current development progress:
 - [x] **1. Deterministic Simulation & Replay** — fixed-step clock, canonical portable replay format, state fingerprints, bounded recording, checkpoints, verified playback, seeking, docs, demo, benchmark and dedicated CI.
 - [x] **2. Save & Profile 2.0** — versioned integrity-checked save envelopes, atomic backup recovery, ordered migrations, metadata/revisions, bounded autosave rotation, legacy 1.x import, health inspection and corruption-safe recovery.
 - [x] **3. Audio 2.0** — bounded SFX voice budgets, creator priorities, deterministic voice stealing/protection, mixer snapshots, stable spatial audio composition, headless diagnostics and portable state fingerprints.
-- [ ] **4. Animation Graphs 2.0** — reusable clips/state graphs, transitions, parameters, blending contracts and headless validation.
+- [x] **4. Animation Graphs 2.0** — reusable clips/state graphs, transitions, parameters, blending contracts and headless validation.
 - [ ] **5. Navigation 2.0** — runtime navigation queries, agents, path following, avoidance contracts and scalable diagnostics.
 - [ ] **6. World Streaming 2.0** — partitioned scene streaming, lifecycle hooks, budgets and deterministic activation/deactivation rules.
 - [ ] **7. UI Toolkit 2.0** — retained creator UI model, layout, focus/input navigation, theming and resolution-independent scaling.
@@ -56,9 +56,9 @@ Audio 2.0 lives in `swirengine.audio15` and composes the released `swirengine.au
 - focused Python 3.10/3.13/3.14 tests, strict Ruff, compile, runnable demo and a 5,000-operation workload gate;
 - the repository's triggered compatibility/regression workflows remaining green on the final milestone head.
 
-## Milestone 4 validation contract (active)
+## Milestone 4 contract
 
-Animation Graphs 2.0 is being developed as an additive `swirengine.animation15` layer while the stable 1.x tween, timeline and state-machine APIs remain unchanged. The milestone remains unchecked until the final branch head satisfies all of the following:
+Animation Graphs 2.0 lives in the additive `swirengine.animation15` layer while the stable 1.x tween, timeline and state-machine APIs remain unchanged. Completion requires:
 
 - reusable named clips with validated property-binding tracks, strictly ordered keyframes and explicit clamp/loop sampling;
 - linear and step interpolation contracts plus generic portable poses that can blend and apply nested bindings;
