@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import time
+from time import perf_counter
 
 from swirengine.core.scene import Scene
 from swirengine.ui15 import UIAxis, UIToolkit
@@ -35,7 +35,7 @@ def build_toolkit() -> UIToolkit:
 
 def main() -> None:
     ui = build_toolkit()
-    started = time.perf_counter()
+    started = perf_counter()
     for index in range(LAYOUT_PASSES):
         width = 1280 + (index % 5) * 160
         height = 720 + (index % 3) * 90
@@ -44,7 +44,7 @@ def main() -> None:
             ui.focus_next(1)
         else:
             ui.focus_next(-1)
-    elapsed = time.perf_counter() - started
+    elapsed = perf_counter() - started
     diagnostics = ui.diagnostics()
     print(
         "UI Toolkit 2.0 workload: "
