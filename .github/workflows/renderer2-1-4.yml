@@ -1,0 +1,67 @@
+name: Renderer 2.0 1.4 Validation
+
+on:
+  pull_request:
+    paths:
+      - "src/swirengine/graphics/renderer2.py"
+      - "src/swirengine/graphics/csm_renderer.py"
+      - "src/swirengine/graphics/renderer2_effects.py"
+      - "src/swirengine/core/game.py"
+      - "tests/test_renderer2_1_4.py"
+      - "tools/smoke_renderer2_gl.py"
+      - "tools/benchmark_renderer2_1_4.py"
+      - "docs/RENDERER2_1_4.md"
+      - "ROADMAP_1_4.md"
+      - ".github/workflows/renderer2-1-4.yml"
+  push:
+    branches:
+      - "feat/1.4-renderer-2"
+    paths:
+      - "src/swirengine/graphics/renderer2.py"
+      - "src/swirengine/graphics/csm_renderer.py"
+      - "src/swirengine/graphics/renderer2_effects.py"
+      - "src/swirengine/core/game.py"
+      - "tests/test_renderer2_1_4.py"
+      - "tools/smoke_renderer2_gl.py"
+      - "tools/benchmark_renderer2_1_4.py"
+      - "docs/RENDERER2_1_4.md"
+      - "ROADMAP_1_4.md"
+      - ".github/workflows/renderer2-1-4.yml"
+
+jobs:
+  renderer2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Install Mesa EGL runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1-mesa-dev libgl1-mesa-dri libglx-mesa0 mesa-utils
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Renderer 2.0 regressions
+        run: >-
+          pytest -q tests/test_renderer2_1_4.py tests/test_shadows.py
+          tests/test_shadow_renderer.py tests/test_postprocess.py tests/test_ibl_renderer.py
+      - name: Headless OpenGL 3.3 smoke
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          MESA_GL_VERSION_OVERRIDE: "3.3"
+        run: python tools/smoke_renderer2_gl.py
+      - name: Renderer planner performance gate
+        run: python tools/benchmark_renderer2_1_4.py --frames 5000
+      - name: Strict lint
+        run: >-
+          ruff check src/swirengine/graphics/renderer2.py
+          src/swirengine/graphics/csm_renderer.py src/swirengine/graphics/renderer2_effects.py
+          src/swirengine/core/game.py tests/test_renderer2_1_4.py
+          tools/smoke_renderer2_gl.py tools/benchmark_renderer2_1_4.py
+      - name: Compile Renderer 2.0 path
+        run: >-
+          python -m compileall -q src/swirengine/graphics/renderer2.py
+          src/swirengine/graphics/csm_renderer.py src/swirengine/graphics/renderer2_effects.py
+          src/swirengine/core/game.py tests/test_renderer2_1_4.py
+          tools/smoke_renderer2_gl.py tools/benchmark_renderer2_1_4.py
