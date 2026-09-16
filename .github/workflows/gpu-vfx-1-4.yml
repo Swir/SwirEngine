@@ -10,6 +10,7 @@ on:
       - "src/swirengine/core/game.py"
       - "tests/test_gpu_particles_1_4.py"
       - "tools/smoke_gpu_particles_gl.py"
+      - "tools/benchmark_gpu_particles_1_4.py"
       - "examples/demo_gpu_particles_1_4.py"
       - "docs/GPU_VFX_PARTICLES_1_4.md"
       - "ROADMAP_1_4.md"
@@ -25,6 +26,7 @@ on:
       - "src/swirengine/core/game.py"
       - "tests/test_gpu_particles_1_4.py"
       - "tools/smoke_gpu_particles_gl.py"
+      - "tools/benchmark_gpu_particles_1_4.py"
       - "examples/demo_gpu_particles_1_4.py"
       - "docs/GPU_VFX_PARTICLES_1_4.md"
       - "ROADMAP_1_4.md"
@@ -51,15 +53,19 @@ jobs:
           LIBGL_ALWAYS_SOFTWARE: "1"
           MESA_GL_VERSION_OVERRIDE: "3.3"
         run: python tools/smoke_gpu_particles_gl.py
+      - name: CPU scheduler performance gate
+        run: python tools/benchmark_gpu_particles_1_4.py
       - name: Strict lint
         run: >-
           ruff check src/swirengine/__init__.py src/swirengine/gpu_particles.py
           src/swirengine/graphics/gpu_particles.py src/swirengine/graphics/csm_renderer.py
           src/swirengine/core/game.py tests/test_gpu_particles_1_4.py
-          tools/smoke_gpu_particles_gl.py
+          tools/smoke_gpu_particles_gl.py tools/benchmark_gpu_particles_1_4.py
+          examples/demo_gpu_particles_1_4.py
       - name: Compile GPU VFX path
         run: >-
           python -m compileall -q src/swirengine/__init__.py src/swirengine/gpu_particles.py
           src/swirengine/graphics/gpu_particles.py src/swirengine/graphics/csm_renderer.py
           src/swirengine/core/game.py tests/test_gpu_particles_1_4.py
-          tools/smoke_gpu_particles_gl.py
+          tools/smoke_gpu_particles_gl.py tools/benchmark_gpu_particles_1_4.py
+          examples/demo_gpu_particles_1_4.py
