@@ -22,6 +22,10 @@ class Material3D:
     on the material even when a renderer backend does not yet consume a given channel so
     import/export and editor workflows can preserve complete material intent.
 
+    ``alpha_mode``, ``alpha_cutoff`` and ``double_sided`` preserve the corresponding glTF 2.0
+    material metadata. Renderer backends may consume these controls incrementally; keeping them
+    on the CPU material avoids destructive import even before every backend supports each mode.
+
     The historical Phong bridge is intentionally retained on the CPU-side fields for API
     compatibility with 0.4.7-0.4.9 code that inspects ``diffuse``, ``specular`` or
     ``shininess``. The renderer ignores those bridge values while native PBR is active.
@@ -42,6 +46,9 @@ class Material3D:
     occlusion_strength: float = 1.0
     emissive_texture: str | Path | None = None
     emissive_factor: Color = field(default_factory=lambda: Color(0.0, 0.0, 0.0, 1.0))
+    alpha_mode: str = "OPAQUE"
+    alpha_cutoff: float = 0.5
+    double_sided: bool = False
 
     def __post_init__(self) -> None:
         self.ambient = max(0.0, float(self.ambient))
@@ -50,10 +57,17 @@ class Material3D:
         self.shininess = max(1.0, float(self.shininess))
         self.normal_scale = float(self.normal_scale)
         self.occlusion_strength = float(self.occlusion_strength)
+        self.alpha_mode = str(self.alpha_mode).upper()
+        self.alpha_cutoff = float(self.alpha_cutoff)
+        self.double_sided = bool(self.double_sided)
         if self.normal_scale < 0.0:
             raise ValueError("normal_scale must be >= 0")
         if not 0.0 <= self.occlusion_strength <= 1.0:
             raise ValueError("occlusion_strength must be within 0..1")
+        if self.alpha_mode not in {"OPAQUE", "MASK", "BLEND"}:
+            raise ValueError("alpha_mode must be one of OPAQUE, MASK or BLEND")
+        if not 0.0 <= self.alpha_cutoff <= 1.0:
+            raise ValueError("alpha_cutoff must be within 0..1")
         if any(
             value < 0.0
             for value in (
