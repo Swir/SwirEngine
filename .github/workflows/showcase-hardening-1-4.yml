@@ -1,0 +1,106 @@
+name: Showcase + Hardening 1.4 Validation
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "tools/**"
+      - "demo_projects/neon_frontier_1_4/**"
+      - "docs/RELEASE_HARDENING_1_4.md"
+      - "ROADMAP_1_4.md"
+      - "pyproject.toml"
+      - ".github/workflows/showcase-hardening-1-4.yml"
+      - ".github/workflows/release.yml"
+  workflow_dispatch:
+
+jobs:
+  contract:
+    name: Contract + integration (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Verify 1.4 release-candidate contract
+        run: python tools/verify_1_4_release_candidate.py
+      - name: Run final 1.4 contract tests
+        run: pytest tests/test_release_1_4_contract.py
+      - name: Run complete headless integration probe
+        env:
+          SWIR_1_4_HEADLESS_PROBE: "1"
+        run: python demo_projects/neon_frontier_1_4/run_game.py
+      - name: Enforce integrated performance budget
+        run: python tools/benchmark_showcase_1_4.py --rounds 3 --budget-ms 2500
+      - name: Lint final hardening surface
+        run: ruff check demo_projects/neon_frontier_1_4 tests/test_release_1_4_contract.py tools/benchmark_showcase_1_4.py tools/verify_1_4_release_candidate.py
+      - name: Compile final hardening surface
+        run: python -m compileall -q demo_projects/neon_frontier_1_4 tools tests/test_release_1_4_contract.py
+
+  opengl-smoke:
+    name: Real OpenGL 3.3 Renderer2/VFX showcase
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Install software OpenGL/Xvfb runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 libgl-dev libegl-dev
+      - name: Boot Neon Frontier 1.4 through the real renderer
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          SWIR_1_4_SMOKE_FRAMES: "16"
+        run: xvfb-run -a python demo_projects/neon_frontier_1_4/run_game.py
+
+  clean-wheel:
+    name: Clean wheel install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip build
+      - run: python -m build
+      - name: Install wheel into clean environment and run integration probe
+        shell: bash
+        run: |
+          python -m venv .verify14
+          .verify14/bin/python -m pip install --upgrade pip
+          .verify14/bin/python -m pip install dist/swirengine-*.whl
+          SWIR_1_4_HEADLESS_PROBE=1 .verify14/bin/python demo_projects/neon_frontier_1_4/run_game.py
+
+  packaged-windows:
+    name: Packaged Windows showcase probe
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e . pyinstaller
+      - name: Build Neon Frontier 1.4 one-file executable
+        run: >-
+          python -m PyInstaller --noconfirm --clean --onefile
+          --collect-all glfw --collect-all glcontext
+          --name NeonFrontier14 demo_projects/neon_frontier_1_4/run_game.py
+      - name: Probe packaged native runtime and complete integration surface
+        shell: pwsh
+        env:
+          SWIR_DEMO_RUNTIME_PROBE: "1"
+        run: |
+          & .\dist\NeonFrontier14.exe
+          if ($LASTEXITCODE -ne 0) { throw "Neon Frontier 1.4 probe failed: $LASTEXITCODE" }
