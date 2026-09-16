@@ -78,17 +78,33 @@ def _require(condition: bool, message: str, checks: list[str]) -> None:
     checks.append(message)
 
 
+def _version_tuple(version: str) -> tuple[int, int, int]:
+    try:
+        major, minor, patch = version.split(".", 2)
+        return int(major), int(minor), int(patch)
+    except (TypeError, ValueError) as exc:
+        raise AssertionError(f"invalid semantic version for 1.x compatibility audit: {version!r}") from exc
+
+
 def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditReport:
     root = Path(root or Path(__file__).resolve().parents[1]).resolve()
     checks: list[str] = []
     project = tomllib.loads(_read(root, "pyproject.toml"))["project"]
     version = project["version"]
+    version_info = _version_tuple(version)
 
-    _require(
-        version in {CURRENT_STABLE_VERSION, TARGET_VERSION},
-        f"package version is valid for the 1.3 release phase: {version}",
-        checks,
-    )
+    if version_info >= (1, 3, 0):
+        _require(
+            version_info[0] == 1,
+            f"package remains on the compatible 1.x line after 1.3: {version}",
+            checks,
+        )
+    else:
+        _require(
+            version == CURRENT_STABLE_VERSION,
+            f"package version is valid for the 1.3 release phase: {version}",
+            checks,
+        )
     _require(
         project["requires-python"] == EXPECTED_PYTHON_RANGE,
         f"Python contract is {EXPECTED_PYTHON_RANGE}",
@@ -118,7 +134,7 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
     if require_complete:
         _require(roadmap.completed == 10 and roadmap.remaining == 0, "release gate requires exactly 10/10 completed deliverables", checks)
         _require("STATUS-COMPLETE" in roadmap_text, "completed 1.3 roadmap status is COMPLETE", checks)
-        _require(version == TARGET_VERSION, f"final package version is {TARGET_VERSION}", checks)
+        _require(version_info >= (1, 3, 0), "package version has not regressed below the completed 1.3 line", checks)
     else:
         _require(roadmap.completed <= 10, "development roadmap cannot exceed 10 deliverables", checks)
 
@@ -127,8 +143,12 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
     _require("Python 3.14 on Windows" in readme, "README documents verified Windows Python 3.14 scope", checks)
     _require("Neon Frontier 1.3" in readme or roadmap.completed < 10, "README names final Neon Frontier 1.3 validation game", checks)
     if require_complete:
-        _require(f"# SwirEngine {TARGET_VERSION}" in readme, "README title matches final 1.3 version", checks)
-        _require("current stable release" in readme.lower() and TARGET_VERSION in readme, "README identifies 1.3.0 as stable", checks)
+        _require(readme.startswith("# SwirEngine "), "README identifies the current stable SwirEngine line", checks)
+        _require(
+            "SwirEngine 1.3.0" in readme and "What shipped in 1.3" in readme,
+            "README preserves the completed 1.3 release compatibility record",
+            checks,
+        )
 
     init_text = _read(root, "src/swirengine/__init__.py")
     for symbol in REQUIRED_PUBLIC_SYMBOLS:
@@ -155,7 +175,13 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
     _read(root, "demo_projects/neon_frontier_1_3/README.md")
 
     release = _read(root, ".github/workflows/release.yml")
-    _require("verify_1_3_release_candidate.py --require-complete" in release, "release workflow requires complete 1.3 contract", checks)
+    legacy_gate = "verify_1_3_release_candidate.py --require-complete" in release
+    successor_gate = "verify_1_4_release_candidate.py --require-complete" in release
+    _require(
+        legacy_gate or successor_gate,
+        "release workflow requires a complete 1.3-or-newer stable 1.x contract",
+        checks,
+    )
     _require("pypa/gh-action-pypi-publish@release/v1" in release and "id-token: write" in release, "PyPI publication uses Trusted Publishing", checks)
     _require("skip-existing: true" not in release, "publication cannot hide duplicate artifacts", checks)
     _require("neon_frontier_1_3/run_game.py" in release, "release workflow validates Neon Frontier 1.3", checks)
@@ -171,7 +197,7 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Verify the SwirEngine 1.3 final release contract.")
+    parser = argparse.ArgumentParser(description="Verify the locked SwirEngine 1.3 compatibility contract.")
     parser.add_argument("--require-complete", action="store_true")
     args = parser.parse_args()
     try:
@@ -180,7 +206,7 @@ def main() -> int:
         print(f"1.3 RELEASE CONTRACT FAILED: {exc}")
         return 1
     print(
-        "SwirEngine 1.3 release contract OK: "
+        "SwirEngine 1.3 compatibility contract OK: "
         f"version={report.version}, roadmap={report.roadmap.completed}/{report.roadmap.total} "
         f"({report.roadmap.percent:.1f}%), checks={len(report.checks)}"
     )
