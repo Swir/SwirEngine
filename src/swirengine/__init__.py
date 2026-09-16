@@ -90,6 +90,7 @@ from .filewatch import FileChangeEvent, PluginAutoReloader, PollingFileWatcher, 
 from .graphics.animation import AnimatedSprite2D, AnimationClip, SpriteSheet, animated_sprite
 from .graphics.camera import Camera2D
 from .graphics.camera3d import Camera3D
+from .graphics.csm_renderer import Renderer2
 from .graphics.cubemap import (
     CubemapFaces,
     CubemapGPUTexture,
@@ -127,6 +128,7 @@ from .graphics.mesh import Mesh3D, MeshData, cube_mesh
 from .graphics.obj import load_obj
 from .graphics.postprocess import PostProcessRenderer, PostProcessSettings, ToneMapping
 from .graphics.primitives import Cube3D, Rectangle2D, Sprite2D, Text2D
+from .graphics.renderer2 import Decal3D, Renderer2Settings
 from .graphics.shader_mesh import SURFACE_3D_TEMPLATE, ShaderMesh3D, shader_material_3d
 from .graphics.shader_pipeline import (
     ShaderDiagnostics,
@@ -246,6 +248,7 @@ __all__ = [
     "CubemapGPUTexture",
     "CubemapImageData",
     "DebugOverlay",
+    "Decal3D",
     "DirectionalLight3D",
     "ECSDiagnostics",
     "ECSWorld",
@@ -355,6 +358,8 @@ __all__ = [
     "RaycastHit3D",
     "Rectangle2D",
     "ReloadResult",
+    "Renderer2",
+    "Renderer2Settings",
     "RendererAssetBridge",
     "RendererStats",
     "RendererViewportBridge",

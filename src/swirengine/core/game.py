@@ -11,12 +11,14 @@ from ..audio import AudioEngine, AudioHandle
 from ..debug import DebugOverlay
 from ..graphics.camera import Camera2D
 from ..graphics.camera3d import Camera3D
+from ..graphics.csm_renderer import Renderer2
 from ..graphics.gltf import load_gltf
 from ..graphics.lights import DirectionalLight3D, PointLight3D, SpotLight3D
 from ..graphics.mesh import Mesh3D, MeshData
 from ..graphics.obj import load_obj
 from ..graphics.postprocess import PostProcessSettings
 from ..graphics.primitives import Sprite2D, Text2D
+from ..graphics.renderer2 import Decal3D, Renderer2Settings
 from ..graphics.shadow_renderer import ShadowedImageBasedPostProcessRenderer
 from ..graphics.shadows import DirectionalShadowSettings
 from ..input.manager import InputManager
@@ -72,6 +74,8 @@ class Game:
         self.postprocess = PostProcessSettings()
         self.shadows_enabled = False
         self.shadow_settings = DirectionalShadowSettings()
+        self.renderer2_enabled = False
+        self.renderer2_settings = Renderer2Settings()
         self.running = False
 
         self._update_callbacks: list[Callable[[float], None]] = []
@@ -146,6 +150,12 @@ class Game:
         if self.mode != "3d":
             raise RuntimeError("Game.spot_light(...) requires mode='3d'")
         return self.add(SpotLight3D(**kwargs))
+
+    def decal(self, **kwargs: object) -> Decal3D:
+        """Create a bounded Renderer 2.0 decal volume in a 3D game."""
+        if self.mode != "3d":
+            raise RuntimeError("Game.decal(...) requires mode='3d'")
+        return self.add(Decal3D(**kwargs))
 
     def label(self, value: str, x: float = 0.0, y: float = 0.0, **kwargs: object) -> UILabel:
         return self.ui.label(value, x, y, **kwargs)
@@ -264,6 +274,24 @@ class Game:
         self.shadows_enabled = bool(enabled)
         return candidate
 
+    def configure_renderer2(
+        self,
+        enabled: bool = True,
+        **settings: object,
+    ) -> Renderer2Settings:
+        """Enable and configure the additive SwirEngine 1.4 Renderer 2.0 path."""
+        if self.mode != "3d":
+            raise RuntimeError("Game.configure_renderer2(...) requires mode='3d'")
+        values = asdict(self.renderer2_settings)
+        unknown = sorted(set(settings) - set(values))
+        if unknown:
+            raise TypeError(f"unknown Renderer2 setting: {unknown[0]}")
+        values.update(settings)
+        candidate = Renderer2Settings(**values)
+        self.renderer2_settings = candidate
+        self.renderer2_enabled = bool(enabled)
+        return candidate
+
     def key(self, name: str) -> bool:
         """Beginner-friendly shorthand for ``game.input.key(name)``."""
         return self.input.key(name)
@@ -308,15 +336,25 @@ class Game:
         glfw.make_context_current(window)
         glfw.swap_interval(1 if self.vsync else 0)
         ctx = moderngl.create_context()
-        renderer = ShadowedImageBasedPostProcessRenderer(
-            ctx,
-            self.width,
-            self.height,
-            self.mode,
-            postprocess=self.postprocess,
-            shadows_enabled=self.shadows_enabled,
-            shadow_settings=self.shadow_settings,
-        )
+        if self.renderer2_enabled:
+            renderer = Renderer2(
+                ctx,
+                self.width,
+                self.height,
+                self.mode,
+                postprocess=self.postprocess,
+                renderer2=self.renderer2_settings,
+            )
+        else:
+            renderer = ShadowedImageBasedPostProcessRenderer(
+                ctx,
+                self.width,
+                self.height,
+                self.mode,
+                postprocess=self.postprocess,
+                shadows_enabled=self.shadows_enabled,
+                shadow_settings=self.shadow_settings,
+            )
 
         glfw.set_key_callback(
             window, lambda _w, key, _sc, action, _mods: self.input._on_key(key, action)

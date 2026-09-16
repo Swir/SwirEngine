@@ -4,20 +4,20 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-30.0%25-0969da?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-3%2F10-0969da?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-40.0%25-0969da?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-4%2F10-0969da?style=for-the-badge">
   <img alt="Status" src="https://img.shields.io/badge/STATUS-ACTIVE-0969da?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-██████░░░░░░░░░░░░░░ 30.0%
+████████░░░░░░░░░░░░ 40.0%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **3** | **7** | **10** | **30.0%** |
+| **4** | **6** | **10** | **40.0%** |
 
 > Progress is derived only from the equal-weight verified deliverables below. A milestone becomes
 > complete only after implementation, regression coverage, documentation synchronization and the
@@ -31,8 +31,13 @@
       step/slope handling, grounded state, jumping, camera rigs and physics/navigation integration.
       Verified by the dedicated controller regression, sweep-budget, integration-demo, Ruff and
       compileall gate plus the full cross-platform CI/export/demo matrix.
-- [ ] **Renderer 2.0** — cascaded directional shadows, SSAO, bloom/HDR improvements, decals,
-      depth/pre-pass improvements and stronger render diagnostics without breaking the 1.x API.
+- [x] **Renderer 2.0** — additive creator-facing `Renderer2` / `Renderer2Settings` / `Decal3D` APIs,
+      practical 1–4 cascade directional shadows with texel stabilization and 3×3 PCF, sampleable
+      depth + view-normal prepass, SSAO with depth-aware blur and invalid-normal protection, HDR bloom,
+      bounded screen-space decals, deterministic frame-pass diagnostics and compatibility with the
+      established 1.x renderer. Verified by the dedicated headless EGL/OpenGL 3.3 execution gate,
+      deterministic planner benchmark, strict Ruff/compileall, full Python/OS CI matrix, native
+      Windows cp314 wheel selection, Desktop Export and real demo/Snake/instancing OpenGL regressions.
 - [ ] **GPU VFX + Particle Power** — GPU-oriented particle simulation/submission, emitters, trails,
       sprite/mesh particles, lifetime curves, pooling and deterministic performance gates.
 - [ ] **Asset Pipeline 2.0** — stronger glTF/PBR import, texture/mesh optimization, dependency tracking,

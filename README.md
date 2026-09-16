@@ -5,7 +5,7 @@
   <a href="https://pypi.org/project/swirengine/"><img alt="PyPI" src="https://img.shields.io/pypi/v/swirengine?style=flat-square"></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.10--3.13%20cross--platform%20%7C%203.14%20Windows-3776AB?style=flat-square&logo=python&logoColor=white">
   <img alt="Stable roadmap" src="https://img.shields.io/badge/1.3%20ROADMAP-100%25-2ea043?style=flat-square">
-  <img alt="Development roadmap" src="https://img.shields.io/badge/1.4%20ROADMAP-30%25-0969da?style=flat-square">
+  <img alt="Development roadmap" src="https://img.shields.io/badge/1.4%20ROADMAP-40%25-0969da?style=flat-square">
   <img alt="Status" src="https://img.shields.io/badge/status-1.3%20stable%20%7C%201.4%20development-0969da?style=flat-square">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square">
 </p>
@@ -23,7 +23,7 @@ The 1.3 **Gameplay & Creator Power** roadmap is complete at **10/10 = 100.0%**. 
 SwirEngine 1.4 is the **Production World & Engine Power** development line. Stable users remain on 1.3.0 while 1.4 is built milestone-by-milestone behind the stable 1.x API compatibility contract.
 
 ```text
-██████░░░░░░░░░░░░░░ 30.0% — 3/10
+████████░░░░░░░░░░░░ 40.0% — 4/10
 ```
 
 Milestone #1, **Terrain + World LOD**, is complete on the 1.4 development line. It adds immutable heightmaps, chunk mesh generation, distance LOD, bounded local chunk selection, LRU mesh reuse, terrain material/splat metadata, heightfield ground queries and direct integration with the existing `LargeWorldStreamer`. The milestone is covered by deterministic cache/LOD performance gates and a real Xvfb/software-OpenGL terrain render smoke.
@@ -32,9 +32,11 @@ Milestone #2, **Physics 2.0**, is also complete. It adds additive `PhysicsScene3
 
 Milestone #3, **Character Controllers**, is verified as well. It adds a deterministic kinematic `CharacterController3D` backed by Physics 2.0 shape sweeps, first-person, third-person and platformer presets, grounded state, jumping, coyote time, jump buffering, step-up and slope handling, ground snapping, camera synchronization/collision, semantic `InputActions` integration and revision-aware `NavigationProvider3D` steering. The controller API is available both from `swirengine.character` and directly from the top-level `swirengine` package. Its dedicated validation covers movement/camera/navigation regressions, a deterministic sweep-budget gate, integration demo, strict Ruff and compileall, while the full cross-platform CI, desktop export and demo validators remain green.
 
-The remaining 1.4 plan focuses on Renderer 2.0, GPU VFX, Asset Pipeline 2.0, scene acceleration/occlusion, stronger editor authoring, Multiplayer 2.0 and one integrated production-scale release showcase.
+Milestone #4, **Renderer 2.0**, is now verified. It adds opt-in `Renderer2`, `Renderer2Settings` and `Decal3D` APIs without replacing the stable 1.x renderer, practical one-to-four-cascade directional shadows with camera-relative texel stabilization and 3×3 PCF, a sampleable depth/view-normal prepass, SSAO with depth-aware blur and invalid-normal protection for dynamic paths, HDR bloom, bounded screen-space decals and deterministic frame-pass diagnostics. The milestone is covered by a dedicated headless EGL/OpenGL 3.3 execution gate, deterministic planner benchmark, strict Ruff/compileall, the full Python/OS CI matrix, native Windows Python 3.14 wheel validation, Desktop Export and real demo/Snake/instancing OpenGL regressions.
 
-See [`ROADMAP_1_4.md`](ROADMAP_1_4.md), [`docs/TERRAIN_WORLD_LOD_1_4.md`](docs/TERRAIN_WORLD_LOD_1_4.md), [`docs/PHYSICS_2_1_4.md`](docs/PHYSICS_2_1_4.md) and [`docs/CHARACTER_CONTROLLERS_1_4.md`](docs/CHARACTER_CONTROLLERS_1_4.md).
+The remaining 1.4 plan focuses on GPU VFX, Asset Pipeline 2.0, scene acceleration/occlusion, stronger editor authoring, Multiplayer 2.0 and one integrated production-scale release showcase.
+
+See [`ROADMAP_1_4.md`](ROADMAP_1_4.md), [`docs/TERRAIN_WORLD_LOD_1_4.md`](docs/TERRAIN_WORLD_LOD_1_4.md), [`docs/PHYSICS_2_1_4.md`](docs/PHYSICS_2_1_4.md), [`docs/CHARACTER_CONTROLLERS_1_4.md`](docs/CHARACTER_CONTROLLERS_1_4.md) and [`docs/RENDERER2_1_4.md`](docs/RENDERER2_1_4.md).
 
 ## Install
 
@@ -237,6 +239,7 @@ SwirEngine keeps performance claims reproducible and workload-specific. Examples
 - terrain LOD0 512 triangles vs coarse LOD 8 triangles in the deterministic benchmark workload
 - Physics 2.0 sparse-scene broad-phase and thin-wall CCD workloads -> dedicated deterministic regression gate
 - Character Controllers 1.4 movement workload -> deterministic per-frame shape-sweep budget gate with FPS claims explicitly excluded
+- Renderer 2.0 planner workload -> 48 opaque objects + 24 decals over 5,000 deterministic frame plans, guarded by a 2.5 ms/frame host-side planning budget; GPU correctness is validated separately through the EGL/OpenGL 3.3 smoke gate
 
 Host timings are diagnostics only. SwirEngine does **not** turn those numbers into unmeasured FPS claims.
 
@@ -254,6 +257,7 @@ Host timings are diagnostics only. SwirEngine does **not** turn those numbers in
 - `examples/demo_terrain_world_lod.py`
 - `examples/demo_physics2_contacts.py`
 - `examples/demo_character_controllers.py`
+- `examples/demo_renderer2_1_4.py`
 - `examples/demo_shader_variants.py`
 - `examples/demo_renderer2d_power.py`
 - `examples/demo_gameplay_framework.py`
@@ -269,7 +273,7 @@ python -m compileall -q src examples demo_projects tools
 python tools/verify_1_3_release_candidate.py --require-complete
 ```
 
-Additional dedicated benchmarks and OpenGL validators live under `tools/` and are executed by GitHub Actions.
+Additional dedicated benchmarks and OpenGL validators live under `tools/` and are executed by GitHub Actions. Renderer 2.0 additionally uses `tools/benchmark_renderer2_1_4.py` and `tools/smoke_renderer2_gl.py` in its dedicated validation workflow.
 
 ## Python 3.14 on Windows
 
@@ -298,6 +302,7 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
 - [`docs/TERRAIN_WORLD_LOD_1_4.md`](docs/TERRAIN_WORLD_LOD_1_4.md) — milestone #1, verified
 - [`docs/PHYSICS_2_1_4.md`](docs/PHYSICS_2_1_4.md) — milestone #2, verified
 - [`docs/CHARACTER_CONTROLLERS_1_4.md`](docs/CHARACTER_CONTROLLERS_1_4.md) — milestone #3, verified
+- [`docs/RENDERER2_1_4.md`](docs/RENDERER2_1_4.md) — milestone #4, verified
 
 ## Roadmaps
 
@@ -305,7 +310,7 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
 - SwirEngine 1.1 — [`ROADMAP_1_1.md`](ROADMAP_1_1.md) — **10/10 = 100%**, released and locked
 - SwirEngine 1.2 — [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **10/10 = 100%**, released and locked
 - SwirEngine 1.3 — [`ROADMAP_1_3.md`](ROADMAP_1_3.md) — **10/10 = 100.0%**, released and locked
-- SwirEngine 1.4 — [`ROADMAP_1_4.md`](ROADMAP_1_4.md) — **3/10 = 30.0%**, active development
+- SwirEngine 1.4 — [`ROADMAP_1_4.md`](ROADMAP_1_4.md) — **4/10 = 40.0%**, active development
 
 ## Links
 
