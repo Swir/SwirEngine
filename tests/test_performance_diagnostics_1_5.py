@@ -63,9 +63,10 @@ def test_frame_sections_asset_timing_and_system_counters() -> None:
     assert frame.update_ms == pytest.approx(2.0)
     assert frame.physics_ms == pytest.approx(1.0)
     assert frame.render_ms == pytest.approx(3.0)
-    assert [(item.domain, item.name, item.value) for item in frame.timings] == [
-        ("asset", "textures/hero.png", 4.0)
-    ]
+    assert len(frame.timings) == 1
+    assert frame.timings[0].domain == "asset"
+    assert frame.timings[0].name == "textures/hero.png"
+    assert frame.timings[0].value == pytest.approx(4.0)
     counters = {(item.domain, item.name): item.value for item in frame.counters}
     assert counters[("physics", "bodies")] == 20
     assert counters[("physics", "contacts")] == 4
@@ -169,3 +170,6 @@ def test_invalid_metrics_and_frame_lifecycle_are_rejected() -> None:
             pass
     with pytest.raises(ValueError, match="frame seconds"):
         profiler.end_frame(float("inf"))
+
+    assert profiler.active
+    assert profiler.end_frame(0.016).frame_ms == pytest.approx(16.0)
