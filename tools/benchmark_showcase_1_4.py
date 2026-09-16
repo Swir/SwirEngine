@@ -2,13 +2,21 @@ from __future__ import annotations
 
 import argparse
 import statistics
+import sys
 import time
+from pathlib import Path
 
-from demo_projects.neon_frontier_1_4.run_game import run_headless_probe
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from demo_projects.neon_frontier_1_4.run_game import run_headless_probe  # noqa: E402
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Benchmark the SwirEngine 1.4 integrated headless showcase.")
+    parser = argparse.ArgumentParser(
+        description="Benchmark the SwirEngine 1.4 integrated headless showcase."
+    )
     parser.add_argument("--rounds", type=int, default=3)
     parser.add_argument("--budget-ms", type=float, default=2500.0)
     args = parser.parse_args()
