@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
-from pathlib import PurePath, PurePosixPath
+from pathlib import PurePath, PurePosixPath, PureWindowsPath
 from typing import Literal
 
 from .editor import HistoryEdit, PropertyEdit, SceneInspector
@@ -418,10 +418,18 @@ class EditorAuthoringSession:
 
     @staticmethod
     def _normalize_asset_path(relative_path: str | PurePath) -> str:
-        value = str(relative_path).replace("\\", "/").strip()
+        raw = str(relative_path).strip()
+        value = raw.replace("\\", "/")
         if not value:
             raise ValueError("asset path cannot be empty")
         path = PurePosixPath(value)
-        if path.is_absolute() or ".." in path.parts:
+        windows = PureWindowsPath(raw)
+        if (
+            path.is_absolute()
+            or windows.is_absolute()
+            or bool(windows.drive)
+            or bool(windows.root)
+            or ".." in path.parts
+        ):
             raise ValueError("asset path must stay project-relative")
         return path.as_posix()
