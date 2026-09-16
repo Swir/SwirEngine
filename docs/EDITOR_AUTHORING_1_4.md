@@ -24,6 +24,10 @@ workspace.select(first)
 workspace.select(second, mode="add")
 ```
 
+Live-selection validation builds one scene key index per authoring operation instead of repeatedly
+resolving each selected object through linear scene scans. This keeps large ordered selections
+responsive while preserving stale-selection pruning and legacy primary-selection synchronization.
+
 ## Grouped edits and transforms
 
 Property edits and transform gizmo gestures preflight the complete selection before the first
@@ -51,6 +55,10 @@ payload = browser.drag_payload("textures/hero.png")
 workspace.drop_asset_on_selected_property(payload, "texture")
 ```
 
+Payload creation and the authoring drop layer independently reject POSIX absolute paths, Windows
+drive/root paths, UNC-style paths, and parent traversal. This keeps project state portable even when
+front-end code manually constructs a drag payload instead of obtaining it from the browser.
+
 Asset property drops are atomic across the selection. String and `None` fields receive the portable
 POSIX relative path; existing `pathlib` path fields preserve their concrete path type. If any selected
 target is missing the property, exposes it read-only, or has an incompatible value type, the entire
@@ -71,6 +79,8 @@ scene instances.
 The `Editor Authoring 1.4 Validation` workflow gates the authoring modules with focused regression
 coverage, legacy editor/workspace/runtime regressions, strict Ruff checks, compilation, a 500-target
 grouped-edit workload benchmark, and the runnable `examples/demo_editor_authoring_1_4.py` example.
+The 500-target selection/edit/undo workload has a one-second CI budget so regressions cannot silently
+return the authoring path to the earlier multi-second behavior.
 
 The roadmap percentage must not advance solely because these slices exist. Milestone #8 remains
 incomplete until the remaining specialized inspector, Play/Edit hardening, API, documentation/demo,
