@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.4 development - 2026-09-16
+
+Renderer 2.0 milestone.
+
+- added opt-in public `Renderer2`, `Renderer2Settings` and `Decal3D` APIs while preserving the established 1.x renderer as the default compatibility path
+- added practical one-to-four cascade directional shadows with blended uniform/logarithmic splits, camera-relative texel stabilization, per-cascade GPU depth targets and 3x3 PCF sampling
+- added reusable `Mesh3D` and `Cube3D` shadow caster/receiver paths with bounded GPU resource reuse and deterministic cleanup
+- added a sampleable depth + view-normal prepass shared by Renderer 2.0 screen-space effects
+- added deterministic SSAO with configurable sample budgets, depth-aware blur and valid-normal masking so dynamic 1.3 render paths are not incorrectly darkened when they lack static normal-prepass data
+- added HDR bloom extraction plus configurable downsample/upsample mip-chain reuse
+- added bounded deterministic screen-space decal projection through creator-facing `Game.decal(...)`
+- added deterministic `Renderer2Planner` frame-pass scheduling and diagnostics for prepass work, CSM submissions, decals, SSAO, bloom and estimated draw-call budgets
+- added atomic `Game.configure_renderer2(...)` validation and top-level creator imports for the complete Renderer 2.0 surface
+- added creator documentation in `docs/RENDERER2_1_4.md` and runnable `examples/demo_renderer2_1_4.py`
+- added a dedicated headless EGL/OpenGL 3.3 validation workflow that executes CSM, depth/normal, SSAO, bloom and decal GPU passes instead of relying only on mocked contexts
+- added a deterministic 5,000-frame Renderer 2.0 planner benchmark with a guarded host-side planning budget while keeping FPS claims explicitly excluded
+- verified the milestone through the dedicated Renderer 2.0 gate, full Python 3.10-3.14 CI matrix, Windows native cp314 wheel path, Desktop Export, Demo Game 3D, Neon Snake 3D and GPU-instancing OpenGL regressions
+- advanced the SwirEngine 1.4 roadmap to **4/10 = 40.0%**; stable SwirEngine remains 1.3.0 and no 1.4 tag, GitHub Release or PyPI publication was performed
+
 ## 1.2 development - 2026-09-14
 
 Budgeted asset-streaming milestone.
