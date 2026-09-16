@@ -21,6 +21,10 @@ def main() -> None:
     )
     document = EditorPrefabDocument(source)
     instance = document.instantiate()
+    batch_targets = [
+        Rectangle2D(float(index), 0.0, 8.0, 8.0, name=f"batch-{index}")
+        for index in range(24)
+    ]
     batch = EditorBatchEditor()
 
     started = time.perf_counter()
@@ -31,7 +35,7 @@ def main() -> None:
         document.apply(instance, selectors=[index], properties=["x"])
         if step % 5 == 0:
             plan = batch.preview(
-                instance.objects[:24],
+                batch_targets,
                 {"layer": step % 7},
                 label="benchmark batch",
             )
