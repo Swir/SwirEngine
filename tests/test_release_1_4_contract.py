@@ -19,6 +19,7 @@ def test_current_1_4_development_contract_is_exactly_nine_of_ten() -> None:
     assert report.roadmap.percent == 90.0
     assert report.roadmap.bar == "██████████████████░░ 90.0%"
     assert report.status_complete is False
+    assert report.final_showcase_present is True
     assert report.release_ready is False
 
 
@@ -56,6 +57,8 @@ def test_release_readiness_workflow_is_non_publishing_and_covers_1_4_gates() -> 
         "smoke_renderer2_gl.py",
         "smoke_gpu_particles_gl.py",
         "smoke_scene_acceleration_gl.py",
+        "demo_projects/showcase_1_4/run_game.py",
+        "SWIR_1_4_SHOWCASE_RENDER",
     }
     assert all(token in workflow for token in required)
     assert "gh-action-pypi-publish" not in workflow
