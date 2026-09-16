@@ -54,9 +54,10 @@ A creator factory may return:
 The facade converts all of those forms into the strict runtime contract.
 
 When created with `world_stream(game, ...)`, the facade also detects the owner's normal
-`remove(...)` path. Streamed scene objects are routed through it during unload before the mount is
-released, so Game-managed resources such as registered 2D physics/UI ownership do not get stranded.
-Passing a raw `Scene` keeps pure scene ownership instead.
+`remove(...)` path. Streamed scene objects are routed through it during normal unload and during
+activation-hook rollback before the Scene mount is released, so Game-managed resources such as
+registered 2D physics/UI ownership do not get stranded. Passing a raw `Scene` keeps pure scene
+ownership instead.
 
 ## Loading-screen warmup
 
@@ -82,8 +83,9 @@ def castle_interior(ctx):
 ```
 
 Dependencies are validated before runtime start. Missing dependencies and dependency cycles fail
-with clear errors instead of becoming intermittent runtime bugs. Activation happens dependency
-first; deactivation happens in the safe reverse order.
+with clear errors instead of becoming intermittent runtime bugs. A plain string is rejected instead
+of being interpreted as one dependency per character. Activation happens dependency first;
+deactivation happens in the safe reverse order.
 
 ## Budgets and priority
 
@@ -141,17 +143,24 @@ world.retry("forest")
 ```
 
 If an activation hook fails after content was mounted, the mount is rolled back before the failure
-is recorded.
+is recorded. With `world_stream(game, ...)`, owner-specific cleanup also runs during that rollback.
+
+## Registration-safe inspection
+
+Reading creator-facing state should not accidentally close world registration before gameplay
+starts. Before the first `update()`/`warmup()` call:
+
+- `world.active` is empty;
+- `world.active_cost` is `0`;
+- `world.diagnostics` is `None`;
+- `world.failures` is empty;
+- `world.context(cell_id)` returns the deterministic cell geometry without starting the runtime;
+- `world.retry(cell_id)` validates the cell and returns `False` without starting the runtime.
+
+Accessing `world.runtime` explicitly still constructs the strict runtime and therefore intentionally
+freezes registration. This keeps the low-level escape hatch explicit.
 
 ## Diagnostics
-
-The creator facade exposes safe inspection helpers that do not start the runtime or close chunk
-registration merely because code reads them:
-
-- `world.active` — currently resident cell IDs;
-- `world.active_cost` — current hard-budget cost;
-- `world.diagnostics` — latest runtime diagnostics, or `None` before the first update;
-- `world.failures` — current isolated cell failures.
 
 The diagnostics record includes:
 
@@ -162,6 +171,9 @@ The diagnostics record includes:
 - cells blocked by the hard budget;
 - failed cells;
 - total activations/deactivations.
+
+`unload_all()` refreshes the diagnostic snapshot after cleanup, so active count/cost, target state,
+failure count and total deactivations stay coherent with the runtime state and its fingerprint.
 
 The strict runtime also provides `state_fingerprint()` for regression tests, replay/server
 verification and deterministic diagnostics.
@@ -223,6 +235,11 @@ The strict layer provides dependency validation, deterministic target selection,
 admission, bounded activation/deactivation, retention, lifecycle rollback, failure tracking,
 portable diagnostics and deterministic fingerprints.
 
+`WorldStreamingSettings.dimensions` is an integer-only `2`/`3` contract. A 2D strict runtime rejects
+cells with nonzero `ChunkKey.z`, matching the creator facade instead of leaving unreachable cells in
+the registry. Focus coordinates are required to be finite for tuples/sequences and `Vec2`/`Vec3`
+inputs before chunk addressing reaches `floor()`.
+
 ## Performance contract
 
 The registry keeps O(1) cell-id lookup and O(1) chunk-key buckets. Each runtime update enumerates
@@ -230,9 +247,10 @@ only the fixed local chunk window plus the small resident/failed sets; it does n
 authored world to discover active cells, failures or current budget usage. Active cost is maintained
 incrementally in O(1).
 
-The dedicated benchmark registers 10,000 cells and repeatedly moves the focus while enforcing a
-strict regression budget in CI. This prevents a creator-friendly API from hiding an O(total world)
-hot path that would later become a frame-time problem in a real large game.
+The dedicated CI workload registers 10,000 cells and performs 1,200 focus updates while enforcing a
+3.0-second regression budget. Its radius-2 2D window is bounded to 25 chunk keys per update. The
+budget is deliberately a workload guard, not an FPS claim; it exists to catch accidental
+O(total-world) hot paths behind the creator-friendly API.
 
 ## Compatibility rule
 
