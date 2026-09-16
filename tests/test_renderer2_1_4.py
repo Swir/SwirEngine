@@ -5,7 +5,9 @@ from dataclasses import dataclass
 import pytest
 
 from swirengine.graphics.camera3d import Camera3D
+from swirengine.graphics.csm_renderer import CascadedDirectionalShadowMap
 from swirengine.graphics.lights import DirectionalLight3D
+from swirengine.graphics.mesh import Mesh3D, cube_mesh
 from swirengine.graphics.primitives import Cube3D
 from swirengine.graphics.renderer2 import (
     Decal3D,
@@ -20,6 +22,110 @@ from swirengine.math.types import Vec3
 @dataclass
 class SceneStub:
     objects: list[object]
+
+
+class _Uniform:
+    def __init__(self) -> None:
+        self.data = b""
+
+    def write(self, data: bytes) -> None:
+        self.data = data
+
+
+class _Program:
+    def __init__(self) -> None:
+        self.uniform = _Uniform()
+        self.released = False
+
+    def __getitem__(self, name: str):
+        assert name == "light_mvp"
+        return self.uniform
+
+    def release(self) -> None:
+        self.released = True
+
+
+class _Resource:
+    def __init__(self) -> None:
+        self.released = False
+        self.used_locations: list[int] = []
+
+    def release(self) -> None:
+        self.released = True
+
+    def use(self, location: int = 0) -> None:
+        self.used_locations.append(location)
+
+
+class _DepthTexture(_Resource):
+    def __init__(self, size: tuple[int, int]) -> None:
+        super().__init__()
+        self.size = size
+        self.repeat_x = True
+        self.repeat_y = True
+        self.compare_func = "legacy"
+
+
+class _Framebuffer(_Resource):
+    def __init__(self, depth_attachment: _DepthTexture) -> None:
+        super().__init__()
+        self.depth_attachment = depth_attachment
+        self.clear_depths: list[float] = []
+        self.use_count = 0
+
+    def use(self) -> None:
+        self.use_count += 1
+
+    def clear(self, *, depth: float) -> None:
+        self.clear_depths.append(depth)
+
+
+class _Vao(_Resource):
+    def __init__(self) -> None:
+        super().__init__()
+        self.render_counts: list[int] = []
+
+    def render(self, *, vertices: int) -> None:
+        self.render_counts.append(vertices)
+
+
+class _Ctx:
+    DEPTH_TEST = 1
+
+    def __init__(self) -> None:
+        self.viewport = (0, 0, 1280, 720)
+        self.program_obj = _Program()
+        self.depth_textures: list[_DepthTexture] = []
+        self.framebuffers: list[_Framebuffer] = []
+        self.vaos: list[_Vao] = []
+        self.buffers: list[_Resource] = []
+        self.enabled: list[int] = []
+
+    def program(self, **_kwargs):
+        return self.program_obj
+
+    def depth_texture(self, size: tuple[int, int]):
+        texture = _DepthTexture(size)
+        self.depth_textures.append(texture)
+        return texture
+
+    def framebuffer(self, *, depth_attachment):
+        framebuffer = _Framebuffer(depth_attachment)
+        self.framebuffers.append(framebuffer)
+        return framebuffer
+
+    def buffer(self, _data: bytes):
+        buffer = _Resource()
+        self.buffers.append(buffer)
+        return buffer
+
+    def vertex_array(self, _program, _bindings):
+        vao = _Vao()
+        self.vaos.append(vao)
+        return vao
+
+    def enable(self, flag: int) -> None:
+        self.enabled.append(flag)
 
 
 def test_practical_cascade_splits_are_monotonic_and_cover_far_plane() -> None:
@@ -145,6 +251,70 @@ def test_renderer2_can_disable_expensive_optional_passes() -> None:
 
     assert tuple(item.name for item in plan.passes) == ("opaque",)
     assert plan.diagnostics.estimated_draw_calls == 1
+
+
+def test_csm_allocates_one_depth_target_per_cascade_and_renders_meshes_and_cubes() -> None:
+    ctx = _Ctx()
+    settings = Renderer2Settings(shadow_cascades=4, shadow_resolution=512)
+    csm = CascadedDirectionalShadowMap(ctx, settings)
+    mesh = Mesh3D(cube_mesh(), position=Vec3(2.0, 0.0, -5.0))
+    cube = Cube3D(position=Vec3(-2.0, 0.0, -5.0))
+    hidden = Cube3D(position=Vec3(0.0, 0.0, -5.0), visible=False)
+    scene = SceneStub([mesh, cube, hidden])
+
+    frame = csm.render(
+        scene,
+        DirectionalLight3D(),
+        Camera3D(),
+        width=1280,
+        height=720,
+    )
+
+    assert ctx.viewport == (0, 0, 1280, 720)
+    assert len(frame.plan.cascades) == 4
+    assert len(frame.light_frames) == 4
+    assert [texture.size for texture in ctx.depth_textures] == [(512, 512)] * 4
+    assert all(texture.repeat_x is False for texture in ctx.depth_textures)
+    assert all(texture.repeat_y is False for texture in ctx.depth_textures)
+    assert all(texture.compare_func == "" for texture in ctx.depth_textures)
+    assert all(framebuffer.clear_depths == [1.0] for framebuffer in ctx.framebuffers)
+    assert len(ctx.vaos) == 2  # one shared MeshData upload + one cached cube primitive
+    assert all(vao.render_counts == [36, 36, 36, 36] for vao in ctx.vaos)
+    assert len(ctx.program_obj.uniform.data) == 64
+
+    csm.use(2, location=7)
+    assert ctx.depth_textures[2].used_locations == [7]
+
+
+def test_csm_reuses_gpu_meshes_across_frames_and_releases_every_resource() -> None:
+    ctx = _Ctx()
+    settings = Renderer2Settings(shadow_cascades=2, shadow_resolution=256)
+    csm = CascadedDirectionalShadowMap(ctx, settings)
+    mesh = Mesh3D(cube_mesh())
+    cube = Cube3D(position=Vec3(2.0, 0.0, -4.0))
+    scene = SceneStub([mesh, cube])
+    camera = Camera3D()
+    light = DirectionalLight3D()
+
+    csm.render(scene, light, camera, width=800, height=600)
+    csm.render(scene, light, camera, width=800, height=600)
+
+    assert len(ctx.depth_textures) == 2
+    assert len(ctx.framebuffers) == 2
+    assert len(ctx.buffers) == 2
+    assert len(ctx.vaos) == 2
+    assert all(vao.render_counts == [36, 36, 36, 36] for vao in ctx.vaos)
+
+    csm.release()
+    csm.release()
+    assert all(resource.released for resource in ctx.depth_textures)
+    assert all(resource.released for resource in ctx.framebuffers)
+    assert all(resource.released for resource in ctx.buffers)
+    assert all(resource.released for resource in ctx.vaos)
+    assert ctx.program_obj.released is True
+
+    with pytest.raises(RuntimeError, match="released"):
+        csm.render(scene, light, camera, width=800, height=600)
 
 
 @pytest.mark.parametrize(
