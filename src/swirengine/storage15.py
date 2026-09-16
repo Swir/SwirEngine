@@ -81,6 +81,9 @@ class AutosavePolicy:
         return f"{self.prefix}-{index}"
 
 
+_DEFAULT_AUTOSAVE_POLICY = AutosavePolicy()
+
+
 def _portable(value: Any) -> JSONValue:
     if value is None or isinstance(value, (bool, str, int)):
         return value
@@ -131,7 +134,7 @@ def _file_bytes(value: Mapping[str, Any]) -> bytes:
         indent=2,
         sort_keys=True,
     )
-    return f"{text}\n".encode("utf-8")
+    return f"{text}\n".encode()
 
 
 def _fsync_directory(path: Path) -> None:
@@ -564,7 +567,7 @@ class ProfileSaveManager2:
         self,
         data: Mapping[str, Any],
         *,
-        policy: AutosavePolicy = AutosavePolicy(),
+        policy: AutosavePolicy = _DEFAULT_AUTOSAVE_POLICY,
         metadata: Mapping[str, Any] | None = None,
     ) -> SaveSlotInfo:
         generations: list[int] = []
@@ -593,7 +596,7 @@ class ProfileSaveManager2:
     def list_autosaves(
         self,
         *,
-        policy: AutosavePolicy = AutosavePolicy(),
+        policy: AutosavePolicy = _DEFAULT_AUTOSAVE_POLICY,
     ) -> tuple[SaveSlotInfo, ...]:
         infos: list[SaveSlotInfo] = []
         for index in range(1, policy.keep + 1):
