@@ -4,20 +4,20 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-90.0%25-0969da?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-9%2F10-0969da?style=for-the-badge">
-  <img alt="Status" src="https://img.shields.io/badge/STATUS-ACTIVE-0969da?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-100.0%25-2ea043?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-10%2F10-2ea043?style=for-the-badge">
+  <img alt="Status" src="https://img.shields.io/badge/STATUS-COMPLETE-2ea043?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-██████████████████░░ 90.0%
+████████████████████ 100.0%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **9** | **1** | **10** | **90.0%** |
+| **10** | **0** | **10** | **100.0%** |
 
 > Progress is derived only from the equal-weight verified deliverables below. A milestone becomes
 > complete only after implementation, regression coverage, documentation synchronization and the
@@ -71,31 +71,34 @@
 - [x] **Multiplayer 2.0** — opt-in replicated-component schemas, canonical snapshots and sparse deltas,
       bounded out-of-order interpolation, deterministic client prediction and authoritative
       reconciliation, bounded server rewind for lag-compensation foundations, per-channel bandwidth
-      diagnostics and a stable `NetworkPacket` bridge. Verified on Python 3.10/3.13/3.14 by 29 focused
+      diagnostics and a stable `NetworkPacket` bridge. Verified on Python 3.10/3.13/3.14 by focused
       multiplayer + legacy networking regressions, strict Ruff/compileall, the runnable integration
-      demo, a 500-entity workload completing in 0.493160s with a 2,493-byte sparse delta versus a
-      50,114-byte full snapshot, plus the full CI, Desktop Export, Demo Game 3D and Neon Snake 3D
-      compatibility matrix.
-- [ ] **1.4 Showcase + Hardening + Release Gate** — one integrated production-scale demo combining
-      terrain, physics, controllers, renderer/VFX, streaming, editor and networking paths, followed by
-      API/docs audit, packaging verification, performance contracts and one guarded 1.4 release.
+      demo, a 500-entity workload with a 2,493-byte sparse delta versus a 50,114-byte full snapshot,
+      plus the full CI, Desktop Export, Demo Game 3D and Neon Snake 3D compatibility matrix.
+- [x] **1.4 Showcase + Hardening + Release Gate** — integrated production showcase combining terrain,
+      world streaming, Physics 2.0 character movement, Renderer 2.0, GPU VFX, editor authoring and
+      Multiplayer 2.0; final API/docs/package hardening; all nine deterministic 1.4 performance
+      contracts; real Mesa/OpenGL 3.3 Renderer2/VFX/Hi-Z execution; clean sdist/wheel verification;
+      native desktop export; Windows CPython 3.14 native-wheel coverage; and a guarded production
+      release workflow that cannot publish until the strict 10/10 verifier passes. The final
+      non-publishing validation matrix is green before this milestone is marked complete.
 
 <!-- ROADMAP-PROGRESS:END -->
 
 ## Direction
 
 SwirEngine 1.4 is the **Production World & Engine Power** line. Version 1.3 established the engine as
-more than a lightweight multimedia layer; 1.4 focuses on the gaps that matter when building larger,
+more than a lightweight multimedia layer; 1.4 closes the gaps that matter when building larger,
 more polished 2D/3D games: world authoring, movement, physics depth, visibility scale, modern rendering,
 asset throughput and multiplayer production workflows.
 
-The stable public 1.x API remains the compatibility baseline. New systems should be additive or
+The stable public 1.x API remains the compatibility baseline. New systems are additive or
 backward-compatible wherever practical, with migration notes required for any unavoidable behavior
 change.
 
 ## Performance policy
 
-Every milestone must explicitly assess and, where practical, measure:
+Every milestone explicitly assesses and, where practical, measures:
 
 - per-frame Python overhead and allocations
 - draw calls, state changes and GPU submissions
@@ -104,14 +107,17 @@ Every milestone must explicitly assess and, where practical, measure:
 - physics/navigation broad-phase work
 - network serialization/bandwidth work where applicable
 
-Host timings remain diagnostics only. SwirEngine must not claim FPS improvements without direct,
+Host timings remain diagnostics only. SwirEngine does not claim FPS improvements without direct,
 repeatable evidence.
 
 ## Release policy
 
-SwirEngine 1.3.0 remains the stable public release while 1.4 is in development. No 1.4 PyPI release,
-GitHub Release or stable tag is permitted before this roadmap reaches exactly **10/10 = 100.0%** and
-all final CI/runtime/demo/packaging/public-install gates are green.
+The SwirEngine 1.4 technical roadmap is complete at exactly **10/10 = 100.0%**. Publication remains a
+separate explicit action: no PyPI upload, GitHub Release or stable tag is created merely by completing
+this roadmap. The production release workflow is guarded by
+`tools/verify_1_4_release_candidate.py --require-complete` and must rerun the final regression,
+performance, real-OpenGL, packaging, native-export and compatibility gates before any publication
+step can execute.
 
-Historical roadmaps 1.0, 1.1, 1.2 and 1.3 remain locked at 100% and must not be rewritten to inflate
+Historical roadmaps 1.0, 1.1, 1.2 and 1.3 remain locked at 100% and are not rewritten to inflate
 1.4 progress.
