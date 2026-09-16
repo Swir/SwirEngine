@@ -5,8 +5,17 @@ from itertools import pairwise
 
 import pytest
 
+from swirengine import (
+    Decal3D as PublicDecal3D,
+    Game,
+    Renderer2 as PublicRenderer2,
+    Renderer2Settings as PublicRenderer2Settings,
+)
 from swirengine.graphics.camera3d import Camera3D
-from swirengine.graphics.csm_renderer import CascadedDirectionalShadowMap
+from swirengine.graphics.csm_renderer import (
+    CascadedDirectionalShadowMap,
+    Renderer2 as Renderer2Implementation,
+)
 from swirengine.graphics.lights import DirectionalLight3D, PointLight3D
 from swirengine.graphics.mesh import Mesh3D, cube_mesh
 from swirengine.graphics.primitives import Cube3D
@@ -127,6 +136,44 @@ class _Ctx:
 
     def enable(self, flag: int) -> None:
         self.enabled.append(flag)
+
+
+def test_renderer2_creator_api_is_exported_from_top_level_package() -> None:
+    assert PublicRenderer2 is Renderer2Implementation
+    assert PublicRenderer2Settings is Renderer2Settings
+    assert PublicDecal3D is Decal3D
+
+
+def test_game_configures_renderer2_atomically_and_creates_decals() -> None:
+    game = Game(mode="3d")
+    configured = game.configure_renderer2(
+        shadow_cascades=3,
+        ssao_samples=32,
+        bloom_levels=4,
+        max_decals=64,
+    )
+
+    assert game.renderer2_enabled is True
+    assert game.renderer2_settings is configured
+    assert configured.shadow_cascades == 3
+    assert configured.ssao_samples == 32
+    assert configured.bloom_levels == 4
+    assert configured.max_decals == 64
+
+    decal = game.decal(position=Vec3(1.0, 0.0, -3.0), size=Vec3(2.0, 1.0, 2.0))
+    assert isinstance(decal, PublicDecal3D)
+    assert decal in game.scene.objects
+
+    previous = game.renderer2_settings
+    with pytest.raises(ValueError, match="shadow_cascades"):
+        game.configure_renderer2(shadow_cascades=0)
+    assert game.renderer2_settings is previous
+
+    with pytest.raises(TypeError, match="unknown Renderer2 setting"):
+        game.configure_renderer2(not_a_renderer_option=True)
+
+    with pytest.raises(RuntimeError, match="requires mode='3d'"):
+        Game(mode="2d").configure_renderer2()
 
 
 def test_practical_cascade_splits_are_monotonic_and_cover_far_plane() -> None:
