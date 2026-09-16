@@ -105,8 +105,9 @@ class EditorSelectionModel:
     ) -> EditorSelectionSnapshot:
         if mode not in {"replace", "add", "toggle"}:
             raise ValueError(f"unsupported selection mode {mode!r}")
-        key = self._key(target_or_key)
-        self._drop_stale()
+        live = self._live_targets_by_key()
+        key = self._key(target_or_key, live)
+        self._drop_stale(live)
 
         if mode == "replace":
             self._keys[:] = [key]
@@ -131,8 +132,10 @@ class EditorSelectionModel:
     ) -> EditorSelectionSnapshot:
         """Select an inclusive visual-hierarchy range in deterministic depth-first order."""
 
-        anchor_key = self._key(anchor)
-        target_key = self._key(target)
+        live = self._live_targets_by_key()
+        anchor_key = self._key(anchor, live)
+        target_key = self._key(target, live)
+        self._drop_stale(live)
         ordered = [row.key for row in self.inspector.hierarchy()]
         try:
             left = ordered.index(anchor_key)
@@ -158,9 +161,14 @@ class EditorSelectionModel:
         self._sync_primary()
         return self._snapshot_unchecked()
 
-    def _key(self, target_or_key: object | str) -> str:
+    def _key(
+        self,
+        target_or_key: object | str,
+        live: dict[str, object] | None = None,
+    ) -> str:
         if isinstance(target_or_key, str):
-            if target_or_key not in self._live_targets_by_key():
+            live_targets = self._live_targets_by_key() if live is None else live
+            if target_or_key not in live_targets:
                 raise KeyError(target_or_key)
             return target_or_key
         return self.inspector.key_for(target_or_key)
@@ -187,7 +195,9 @@ class EditorSelectionModel:
         """Build a linear-time live-key index without repeated ``SceneInspector.resolve`` scans."""
 
         live = {f"object:{id(target):x}": target for target in self.inspector.scene.objects}
-        live.update(f"entity:{entity.id}": entity for entity in self.inspector.scene.entities)
+        live.update(
+            {f"entity:{entity.id}": entity for entity in self.inspector.scene.entities}
+        )
         return live
 
 
