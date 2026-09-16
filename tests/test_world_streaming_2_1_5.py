@@ -6,6 +6,7 @@ import pytest
 
 from swirengine.core.scene import Scene
 from swirengine.large_world import ChunkContent, ChunkKey
+from swirengine.math.types import Vec2, Vec3
 from swirengine.world_streaming15 import (
     WorldPartitionCell,
     WorldPartitionRegistry,
@@ -70,6 +71,30 @@ def test_dependency_cycle_is_rejected() -> None:
     )
     with pytest.raises(ValueError):
         registry.validate()
+
+
+def test_strict_cell_rejects_dependency_string() -> None:
+    with pytest.raises(TypeError):
+        empty_cell("child", ChunkKey(0, 0, 0), dependencies="base")
+
+
+def test_settings_require_integer_dimensions() -> None:
+    with pytest.raises(TypeError):
+        WorldStreamingSettings(dimensions=True)
+    with pytest.raises(TypeError):
+        WorldStreamingSettings(dimensions=2.0)  # type: ignore[arg-type]
+    with pytest.raises(ValueError):
+        WorldStreamingSettings(dimensions=4)
+
+
+def test_strict_2d_runtime_rejects_nonzero_z_cells() -> None:
+    registry = WorldPartitionRegistry((empty_cell("wrong-z", ChunkKey(0, 0, 1)),))
+    with pytest.raises(ValueError, match="wrong-z"):
+        WorldStreamingRuntime(
+            Scene(),
+            registry,
+            settings=WorldStreamingSettings(dimensions=2),
+        )
 
 
 def test_runtime_respects_activation_budget_and_dependency_order() -> None:
@@ -153,6 +178,24 @@ def test_retention_prevents_immediate_thrashing() -> None:
     assert runtime.active_ids == ()
 
 
+def test_focus_rejects_nonfinite_vec_coordinates() -> None:
+    runtime_2d = WorldStreamingRuntime(
+        Scene(),
+        WorldPartitionRegistry(),
+        settings=WorldStreamingSettings(dimensions=2),
+    )
+    with pytest.raises(ValueError, match="finite"):
+        runtime_2d.focus_key(Vec2(float("nan"), 0.0))
+
+    runtime_3d = WorldStreamingRuntime(
+        Scene(),
+        WorldPartitionRegistry(),
+        settings=WorldStreamingSettings(dimensions=3),
+    )
+    with pytest.raises(ValueError, match="finite"):
+        runtime_3d.focus_key(Vec3(0.0, float("inf"), 0.0))
+
+
 def test_factory_failure_is_isolated_and_retryable() -> None:
     scene = Scene()
     attempts = 0
@@ -183,6 +226,34 @@ def test_factory_failure_is_isolated_and_retryable() -> None:
     second = runtime.update((0.0, 0.0))
     assert second.activated == ("fragile",)
     assert runtime.active_ids == ("fragile",)
+
+
+def test_unload_all_refreshes_diagnostics_and_fingerprint_state() -> None:
+    runtime = WorldStreamingRuntime(
+        Scene(),
+        WorldPartitionRegistry((empty_cell("origin", ChunkKey(0, 0, 0)),)),
+        settings=WorldStreamingSettings(
+            dimensions=2,
+            active_radius_chunks=0,
+            max_active_cost=1,
+            max_activations_per_update=1,
+            max_deactivations_per_update=1,
+            retention_updates=0,
+        ),
+    )
+    runtime.update((0.0, 0.0))
+    before = runtime.state_fingerprint()
+
+    assert runtime.unload_all() == ("origin",)
+    assert runtime.active_ids == ()
+    assert runtime.active_cost == 0
+    assert runtime.diagnostics.local_keys == 0
+    assert runtime.diagnostics.desired_cells == 0
+    assert runtime.diagnostics.target_cells == 0
+    assert runtime.diagnostics.active_cells == 0
+    assert runtime.diagnostics.active_cost == 0
+    assert runtime.diagnostics.total_deactivations == 1
+    assert runtime.state_fingerprint() != before
 
 
 def test_creator_facade_normalizes_objects_and_entities_and_unloads_cleanly() -> None:
