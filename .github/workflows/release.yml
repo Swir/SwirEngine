@@ -289,9 +289,10 @@ jobs:
           import swirengine
           import swirengine.editor14
           import swirengine.multiplayer14
-          import swirengine.physics2
+          from swirengine.physics.dynamics3d import PhysicsScene3D
 
           assert swirengine.__version__ == "1.4.0"
+          assert PhysicsScene3D is not None
           for name in ("Game", "Scene", "Renderer2", "GPUParticleEmitter3D", "SceneAccelerationRuntime3D"):
               assert hasattr(swirengine, name), name
           print(swirengine.__version__, swirengine.__file__)
