@@ -167,7 +167,7 @@ def test_zero_duration_transition_switches_immediately_and_consumes_trigger() ->
             AnimationTransition2(
                 "ground",
                 "jump",
-                (AnimationCondition("jump", ConditionOperator.TRIGGGER),),
+                (AnimationCondition("jump", ConditionOperator.TRIGGER),),
             ),
         ),
     )
@@ -188,7 +188,7 @@ def test_exit_time_gates_transition_until_source_progress_is_reached() -> None:
         ],
         transitions=(AnimationTransition2("attack", "idle", exit_time=0.75),),
         initial="attack",
-   )
+    )
     player = AnimationGraphPlayer(graph)
     player.update(1.0)
     assert player.current_state == "attack"
@@ -210,7 +210,7 @@ def test_wildcard_transition_and_bool_condition() -> None:
             AnimationTransition2(
                 "*",
                 "dead",
-                (AnimationCondition("speed", ConditionOperator.TRUE),),
+                (AnimationCondition("idle", ConditionOperator.TRUE),),
                 priority=1000,
             ),
         ),
