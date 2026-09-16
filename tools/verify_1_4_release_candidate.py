@@ -54,6 +54,19 @@ REQUIRED_DOCS = (
 FINAL_ONLY_FILES = (
     "demo_projects/showcase_1_4/run_game.py",
     "docs/SHOWCASE_1_4.md",
+    "tests/test_showcase_1_4.py",
+)
+
+SHOWCASE_REQUIRED_TOKENS = (
+    "HeightmapTerrain",
+    "LargeWorldStreamer",
+    "PhysicsScene3D",
+    "CharacterController3D",
+    "configure_renderer2",
+    "gpu_particles",
+    "EditorAuthoringSession",
+    "ReplicationRegistry",
+    "SnapshotDelta",
 )
 
 
@@ -123,6 +136,19 @@ def _require_files(root: Path, paths: tuple[str, ...], label: str) -> None:
     _expect(not missing, f"missing {label}: {', '.join(missing)}")
 
 
+def _validate_showcase(root: Path) -> bool:
+    present = tuple((root / path).is_file() for path in FINAL_ONLY_FILES)
+    if any(present):
+        _expect(all(present), "final 1.4 showcase code, docs and regression test must land together")
+    if not all(present):
+        return False
+
+    showcase_text = (root / FINAL_ONLY_FILES[0]).read_text(encoding="utf-8")
+    for token in SHOWCASE_REQUIRED_TOKENS:
+        _expect(token in showcase_text, f"final 1.4 showcase is missing integration token {token!r}")
+    return True
+
+
 def audit(root: Path, *, require_complete: bool = False) -> ReleaseReadinessReport:
     root = root.resolve()
     roadmap_path = root / "ROADMAP_1_4.md"
@@ -163,6 +189,8 @@ def audit(root: Path, *, require_complete: bool = False) -> ReleaseReadinessRepo
         "smoke_renderer2_gl.py",
         "smoke_gpu_particles_gl.py",
         "smoke_scene_acceleration_gl.py",
+        "demo_projects/showcase_1_4/run_game.py",
+        "SWIR_1_4_SHOWCASE_RENDER",
     ):
         _expect(token in readiness_text, f"1.4 readiness workflow is missing {token!r}")
     _expect("gh-action-pypi-publish" not in readiness_text, "readiness workflow must never publish")
@@ -172,7 +200,7 @@ def audit(root: Path, *, require_complete: bool = False) -> ReleaseReadinessRepo
     release_workflow_has_1_4_gate = (
         "verify_1_4_release_candidate.py --require-complete" in release_workflow
     )
-    final_showcase_present = all((root / path).is_file() for path in FINAL_ONLY_FILES)
+    final_showcase_present = _validate_showcase(root)
     status_complete = "STATUS-COMPLETE" in roadmap_text
 
     if roadmap.completed < EXPECTED_TOTAL:
