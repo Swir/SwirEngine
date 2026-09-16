@@ -10,15 +10,19 @@ on:
       - "src/swirengine/editor_authoring*.py"
       - "src/swirengine/editor_frontend.py"
       - "src/swirengine/editor_runtime.py"
+      - "src/swirengine/editor_specialized.py"
       - "src/swirengine/editor_workspace.py"
       - "tests/test_editor_assets.py"
       - "tests/test_editor_authoring*.py"
       - "tests/test_editor_frontend.py"
       - "tests/test_editor_runtime.py"
+      - "tests/test_editor_specialized_1_4.py"
       - "tests/test_editor_workspace.py"
       - "tools/benchmark_editor_authoring_1_4.py"
       - "examples/demo_editor_authoring_1_4.py"
+      - "examples/demo_editor_specialized_1_4.py"
       - "docs/EDITOR_AUTHORING_1_4.md"
+      - "docs/EDITOR_SPECIALIZED_INSPECTORS_1_4.md"
       - ".github/workflows/editor-authoring-1-4.yml"
 
 jobs:
@@ -40,6 +44,7 @@ jobs:
           tests/test_editor_authoring_workspace_1_4.py
           tests/test_editor_frontend.py
           tests/test_editor_runtime.py
+          tests/test_editor_specialized_1_4.py
           tests/test_editor_workspace.py
       - name: Strict Ruff gate
         run: >-
@@ -48,12 +53,15 @@ jobs:
           src/swirengine/editor_authoring.py
           src/swirengine/editor_authoring_state.py
           src/swirengine/editor_authoring_workspace.py
+          src/swirengine/editor_specialized.py
           tests/test_editor_assets.py
           tests/test_editor_authoring_1_4.py
           tests/test_editor_authoring_state_1_4.py
           tests/test_editor_authoring_workspace_1_4.py
+          tests/test_editor_specialized_1_4.py
           tools/benchmark_editor_authoring_1_4.py
           examples/demo_editor_authoring_1_4.py
+          examples/demo_editor_specialized_1_4.py
       - name: Compile authoring files
         run: >-
           python -m compileall -q
@@ -61,12 +69,17 @@ jobs:
           src/swirengine/editor_authoring.py
           src/swirengine/editor_authoring_state.py
           src/swirengine/editor_authoring_workspace.py
+          src/swirengine/editor_specialized.py
           tests/test_editor_authoring_1_4.py
           tests/test_editor_authoring_state_1_4.py
           tests/test_editor_authoring_workspace_1_4.py
+          tests/test_editor_specialized_1_4.py
           tools/benchmark_editor_authoring_1_4.py
           examples/demo_editor_authoring_1_4.py
+          examples/demo_editor_specialized_1_4.py
       - name: Multi-selection workload benchmark
         run: python tools/benchmark_editor_authoring_1_4.py
       - name: Editor authoring demo
         run: python examples/demo_editor_authoring_1_4.py
+      - name: Specialized inspector demo
+        run: python examples/demo_editor_specialized_1_4.py
