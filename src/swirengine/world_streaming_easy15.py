@@ -15,6 +15,7 @@ from .world_streaming15 import (
     WorldPartitionCell,
     WorldPartitionRegistry,
     WorldStreamingDiagnostics,
+    WorldStreamingFailure,
     WorldStreamingRuntime,
     WorldStreamingSettings,
     WorldStreamingUpdate,
@@ -109,9 +110,12 @@ class WorldStream:
         loads_per_update: int = 4,
         unloads_per_update: int = 8,
         retention_updates: int = 1,
+        remover: Callable[[object], bool] | None = None,
     ) -> None:
         if not isinstance(scene, Scene):
             raise TypeError("WorldStream requires a Scene")
+        if remover is not None and not callable(remover):
+            raise TypeError("WorldStream remover must be callable")
         self.scene = scene
         self.settings = WorldStreamingSettings(
             chunk_size=chunk_size,
@@ -124,6 +128,7 @@ class WorldStream:
         )
         self.registry = WorldPartitionRegistry()
         self._runtime: WorldStreamingRuntime | None = None
+        self._remover = remover
 
     @property
     def started(self) -> bool:
@@ -158,7 +163,7 @@ class WorldStream:
         return self._runtime.diagnostics
 
     @property
-    def failures(self) -> tuple[object, ...]:
+    def failures(self) -> tuple[WorldStreamingFailure, ...]:
         if self._runtime is None:
             return ()
         return self._runtime.failures()
@@ -190,6 +195,20 @@ class WorldStream:
         def strict_factory(context: WorldCellContext) -> ChunkContent:
             return _normalize_content(factory(context))
 
+        def strict_deactivate(context: WorldCellContext, content: ChunkContent) -> None:
+            try:
+                if on_deactivate is not None:
+                    on_deactivate(context, content)
+            finally:
+                if self._remover is not None:
+                    for obj in content.objects:
+                        self._remover(obj)
+
+        deactivate = (
+            strict_deactivate
+            if on_deactivate is not None or self._remover is not None
+            else None
+        )
         cell = WorldPartitionCell(
             cell_id,
             _chunk_key(key, dimensions=self.settings.dimensions),
@@ -198,7 +217,7 @@ class WorldStream:
             priority=priority,
             dependencies=tuple(dependencies),
             on_activate=on_activate,
-            on_deactivate=on_deactivate,
+            on_deactivate=deactivate,
         )
         return self.registry.add(cell)
 
@@ -288,9 +307,14 @@ def world_stream(
     """Create a :class:`WorldStream` from a ``Scene`` or any object exposing ``.scene``.
 
     This allows the natural ``world_stream(game, ...)`` form without changing the stable ``Game``
-    API while SwirEngine 1.5 remains additive.
+    API while SwirEngine 1.5 remains additive. If the owner exposes a callable ``remove`` method,
+    streamed scene objects are routed through that method during unload before the Scene mount is
+    released, preserving owner-specific cleanup such as Game physics/UI registration.
     """
     scene = owner if isinstance(owner, Scene) else getattr(owner, "scene", None)
     if not isinstance(scene, Scene):
         raise TypeError("world_stream(...) requires a Scene or an object exposing .scene")
-    return WorldStream(scene, **settings)
+    remover = None if isinstance(owner, Scene) else getattr(owner, "remove", None)
+    if remover is not None and not callable(remover):
+        remover = None
+    return WorldStream(scene, remover=remover, **settings)
