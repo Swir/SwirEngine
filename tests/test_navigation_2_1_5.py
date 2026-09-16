@@ -3,7 +3,6 @@ from __future__ import annotations
 import pytest
 
 from swirengine.navigation15 import (
-    NavPoint,
     NavigationAgent,
     NavigationAgentSettings,
     NavigationEdge,
@@ -12,6 +11,7 @@ from swirengine.navigation15 import (
     NavigationNode,
     NavigationQueryFilter,
     NavigationRuntime,
+    NavPoint,
     nav_point,
 )
 
