@@ -1,0 +1,185 @@
+name: One-shot Game-managed streaming cleanup
+
+on:
+  push:
+    branches:
+      - "feat/1.5-world-streaming-creator-api"
+    paths:
+      - ".github/workflows/_temp_world_streaming_game_cleanup.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/1.5-world-streaming-creator-api
+
+      - name: Add Game-aware cleanup and coverage
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          easy = Path("src/swirengine/world_streaming_easy15.py")
+          text = easy.read_text(encoding="utf-8")
+
+          old = '''    WorldStreamingDiagnostics,
+              WorldStreamingRuntime,
+          '''.replace("              ", "")
+          new = '''    WorldStreamingDiagnostics,
+              WorldStreamingFailure,
+              WorldStreamingRuntime,
+          '''.replace("              ", "")
+          if text.count(old) != 1:
+              raise SystemExit("failure import target was not unique")
+          text = text.replace(old, new)
+
+          old = '''        retention_updates: int = 1,
+              ) -> None:
+          '''.replace("              ", "")
+          new = '''        retention_updates: int = 1,
+              remover: Callable[[object], bool] | None = None,
+              ) -> None:
+          '''.replace("              ", "")
+          if text.count(old) != 1:
+              raise SystemExit("constructor target was not unique")
+          text = text.replace(old, new)
+
+          old = '''        self.registry = WorldPartitionRegistry()
+              self._runtime: WorldStreamingRuntime | None = None
+          '''.replace("              ", "")
+          new = '''        self.registry = WorldPartitionRegistry()
+              self._runtime: WorldStreamingRuntime | None = None
+              self._remover = remover
+          '''.replace("              ", "")
+          if text.count(old) != 1:
+              raise SystemExit("remover storage target was not unique")
+          text = text.replace(old, new)
+
+          old = '''    def failures(self) -> tuple[object, ...]:
+          '''
+          new = '''    def failures(self) -> tuple[WorldStreamingFailure, ...]:
+          '''
+          if text.count(old) != 1:
+              raise SystemExit("failure typing target was not unique")
+          text = text.replace(old, new)
+
+          old = '''        def strict_factory(context: WorldCellContext) -> ChunkContent:
+                  return _normalize_content(factory(context))
+
+              cell = WorldPartitionCell(
+          '''.replace("              ", "")
+          new = '''        def strict_factory(context: WorldCellContext) -> ChunkContent:
+                  return _normalize_content(factory(context))
+
+              def strict_deactivate(context: WorldCellContext, content: ChunkContent) -> None:
+                  try:
+                      if on_deactivate is not None:
+                          on_deactivate(context, content)
+                  finally:
+                      if self._remover is not None:
+                          for obj in content.objects:
+                              self._remover(obj)
+
+              deactivate = (
+                  strict_deactivate
+                  if on_deactivate is not None or self._remover is not None
+                  else None
+              )
+
+              cell = WorldPartitionCell(
+          '''.replace("              ", "")
+          if text.count(old) != 1:
+              raise SystemExit("deactivate wrapper target was not unique")
+          text = text.replace(old, new)
+
+          old = '''            on_activate=on_activate,
+                  on_deactivate=on_deactivate,
+          '''.replace("              ", "")
+          new = '''            on_activate=on_activate,
+                  on_deactivate=deactivate,
+          '''.replace("              ", "")
+          if text.count(old) != 1:
+              raise SystemExit("cell cleanup target was not unique")
+          text = text.replace(old, new)
+
+          old = '''    scene = owner if isinstance(owner, Scene) else getattr(owner, "scene", None)
+              if not isinstance(scene, Scene):
+                  raise TypeError("world_stream(...) requires a Scene or an object exposing .scene")
+              return WorldStream(scene, **settings)
+          '''.replace("              ", "")
+          new = '''    scene = owner if isinstance(owner, Scene) else getattr(owner, "scene", None)
+              if not isinstance(scene, Scene):
+                  raise TypeError("world_stream(...) requires a Scene or an object exposing .scene")
+              remover = None if isinstance(owner, Scene) else getattr(owner, "remove", None)
+              if remover is not None and not callable(remover):
+                  remover = None
+              return WorldStream(scene, remover=remover, **settings)
+          '''.replace("              ", "")
+          if text.count(old) != 1:
+              raise SystemExit("world_stream helper target was not unique")
+          easy.write_text(text.replace(old, new), encoding="utf-8")
+
+          tests = Path("tests/test_world_streaming_2_1_5.py")
+          text = tests.read_text(encoding="utf-8")
+          marker = '\ndef test_state_fingerprint_is_reproducible() -> None:\n'
+          addition = '''
+
+          def test_game_like_owner_remove_is_used_for_streamed_object_cleanup() -> None:
+              class Owner:
+                  def __init__(self) -> None:
+                      self.scene = Scene()
+                      self.removed: list[object] = []
+
+                  def remove(self, obj: object) -> bool:
+                      self.removed.append(obj)
+                      return self.scene.remove(obj)
+
+              owner = Owner()
+              marker_obj = Marker("game-managed")
+              world = world_stream(
+                  owner,
+                  dimensions=2,
+                  chunk_size=10,
+                  radius=0,
+                  budget=1,
+                  retention_updates=0,
+              )
+              world.add_chunk("managed", (0, 0), lambda _ctx: marker_obj)
+              world.update((1.0, 1.0))
+              assert marker_obj in owner.scene
+              world.update((21.0, 1.0))
+              assert marker_obj not in owner.scene
+              assert owner.removed == [marker_obj]
+          '''.replace("          ", "")
+          if text.count(marker) != 1:
+              raise SystemExit("managed cleanup test insertion target was not unique")
+          tests.write_text(text.replace(marker, addition + marker), encoding="utf-8")
+
+          docs = Path("docs/WORLD_STREAMING_2_1_5.md")
+          text = docs.read_text(encoding="utf-8")
+          marker = '''The facade converts all of those forms into the strict runtime contract.
+          '''.replace("          ", "")
+          addition = '''The facade converts all of those forms into the strict runtime contract.
+
+          When created with `world_stream(game, ...)`, the facade also detects the game's normal
+          `remove(...)` cleanup path. Streamed scene objects are routed through that path before the
+          mount is released, so Game-managed resources such as registered 2D physics/UI ownership do
+          not get stranded when a cell unloads. Passing a raw `Scene` keeps pure scene ownership.
+          '''.replace("          ", "")
+          if text.count(marker) != 1:
+              raise SystemExit("documentation cleanup target was not unique")
+          docs.write_text(text.replace(marker, addition), encoding="utf-8")
+          PY
+
+      - name: Commit corrections
+        run: |
+          git config user.name "SwirEngine CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/swirengine/world_streaming_easy15.py tests/test_world_streaming_2_1_5.py docs/WORLD_STREAMING_2_1_5.md
+          git diff --cached --check
+          git commit -m "feat(streaming): clean Game-managed chunk resources automatically"
+          git push origin HEAD:feat/1.5-world-streaming-creator-api
