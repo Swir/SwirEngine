@@ -26,6 +26,10 @@ on:
       - "ROADMAP_1_5.md"
       - ".github/workflows/world-streaming-2-1-5.yml"
 
+concurrency:
+  group: world-streaming-2-1-5-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
