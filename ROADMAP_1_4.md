@@ -4,20 +4,20 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-40.0%25-0969da?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-4%2F10-0969da?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-50.0%25-0969da?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-5%2F10-0969da?style=for-the-badge">
   <img alt="Status" src="https://img.shields.io/badge/STATUS-ACTIVE-0969da?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-████████░░░░░░░░░░░░ 40.0%
+██████████░░░░░░░░░░ 50.0%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **4** | **6** | **10** | **40.0%** |
+| **5** | **5** | **10** | **50.0%** |
 
 > Progress is derived only from the equal-weight verified deliverables below. A milestone becomes
 > complete only after implementation, regression coverage, documentation synchronization and the
@@ -38,8 +38,14 @@
       established 1.x renderer. Verified by the dedicated headless EGL/OpenGL 3.3 execution gate,
       deterministic planner benchmark, strict Ruff/compileall, full Python/OS CI matrix, native
       Windows cp314 wheel selection, Desktop Export and real demo/Snake/instancing OpenGL regressions.
-- [ ] **GPU VFX + Particle Power** — GPU-oriented particle simulation/submission, emitters, trails,
-      sprite/mesh particles, lifetime curves, pooling and deterministic performance gates.
+- [x] **GPU VFX + Particle Power** — additive `GPUParticleEmitter3D` and `Game.gpu_particles(...)`,
+      OpenGL 3.3 transform-feedback ping-pong simulation, deterministic ring spawning, point/box/sphere
+      emitters, GPU gravity/drag/lifetime/curves, HDR sprite particles with optional textures, additive
+      and alpha blending, geometry-shader trails, built-in instanced mesh particles and bounded
+      diagnostics/resource cleanup. Verified by the dedicated Mesa EGL sprite/texture/trail/mesh smoke,
+      the capacity-independence scheduler performance contract, strict Ruff/compileall, full Python/OS
+      CI including Windows Python 3.14 native-wheel validation, Desktop Export and real demo/Snake/
+      Renderer2/instancing regression gates.
 - [ ] **Asset Pipeline 2.0** — stronger glTF/PBR import, texture/mesh optimization, dependency tracking,
       background import, hot reload, cache invalidation and creator-friendly asset diagnostics.
 - [ ] **Scene Acceleration + Occlusion** — BVH/spatial scene indexing, broad visibility pruning,
