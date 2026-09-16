@@ -4,8 +4,9 @@
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://pypi.org/project/swirengine/"><img alt="PyPI" src="https://img.shields.io/pypi/v/swirengine?style=flat-square"></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.10--3.13%20cross--platform%20%7C%203.14%20Windows-3776AB?style=flat-square&logo=python&logoColor=white">
-  <img alt="Roadmap" src="https://img.shields.io/badge/1.3%20ROADMAP-100%25-2ea043?style=flat-square">
-  <img alt="Status" src="https://img.shields.io/badge/status-stable-2ea043?style=flat-square">
+  <img alt="Stable roadmap" src="https://img.shields.io/badge/1.3%20ROADMAP-100%25-2ea043?style=flat-square">
+  <img alt="Development roadmap" src="https://img.shields.io/badge/1.4%20ROADMAP-0%25-6e7781?style=flat-square">
+  <img alt="Status" src="https://img.shields.io/badge/status-1.3%20stable%20%7C%201.4%20development-0969da?style=flat-square">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square">
 </p>
 
@@ -16,6 +17,18 @@ The 1.3 **Gameplay & Creator Power** roadmap is complete at **10/10 = 100.0%**. 
 ```text
 ████████████████████ 100.0%
 ```
+
+## Active development — SwirEngine 1.4
+
+SwirEngine 1.4 is the **Production World & Engine Power** development line. Stable users remain on 1.3.0 while 1.4 is built milestone-by-milestone behind the stable 1.x API compatibility contract.
+
+```text
+░░░░░░░░░░░░░░░░░░░░ 0.0% — 0/10
+```
+
+The 1.4 plan focuses on terrain/world LOD, Physics 2.0, production character controllers, Renderer 2.0, GPU VFX, Asset Pipeline 2.0, scene acceleration/occlusion, stronger editor authoring, Multiplayer 2.0 and one integrated production-scale release showcase.
+
+See [`ROADMAP_1_4.md`](ROADMAP_1_4.md).
 
 ## Install
 
@@ -271,7 +284,8 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
 - SwirEngine 1.0 — [`ROADMAP.md`](ROADMAP.md) — **31/31 = 100%**, historical and locked
 - SwirEngine 1.1 — [`ROADMAP_1_1.md`](ROADMAP_1_1.md) — **10/10 = 100%**, released and locked
 - SwirEngine 1.2 — [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **10/10 = 100%**, released and locked
-- SwirEngine 1.3 — [`ROADMAP_1_3.md`](ROADMAP_1_3.md) — **10/10 = 100.0%**, complete
+- SwirEngine 1.3 — [`ROADMAP_1_3.md`](ROADMAP_1_3.md) — **10/10 = 100.0%**, released and locked
+- SwirEngine 1.4 — [`ROADMAP_1_4.md`](ROADMAP_1_4.md) — **0/10 = 0.0%**, active development
 
 ## Links
 
