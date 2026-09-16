@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import swirengine as swir
-
 from swirengine.core.scene import Scene
 from swirengine.graphics.camera3d import Camera3D
 from swirengine.graphics.primitives import Cube3D
