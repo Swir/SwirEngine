@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Literal
 
 from .graphics.camera3d import Camera3D
@@ -44,6 +44,14 @@ def _horizontal_normalized(value: Vec3) -> Vec3:
 def _flat_basis(value: Vec3, fallback: Vec3) -> Vec3:
     flattened = _horizontal_normalized(value)
     return flattened if _horizontal_length(flattened) > 0.0 else fallback
+
+
+def _project_on_plane(value: Vec3, normal: Vec3) -> Vec3:
+    normal_length = normal.length
+    if normal_length <= 1e-12:
+        return value
+    unit = normal * (1.0 / normal_length)
+    return value - unit * _dot(value, unit)
 
 
 def _position(target: object) -> Vec3:
@@ -99,6 +107,8 @@ class CharacterConfig3D:
             raise ValueError("slope_limit_degrees must be in [0, 90)")
         if min(self.step_height, self.ground_snap_distance, self.skin_width) < 0.0:
             raise ValueError("step, snap and skin distances must be non-negative")
+        if self.skin_width * 2.0 >= min(self.width, self.height, self.depth):
+            raise ValueError("skin_width must be less than half the smallest character dimension")
         if min(self.coyote_time, self.jump_buffer_time) < 0.0:
             raise ValueError("coyote_time and jump_buffer_time must be non-negative")
 
@@ -109,11 +119,7 @@ class CharacterConfig3D:
 
 @dataclass(frozen=True, slots=True)
 class CharacterInput3D:
-    """One frame of semantic character input.
-
-    ``move_x`` is right/left and ``move_z`` is forward/back relative to the supplied movement basis.
-    Look values are deltas consumed by the FPS/TPS wrappers rather than raw mouse pixels.
-    """
+    """One frame of semantic movement and look input."""
 
     move_x: float = 0.0
     move_z: float = 0.0
@@ -170,9 +176,9 @@ class CharacterDiagnostics3D:
 class CharacterController3D:
     """Deterministic kinematic character motor backed by Physics 2.0 shape sweeps.
 
-    The controller owns movement, not a dynamic rigid body. This avoids force-tuning for gameplay
-    movement while still using the Physics 2.0 world for collision candidates and continuous shape
-    tests. An optional collider can be ignored when the same character is registered for queries.
+    A small inset sweep shell keeps an already-supported character from treating the floor as a
+    blocking overlap during horizontal movement or jumping. The visible/configured character size
+    remains unchanged; ``skin_width`` is restored when calculating the safe travel distance.
     """
 
     def __init__(
@@ -239,13 +245,14 @@ class CharacterController3D:
 
     def _bounds(self, position: Vec3 | None = None) -> AABB3D:
         point = position or self.position
+        inset = self.config.skin_width * 2.0
         return AABB3D(
             point.x,
             point.y,
             point.z,
-            self.config.width,
-            self.config.height,
-            self.config.depth,
+            self.config.width - inset,
+            self.config.height - inset,
+            self.config.depth - inset,
         )
 
     def _sweep(self, bounds: AABB3D, delta: Vec3) -> SweepHit3D | None:
@@ -279,13 +286,11 @@ class CharacterController3D:
 
     def _probe_ground(self, *, snap: bool) -> bool:
         self._ground_probes += 1
-        lift = self.config.skin_width
-        start = self.position + Vec3(0.0, lift, 0.0)
-        distance = self.config.ground_snap_distance + lift
+        distance = self.config.ground_snap_distance + self.config.skin_width
         if distance <= 0.0:
             self.grounded = False
             return False
-        hit = self._sweep(self._bounds(start), Vec3(0.0, -distance, 0.0))
+        hit = self._sweep(self._bounds(), Vec3(0.0, -distance, 0.0))
         if hit is None or not self._walkable(hit.normal):
             self.grounded = False
             return False
@@ -293,7 +298,7 @@ class CharacterController3D:
         self.ground_normal = Vec3(hit.normal.x, hit.normal.y, hit.normal.z)
         if snap and self.velocity.y <= 0.0:
             travel = distance * hit.fraction
-            correction = max(0.0, travel - lift)
+            correction = max(0.0, travel - self.config.skin_width)
             if correction > 0.0:
                 self._apply_delta(Vec3(0.0, -correction, 0.0))
             self.velocity.y = 0.0
@@ -303,8 +308,8 @@ class CharacterController3D:
         if not self.grounded or self.config.step_height <= 0.0:
             return False
         self._step_attempts += 1
-        up = Vec3(0.0, self.config.step_height + self.config.skin_width, 0.0)
-        if self._sweep(self._bounds(), up) is not None:
+        up_distance = self.config.step_height + self.config.skin_width
+        if self._sweep(self._bounds(), Vec3(0.0, up_distance, 0.0)) is not None:
             return False
 
         raised = self.position + Vec3(0.0, self.config.step_height, 0.0)
@@ -320,7 +325,10 @@ class CharacterController3D:
         if down_hit is None or not self._walkable(down_hit.normal):
             return False
 
-        landing_drop = down_distance * down_hit.fraction
+        landing_drop = max(
+            0.0,
+            down_distance * down_hit.fraction - self.config.skin_width,
+        )
         _set_position(
             self.target,
             Vec3(advanced.x, advanced.y - landing_drop, advanced.z),
@@ -330,12 +338,34 @@ class CharacterController3D:
         self._step_successes += 1
         return True
 
+    def _move_along_slope(self, delta: Vec3, hit: SweepHit3D) -> bool:
+        if not self._walkable(hit.normal) or hit.normal.y >= 0.999999:
+            return False
+        first_fraction = self._safe_fraction(delta, hit)
+        if first_fraction > 0.0:
+            self._apply_delta(delta * first_fraction)
+        remaining = delta * (1.0 - first_fraction)
+        tangent = _project_on_plane(remaining, hit.normal)
+        if tangent.length > 1e-12:
+            tangent_hit = self._sweep(self._bounds(), tangent)
+            if tangent_hit is None:
+                self._apply_delta(tangent)
+            else:
+                tangent_fraction = self._safe_fraction(tangent, tangent_hit)
+                if tangent_fraction > 0.0:
+                    self._apply_delta(tangent * tangent_fraction)
+        self.grounded = True
+        self.ground_normal = Vec3(hit.normal.x, hit.normal.y, hit.normal.z)
+        return True
+
     def _move_horizontal_axis(self, delta: Vec3) -> None:
         if delta.length <= 1e-12:
             return
         hit = self._sweep(self._bounds(), delta)
         if hit is None:
             self._apply_delta(delta)
+            return
+        if self._move_along_slope(delta, hit):
             return
         if self._try_step(delta):
             return
@@ -416,7 +446,8 @@ class CharacterController3D:
             self._coyote_remaining = 0.0
             self._jump_buffer_remaining = 0.0
 
-        desired = _horizontal_normalized(desired) if _horizontal_length(desired) > 1.0 else desired
+        if _horizontal_length(desired) > 1.0:
+            desired = _horizontal_normalized(desired)
         speed = self.config.sprint_speed if sprint else self.config.walk_speed
         target_x = desired.x * speed
         target_z = desired.z * speed
@@ -477,7 +508,7 @@ class CharacterController3D:
 
 
 class FirstPersonController3D(CharacterController3D):
-    """Character motor with mouse/gamepad-look style first-person camera synchronization."""
+    """Character motor with first-person camera synchronization."""
 
     def __init__(
         self,
@@ -502,8 +533,8 @@ class FirstPersonController3D(CharacterController3D):
         self.pitch = 0.0
 
     def _forward(self) -> Vec3:
-        radians_yaw = math.radians(self.yaw)
-        return Vec3(math.sin(radians_yaw), 0.0, -math.cos(radians_yaw))
+        yaw = math.radians(self.yaw)
+        return Vec3(math.sin(yaw), 0.0, -math.cos(yaw))
 
     def _view_direction(self) -> Vec3:
         yaw = math.radians(self.yaw)
@@ -639,7 +670,7 @@ class ThirdPersonController3D(CharacterController3D):
 
 
 class PlatformerController3D(CharacterController3D):
-    """Platformer preset with optional axis lock and smooth follow camera."""
+    """Platformer preset with optional movement-axis lock and smooth follow camera."""
 
     def __init__(
         self,
@@ -697,7 +728,7 @@ class PlatformerController3D(CharacterController3D):
 
 
 class CharacterNavigationDriver3D:
-    """Revision-aware path follower that steers a character through ``NavigationProvider3D``."""
+    """Revision-aware path follower that steers through ``NavigationProvider3D``."""
 
     def __init__(
         self,
@@ -755,7 +786,8 @@ class CharacterNavigationDriver3D:
         position = self.controller.position
         while self._index < len(self._path):
             point = self._path[self._index]
-            if math.hypot(point.x - position.x, point.z - position.z) > self.waypoint_tolerance:
+            distance = math.hypot(point.x - position.x, point.z - position.z)
+            if distance > self.waypoint_tolerance:
                 break
             self._index += 1
 
@@ -781,14 +813,15 @@ def follow_character_path(
     waypoint_tolerance: float = 0.2,
     sprint: bool = False,
 ) -> tuple[CharacterState3D, int]:
-    """Stateless helper for creator-managed paths; returns state and the next waypoint index."""
+    """Stateless helper for creator-managed paths; returns state and next waypoint index."""
     if waypoint_tolerance <= 0.0:
         raise ValueError("waypoint_tolerance must be greater than zero")
     position = controller.position
     index = 0
     while index < len(points):
         point = points[index]
-        if math.hypot(point.x - position.x, point.z - position.z) > waypoint_tolerance:
+        distance = math.hypot(point.x - position.x, point.z - position.z)
+        if distance > waypoint_tolerance:
             break
         index += 1
     if index >= len(points):
