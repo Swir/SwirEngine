@@ -31,6 +31,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: python -m pip install --upgrade pip
+      - name: Install Python 3.14 native renderer build headers
+        if: matrix.python-version == '3.14'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libgl-dev libegl-dev
       - run: python -m pip install -e ".[dev]"
       - name: Lint game demo sources
         run: ruff check examples/2d_game_demo examples/3d_game_demo
