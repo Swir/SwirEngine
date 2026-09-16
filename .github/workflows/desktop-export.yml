@@ -28,3 +28,17 @@ jobs:
         run: python tools/verify_desktop_export.py
       - name: Build and execute one-directory native shipping smoke
         run: python tools/verify_desktop_export.py --onedir
+      - name: Build Neon Frontier 1.4 one-file validation executable
+        if: matrix.os == 'windows-latest'
+        run: >-
+          python -m PyInstaller --noconfirm --clean --onefile
+          --collect-all glfw --collect-all glcontext
+          --name NeonFrontier14 demo_projects/neon_frontier_1_4/run_game.py
+      - name: Probe packaged Neon Frontier 1.4 native runtime and integration surface
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        env:
+          SWIR_DEMO_RUNTIME_PROBE: "1"
+        run: |
+          & .\dist\NeonFrontier14.exe
+          if ($LASTEXITCODE -ne 0) { throw "Neon Frontier 1.4 probe failed: $LASTEXITCODE" }
