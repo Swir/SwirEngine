@@ -6,13 +6,14 @@ on:
       - feat/1.4-editor-authoring-power
   pull_request:
     paths:
+      - "src/swirengine/editor14.py"
       - "src/swirengine/editor_assets.py"
       - "src/swirengine/editor_authoring*.py"
       - "src/swirengine/editor_frontend.py"
       - "src/swirengine/editor_runtime.py"
-      - "src/swirengine/editor_authoring_runtime.py"
       - "src/swirengine/editor_specialized.py"
       - "src/swirengine/editor_workspace.py"
+      - "tests/test_editor14_public_api.py"
       - "tests/test_editor_assets.py"
       - "tests/test_editor_authoring*.py"
       - "tests/test_editor_frontend.py"
@@ -23,6 +24,7 @@ on:
       - "examples/demo_editor_authoring_1_4.py"
       - "examples/demo_editor_authoring_runtime_1_4.py"
       - "examples/demo_editor_specialized_1_4.py"
+      - "docs/EDITOR14_PUBLIC_API.md"
       - "docs/EDITOR_AUTHORING_1_4.md"
       - "docs/EDITOR_AUTHORING_RUNTIME_1_4.md"
       - "docs/EDITOR_SPECIALIZED_INSPECTORS_1_4.md"
@@ -41,6 +43,7 @@ jobs:
       - name: Editor authoring regression suite
         run: >-
           pytest
+          tests/test_editor14_public_api.py
           tests/test_editor_assets.py
           tests/test_editor_authoring_1_4.py
           tests/test_editor_authoring_runtime_1_4.py
@@ -53,12 +56,14 @@ jobs:
       - name: Strict Ruff gate
         run: >-
           ruff check
+          src/swirengine/editor14.py
           src/swirengine/editor_assets.py
           src/swirengine/editor_authoring.py
           src/swirengine/editor_authoring_runtime.py
           src/swirengine/editor_authoring_state.py
           src/swirengine/editor_authoring_workspace.py
           src/swirengine/editor_specialized.py
+          tests/test_editor14_public_api.py
           tests/test_editor_assets.py
           tests/test_editor_authoring_1_4.py
           tests/test_editor_authoring_runtime_1_4.py
@@ -72,12 +77,14 @@ jobs:
       - name: Compile authoring files
         run: >-
           python -m compileall -q
+          src/swirengine/editor14.py
           src/swirengine/editor_assets.py
           src/swirengine/editor_authoring.py
           src/swirengine/editor_authoring_runtime.py
           src/swirengine/editor_authoring_state.py
           src/swirengine/editor_authoring_workspace.py
           src/swirengine/editor_specialized.py
+          tests/test_editor14_public_api.py
           tests/test_editor_authoring_1_4.py
           tests/test_editor_authoring_runtime_1_4.py
           tests/test_editor_authoring_state_1_4.py
