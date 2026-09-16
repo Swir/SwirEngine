@@ -92,26 +92,42 @@ class HiZPyramidPass3D:
             framebuffer = self.ctx.framebuffer(color_attachments=[texture])
             self._targets.append((texture, framebuffer))
 
+    @staticmethod
+    def _texture_size(texture: object) -> tuple[int, int]:
+        raw = getattr(texture, "size", None)
+        if raw is None:
+            raise TypeError("Hi-Z GPU input must expose a two-dimensional texture size")
+        try:
+            width, height = raw
+        except (TypeError, ValueError) as exc:
+            raise TypeError("Hi-Z GPU input must expose a two-dimensional texture size") from exc
+        return int(width), int(height)
+
     def build(self, depth_texture: object, *, width: int, height: int) -> tuple[object, ...]:
         if self._released:
             raise RuntimeError("Hi-Z pyramid pass has been released")
-        self._ensure_targets(width, height)
+        requested_size = (int(width), int(height))
+        if self._texture_size(depth_texture) != requested_size:
+            raise ValueError("Hi-Z GPU input texture size must match the requested dimensions")
+        self._ensure_targets(*requested_size)
         if not self._targets:
             return ()
 
         previous_viewport = self.ctx.viewport
         source = depth_texture
-        source_width = int(width)
-        source_height = int(height)
+        source_width, source_height = requested_size
         try:
-            self.ctx.disable(self.ctx.DEPTH_TEST)
             for texture, framebuffer in self._targets:
                 target_width, target_height = texture.size
-                framebuffer.use()
-                self.ctx.viewport = (0, 0, target_width, target_height)
-                source.use(location=0)
-                self.program["source_size"].value = (source_width, source_height)
-                self.vao.render(vertices=3)
+                scope = self.ctx.scope(
+                    framebuffer=framebuffer,
+                    enable_only=self.ctx.NOTHING,
+                    textures=((source, 0),),
+                )
+                with scope:
+                    self.ctx.viewport = (0, 0, target_width, target_height)
+                    self.program["source_size"].value = (source_width, source_height)
+                    self.vao.render(vertices=3)
                 source = texture
                 source_width = target_width
                 source_height = target_height
