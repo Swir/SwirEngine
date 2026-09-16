@@ -111,4 +111,19 @@ UI Toolkit 2.0 lives in the additive `swirengine.ui15` layer and composes the re
 - a 240-button / 320-responsive-layout workload remaining below the documented 5.0-second CI budget while making no renderer-FPS claim;
 - the repository's full CI, Desktop Export, Full Game 1.3, game-demo and 1.4 compatibility/hardening regression workflows remaining green on the verified milestone head.
 
+## Milestone 8 contract
+
+Editor Productivity 2.0 lives in the additive `swirengine.editor15` layer and leaves the released 1.x editor, prefab, serializer and project formats unchanged. Completion requires:
+
+- a non-destructive prefab authoring document with deterministic instance diff, selective apply/revert and strict selector/property validation;
+- graph-safe prefab apply/revert so references between members stay internal to the authored template or live instance rather than leaking detached clones;
+- creator variants that materialize as ordinary stable `Prefab` objects with source/diff metadata and no hidden runtime dependency on the editor document;
+- a bounded shared creator command history with grouped undo/redo, redo-branch invalidation and unchanged cursor state when callbacks fail;
+- previewable multi-object batch edits with full preflight, stale-plan detection before the first write and rollback of already-applied fields if a setter fails;
+- asset-reference diagnostics that find missing/unsafe project paths, broken aliases and unused scanned assets without loading asset contents;
+- the stable 1.4 edit/play separation and existing editor authoring/history behavior remaining unchanged and covered by regression tests;
+- focused Python 3.10/3.13/3.14 tests, strict Ruff, compile and a runnable headless creator demo;
+- a 120-object / 200-authoring-iteration workload remaining below the documented 5.0-second CI budget without making an FPS claim;
+- the repository's normal CI, Desktop Export, game-demo, creator-editor and 1.4 compatibility/hardening regression workflows remaining green on the verified milestone head.
+
 Progress is based on milestone completion, not file count or commit count. A milestone is 10 percentage points. SwirEngine 1.5 must not be tagged or published until all 10 milestones are complete and the release gate is green.
