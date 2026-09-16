@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -84,12 +85,12 @@ def test_manifest_rejects_non_portable_or_escaping_entrypoints(tmp_path, unsafe)
                 'name = "Unsafe"',
                 'mode = "2d"',
                 'engine = ">=1.0,<2.0"',
-                f'entrypoint = {unsafe!r}',
+                f"entrypoint = {json.dumps(unsafe)}",
             )
-        ).replace("'", '"'),
+        ),
     )
 
-    with pytest.raises(ProjectConfigError):
+    with pytest.raises(ProjectConfigError, match="entrypoint"):
         load_project_manifest(root)
 
 
