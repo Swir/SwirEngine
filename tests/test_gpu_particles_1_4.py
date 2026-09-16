@@ -4,8 +4,8 @@ import pytest
 
 from swirengine.gpu_particles import (
     GPUParticleBlendMode,
-    GPUParticleEmitter3D,
     GPUParticleEmissionShape3D,
+    GPUParticleEmitter3D,
 )
 from swirengine.math.types import Color, Vec3
 
