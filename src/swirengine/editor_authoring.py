@@ -78,27 +78,24 @@ class EditorSelectionModel:
     @property
     def snapshot(self) -> EditorSelectionSnapshot:
         self._drop_stale()
-        primary = self._keys[-1] if self._keys else None
-        return EditorSelectionSnapshot(tuple(self._keys), primary)
+        return self._snapshot_unchecked()
 
     @property
     def selected_targets(self) -> tuple[object, ...]:
-        self._drop_stale()
-        return tuple(
-            target
-            for key in self._keys
-            if (target := self.inspector.resolve(key)) is not None
-        )
+        live = self._live_targets_by_key()
+        self._drop_stale(live)
+        return tuple(live[key] for key in self._keys)
 
     @property
     def primary_target(self) -> object | None:
-        snapshot = self.snapshot
-        return None if snapshot.primary_key is None else self.inspector.resolve(snapshot.primary_key)
+        live = self._live_targets_by_key()
+        self._drop_stale(live)
+        return None if not self._keys else live[self._keys[-1]]
 
     def clear(self) -> EditorSelectionSnapshot:
         self._keys.clear()
         self.inspector.select(None)
-        return self.snapshot
+        return self._snapshot_unchecked()
 
     def select(
         self,
@@ -123,7 +120,7 @@ class EditorSelectionModel:
             self._keys.append(key)
 
         self._sync_primary()
-        return self.snapshot
+        return self._snapshot_unchecked()
 
     def select_range(
         self,
@@ -159,17 +156,18 @@ class EditorSelectionModel:
             self._keys.remove(target_key)
             self._keys.append(target_key)
         self._sync_primary()
-        return self.snapshot
+        return self._snapshot_unchecked()
 
     def _key(self, target_or_key: object | str) -> str:
         if isinstance(target_or_key, str):
-            if self.inspector.resolve(target_or_key) is None:
+            if target_or_key not in self._live_targets_by_key():
                 raise KeyError(target_or_key)
             return target_or_key
         return self.inspector.key_for(target_or_key)
 
-    def _drop_stale(self) -> None:
-        current = [key for key in self._keys if self.inspector.resolve(key) is not None]
+    def _drop_stale(self, live: dict[str, object] | None = None) -> None:
+        live_targets = self._live_targets_by_key() if live is None else live
+        current = [key for key in self._keys if key in live_targets]
         if current == self._keys:
             return
         self._keys[:] = current
@@ -180,6 +178,17 @@ class EditorSelectionModel:
             self.inspector.select(None)
             return
         self.inspector.select(self._keys[-1])
+
+    def _snapshot_unchecked(self) -> EditorSelectionSnapshot:
+        primary = self._keys[-1] if self._keys else None
+        return EditorSelectionSnapshot(tuple(self._keys), primary)
+
+    def _live_targets_by_key(self) -> dict[str, object]:
+        """Build a linear-time live-key index without repeated ``SceneInspector.resolve`` scans."""
+
+        live = {f"object:{id(target):x}": target for target in self.inspector.scene.objects}
+        live.update(f"entity:{entity.id}": entity for entity in self.inspector.scene.entities)
+        return live
 
 
 class EditorAuthoringSession:
