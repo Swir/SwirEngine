@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from .assets import AssetInfo, AssetManager
 
@@ -13,6 +13,24 @@ _FONT_SUFFIXES = {".ttf", ".otf", ".woff", ".woff2"}
 _DATA_SUFFIXES = {".json", ".toml", ".yaml", ".yml", ".csv"}
 _SHADER_SUFFIXES = {".glsl", ".vert", ".frag", ".geom", ".comp"}
 _SCRIPT_SUFFIXES = {".py"}
+
+
+def _normalize_project_relative_path(value: str | Path, *, label: str) -> str:
+    raw = str(value).strip()
+    normalized = raw.replace("\\", "/")
+    if not normalized or normalized == ".":
+        raise ValueError(f"{label} cannot be empty")
+    posix = PurePosixPath(normalized)
+    windows = PureWindowsPath(raw)
+    if (
+        posix.is_absolute()
+        or windows.is_absolute()
+        or bool(windows.drive)
+        or bool(windows.root)
+        or ".." in posix.parts
+    ):
+        raise ValueError(f"{label} must stay project-relative")
+    return posix.as_posix()
 
 
 def classify_editor_asset(path: str | Path) -> str:
@@ -67,6 +85,13 @@ class EditorAssetDragPayload:
     name: str
     kind: str
     suffix: str
+
+    def __post_init__(self) -> None:
+        normalized = _normalize_project_relative_path(
+            self.relative_path,
+            label="asset drag path",
+        )
+        object.__setattr__(self, "relative_path", normalized)
 
     @property
     def key(self) -> str:
@@ -280,20 +305,11 @@ class EditorAssetBrowser:
 
     @staticmethod
     def _normalize_relative(asset: str | Path) -> str:
-        value = str(asset).replace("\\", "/").strip("/")
-        if not value or value == ".":
-            raise ValueError("asset path cannot be empty")
-        path = PurePosixPath(value)
-        if path.is_absolute() or ".." in path.parts:
-            raise ValueError("asset path must stay inside the asset root")
-        return path.as_posix()
+        return _normalize_project_relative_path(asset, label="asset path")
 
     @classmethod
     def _normalize_folder(cls, folder: str | Path) -> str:
-        value = str(folder).replace("\\", "/").strip("/")
+        value = str(folder).strip()
         if not value or value == ".":
             return ""
-        path = PurePosixPath(value)
-        if path.is_absolute() or ".." in path.parts:
-            raise ValueError("asset folder must stay inside the asset root")
-        return path.as_posix()
+        return _normalize_project_relative_path(folder, label="asset folder")
