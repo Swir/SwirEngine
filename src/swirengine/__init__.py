@@ -90,8 +90,8 @@ from .filewatch import FileChangeEvent, PluginAutoReloader, PollingFileWatcher, 
 from .gpu_particles import (
     GPUParticleBlendMode,
     GPUParticleDiagnostics,
-    GPUParticleEmitter3D,
     GPUParticleEmissionShape3D,
+    GPUParticleEmitter3D,
     GPUParticleFrame,
 )
 from .graphics.animation import AnimatedSprite2D, AnimationClip, SpriteSheet, animated_sprite
@@ -301,8 +301,8 @@ __all__ = [
     "Frustum3D",
     "GPUParticleBlendMode",
     "GPUParticleDiagnostics",
-    "GPUParticleEmitter3D",
     "GPUParticleEmissionShape3D",
+    "GPUParticleEmitter3D",
     "GPUParticleFrame",
     "GPUTextureInvalidation",
     "Game",
