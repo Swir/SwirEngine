@@ -5,7 +5,7 @@
   <a href="https://pypi.org/project/swirengine/"><img alt="PyPI" src="https://img.shields.io/pypi/v/swirengine?style=flat-square"></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.10--3.13%20cross--platform%20%7C%203.14%20Windows-3776AB?style=flat-square&logo=python&logoColor=white">
   <img alt="Stable roadmap" src="https://img.shields.io/badge/1.3%20ROADMAP-100%25-2ea043?style=flat-square">
-  <img alt="Development roadmap" src="https://img.shields.io/badge/1.4%20ROADMAP-20%25-0969da?style=flat-square">
+  <img alt="Development roadmap" src="https://img.shields.io/badge/1.4%20ROADMAP-30%25-0969da?style=flat-square">
   <img alt="Status" src="https://img.shields.io/badge/status-1.3%20stable%20%7C%201.4%20development-0969da?style=flat-square">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square">
 </p>
@@ -23,16 +23,18 @@ The 1.3 **Gameplay & Creator Power** roadmap is complete at **10/10 = 100.0%**. 
 SwirEngine 1.4 is the **Production World & Engine Power** development line. Stable users remain on 1.3.0 while 1.4 is built milestone-by-milestone behind the stable 1.x API compatibility contract.
 
 ```text
-████░░░░░░░░░░░░░░░░ 20.0% — 2/10
+██████░░░░░░░░░░░░░░ 30.0% — 3/10
 ```
 
 Milestone #1, **Terrain + World LOD**, is complete on the 1.4 development line. It adds immutable heightmaps, chunk mesh generation, distance LOD, bounded local chunk selection, LRU mesh reuse, terrain material/splat metadata, heightfield ground queries and direct integration with the existing `LargeWorldStreamer`. The milestone is covered by deterministic cache/LOD performance gates and a real Xvfb/software-OpenGL terrain render smoke.
 
 Milestone #2, **Physics 2.0**, is also complete. It adds additive `PhysicsScene3D` / `PhysicsBody3D` APIs, deterministic box/sphere contacts, friction and restitution response, shape sweeps, optional continuous collision handling, distance joints, sleeping/wake behavior, diagnostics and a backend-ready protocol while keeping the existing 1.x physics path intact. The dedicated gate validates regression compatibility, sparse broad-phase/CCD behavior, an integration demo, strict Ruff and compileall.
 
-The remaining 1.4 plan focuses on production character controllers, Renderer 2.0, GPU VFX, Asset Pipeline 2.0, scene acceleration/occlusion, stronger editor authoring, Multiplayer 2.0 and one integrated production-scale release showcase.
+Milestone #3, **Character Controllers**, is verified as well. It adds a deterministic kinematic `CharacterController3D` backed by Physics 2.0 shape sweeps, first-person, third-person and platformer presets, grounded state, jumping, coyote time, jump buffering, step-up and slope handling, ground snapping, camera synchronization/collision, semantic `InputActions` integration and revision-aware `NavigationProvider3D` steering. The controller API is available both from `swirengine.character` and directly from the top-level `swirengine` package. Its dedicated validation covers movement/camera/navigation regressions, a deterministic sweep-budget gate, integration demo, strict Ruff and compileall, while the full cross-platform CI, desktop export and demo validators remain green.
 
-See [`ROADMAP_1_4.md`](ROADMAP_1_4.md), [`docs/TERRAIN_WORLD_LOD_1_4.md`](docs/TERRAIN_WORLD_LOD_1_4.md) and [`docs/PHYSICS_2_1_4.md`](docs/PHYSICS_2_1_4.md).
+The remaining 1.4 plan focuses on Renderer 2.0, GPU VFX, Asset Pipeline 2.0, scene acceleration/occlusion, stronger editor authoring, Multiplayer 2.0 and one integrated production-scale release showcase.
+
+See [`ROADMAP_1_4.md`](ROADMAP_1_4.md), [`docs/TERRAIN_WORLD_LOD_1_4.md`](docs/TERRAIN_WORLD_LOD_1_4.md), [`docs/PHYSICS_2_1_4.md`](docs/PHYSICS_2_1_4.md) and [`docs/CHARACTER_CONTROLLERS_1_4.md`](docs/CHARACTER_CONTROLLERS_1_4.md).
 
 ## Install
 
@@ -234,6 +236,7 @@ SwirEngine keeps performance claims reproducible and workload-specific. Examples
 - 1,024 terrain chunks -> a radius-2 focus scans only 25 local chunks; stationary frames reuse cached meshes
 - terrain LOD0 512 triangles vs coarse LOD 8 triangles in the deterministic benchmark workload
 - Physics 2.0 sparse-scene broad-phase and thin-wall CCD workloads -> dedicated deterministic regression gate
+- Character Controllers 1.4 movement workload -> deterministic per-frame shape-sweep budget gate with FPS claims explicitly excluded
 
 Host timings are diagnostics only. SwirEngine does **not** turn those numbers into unmeasured FPS claims.
 
@@ -250,6 +253,7 @@ Host timings are diagnostics only. SwirEngine does **not** turn those numbers in
 - `examples/demo_large_world_streaming.py`
 - `examples/demo_terrain_world_lod.py`
 - `examples/demo_physics2_contacts.py`
+- `examples/demo_character_controllers.py`
 - `examples/demo_shader_variants.py`
 - `examples/demo_renderer2d_power.py`
 - `examples/demo_gameplay_framework.py`
@@ -293,6 +297,7 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
 
 - [`docs/TERRAIN_WORLD_LOD_1_4.md`](docs/TERRAIN_WORLD_LOD_1_4.md) — milestone #1, verified
 - [`docs/PHYSICS_2_1_4.md`](docs/PHYSICS_2_1_4.md) — milestone #2, verified
+- [`docs/CHARACTER_CONTROLLERS_1_4.md`](docs/CHARACTER_CONTROLLERS_1_4.md) — milestone #3, verified
 
 ## Roadmaps
 
@@ -300,7 +305,7 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
 - SwirEngine 1.1 — [`ROADMAP_1_1.md`](ROADMAP_1_1.md) — **10/10 = 100%**, released and locked
 - SwirEngine 1.2 — [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **10/10 = 100%**, released and locked
 - SwirEngine 1.3 — [`ROADMAP_1_3.md`](ROADMAP_1_3.md) — **10/10 = 100.0%**, released and locked
-- SwirEngine 1.4 — [`ROADMAP_1_4.md`](ROADMAP_1_4.md) — **2/10 = 20.0%**, active development
+- SwirEngine 1.4 — [`ROADMAP_1_4.md`](ROADMAP_1_4.md) — **3/10 = 30.0%**, active development
 
 ## Links
 
