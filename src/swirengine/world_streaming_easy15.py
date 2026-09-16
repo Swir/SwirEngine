@@ -78,6 +78,12 @@ def _chunk_key(value: ChunkKey | Sequence[int], *, dimensions: int) -> ChunkKey:
     return ChunkKey(normalized[0], normalized[1], normalized[2])
 
 
+def _dependencies(value: Iterable[str]) -> tuple[str, ...]:
+    if isinstance(value, (str, bytes)):
+        raise TypeError("world stream dependencies must be an iterable of cell ids, not a string")
+    return tuple(value)
+
+
 class WorldStream:
     """Beginner-friendly facade over deterministic World Streaming 2.0.
 
@@ -215,7 +221,7 @@ class WorldStream:
             strict_factory,
             cost=cost,
             priority=priority,
-            dependencies=tuple(dependencies),
+            dependencies=_dependencies(dependencies),
             on_activate=on_activate,
             on_deactivate=deactivate,
         )
@@ -280,7 +286,10 @@ class WorldStream:
         return last
 
     def retry(self, cell_id: str) -> bool:
-        return self.runtime.retry(cell_id)
+        if self._runtime is None:
+            self.registry.cell(cell_id)
+            return False
+        return self._runtime.retry(cell_id)
 
     def unload_all(self) -> tuple[str, ...]:
         if self._runtime is None:
@@ -291,7 +300,25 @@ class WorldStream:
         return self.runtime.state_fingerprint()
 
     def context(self, cell_id: str) -> WorldCellContext:
-        return self.runtime.context(cell_id)
+        if self._runtime is not None:
+            return self._runtime.context(cell_id)
+        cell = self.registry.cell(cell_id)
+        size = self.settings.chunk_size
+        origin = Vec3(cell.key.x * size, cell.key.y * size, cell.key.z * size)
+        center = Vec3(
+            origin.x + size * 0.5,
+            origin.y + size * 0.5,
+            origin.z + size * 0.5 if self.settings.dimensions == 3 else 0.0,
+        )
+        return WorldCellContext(
+            self.scene,
+            cell.cell_id,
+            cell.key,
+            origin,
+            center,
+            size,
+            0,
+        )
 
     def __enter__(self) -> Self:
         return self
