@@ -492,8 +492,8 @@ class WorldStreamingRuntime:
         return True
 
     def update(self, focus: Vec2 | Vec3 | Sequence[float]) -> WorldStreamingUpdate:
-        self._update_index += 1
         focus_key = self.focus_key(focus)
+        self._update_index += 1
         local_keys = tuple(self._iter_window(focus_key))
         desired: set[str] = set()
         for key in local_keys:
