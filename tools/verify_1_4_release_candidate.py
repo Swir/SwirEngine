@@ -19,8 +19,8 @@ REQUIRED_1_4_DOCS = (
     "docs/PHYSICS_2_1_4.md",
     "docs/CHARACTER_CONTROLLERS_1_4.md",
     "docs/RENDERER2_1_4.md",
-    "docs/GPU_VFX_1_4.md",
-    "docs/SCENE_ACCELERATION_1_4.md",
+    "docs/GPU_VFX_PARTICLES_1_4.md",
+    "docs/SCENE_ACCELERATION_OCCLUSION_1_4.md",
     "docs/ASSET_PIPELINE_2_1_4.md",
     "docs/EDITOR_AUTHORING_1_4.md",
     "docs/MULTIPLAYER_2_1_4.md",
@@ -92,30 +92,59 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
 
     roadmap_text = _read(root, "ROADMAP_1_4.md")
     roadmap = parse_roadmap(roadmap_text)
-    _require("<!-- SWIR-ROADMAP-STANDARD:v1 -->" in roadmap_text, "roadmap standard marker is preserved", checks)
+    _require(
+        "<!-- SWIR-ROADMAP-STANDARD:v1 -->" in roadmap_text,
+        "roadmap standard marker is preserved",
+        checks,
+    )
     _require(roadmap.total == EXPECTED_TOTAL, "1.4 roadmap has exactly 10 deliverables", checks)
     _require(roadmap.bar in roadmap_text, "roadmap 20-segment bar matches checkboxes", checks)
-    _require(f"ROADMAP-{roadmap.percent:.1f}%25" in roadmap_text, "roadmap badge matches checkboxes", checks)
-    _require(f"DONE-{roadmap.completed}%2F{roadmap.total}" in roadmap_text, "roadmap completed badge matches checkboxes", checks)
     _require(
-        f"| **{roadmap.completed}** | **{roadmap.remaining}** | **{roadmap.total}** | **{roadmap.percent:.1f}%** |" in roadmap_text,
+        f"ROADMAP-{roadmap.percent:.1f}%25" in roadmap_text,
+        "roadmap badge matches checkboxes",
+        checks,
+    )
+    _require(
+        f"DONE-{roadmap.completed}%2F{roadmap.total}" in roadmap_text,
+        "roadmap completed badge matches checkboxes",
+        checks,
+    )
+    _require(
+        f"| **{roadmap.completed}** | **{roadmap.remaining}** | **{roadmap.total}** | **{roadmap.percent:.1f}%** |"
+        in roadmap_text,
         "roadmap dashboard matches checkboxes",
         checks,
     )
 
     if require_complete:
-        _require(roadmap.completed == 10 and roadmap.remaining == 0, "1.4 release requires exactly 10/10 deliverables", checks)
-        _require("STATUS-COMPLETE" in roadmap_text, "completed 1.4 roadmap status is COMPLETE", checks)
+        _require(
+            roadmap.completed == 10 and roadmap.remaining == 0,
+            "1.4 release requires exactly 10/10 deliverables",
+            checks,
+        )
+        _require(
+            "STATUS-COMPLETE" in roadmap_text,
+            "completed 1.4 roadmap status is COMPLETE",
+            checks,
+        )
         _require(version == TARGET_VERSION, f"final package version is {TARGET_VERSION}", checks)
     else:
-        _require(roadmap.completed in {9, 10}, "1.4 hardening phase must be at milestone 9 or 10", checks)
+        _require(
+            roadmap.completed in {9, 10},
+            "1.4 hardening phase must be at milestone 9 or 10",
+            checks,
+        )
         _require(
             version in {CURRENT_STABLE_VERSION, TARGET_VERSION},
             f"package version is valid for the 1.4 hardening phase: {version}",
             checks,
         )
         if roadmap.completed < 10:
-            _require(version == CURRENT_STABLE_VERSION, "stable package remains 1.3.0 before 10/10", checks)
+            _require(
+                version == CURRENT_STABLE_VERSION,
+                "stable package remains 1.3.0 before 10/10",
+                checks,
+            )
 
     for relative in REQUIRED_1_4_DOCS:
         _read(root, relative)
@@ -150,21 +179,43 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         _require(token in hardening, f"1.4 hardening workflow includes {token}", checks)
 
     release = _read(root, ".github/workflows/release.yml")
-    _require("pypa/gh-action-pypi-publish@release/v1" in release, "PyPI publication uses Trusted Publishing", checks)
+    _require(
+        "pypa/gh-action-pypi-publish@release/v1" in release,
+        "PyPI publication uses Trusted Publishing",
+        checks,
+    )
     _require("id-token: write" in release, "release workflow keeps OIDC publication permission", checks)
-    _require("skip-existing: true" not in release, "publication cannot hide duplicate artifacts", checks)
+    _require(
+        "skip-existing: true" not in release,
+        "publication cannot hide duplicate artifacts",
+        checks,
+    )
     if require_complete:
-        _require("verify_1_4_release_candidate.py --require-complete" in release, "release workflow hard-gates complete 1.4 contract", checks)
-        _require("neon_frontier_1_4/run_game.py" in release, "release workflow validates Neon Frontier 1.4", checks)
+        _require(
+            "verify_1_4_release_candidate.py --require-complete" in release,
+            "release workflow hard-gates complete 1.4 contract",
+            checks,
+        )
+        _require(
+            "neon_frontier_1_4/run_game.py" in release,
+            "release workflow validates Neon Frontier 1.4",
+            checks,
+        )
 
     ci = _read(root, ".github/workflows/ci.yml")
-    _require("verify_1_3_release_candidate.py" in ci, "stable 1.3 release contract remains protected during 1.4 development", checks)
+    _require(
+        "verify_1_3_release_candidate.py" in ci,
+        "stable 1.3 release contract remains protected during 1.4 development",
+        checks,
+    )
 
     return AuditReport(version=version, roadmap=roadmap, checks=tuple(checks))
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Verify the SwirEngine 1.4 release-candidate contract.")
+    parser = argparse.ArgumentParser(
+        description="Verify the SwirEngine 1.4 release-candidate contract."
+    )
     parser.add_argument("--require-complete", action="store_true")
     args = parser.parse_args()
     try:

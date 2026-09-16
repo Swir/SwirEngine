@@ -12,6 +12,7 @@ from swirengine.editor_authoring_workspace import EditorAuthoringWorkspace
 from swirengine.gpu_particles import GPUParticleBlendMode, GPUParticleEmitter3D
 from swirengine.graphics.camera3d import Camera3D
 from swirengine.graphics.lights import DirectionalLight3D
+from swirengine.graphics.mesh import Mesh3D, cube_mesh
 from swirengine.graphics.renderer2 import Decal3D, Renderer2Planner, Renderer2Settings
 from swirengine.large_world import LargeWorldStreamer
 from swirengine.multiplayer14 import (
@@ -90,7 +91,7 @@ def _make_streamer(scene: Scene, terrain: HeightmapTerrain) -> LargeWorldStreame
 
 
 def _body(
-    target: Cube3D,
+    target: Cube3D | Mesh3D,
     *,
     width: float,
     height: float,
@@ -135,9 +136,10 @@ def _snapshot(
 
 def _configure_physics(
     scene: Scene,
-) -> tuple[PhysicsScene3D, Cube3D, Cube3D, Cube3D, CharacterController3D]:
+) -> tuple[PhysicsScene3D, Mesh3D, Cube3D, Cube3D, CharacterController3D]:
     floor = scene.add(
-        Cube3D(
+        Mesh3D(
+            cube_mesh(),
             position=Vec3(0.0, -1.25, 0.0),
             scale=Vec3(18.0, 0.5, 12.0),
             color=Color(0.06, 0.08, 0.12, 1.0),
