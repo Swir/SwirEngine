@@ -5,13 +5,13 @@
   <a href="https://pypi.org/project/swirengine/"><img alt="PyPI" src="https://img.shields.io/pypi/v/swirengine?style=flat-square"></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.10--3.13%20cross--platform%20%7C%203.14%20Windows-3776AB?style=flat-square&logo=python&logoColor=white">
   <img alt="1.4 roadmap" src="https://img.shields.io/badge/1.4%20ROADMAP-100%25-2ea043?style=flat-square">
-  <img alt="Status" src="https://img.shields.io/badge/status-1.4%20release%20candidate-0969da?style=flat-square">
+  <img alt="Status" src="https://img.shields.io/badge/status-1.4%20stable-2ea043?style=flat-square">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square">
 </p>
 
 **SwirEngine 1.4.0** is the Production World & Engine Power release line of a Python-first 2D/3D game engine with a stable 1.x compatibility contract. It combines an approachable gameplay API with a real OpenGL renderer, production-oriented world systems, physics, character controllers, GPU VFX, scalable visibility, asset processing, editor authoring, multiplayer foundations and native desktop export.
 
-The 1.4 roadmap is complete at **10/10 = 100.0%**. Publication is still treated as a separate safety gate: the final 1.4.0 branch must pass the strict release contract, full CI/runtime/packaging matrix and tag/version checks before PyPI and the GitHub Release are created.
+The 1.4 roadmap is complete at **10/10 = 100.0%** and **v1.4.0 is published**. The release workflow gates the GitHub Release behind the PyPI publishing stage and follows publication with clean public-index installation checks, while preserving the strict CI/runtime/packaging and tag/version contracts used to close the roadmap.
 
 ```text
 ████████████████████ 100.0% — 10/10
@@ -223,6 +223,8 @@ Host timings are diagnostics only. SwirEngine does **not** turn host-side timing
 - **Neon Frontier 1.3** — locked 1.3 regression game
 - **Neon Cube Hunt 3D** — OpenGL + packaged-runtime regression arena
 - **Neon Snake 3D** — complete 3D regression project
+- [`examples/2d_game_demo/`](examples/2d_game_demo/) — source-only classic platformer showcase
+- [`examples/3d_game_demo/`](examples/3d_game_demo/) — source-only classic corridor-FPS showcase
 - `examples/demo_terrain_world_lod.py`
 - `examples/demo_physics2_contacts.py`
 - `examples/demo_character_controllers.py`
@@ -270,7 +272,7 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
 - SwirEngine 1.1 — [`ROADMAP_1_1.md`](ROADMAP_1_1.md) — **10/10 = 100%**, released and locked
 - SwirEngine 1.2 — [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **10/10 = 100%**, released and locked
 - SwirEngine 1.3 — [`ROADMAP_1_3.md`](ROADMAP_1_3.md) — **10/10 = 100%**, released and locked
-- SwirEngine 1.4 — [`ROADMAP_1_4.md`](ROADMAP_1_4.md) — **10/10 = 100.0%**, release candidate
+- SwirEngine 1.4 — [`ROADMAP_1_4.md`](ROADMAP_1_4.md) — **10/10 = 100.0%**, released and locked
 
 ## Links
 
