@@ -1,0 +1,278 @@
+from __future__ import annotations
+
+from collections.abc import Callable, Iterable, Sequence
+from typing import TypeAlias
+
+from .core.scene import Scene
+from .ecs import Entity
+from .large_world import ChunkContent, ChunkKey
+from .math.types import Vec2, Vec3
+from .world_streaming15 import (
+    WorldCellContext,
+    WorldCellLifecycleHook,
+    WorldPartitionCell,
+    WorldPartitionRegistry,
+    WorldStreamingDiagnostics,
+    WorldStreamingRuntime,
+    WorldStreamingSettings,
+    WorldStreamingUpdate,
+)
+
+WorldChunkResult: TypeAlias = ChunkContent | object | Iterable[object] | None
+WorldChunkFactory: TypeAlias = Callable[[WorldCellContext], WorldChunkResult]
+
+
+def chunk_content(*objects: object, entities: Iterable[Entity] = ()) -> ChunkContent:
+    """Create explicit chunk content without boilerplate tuple conversions."""
+    return ChunkContent(tuple(objects), tuple(entities))
+
+
+def _normalize_content(value: WorldChunkResult) -> ChunkContent:
+    if value is None:
+        return ChunkContent()
+    if isinstance(value, ChunkContent):
+        return value
+    if isinstance(value, Entity):
+        return ChunkContent(entities=(value,))
+    if isinstance(value, (str, bytes, bytearray)):
+        return ChunkContent(objects=(value,))
+
+    try:
+        items = tuple(value)  # type: ignore[arg-type]
+    except TypeError:
+        return ChunkContent(objects=(value,))
+
+    objects: list[object] = []
+    entities: list[Entity] = []
+    for item in items:
+        if isinstance(item, Entity):
+            entities.append(item)
+        else:
+            objects.append(item)
+    return ChunkContent(tuple(objects), tuple(entities))
+
+
+def _chunk_key(value: ChunkKey | Sequence[int], *, dimensions: int) -> ChunkKey:
+    if isinstance(value, ChunkKey):
+        if dimensions == 2 and value.z != 0:
+            raise ValueError("2D world stream chunk keys must use z=0")
+        return value
+    if isinstance(value, (str, bytes)):
+        raise ValueError("world stream chunk key must contain integer coordinates")
+    coords = tuple(value)
+    expected = 2 if dimensions == 2 else 3
+    if len(coords) != expected:
+        raise ValueError(
+            f"world stream chunk key must contain exactly {expected} integer coordinates"
+        )
+    normalized = []
+    for coordinate in coords:
+        if not isinstance(coordinate, int) or isinstance(coordinate, bool):
+            raise TypeError("world stream chunk coordinates must be integers")
+        normalized.append(coordinate)
+    if dimensions == 2:
+        return ChunkKey(normalized[0], normalized[1], 0)
+    return ChunkKey(normalized[0], normalized[1], normalized[2])
+
+
+class WorldStream:
+    """Beginner-friendly facade over deterministic World Streaming 2.0.
+
+    Typical use::
+
+        world = WorldStream(game.scene, dimensions=2, chunk_size=512, radius=1)
+
+        @world.chunk("village", (0, 0))
+        def village(ctx):
+            return [
+                Sprite2D("house.png", x=ctx.center.x, y=ctx.center.y),
+                Sprite2D("tree.png", x=ctx.center.x + 120, y=ctx.center.y),
+            ]
+
+        game.update(lambda _dt: world.update((player.x, player.y)))
+
+    Chunk factories may return ``ChunkContent``, a single scene object, any iterable of scene
+    objects, entities, a mixture of objects/entities, or ``None``. The facade normalizes that
+    result to the strict World Streaming 2.0 runtime contract.
+    """
+
+    def __init__(
+        self,
+        scene: Scene,
+        *,
+        chunk_size: float = 64.0,
+        dimensions: int = 3,
+        radius: int = 1,
+        budget: int = 32,
+        loads_per_update: int = 4,
+        unloads_per_update: int = 8,
+        retention_updates: int = 1,
+    ) -> None:
+        if not isinstance(scene, Scene):
+            raise TypeError("WorldStream requires a Scene")
+        self.scene = scene
+        self.settings = WorldStreamingSettings(
+            chunk_size=chunk_size,
+            dimensions=dimensions,
+            active_radius_chunks=radius,
+            max_active_cost=budget,
+            max_activations_per_update=loads_per_update,
+            max_deactivations_per_update=unloads_per_update,
+            retention_updates=retention_updates,
+        )
+        self.registry = WorldPartitionRegistry()
+        self._runtime: WorldStreamingRuntime | None = None
+
+    @property
+    def started(self) -> bool:
+        return self._runtime is not None
+
+    @property
+    def runtime(self) -> WorldStreamingRuntime:
+        if self._runtime is None:
+            self._runtime = WorldStreamingRuntime(
+                self.scene,
+                self.registry,
+                settings=self.settings,
+            )
+        return self._runtime
+
+    @property
+    def active(self) -> tuple[str, ...]:
+        return self.runtime.active_ids
+
+    @property
+    def diagnostics(self) -> WorldStreamingDiagnostics:
+        return self.runtime.diagnostics
+
+    def _require_registration_open(self) -> None:
+        if self._runtime is not None:
+            raise RuntimeError(
+                "world stream registration is closed after the first update; "
+                "register chunks before gameplay starts"
+            )
+
+    def add_chunk(
+        self,
+        cell_id: str,
+        key: ChunkKey | Sequence[int],
+        factory: WorldChunkFactory,
+        *,
+        cost: int = 1,
+        priority: int = 0,
+        dependencies: Iterable[str] = (),
+        on_activate: WorldCellLifecycleHook | None = None,
+        on_deactivate: WorldCellLifecycleHook | None = None,
+    ) -> WorldPartitionCell:
+        """Register one streamed chunk with an ergonomic creator factory."""
+        self._require_registration_open()
+        if not callable(factory):
+            raise TypeError("world stream chunk factory must be callable")
+
+        def strict_factory(context: WorldCellContext) -> ChunkContent:
+            return _normalize_content(factory(context))
+
+        cell = WorldPartitionCell(
+            cell_id,
+            _chunk_key(key, dimensions=self.settings.dimensions),
+            strict_factory,
+            cost=cost,
+            priority=priority,
+            dependencies=tuple(dependencies),
+            on_activate=on_activate,
+            on_deactivate=on_deactivate,
+        )
+        return self.registry.add(cell)
+
+    def chunk(
+        self,
+        cell_id: str,
+        key: ChunkKey | Sequence[int],
+        *,
+        cost: int = 1,
+        priority: int = 0,
+        dependencies: Iterable[str] = (),
+        on_activate: WorldCellLifecycleHook | None = None,
+        on_deactivate: WorldCellLifecycleHook | None = None,
+    ) -> Callable[[WorldChunkFactory], WorldChunkFactory]:
+        """Decorator form of :meth:`add_chunk` for compact game code."""
+
+        def decorator(factory: WorldChunkFactory) -> WorldChunkFactory:
+            self.add_chunk(
+                cell_id,
+                key,
+                factory,
+                cost=cost,
+                priority=priority,
+                dependencies=dependencies,
+                on_activate=on_activate,
+                on_deactivate=on_deactivate,
+            )
+            return factory
+
+        return decorator
+
+    def update(self, focus: Vec2 | Vec3 | Sequence[float]) -> WorldStreamingUpdate:
+        """Move the streaming focus and perform one bounded residency update."""
+        return self.runtime.update(focus)
+
+    move_focus = update
+
+    def warmup(
+        self,
+        focus: Vec2 | Vec3 | Sequence[float],
+        *,
+        max_updates: int = 64,
+    ) -> WorldStreamingUpdate:
+        """Resolve bounded chunk activations for a loading screen or spawn transition.
+
+        ``warmup`` never changes runtime budgets. It simply performs multiple normal deterministic
+        updates until no further activation/deactivation work remains, or the caller-supplied
+        safety limit is reached.
+        """
+        if not isinstance(max_updates, int) or isinstance(max_updates, bool):
+            raise TypeError("world stream max_updates must be an integer")
+        if max_updates < 1:
+            raise ValueError("world stream max_updates must be >= 1")
+
+        last = self.update(focus)
+        for _ in range(max_updates - 1):
+            if not last.activated and not last.deactivated:
+                return last
+            last = self.update(focus)
+        return last
+
+    def retry(self, cell_id: str) -> bool:
+        return self.runtime.retry(cell_id)
+
+    def unload_all(self) -> tuple[str, ...]:
+        if self._runtime is None:
+            return ()
+        return self._runtime.unload_all()
+
+    def state_fingerprint(self) -> str:
+        return self.runtime.state_fingerprint()
+
+    def context(self, cell_id: str) -> WorldCellContext:
+        return self.runtime.context(cell_id)
+
+    def __enter__(self) -> WorldStream:
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        self.unload_all()
+
+
+def world_stream(
+    owner: Scene | object,
+    **settings: object,
+) -> WorldStream:
+    """Create a :class:`WorldStream` from a ``Scene`` or any object exposing ``.scene``.
+
+    This allows the natural ``world_stream(game, ...)`` form without changing the stable ``Game``
+    API while SwirEngine 1.5 remains additive.
+    """
+    scene = owner if isinstance(owner, Scene) else getattr(owner, "scene", None)
+    if not isinstance(scene, Scene):
+        raise TypeError("world_stream(...) requires a Scene or an object exposing .scene")
+    return WorldStream(scene, **settings)
