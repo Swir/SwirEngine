@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
@@ -8,10 +9,12 @@ from ..gpu_particles import (
     GPUParticleBlendMode,
     GPUParticleEmissionShape3D,
     GPUParticleEmitter3D,
+    GPUParticleRenderMode3D,
 )
 from ..math.types import perspective
 from .camera3d import Camera3D
 from .ibl_renderer import _read_context_state
+from .mesh import cube_mesh
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,24 +23,29 @@ class GPUParticlePassDiagnostics:
     simulated_particles: int = 0
     submitted_particles: int = 0
     draw_calls: int = 0
+    sprite_draw_calls: int = 0
+    mesh_draw_calls: int = 0
+    trail_draw_calls: int = 0
 
 
 @dataclass(slots=True)
 class _EmitterGPU:
     buffers: tuple[object, object]
     sim_vaos: tuple[object, object]
-    render_vaos: tuple[object, object]
+    sprite_vaos: tuple[object, object]
+    trail_vaos: tuple[object, object]
+    mesh_vaos: tuple[object, object]
     source_index: int = 0
 
     def release(self) -> None:
-        for vao in self.sim_vaos + self.render_vaos:
+        for vao in self.sim_vaos + self.sprite_vaos + self.trail_vaos + self.mesh_vaos:
             vao.release()
         for buffer in self.buffers:
             buffer.release()
 
 
 class GPUParticlePass3D:
-    """OpenGL 3.3 transform-feedback simulation + one point-batch draw per emitter."""
+    """OpenGL 3.3 transform-feedback simulation with sprite, mesh and trail submissions."""
 
     _STRIDE_FLOATS = 12
 
@@ -48,6 +56,10 @@ class GPUParticlePass3D:
         self._target_identity = (0, 0)
         self._released = False
         self.diagnostics = GPUParticlePassDiagnostics()
+        mesh = cube_mesh()
+        mesh_positions = np.ascontiguousarray(mesh.vertices, dtype="f4")
+        self._mesh_vbo = self.ctx.buffer(mesh_positions.tobytes())
+        self._mesh_vertex_count = mesh.vertex_count
         self.sim_program = self.ctx.program(
             vertex_shader="""
                 #version 330
@@ -133,7 +145,9 @@ class GPUParticlePass3D:
                             random01(base ^ 0xc2b2ae35u)
                         );
                         misc.x = mix(size_range.x, size_range.y, random01(base ^ 0x27d4eb2fu));
+                        misc.yzw = position;
                     } else if (age >= 0.0 && dt > 0.0) {
+                        misc.yzw = position;
                         age += dt;
                         if (age >= lifetime) {
                             age = -1.0;
@@ -151,7 +165,7 @@ class GPUParticlePass3D:
             """,
             varyings=["out_position_age", "out_velocity_life", "out_misc"],
         )
-        self.render_program = self.ctx.program(
+        self.sprite_program = self.ctx.program(
             vertex_shader="""
                 #version 330
                 in vec4 in_position_age;
@@ -161,6 +175,7 @@ class GPUParticlePass3D:
                 uniform vec4 start_color;
                 uniform vec4 end_color;
                 uniform float end_size_scale;
+                uniform float emissive_strength;
                 out vec4 v_color;
                 void main() {
                     float age = in_position_age.w;
@@ -175,6 +190,114 @@ class GPUParticlePass3D:
                     gl_Position = view_projection * vec4(in_position_age.xyz, 1.0);
                     gl_PointSize = max(0.0, in_misc.x * mix(1.0, end_size_scale, t));
                     v_color = mix(start_color, end_color, t);
+                    v_color.rgb *= emissive_strength;
+                }
+            """,
+            fragment_shader="""
+                #version 330
+                uniform sampler2D particle_image;
+                uniform bool use_texture;
+                in vec4 v_color;
+                out vec4 fragColor;
+                void main() {
+                    vec2 centered = gl_PointCoord * 2.0 - 1.0;
+                    float radius2 = dot(centered, centered);
+                    vec4 sampled = use_texture
+                        ? texture(particle_image, gl_PointCoord)
+                        : vec4(1.0);
+                    if (!use_texture && radius2 > 1.0) discard;
+                    float feather = use_texture ? 1.0 : 1.0 - smoothstep(0.55, 1.0, radius2);
+                    vec4 color = sampled * v_color;
+                    color.a *= feather;
+                    if (color.a <= 0.0001) discard;
+                    fragColor = color;
+                }
+            """,
+        )
+        self.sprite_program["particle_image"].value = 0
+        self.trail_program = self.ctx.program(
+            vertex_shader="""
+                #version 330
+                in vec4 in_position_age;
+                in vec4 in_velocity_life;
+                in vec4 in_misc;
+                out vec3 v_current;
+                out vec3 v_previous;
+                out float v_age;
+                out float v_lifetime;
+                void main() {
+                    v_current = in_position_age.xyz;
+                    v_previous = in_misc.yzw;
+                    v_age = in_position_age.w;
+                    v_lifetime = in_velocity_life.w;
+                    gl_Position = vec4(in_position_age.xyz, 1.0);
+                }
+            """,
+            geometry_shader="""
+                #version 330
+                layout(points) in;
+                layout(line_strip, max_vertices = 2) out;
+                in vec3 v_current[];
+                in vec3 v_previous[];
+                in float v_age[];
+                in float v_lifetime[];
+                uniform mat4 view_projection;
+                uniform vec4 start_color;
+                uniform vec4 end_color;
+                uniform float trail_alpha_scale;
+                uniform float emissive_strength;
+                out vec4 g_color;
+                void main() {
+                    if (v_age[0] < 0.0) return;
+                    float t = clamp(v_age[0] / max(v_lifetime[0], 0.000001), 0.0, 1.0);
+                    vec4 color = mix(start_color, end_color, t);
+                    color.rgb *= emissive_strength;
+                    g_color = vec4(color.rgb, color.a * trail_alpha_scale * 0.15);
+                    gl_Position = view_projection * vec4(v_previous[0], 1.0);
+                    EmitVertex();
+                    g_color = vec4(color.rgb, color.a * trail_alpha_scale);
+                    gl_Position = view_projection * vec4(v_current[0], 1.0);
+                    EmitVertex();
+                    EndPrimitive();
+                }
+            """,
+            fragment_shader="""
+                #version 330
+                in vec4 g_color;
+                out vec4 fragColor;
+                void main() {
+                    fragColor = g_color;
+                }
+            """,
+        )
+        self.mesh_program = self.ctx.program(
+            vertex_shader="""
+                #version 330
+                in vec3 in_pos;
+                in vec4 in_position_age;
+                in vec4 in_velocity_life;
+                in vec4 in_misc;
+                uniform mat4 view_projection;
+                uniform vec4 start_color;
+                uniform vec4 end_color;
+                uniform float end_size_scale;
+                uniform float mesh_scale;
+                uniform float emissive_strength;
+                out vec4 v_color;
+                void main() {
+                    float age = in_position_age.w;
+                    float lifetime = max(in_velocity_life.w, 0.000001);
+                    if (age < 0.0) {
+                        gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+                        v_color = vec4(0.0);
+                        return;
+                    }
+                    float t = clamp(age / lifetime, 0.0, 1.0);
+                    float scale = mesh_scale * mix(1.0, end_size_scale, t);
+                    vec3 world = in_position_age.xyz + in_pos * scale;
+                    gl_Position = view_projection * vec4(world, 1.0);
+                    v_color = mix(start_color, end_color, t);
+                    v_color.rgb *= emissive_strength;
                 }
             """,
             fragment_shader="""
@@ -182,11 +305,8 @@ class GPUParticlePass3D:
                 in vec4 v_color;
                 out vec4 fragColor;
                 void main() {
-                    vec2 centered = gl_PointCoord * 2.0 - 1.0;
-                    float radius2 = dot(centered, centered);
-                    if (radius2 > 1.0) discard;
-                    float feather = 1.0 - smoothstep(0.55, 1.0, radius2);
-                    fragColor = vec4(v_color.rgb, v_color.a * feather);
+                    if (v_color.a <= 0.0001) discard;
+                    fragColor = v_color;
                 }
             """,
         )
@@ -211,14 +331,43 @@ class GPUParticlePass3D:
             )
             for buffer in buffers
         )
-        render_vaos = tuple(
+        sprite_vaos = tuple(
             self.ctx.vertex_array(
-                self.render_program,
+                self.sprite_program,
                 [(buffer, "4f 4f 4f", "in_position_age", "in_velocity_life", "in_misc")],
             )
             for buffer in buffers
         )
-        return _EmitterGPU(buffers=buffers, sim_vaos=sim_vaos, render_vaos=render_vaos)
+        trail_vaos = tuple(
+            self.ctx.vertex_array(
+                self.trail_program,
+                [(buffer, "4f 4f 4f", "in_position_age", "in_velocity_life", "in_misc")],
+            )
+            for buffer in buffers
+        )
+        mesh_vaos = tuple(
+            self.ctx.vertex_array(
+                self.mesh_program,
+                [
+                    (self._mesh_vbo, "3f", "in_pos"),
+                    (
+                        buffer,
+                        "4f 4f 4f /i",
+                        "in_position_age",
+                        "in_velocity_life",
+                        "in_misc",
+                    ),
+                ],
+            )
+            for buffer in buffers
+        )
+        return _EmitterGPU(
+            buffers=buffers,
+            sim_vaos=sim_vaos,
+            sprite_vaos=sprite_vaos,
+            trail_vaos=trail_vaos,
+            mesh_vaos=mesh_vaos,
+        )
 
     def _resource(self, emitter: GPUParticleEmitter3D) -> _EmitterGPU:
         key = id(emitter)
@@ -307,33 +456,83 @@ class GPUParticlePass3D:
         resource.source_index = target
         return emitter.capacity
 
-    def _draw(
-        self,
-        emitter: GPUParticleEmitter3D,
-        resource: _EmitterGPU,
-        camera: Camera3D,
-        *,
-        aspect: float,
-    ) -> None:
+    def _view_projection(self, camera: Camera3D, aspect: float) -> np.ndarray:
         projection = perspective(
             float(camera.fov),
             float(aspect),
             float(camera.near),
             float(camera.far),
         )
-        self._write_mat4(self.render_program["view_projection"], projection @ camera.view_matrix())
+        return projection @ camera.view_matrix()
+
+    @staticmethod
+    def _set_color_uniforms(program: object, emitter: GPUParticleEmitter3D) -> None:
         start = emitter.start_color
         end = emitter.end_color
-        self.render_program["start_color"].value = (start.r, start.g, start.b, start.a)
-        self.render_program["end_color"].value = (end.r, end.g, end.b, end.a)
-        self.render_program["end_size_scale"].value = float(emitter.end_size_scale)
+        program["start_color"].value = (start.r, start.g, start.b, start.a)
+        program["end_color"].value = (end.r, end.g, end.b, end.a)
+        program["emissive_strength"].value = float(emitter.emissive_strength)
+
+    def _configure_blend(self, emitter: GPUParticleEmitter3D) -> None:
         if emitter.blend_mode is GPUParticleBlendMode.ADDITIVE:
             self.ctx.blend_func = self.ctx.SRC_ALPHA, self.ctx.ONE
         else:
             self.ctx.blend_func = self.ctx.SRC_ALPHA, self.ctx.ONE_MINUS_SRC_ALPHA
-        resource.render_vaos[resource.source_index].render(
+
+    def _draw_sprite(
+        self,
+        emitter: GPUParticleEmitter3D,
+        resource: _EmitterGPU,
+        view_projection: np.ndarray,
+        texture_loader: Callable[[str], object] | None,
+    ) -> None:
+        program = self.sprite_program
+        self._write_mat4(program["view_projection"], view_projection)
+        self._set_color_uniforms(program, emitter)
+        program["end_size_scale"].value = float(emitter.end_size_scale)
+        use_texture = emitter.texture is not None
+        program["use_texture"].value = use_texture
+        if use_texture:
+            if texture_loader is None:
+                raise RuntimeError("texture_loader is required for textured GPU particles")
+            texture_loader(emitter.texture).use(location=0)
+        self._configure_blend(emitter)
+        resource.sprite_vaos[resource.source_index].render(
             mode=self.ctx.POINTS,
             vertices=emitter.capacity,
+        )
+
+    def _draw_trail(
+        self,
+        emitter: GPUParticleEmitter3D,
+        resource: _EmitterGPU,
+        view_projection: np.ndarray,
+    ) -> None:
+        program = self.trail_program
+        self._write_mat4(program["view_projection"], view_projection)
+        self._set_color_uniforms(program, emitter)
+        program["trail_alpha_scale"].value = float(emitter.trail_alpha_scale)
+        self._configure_blend(emitter)
+        resource.trail_vaos[resource.source_index].render(
+            mode=self.ctx.POINTS,
+            vertices=emitter.capacity,
+        )
+
+    def _draw_mesh(
+        self,
+        emitter: GPUParticleEmitter3D,
+        resource: _EmitterGPU,
+        view_projection: np.ndarray,
+    ) -> None:
+        program = self.mesh_program
+        self._write_mat4(program["view_projection"], view_projection)
+        self._set_color_uniforms(program, emitter)
+        program["end_size_scale"].value = float(emitter.end_size_scale)
+        program["mesh_scale"].value = float(emitter.mesh_scale)
+        self._configure_blend(emitter)
+        resource.mesh_vaos[resource.source_index].render(
+            vertices=self._mesh_vertex_count,
+            instances=emitter.capacity,
         )
 
     def render(
@@ -345,6 +544,7 @@ class GPUParticlePass3D:
         depth_texture: object,
         width: int,
         height: int,
+        texture_loader: Callable[[str], object] | None = None,
     ) -> GPUParticlePassDiagnostics:
         if self._released:
             raise RuntimeError("GPU particle pass has been released")
@@ -375,14 +575,27 @@ class GPUParticlePass3D:
         simulated = 0
         submitted = 0
         draws = 0
+        sprite_draws = 0
+        mesh_draws = 0
+        trail_draws = 0
         try:
             aspect = float(width) / max(1.0, float(height))
+            view_projection = self._view_projection(camera, aspect)
             for emitter in emitters:
                 resource = self._resource(emitter)
                 simulated += self._simulate(emitter, resource)
-                self._draw(emitter, resource, camera, aspect=aspect)
-                submitted += emitter.capacity
+                if emitter.render_mode is GPUParticleRenderMode3D.MESH:
+                    self._draw_mesh(emitter, resource, view_projection)
+                    mesh_draws += 1
+                else:
+                    self._draw_sprite(emitter, resource, view_projection, texture_loader)
+                    sprite_draws += 1
                 draws += 1
+                submitted += emitter.capacity
+                if emitter.trail_enabled:
+                    self._draw_trail(emitter, resource, view_projection)
+                    draws += 1
+                    trail_draws += 1
         finally:
             if point_size is not None:
                 self.ctx.disable(point_size)
@@ -394,6 +607,9 @@ class GPUParticlePass3D:
             simulated_particles=simulated,
             submitted_particles=submitted,
             draw_calls=draws,
+            sprite_draw_calls=sprite_draws,
+            mesh_draw_calls=mesh_draws,
+            trail_draw_calls=trail_draws,
         )
         return self.diagnostics
 
@@ -407,5 +623,8 @@ class GPUParticlePass3D:
             self._framebuffer.release()
             self._framebuffer = None
         self.sim_program.release()
-        self.render_program.release()
+        self.sprite_program.release()
+        self.trail_program.release()
+        self.mesh_program.release()
+        self._mesh_vbo.release()
         self._released = True
