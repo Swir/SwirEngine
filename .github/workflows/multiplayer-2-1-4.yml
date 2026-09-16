@@ -1,0 +1,63 @@
+name: Multiplayer 2.0 1.4 Validation
+
+on:
+  push:
+    branches:
+      - feat/1.4-multiplayer-2
+  pull_request:
+    paths:
+      - "src/swirengine/multiplayer14.py"
+      - "src/swirengine/network_gameplay.py"
+      - "src/swirengine/networking.py"
+      - "tests/test_multiplayer_2_1_4.py"
+      - "tests/test_network_gameplay.py"
+      - "tests/test_networking.py"
+      - "tools/benchmark_multiplayer_2_1_4.py"
+      - "examples/demo_multiplayer_2_1_4.py"
+      - "docs/MULTIPLAYER_2_1_4.md"
+      - ".github/workflows/multiplayer-2-1-4.yml"
+
+jobs:
+  multiplayer-contract:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install --upgrade pip
+      - name: Install CPython 3.14 native build prerequisites
+        if: matrix.python-version == '3.14'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev
+      - run: python -m pip install -e ".[dev]"
+      - name: Multiplayer and stable networking regressions
+        run: >-
+          pytest
+          tests/test_multiplayer_2_1_4.py
+          tests/test_network_gameplay.py
+          tests/test_networking.py
+      - name: Strict Ruff gate
+        run: >-
+          ruff check
+          src/swirengine/multiplayer14.py
+          tests/test_multiplayer_2_1_4.py
+          tools/benchmark_multiplayer_2_1_4.py
+          examples/demo_multiplayer_2_1_4.py
+      - name: Compile Multiplayer 2.0 files
+        run: >-
+          python -m compileall -q
+          src/swirengine/multiplayer14.py
+          tests/test_multiplayer_2_1_4.py
+          tools/benchmark_multiplayer_2_1_4.py
+          examples/demo_multiplayer_2_1_4.py
+      - name: Multiplayer workload benchmark
+        if: matrix.python-version == '3.13'
+        run: python tools/benchmark_multiplayer_2_1_4.py
+      - name: Multiplayer 2.0 demo
+        run: python examples/demo_multiplayer_2_1_4.py
