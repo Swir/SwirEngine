@@ -208,6 +208,21 @@ def test_2d_focus_rejects_vec3_nonzero_or_nonfinite_z() -> None:
         runtime.focus_key(Vec3(0.0, 0.0, float("nan")))
 
 
+def test_invalid_update_does_not_advance_runtime_state() -> None:
+    runtime = WorldStreamingRuntime(
+        Scene(),
+        WorldPartitionRegistry((empty_cell("origin", ChunkKey(0, 0, 0)),)),
+        settings=WorldStreamingSettings(dimensions=2, active_radius_chunks=0),
+    )
+    before = runtime.state_fingerprint()
+
+    with pytest.raises(ValueError, match="z=0"):
+        runtime.update(Vec3(0.0, 0.0, 1.0))
+
+    assert runtime.diagnostics.update_index == 0
+    assert runtime.state_fingerprint() == before
+
+
 def test_factory_failure_is_isolated_and_retryable() -> None:
     scene = Scene()
     attempts = 0
