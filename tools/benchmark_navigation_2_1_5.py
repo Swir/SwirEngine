@@ -11,7 +11,6 @@ from swirengine.navigation15 import (
     NavigationRuntime,
 )
 
-
 GRID = 20
 QUERY_COUNT = 80
 AGENT_COUNT = 128
