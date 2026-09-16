@@ -5,7 +5,7 @@
   <a href="https://pypi.org/project/swirengine/"><img alt="PyPI" src="https://img.shields.io/pypi/v/swirengine?style=flat-square"></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.10--3.13%20cross--platform%20%7C%203.14%20Windows-3776AB?style=flat-square&logo=python&logoColor=white">
   <img alt="Stable roadmap" src="https://img.shields.io/badge/1.3%20ROADMAP-100%25-2ea043?style=flat-square">
-  <img alt="Development roadmap" src="https://img.shields.io/badge/1.4%20ROADMAP-0%25-6e7781?style=flat-square">
+  <img alt="Development roadmap" src="https://img.shields.io/badge/1.4%20ROADMAP-10%25-0969da?style=flat-square">
   <img alt="Status" src="https://img.shields.io/badge/status-1.3%20stable%20%7C%201.4%20development-0969da?style=flat-square">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square">
 </p>
@@ -23,12 +23,14 @@ The 1.3 **Gameplay & Creator Power** roadmap is complete at **10/10 = 100.0%**. 
 SwirEngine 1.4 is the **Production World & Engine Power** development line. Stable users remain on 1.3.0 while 1.4 is built milestone-by-milestone behind the stable 1.x API compatibility contract.
 
 ```text
-░░░░░░░░░░░░░░░░░░░░ 0.0% — 0/10
+██░░░░░░░░░░░░░░░░░░ 10.0% — 1/10
 ```
 
-The 1.4 plan focuses on terrain/world LOD, Physics 2.0, production character controllers, Renderer 2.0, GPU VFX, Asset Pipeline 2.0, scene acceleration/occlusion, stronger editor authoring, Multiplayer 2.0 and one integrated production-scale release showcase.
+Milestone #1, **Terrain + World LOD**, is complete on the 1.4 development line. It adds immutable heightmaps, chunk mesh generation, distance LOD, bounded local chunk selection, LRU mesh reuse, terrain material/splat metadata, heightfield ground queries and direct integration with the existing `LargeWorldStreamer`. The milestone is covered by deterministic cache/LOD performance gates and a real Xvfb/software-OpenGL terrain render smoke.
 
-See [`ROADMAP_1_4.md`](ROADMAP_1_4.md).
+The remaining 1.4 plan focuses on Physics 2.0, production character controllers, Renderer 2.0, GPU VFX, Asset Pipeline 2.0, scene acceleration/occlusion, stronger editor authoring, Multiplayer 2.0 and one integrated production-scale release showcase.
+
+See [`ROADMAP_1_4.md`](ROADMAP_1_4.md) and [`docs/TERRAIN_WORLD_LOD_1_4.md`](docs/TERRAIN_WORLD_LOD_1_4.md).
 
 ## Install
 
@@ -227,6 +229,8 @@ SwirEngine keeps performance claims reproducible and workload-specific. Examples
 - 10,000 dormant gameplay timers -> zero heap pops across idle updates
 - 10,000 registered editor systems -> only the selected group is polled
 - sparse 2D/3D collision workloads -> large broad-phase candidate reduction
+- 1,024 terrain chunks -> a radius-2 focus scans only 25 local chunks; stationary frames reuse cached meshes
+- terrain LOD0 512 triangles vs coarse LOD 8 triangles in the deterministic benchmark workload
 
 Host timings are diagnostics only. SwirEngine does **not** turn those numbers into unmeasured FPS claims.
 
@@ -235,11 +239,13 @@ Host timings are diagnostics only. SwirEngine does **not** turn those numbers in
 - **Neon Frontier 1.3** — integrated 1.3 full-game/release validation
 - **Neon Cube Hunt 3D** — OpenGL + packaged-runtime validation arena
 - **Neon Snake 3D** — complete 3D Snake validation project
+- **Terrain + World LOD 1.4** — real OpenGL heightmap/chunk/LOD/cache validation project
 - `examples/demo_gpu_instancing.py`
 - `examples/demo_skeletal_animation.py`
 - `examples/demo_collision3d_physics.py`
 - `examples/demo_navigation_pathfinding.py`
 - `examples/demo_large_world_streaming.py`
+- `examples/demo_terrain_world_lod.py`
 - `examples/demo_shader_variants.py`
 - `examples/demo_renderer2d_power.py`
 - `examples/demo_gameplay_framework.py`
@@ -263,7 +269,7 @@ Stable upstream native renderer dependencies do not expose the same wheel path f
 
 ## Versioning and API stability
 
-SwirEngine follows semantic versioning for the stable 1.x public API. Version 1.3.0 is additive to established 1.x behavior; existing projects are not required to adopt the new systems.
+SwirEngine follows semantic versioning for the stable 1.x public API. Version 1.3.0 is additive to established 1.x behavior; existing projects are not required to adopt the new systems. The 1.4 development line remains unreleased until its guarded roadmap reaches 10/10.
 
 See [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
 
@@ -279,13 +285,17 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
 - [`docs/ADVANCED_GAMEPLAY_FRAMEWORK_1_3.md`](docs/ADVANCED_GAMEPLAY_FRAMEWORK_1_3.md)
 - [`docs/CREATOR_EDITOR_INTEGRATION_1_3.md`](docs/CREATOR_EDITOR_INTEGRATION_1_3.md)
 
+## 1.4 development documentation
+
+- [`docs/TERRAIN_WORLD_LOD_1_4.md`](docs/TERRAIN_WORLD_LOD_1_4.md) — milestone #1, verified
+
 ## Roadmaps
 
 - SwirEngine 1.0 — [`ROADMAP.md`](ROADMAP.md) — **31/31 = 100%**, historical and locked
 - SwirEngine 1.1 — [`ROADMAP_1_1.md`](ROADMAP_1_1.md) — **10/10 = 100%**, released and locked
 - SwirEngine 1.2 — [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **10/10 = 100%**, released and locked
 - SwirEngine 1.3 — [`ROADMAP_1_3.md`](ROADMAP_1_3.md) — **10/10 = 100.0%**, released and locked
-- SwirEngine 1.4 — [`ROADMAP_1_4.md`](ROADMAP_1_4.md) — **0/10 = 0.0%**, active development
+- SwirEngine 1.4 — [`ROADMAP_1_4.md`](ROADMAP_1_4.md) — **1/10 = 10.0%**, active development
 
 ## Links
 
