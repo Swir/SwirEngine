@@ -70,6 +70,20 @@ def test_final_hardening_workflow_has_strict_real_render_packaging_and_performan
     assert "SWIR_DEMO_RUNTIME_PROBE" in workflow
 
 
+def test_tag_bridge_only_tags_the_exact_verified_main_commit() -> None:
+    workflow = (ROOT / ".github/workflows/tag-1-4.yml").read_text(encoding="utf-8")
+    trigger_section = workflow.split("jobs:", 1)[0]
+
+    assert 'branches:\n      - "release/1.4.0-publish"' in trigger_section
+    assert "verify_1_4_release_candidate.py --require-complete" in workflow
+    assert "git/ref/heads/main" in workflow
+    assert 'refs/tags/v1.4.0' in workflow
+    assert "contents: write" in workflow
+    assert "pypa/gh-action-pypi-publish" not in workflow
+    assert 'main_sha' in workflow
+    assert 'GITHUB_SHA' in workflow
+
+
 def test_release_workflow_is_tag_only_and_targets_1_4() -> None:
     workflow = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
     trigger_section = workflow.split("jobs:", 1)[0]
