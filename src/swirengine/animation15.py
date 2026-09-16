@@ -7,6 +7,7 @@ from bisect import bisect_right
 from collections.abc import Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
+from itertools import pairwise
 from types import MappingProxyType
 from typing import Any
 
@@ -85,7 +86,7 @@ class AnimationTrack:
         if not keyframes:
             raise ValueError("animation track must contain at least one keyframe")
         times = tuple(keyframe.time for keyframe in keyframes)
-        if any(current <= previous for previous, current in zip(times, times[1:])):
+        if any(current <= previous for previous, current in pairwise(times)):
             raise ValueError("animation keyframe times must be strictly increasing")
         object.__setattr__(self, "binding", binding)
         object.__setattr__(self, "keyframes", keyframes)
