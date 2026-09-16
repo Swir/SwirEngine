@@ -1,0 +1,64 @@
+name: Performance & Diagnostics 2.0 Validation
+
+on:
+  push:
+    branches:
+      - feat/1.5-performance-diagnostics
+  pull_request:
+    paths:
+      - "src/swirengine/performance15.py"
+      - "tests/test_performance_diagnostics_1_5.py"
+      - "tests/test_profiler.py"
+      - "tools/benchmark_performance_diagnostics_2_1_5.py"
+      - "examples/demo_performance_diagnostics_2_1_5.py"
+      - "docs/PERFORMANCE_DIAGNOSTICS_2_1_5.md"
+      - "CHANGELOG.d/1.5-performance-diagnostics.md"
+      - "ROADMAP_1_5.md"
+      - ".github/workflows/performance-diagnostics-1-5.yml"
+
+concurrency:
+  group: performance-diagnostics-1-5-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  performance-diagnostics-contract:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install --upgrade pip
+      - name: Install CPython 3.14 native build prerequisites
+        if: matrix.python-version == '3.14'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev
+      - run: python -m pip install -e ".[dev]"
+      - name: Performance diagnostics tests
+        run: pytest tests/test_performance_diagnostics_1_5.py
+      - name: Stable profiler regression tests
+        run: pytest tests/test_profiler.py
+      - name: Strict Ruff gate
+        run: >-
+          ruff check
+          src/swirengine/performance15.py
+          tests/test_performance_diagnostics_1_5.py
+          tools/benchmark_performance_diagnostics_2_1_5.py
+          examples/demo_performance_diagnostics_2_1_5.py
+      - name: Compile performance diagnostics files
+        run: >-
+          python -m compileall -q
+          src/swirengine/performance15.py
+          tests/test_performance_diagnostics_1_5.py
+          tools/benchmark_performance_diagnostics_2_1_5.py
+          examples/demo_performance_diagnostics_2_1_5.py
+      - name: Performance diagnostics workload benchmark
+        if: matrix.python-version == '3.13'
+        run: python tools/benchmark_performance_diagnostics_2_1_5.py
+      - name: Performance diagnostics demo
+        run: python examples/demo_performance_diagnostics_2_1_5.py
