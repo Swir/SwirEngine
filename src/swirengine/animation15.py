@@ -287,7 +287,7 @@ class AnimationCondition:
         spec = parameters.spec(self.parameter)
         current = parameters.get(self.parameter)
         if self.operator is ConditionOperator.TRIGGER:
-            if spec.kind is not ParameterKind.TRIGGGER:
+            if spec.kind is not ParameterKind.TRIGGER:
                 raise TypeError(f"parameter {self.parameter!r} is not a trigger")
             return bool(current)
         if self.operator in {ConditionOperator.TRUE, ConditionOperator.FALSE}:
