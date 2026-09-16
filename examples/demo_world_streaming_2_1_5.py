@@ -53,7 +53,7 @@ def main() -> None:
             f"scene_objects={len(scene)}"
         )
 
-    print("active cost:", world.diagnostics.active_cost)
+    print("active cost:", world.active_cost)
     print("runtime fingerprint:", world.state_fingerprint())
     print("unloaded:", world.unload_all())
 

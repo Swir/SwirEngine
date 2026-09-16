@@ -141,11 +141,27 @@ class WorldStream:
 
     @property
     def active(self) -> tuple[str, ...]:
-        return self.runtime.active_ids
+        if self._runtime is None:
+            return ()
+        return self._runtime.active_ids
 
     @property
-    def diagnostics(self) -> WorldStreamingDiagnostics:
-        return self.runtime.diagnostics
+    def active_cost(self) -> int:
+        if self._runtime is None:
+            return 0
+        return self._runtime.active_cost
+
+    @property
+    def diagnostics(self) -> WorldStreamingDiagnostics | None:
+        if self._runtime is None:
+            return None
+        return self._runtime.diagnostics
+
+    @property
+    def failures(self) -> tuple[object, ...]:
+        if self._runtime is None:
+            return ()
+        return self._runtime.failures()
 
     def _require_registration_open(self) -> None:
         if self._runtime is not None:

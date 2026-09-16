@@ -258,6 +258,18 @@ def test_warmup_respects_runtime_budget_but_resolves_multiple_updates() -> None:
     assert result.deactivated == ()
 
 
+
+def test_creator_introspection_does_not_start_or_seal_registration() -> None:
+    world = WorldStream(Scene(), dimensions=2, radius=0)
+    assert not world.started
+    assert world.active == ()
+    assert world.active_cost == 0
+    assert world.diagnostics is None
+    assert world.failures == ()
+    assert not world.started
+    world.add_chunk("still-open", (0, 0), lambda _ctx: None)
+    assert not world.started
+
 def test_registration_closes_after_streaming_starts() -> None:
     world = WorldStream(Scene(), dimensions=2, radius=0)
     world.add_chunk("first", (0, 0), lambda _ctx: None)
