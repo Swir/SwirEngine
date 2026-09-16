@@ -93,6 +93,7 @@ from .gpu_particles import (
     GPUParticleEmissionShape3D,
     GPUParticleEmitter3D,
     GPUParticleFrame,
+    GPUParticleRenderMode3D,
 )
 from .graphics.animation import AnimatedSprite2D, AnimationClip, SpriteSheet, animated_sprite
 from .graphics.camera import Camera2D
@@ -304,6 +305,7 @@ __all__ = [
     "GPUParticleEmissionShape3D",
     "GPUParticleEmitter3D",
     "GPUParticleFrame",
+    "GPUParticleRenderMode3D",
     "GPUTextureInvalidation",
     "Game",
     "GamepadSnapshot",
