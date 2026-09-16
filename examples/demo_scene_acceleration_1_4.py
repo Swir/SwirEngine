@@ -29,7 +29,7 @@ def main() -> int:
     runtime = enable_scene_acceleration(scene, leaf_size=8)
     camera = Camera3D(position=Vec3(0.0, 4.0, 8.0), target=Vec3(0.0, 0.0, -40.0))
 
-    first = runtime.frame(scene, camera, width=1280, height=720)
+    runtime.frame(scene, camera, width=1280, height=720)
     rebuilds = runtime.snapshot_rebuilds
     mover.position = Vec3(0.0, 0.0, -8.0)
     second = runtime.frame(scene, camera, width=1280, height=720)
