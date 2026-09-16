@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Callable, Iterable
-from concurrent.futures import Future, ThreadPoolExecutor, wait as wait_futures
+from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import wait as wait_futures
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
