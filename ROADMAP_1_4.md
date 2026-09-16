@@ -4,20 +4,20 @@
 <!-- ROADMAP-PROGRESS:START -->
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-80.0%25-0969da?style=for-the-badge">
-  <img alt="Completed" src="https://img.shields.io/badge/DONE-8%2F10-0969da?style=for-the-badge">
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/ROADMAP-90.0%25-0969da?style=for-the-badge">
+  <img alt="Completed" src="https://img.shields.io/badge/DONE-9%2F10-0969da?style=for-the-badge">
   <img alt="Status" src="https://img.shields.io/badge/STATUS-ACTIVE-0969da?style=for-the-badge">
 </p>
 
 ## 📊 Overall progress
 
 ```text
-████████████████░░░░ 80.0%
+██████████████████░░ 90.0%
 ```
 
 | ✅ Completed | ⏳ Remaining | 📦 Total | 🎯 Progress |
 |---:|---:|---:|---:|
-| **8** | **2** | **10** | **80.0%** |
+| **9** | **1** | **10** | **90.0%** |
 
 > Progress is derived only from the equal-weight verified deliverables below. A milestone becomes
 > complete only after implementation, regression coverage, documentation synchronization and the
@@ -68,8 +68,14 @@
       facade. Verified by the dedicated Editor Authoring 1.4 regression/Ruff/compile/demo gate, a
       500-target select/edit/undo/redo workload well below the 1.0s contract, plus the full CI, Creator
       Editor 1.3, Desktop Export, Demo Game 3D, Neon Snake 3D and Full Game 1.3 compatibility matrix.
-- [ ] **Multiplayer 2.0** — replication components, snapshot interpolation, client prediction,
-      reconciliation, lag-compensation foundations, bandwidth diagnostics and deterministic tests.
+- [x] **Multiplayer 2.0** — opt-in replicated-component schemas, canonical snapshots and sparse deltas,
+      bounded out-of-order interpolation, deterministic client prediction and authoritative
+      reconciliation, bounded server rewind for lag-compensation foundations, per-channel bandwidth
+      diagnostics and a stable `NetworkPacket` bridge. Verified on Python 3.10/3.13/3.14 by 29 focused
+      multiplayer + legacy networking regressions, strict Ruff/compileall, the runnable integration
+      demo, a 500-entity workload completing in 0.493160s with a 2,493-byte sparse delta versus a
+      50,114-byte full snapshot, plus the full CI, Desktop Export, Demo Game 3D and Neon Snake 3D
+      compatibility matrix.
 - [ ] **1.4 Showcase + Hardening + Release Gate** — one integrated production-scale demo combining
       terrain, physics, controllers, renderer/VFX, streaming, editor and networking paths, followed by
       API/docs audit, packaging verification, performance contracts and one guarded 1.4 release.

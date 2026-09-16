@@ -151,21 +151,20 @@ snapshot_again = MultiplayerPacketCodec.decode_snapshot(packet)
 Packet kinds are namespaced as `swir.multiplayer.snapshot` and `swir.multiplayer.delta`. Existing
 `TCPPeer`, framing, message routing, and custom transports do not need to change.
 
-## Compatibility and rollout
+## Compatibility and verified validation
 
 `swirengine.multiplayer14` is additive and opt-in. It does not modify `swirengine.__init__`, the
 stable 1.2 networking APIs, `GameplaySession`, packet framing, or package version 1.3.0.
 
-The dedicated `Multiplayer 2.0 1.4 Validation` workflow runs:
+The completed `Multiplayer 2.0 1.4 Validation` gate is green on Python 3.10, 3.13 and 3.14. It verifies
+29 focused Multiplayer 2.0 plus stable networking regressions, strict Ruff, compileall and the
+runnable integration demo. The Python 3.13 workload validates 500 replicated entities, 120
+interpolation samples, 256 predicted commands with reconciliation and 100 rewind queries in
+**0.493160s**. In the sparse-update case, the delta is **2,493 bytes** versus **50,114 bytes** for the
+full snapshot (about 4.97%). The repository-level CI, Desktop Export, Demo Game 3D and Neon Snake 3D
+compatibility gates are also green on the implementation head.
 
-- deterministic Multiplayer 2.0 regression tests,
-- legacy networking and gameplay-network regressions,
-- strict Ruff,
-- compileall,
-- a 500-entity interpolation/prediction/rewind workload,
-- the runnable Multiplayer 2.0 demo,
-- Python 3.10, 3.13, and 3.14 compatibility.
-
-Roadmap progress must move from 80% to 90% only after this complete milestone surface and the full
-repository compatibility matrix are green. SwirEngine 1.4 must not be tagged or published before the
-final 10/10 release gate is complete.
+With those implementation, regression, documentation, demo, performance and repository gates green,
+Multiplayer 2.0 is the verified ninth roadmap deliverable and 1.4 progress is **9/10 = 90.0%**.
+SwirEngine 1.4 still must not be tagged or published until the final Showcase + Hardening + Release
+Gate reaches 10/10 and its release checks are green.
