@@ -56,4 +56,17 @@ Audio 2.0 lives in `swirengine.audio15` and composes the released `swirengine.au
 - focused Python 3.10/3.13/3.14 tests, strict Ruff, compile, runnable demo and a 5,000-operation workload gate;
 - the repository's triggered compatibility/regression workflows remaining green on the final milestone head.
 
+## Milestone 4 validation contract (active)
+
+Animation Graphs 2.0 is being developed as an additive `swirengine.animation15` layer while the stable 1.x tween, timeline and state-machine APIs remain unchanged. The milestone remains unchecked until the final branch head satisfies all of the following:
+
+- reusable named clips with validated property-binding tracks, strictly ordered keyframes and explicit clamp/loop sampling;
+- linear and step interpolation contracts plus generic portable poses that can blend and apply nested bindings;
+- typed bool/float/int/trigger graph parameters with deterministic trigger consumption;
+- prioritized transitions with declaration-order tie breaking, wildcard sources, normalized exit-time gates and explicit self-transition opt-in;
+- deterministic timed source/target cross-fades with both state clocks advancing during the blend;
+- renderer-independent headless diagnostics plus portable pose/runtime SHA-256 fingerprints;
+- focused Python 3.10/3.13/3.14 tests, strict Ruff, compile, runnable demo and a 5,000-update / 8-channel workload gate;
+- the repository's triggered compatibility/regression workflows remaining green on the final milestone head.
+
 Progress is based on milestone completion, not file count or commit count. A milestone is 10 percentage points. SwirEngine 1.5 must not be tagged or published until all 10 milestones are complete and the release gate is green.
