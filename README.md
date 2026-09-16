@@ -5,7 +5,7 @@
   <a href="https://pypi.org/project/swirengine/"><img alt="PyPI" src="https://img.shields.io/pypi/v/swirengine?style=flat-square"></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.10--3.13%20cross--platform%20%7C%203.14%20Windows-3776AB?style=flat-square&logo=python&logoColor=white">
   <img alt="Stable roadmap" src="https://img.shields.io/badge/1.3%20ROADMAP-100%25-2ea043?style=flat-square">
-  <img alt="Development roadmap" src="https://img.shields.io/badge/1.4%20ROADMAP-60%25-0969da?style=flat-square">
+  <img alt="Development roadmap" src="https://img.shields.io/badge/1.4%20ROADMAP-70%25-0969da?style=flat-square">
   <img alt="Status" src="https://img.shields.io/badge/status-1.3%20stable%20%7C%201.4%20development-0969da?style=flat-square">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square">
 </p>
@@ -23,7 +23,7 @@ The 1.3 **Gameplay & Creator Power** roadmap is complete at **10/10 = 100.0%**. 
 SwirEngine 1.4 is the **Production World & Engine Power** development line. Stable users remain on 1.3.0 while 1.4 is built milestone-by-milestone behind the stable 1.x API compatibility contract.
 
 ```text
-████████████░░░░░░░░ 60.0% — 6/10
+██████████████░░░░░░ 70.0% — 7/10
 ```
 
 Milestone #1, **Terrain + World LOD**, is complete on the 1.4 development line. It adds immutable heightmaps, chunk mesh generation, distance LOD, bounded local chunk selection, LRU mesh reuse, terrain material/splat metadata, heightfield ground queries and direct integration with the existing `LargeWorldStreamer`. The milestone is covered by deterministic cache/LOD performance gates and a real Xvfb/software-OpenGL terrain render smoke.
@@ -38,9 +38,11 @@ Milestone #5, **GPU VFX + Particle Power**, is verified. It adds additive `GPUPa
 
 Milestone #6, **Asset Pipeline 2.0**, is verified. It adds the dependency-aware background `AssetPipeline`, SHA-256 source/dependency fingerprints, transitive invalidation and hot-reload propagation, caller-thread finalization for renderer-owned resources, persistent content-addressed `DerivedAssetCache`, dependency-aware glTF/GLB processing, stronger PBR material preservation including `MASK`/`BLEND`, `alphaCutoff` and `doubleSided`, conservative mesh cleanup, opt-in texture optimization and creator-facing diagnostics. The milestone is covered by focused race/cache/hot-reload/glTF/optimization regressions, a deterministic cold/warm/invalidate/refill benchmark, integration demo, strict Ruff/compileall, the dedicated Asset Pipeline 2.0 gate, full Python/OS CI, Windows Python 3.14 native-wheel validation, Desktop Export and existing demo/Snake/Renderer2/GPU VFX/instancing/physics regressions.
 
-The remaining 1.4 plan focuses on scene acceleration/occlusion, stronger editor authoring, Multiplayer 2.0 and one integrated production-scale release showcase.
+Milestone #7, **Scene Acceleration + Occlusion**, is verified. It adds conservative world AABBs, a deterministic static BVH, a separate dynamic-refit layer, cached scene-membership synchronization, broad frustum pruning, creator-facing visibility diagnostics, an additive `SceneAcceleratedRenderer2` candidate-view bridge, a conservative CPU `HiZDepthPyramid3D` reference and a real OpenGL 3.3 `HiZPyramidPass3D` maximum-depth pyramid without CPU readback. Unsupported renderables remain conservative fallback candidates, and movers can opt into cheap refits with `visibility_dynamic=True`. The dedicated gate validates focused runtime/Renderer2/Hi-Z regressions, a deterministic 16,384-object workload with 32 leaf tests and 99.80% object-test reduction for the validation layout, real Mesa EGL depth-texture Hi-Z reduction, integration demo, strict Ruff and compileall.
 
-See [`ROADMAP_1_4.md`](ROADMAP_1_4.md), [`docs/TERRAIN_WORLD_LOD_1_4.md`](docs/TERRAIN_WORLD_LOD_1_4.md), [`docs/PHYSICS_2_1_4.md`](docs/PHYSICS_2_1_4.md), [`docs/CHARACTER_CONTROLLERS_1_4.md`](docs/CHARACTER_CONTROLLERS_1_4.md), [`docs/RENDERER2_1_4.md`](docs/RENDERER2_1_4.md), [`docs/GPU_VFX_PARTICLES_1_4.md`](docs/GPU_VFX_PARTICLES_1_4.md) and [`docs/ASSET_PIPELINE_2_1_4.md`](docs/ASSET_PIPELINE_2_1_4.md).
+The remaining 1.4 plan focuses on stronger editor authoring, Multiplayer 2.0 and one integrated production-scale release showcase.
+
+See [`ROADMAP_1_4.md`](ROADMAP_1_4.md), [`docs/TERRAIN_WORLD_LOD_1_4.md`](docs/TERRAIN_WORLD_LOD_1_4.md), [`docs/PHYSICS_2_1_4.md`](docs/PHYSICS_2_1_4.md), [`docs/CHARACTER_CONTROLLERS_1_4.md`](docs/CHARACTER_CONTROLLERS_1_4.md), [`docs/RENDERER2_1_4.md`](docs/RENDERER2_1_4.md), [`docs/GPU_VFX_PARTICLES_1_4.md`](docs/GPU_VFX_PARTICLES_1_4.md), [`docs/ASSET_PIPELINE_2_1_4.md`](docs/ASSET_PIPELINE_2_1_4.md) and [`docs/SCENE_ACCELERATION_OCCLUSION_1_4.md`](docs/SCENE_ACCELERATION_OCCLUSION_1_4.md).
 
 ## Install
 
@@ -246,6 +248,7 @@ SwirEngine keeps performance claims reproducible and workload-specific. Examples
 - Renderer 2.0 planner workload -> 48 opaque objects + 24 decals over 5,000 deterministic frame plans, guarded by a 2.5 ms/frame host-side planning budget; GPU correctness is validated separately through the EGL/OpenGL 3.3 smoke gate
 - GPU VFX 1.4 CPU scheduler workload -> capacity 128 vs 65,536 is guarded against capacity-dependent Python work; sprite/texture/trail/mesh correctness is validated separately through the Mesa EGL/OpenGL 3.3 smoke gate
 - Asset Pipeline 2.0 workload -> deterministic cold/warm/invalidate/refill import/cache behavior with dependency invalidation and host timings kept diagnostic-only
+- Scene Acceleration 1.4 workload -> 16,384 indexed objects, 32 leaf tests and 99.80% per-object visibility-test reduction in the validation layout; GPU Hi-Z correctness is validated separately against Mesa EGL/OpenGL 3.3
 
 Host timings are diagnostics only. SwirEngine does **not** turn those numbers into unmeasured FPS claims.
 
@@ -266,6 +269,7 @@ Host timings are diagnostics only. SwirEngine does **not** turn those numbers in
 - `examples/demo_renderer2_1_4.py`
 - `examples/demo_gpu_particles_1_4.py`
 - `examples/demo_asset_pipeline2.py`
+- `examples/demo_scene_acceleration_1_4.py`
 - `examples/demo_shader_variants.py`
 - `examples/demo_renderer2d_power.py`
 - `examples/demo_gameplay_framework.py`
@@ -281,7 +285,7 @@ python -m compileall -q src examples demo_projects tools
 python tools/verify_1_3_release_candidate.py --require-complete
 ```
 
-Additional dedicated benchmarks and OpenGL validators live under `tools/` and are executed by GitHub Actions. Renderer 2.0 uses `tools/benchmark_renderer2_1_4.py` and `tools/smoke_renderer2_gl.py`; GPU VFX additionally uses `tools/benchmark_gpu_particles_1_4.py` and `tools/smoke_gpu_particles_gl.py`; Asset Pipeline 2.0 uses `tools/benchmark_asset_pipeline_1_4.py` plus its focused regression/demo/strict-lint workflow.
+Additional dedicated benchmarks and OpenGL validators live under `tools/` and are executed by GitHub Actions. Renderer 2.0 uses `tools/benchmark_renderer2_1_4.py` and `tools/smoke_renderer2_gl.py`; GPU VFX additionally uses `tools/benchmark_gpu_particles_1_4.py` and `tools/smoke_gpu_particles_gl.py`; Asset Pipeline 2.0 uses `tools/benchmark_asset_pipeline_1_4.py` plus its focused regression/demo/strict-lint workflow; Scene Acceleration + Occlusion uses `tools/benchmark_scene_visibility_1_4.py` and `tools/smoke_scene_acceleration_gl.py`.
 
 ## Python 3.14 on Windows
 
@@ -313,6 +317,7 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
 - [`docs/RENDERER2_1_4.md`](docs/RENDERER2_1_4.md) — milestone #4, verified
 - [`docs/GPU_VFX_PARTICLES_1_4.md`](docs/GPU_VFX_PARTICLES_1_4.md) — milestone #5, verified
 - [`docs/ASSET_PIPELINE_2_1_4.md`](docs/ASSET_PIPELINE_2_1_4.md) — milestone #6, verified
+- [`docs/SCENE_ACCELERATION_OCCLUSION_1_4.md`](docs/SCENE_ACCELERATION_OCCLUSION_1_4.md) — milestone #7, verified
 
 ## Roadmaps
 
@@ -320,7 +325,7 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
 - SwirEngine 1.1 — [`ROADMAP_1_1.md`](ROADMAP_1_1.md) — **10/10 = 100%**, released and locked
 - SwirEngine 1.2 — [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **10/10 = 100%**, released and locked
 - SwirEngine 1.3 — [`ROADMAP_1_3.md`](ROADMAP_1_3.md) — **10/10 = 100.0%**, released and locked
-- SwirEngine 1.4 — [`ROADMAP_1_4.md`](ROADMAP_1_4.md) — **6/10 = 60.0%**, active development
+- SwirEngine 1.4 — [`ROADMAP_1_4.md`](ROADMAP_1_4.md) — **7/10 = 70.0%**, active development
 
 ## Links
 
