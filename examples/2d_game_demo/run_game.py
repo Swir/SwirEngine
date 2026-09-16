@@ -9,6 +9,8 @@ from __future__ import annotations
 import math
 import os
 
+from procedural_art import ensure_art
+
 from swirengine import (
     AABB,
     BoxCollider2D,
@@ -20,8 +22,6 @@ from swirengine import (
     RigidBody2D,
     Sprite2D,
 )
-
-from procedural_art import ensure_art
 
 W, H = 960, 540
 FIXED_DT = 1.0 / 120.0
