@@ -5,7 +5,7 @@ SwirEngine 1.5 builds on the released and locked 1.4 line. The compatibility rul
 Current development progress:
 
 ```text
-██████████████░░░░░░ 70.0% — 7/10
+████████████████░░░░ 80.0% — 8/10
 ```
 
 ## Milestones
@@ -17,7 +17,7 @@ Current development progress:
 - [x] **5. Navigation 2.0** — runtime navigation queries, agents, path following, avoidance contracts and scalable diagnostics.
 - [x] **6. World Streaming 2.0** — partitioned scene streaming, lifecycle hooks, budgets and deterministic activation/deactivation rules.
 - [x] **7. UI Toolkit 2.0** — retained creator UI model, layout, focus/input navigation, theming and resolution-independent scaling.
-- [ ] **8. Editor Productivity 2.0** — prefab/variant authoring, safer batch workflows, command history improvements and creator diagnostics.
+- [x] **8. Editor Productivity 2.0** — prefab/variant authoring, safer batch workflows, command history improvements and creator diagnostics.
 - [ ] **9. Runtime Diagnostics & Profiling 2.0** — structured frame/runtime counters, capture/export surfaces and regression-friendly performance contracts.
 - [ ] **10. Showcase, Hardening & 1.5 Release Gate** — integrated 2D/3D validation, complete compatibility matrix, documentation closeout, packaging and strict release/PyPI verification.
 
@@ -110,5 +110,20 @@ UI Toolkit 2.0 lives in the additive `swirengine.ui15` layer and composes the re
 - focused Python 3.10/3.13/3.14 tests, strict Ruff, compile and a runnable creator demo;
 - a 240-button / 320-responsive-layout workload remaining below the documented 5.0-second CI budget while making no renderer-FPS claim;
 - the repository's full CI, Desktop Export, Full Game 1.3, game-demo and 1.4 compatibility/hardening regression workflows remaining green on the verified milestone head.
+
+## Milestone 8 contract
+
+Editor Productivity 2.0 lives in the additive `swirengine.editor15` layer and leaves the released 1.x editor, prefab, serializer and project formats unchanged. Completion requires:
+
+- a non-destructive prefab authoring document with deterministic instance diff, selective apply/revert and strict selector/property validation;
+- graph-safe prefab apply/revert so references between members stay internal to the authored template or live instance rather than leaking detached clones;
+- creator variants that materialize as ordinary stable `Prefab` objects with source/diff metadata and no hidden runtime dependency on the editor document;
+- a bounded shared creator command history with grouped undo/redo, redo-branch invalidation and unchanged cursor state when callbacks fail;
+- previewable multi-object batch edits with full preflight, stale-plan detection before the first write and rollback of already-applied fields if a setter fails;
+- asset-reference diagnostics that find missing/unsafe project paths, broken aliases and unused scanned assets without loading asset contents;
+- the stable 1.4 edit/play separation and existing editor authoring/history behavior remaining unchanged and covered by regression tests;
+- focused Python 3.10/3.13/3.14 tests, strict Ruff, compile and a runnable headless creator demo;
+- a 120-object / 200-authoring-iteration workload remaining below the documented 5.0-second CI budget without making an FPS claim;
+- the repository's normal CI, Desktop Export, game-demo, creator-editor and 1.4 compatibility/hardening regression workflows remaining green on the verified milestone head.
 
 Progress is based on milestone completion, not file count or commit count. A milestone is 10 percentage points. SwirEngine 1.5 must not be tagged or published until all 10 milestones are complete and the release gate is green.
