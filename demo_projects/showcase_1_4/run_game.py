@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from swirengine import Color, Cube3D, Game, Scene, Vec3
+from swirengine import Color, Cube3D, Game, Vec3
 from swirengine.character import CharacterConfig3D, CharacterController3D, CharacterInput3D
 from swirengine.editor import SceneInspector
 from swirengine.editor_authoring import EditorAuthoringSession
