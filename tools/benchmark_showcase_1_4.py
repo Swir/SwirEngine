@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from demo_projects.neon_frontier_1_4.run_game import run_headless_probe  # noqa: E402
+from demo_projects.neon_frontier_1_4.run_game import run_headless_probe
 
 
 def main() -> int:
