@@ -4,7 +4,9 @@ from dataclasses import replace
 
 from .core.scene import Scene
 from .editor import HistoryEdit
+from .editor_assets import EditorAssetDragPayload
 from .editor_authoring import (
+    EditorAssetPropertyDropResult,
     EditorAuthoringSession,
     EditorAuthoringTransaction,
     EditorBatchPropertyResult,
@@ -55,6 +57,17 @@ class EditorAuthoringWorkspace(EditorWorkspace):
 
     def set_selected_property(self, name: str, value: object) -> EditorBatchPropertyResult:
         return self.authoring.set_property(name, value)
+
+    def drop_asset_on_selected_property(
+        self,
+        payload: EditorAssetDragPayload,
+        name: str,
+    ) -> EditorAssetPropertyDropResult:
+        """Apply an asset-browser drag payload to one inspector property on the selection."""
+
+        if not isinstance(payload, EditorAssetDragPayload):
+            raise TypeError("payload must be an EditorAssetDragPayload")
+        return self.authoring.set_asset_path(name, payload.relative_path)
 
     def apply_selected_gizmo(
         self,
@@ -152,15 +165,32 @@ class EditorAuthoringFrontendController(EditorFrontendController):
         result = self.workspace.set_selected_property(name, value)
         self._status = (
             f"Changed {name}"
-            if result.transaction.edit_count == 1
-            else f"Changed {name} on {result.transaction.edit_count} items"
+            if len(result.target_keys) == 1
+            else f"Changed {name} on {len(result.target_keys)} items"
         )
         return result.value
 
+    def drop_asset_on_property(
+        self,
+        name: str,
+        payload: EditorAssetDragPayload,
+    ) -> EditorAssetPropertyDropResult:
+        """Complete an asset-browser drag gesture on an editable inspector property."""
+
+        result = self.workspace.drop_asset_on_selected_property(payload, name)
+        target_count = len(result.target_keys)
+        self._status = (
+            f"Dropped {payload.name} on {name}"
+            if target_count == 1
+            else f"Dropped {payload.name} on {name} for {target_count} items"
+        )
+        return result
+
     def apply_gizmo(self, mode: str, axis: str, delta: float) -> EditorMultiGizmoResult:
         result = self.workspace.apply_selected_gizmo(mode, axis, delta)
+        target_count = len(result.results)
         self._status = (
-            f"{mode.title()} {axis}: {result.transaction.edit_count} item"
-            + ("" if result.transaction.edit_count == 1 else "s")
+            f"{mode.title()} {axis}: {target_count} item"
+            + ("" if target_count == 1 else "s")
         )
         return result
