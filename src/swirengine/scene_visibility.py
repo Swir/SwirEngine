@@ -201,8 +201,8 @@ class SceneVisibilityIndex3D:
     objects avoid forcing full BVH rebuilds every frame.
 
     ``occlusion`` is deliberately a predicate hook instead of a concrete GPU implementation. A
-    later depth/Hi-Z backend can consume the same candidate set without changing the public index.
-    The predicate returns ``True`` when an object should remain visible.
+    depth/Hi-Z backend can consume the same candidate set without changing the public index. The
+    predicate returns ``True`` when an object should remain visible.
     """
 
     def __init__(self, *, leaf_size: int = 8, bounds_provider: BoundsProvider3D | None = None) -> None:
@@ -245,23 +245,35 @@ class SceneVisibilityIndex3D:
         if existing is not None and existing.item is not item:
             raise RuntimeError("visibility index identity collision")
         resolved = bounds or self.bounds_provider(item)
+        dynamic_value = bool(dynamic)
         if existing is None:
             self._entries[key] = VisibilityEntry3D(
                 item=item,
                 bounds=resolved,
                 registration_order=self._next_registration_order,
-                dynamic=bool(dynamic),
+                dynamic=dynamic_value,
             )
             self._next_registration_order += 1
-        else:
-            if existing.dynamic != bool(dynamic):
+            if dynamic_value:
+                self._dynamic_count += 1
+            else:
+                self._static_count += 1
                 self._static_dirty = True
-            existing.bounds = resolved
-            existing.dynamic = bool(dynamic)
-            existing.enabled = True
-        if not dynamic:
+            return item
+
+        if existing.dynamic != dynamic_value:
+            if existing.dynamic:
+                self._dynamic_count -= 1
+                self._static_count += 1
+            else:
+                self._static_count -= 1
+                self._dynamic_count += 1
             self._static_dirty = True
-        self._recount()
+        existing.bounds = resolved
+        existing.dynamic = dynamic_value
+        existing.enabled = True
+        if not dynamic_value:
+            self._static_dirty = True
         return item
 
     def add_many(self, items: Iterable[object], *, dynamic: bool = False) -> tuple[object, ...]:
@@ -275,9 +287,11 @@ class SceneVisibilityIndex3D:
         if entry is None or entry.item is not item:
             return False
         self._entries.pop(id(item), None)
-        if not entry.dynamic:
+        if entry.dynamic:
+            self._dynamic_count -= 1
+        else:
+            self._static_count -= 1
             self._static_dirty = True
-        self._recount()
         return True
 
     def clear(self) -> None:
@@ -412,7 +426,3 @@ class SceneVisibilityIndex3D:
         left = self._build(ordered[:midpoint])
         right = self._build(ordered[midpoint:])
         return _BVHNode3D(bounds=bounds, left=left, right=right)
-
-    def _recount(self) -> None:
-        self._static_count = sum(not entry.dynamic for entry in self._entries.values())
-        self._dynamic_count = len(self._entries) - self._static_count
