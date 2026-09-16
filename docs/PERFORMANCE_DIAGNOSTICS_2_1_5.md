@@ -99,7 +99,7 @@ perf.bind_provider("streaming", lambda: world_stream.diagnostics)
 perf.bind_provider("asset_cache", lambda: cache.diagnostics)
 ```
 
-Provider failures do not crash the game by default. They increment `diagnostics.provider_errors`. Tests and tools that want hard failures can construct the recorder with `strict_providers=True`.
+Provider failures do not crash the game by default. They increment the cumulative `diagnostics.provider_errors` counter. Tests and tools that want hard failures can construct the recorder with `strict_providers=True`.
 
 Manual counters are also supported:
 
@@ -135,6 +135,8 @@ perf.disable_memory_tracking(stop_tracing=True)
 ```
 
 The snapshot reports Python-traced current and peak bytes only. It is not a GPU-memory or operating-system resident-set measurement. Do not enable it in a shipping hot path unless the diagnostic cost is acceptable.
+
+`tracemalloc` is process-global. The recorder tracks ownership: if `enable_memory_tracking()` had to start tracing, `disable_memory_tracking(stop_tracing=True)` may stop it; if tracing was already active because another tool started it, the recorder leaves that external tracing session running. This prevents diagnostics teardown from silently breaking another profiler.
 
 ## Bounded history
 
@@ -177,7 +179,7 @@ Reproducible capture does **not** mean real performance measurements are expecte
 
 ## Disabled recorder
 
-`PerformanceDiagnostics2(enabled=False)` is available for creator code that wants one instrumentation wiring path but needs recording disabled. Recording calls become no-ops. For the lowest possible shipping overhead, avoid entering diagnostic scopes entirely when the feature is disabled at the application level.
+`PerformanceDiagnostics2(enabled=False)` is available for creator code that wants one instrumentation wiring path but needs recording disabled. Recording calls and measurement scopes become no-ops without validating metric names or values, and `end_frame()` returns a zero-duration transient frame without retaining history. For the lowest possible shipping overhead, avoid entering diagnostic scopes entirely when the feature is disabled at the application level.
 
 ## Error and lifecycle rules
 
@@ -188,6 +190,7 @@ Reproducible capture does **not** mean real performance measurements are expecte
 - Non-strict provider failures are counted and the frame is still captured.
 - Timing and counter floats must be finite.
 - Resource counts and byte totals must be non-negative integers.
+- Public frame/capture value objects validate non-negative frame times, frame indexes, resource types, memory peak/current invariants, and capture frame types.
 
 ## Milestone 9 verification contract
 
