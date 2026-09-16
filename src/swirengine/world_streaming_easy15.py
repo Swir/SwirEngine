@@ -212,7 +212,7 @@ class WorldStream:
                 return
             try:
                 on_activate(context, content)
-            except Exception as activation_error:  # noqa: BLE001 - creator hook boundary
+            except Exception as activation_error:
                 try:
                     self._remove_owned_objects(content)
                 except Exception as cleanup_error:  # noqa: BLE001 - preserve both failures
