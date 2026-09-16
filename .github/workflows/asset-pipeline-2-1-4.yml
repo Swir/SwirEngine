@@ -15,6 +15,7 @@ on:
       - "src/swirengine/graphics/material.py"
       - "tests/test_asset_pipeline.py"
       - "tests/test_asset_pipeline_1_4.py"
+      - "tests/test_asset_pipeline_hotreload_1_4.py"
       - "tests/test_asset_pipeline_public_api_1_4.py"
       - "tests/test_asset_cache_1_4.py"
       - "tests/test_asset_optimization_1_4.py"
@@ -76,6 +77,7 @@ jobs:
         run: >-
           pytest -q
           tests/test_asset_pipeline_1_4.py
+          tests/test_asset_pipeline_hotreload_1_4.py
           tests/test_asset_pipeline_public_api_1_4.py
           tests/test_asset_cache_1_4.py
           tests/test_asset_optimization_1_4.py
@@ -103,6 +105,7 @@ jobs:
           src/swirengine/graphics/gltf_pipeline.py
           src/swirengine/graphics/material.py
           tests/test_asset_pipeline_1_4.py
+          tests/test_asset_pipeline_hotreload_1_4.py
           tests/test_asset_pipeline_public_api_1_4.py
           tests/test_asset_cache_1_4.py
           tests/test_asset_optimization_1_4.py
