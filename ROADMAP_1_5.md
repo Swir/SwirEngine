@@ -5,14 +5,14 @@ SwirEngine 1.5 builds on the released and locked 1.4 line. The compatibility rul
 Current development progress:
 
 ```text
-████░░░░░░░░░░░░░░░░ 20.0% — 2/10
+██████░░░░░░░░░░░░░░ 30.0% — 3/10
 ```
 
 ## Milestones
 
 - [x] **1. Deterministic Simulation & Replay** — fixed-step clock, canonical portable replay format, state fingerprints, bounded recording, checkpoints, verified playback, seeking, docs, demo, benchmark and dedicated CI.
-- [x] **2. Save & Profile 2.0** — versioned integrity-checked save envelopes, atomic primary/backup writes, ordered migrations, metadata/revisions, bounded autosave rotation, legacy 1.x import, health inspection and corruption-safe recovery.
-- [ ] **3. Audio 2.0** — creator-facing buses, spatial attenuation, priorities, snapshots and deterministic/headless diagnostics.
+- [x] **2. Save & Profile 2.0** — versioned integrity-checked save envelopes, atomic backup recovery, ordered migrations, metadata/revisions, bounded autosave rotation, legacy 1.x import, health inspection and corruption-safe recovery.
+- [x] **3. Audio 2.0** — bounded SFX voice budgets, creator priorities, deterministic voice stealing/protection, mixer snapshots, stable spatial audio composition, headless diagnostics and portable state fingerprints.
 - [ ] **4. Animation Graphs 2.0** — reusable clips/state graphs, transitions, parameters, blending contracts and headless validation.
 - [ ] **5. Navigation 2.0** — runtime navigation queries, agents, path following, avoidance contracts and scalable diagnostics.
 - [ ] **6. World Streaming 2.0** — partitioned scene streaming, lifecycle hooks, budgets and deterministic activation/deactivation rules.
@@ -43,5 +43,17 @@ Save & Profile 2.0 lives in `swirengine.storage15` and keeps the stable `SaveSto
 - bounded autosave retention with inspectable generation metadata;
 - focused Python 3.10/3.13/3.14 tests, strict Ruff, compile, runnable demo and filesystem workload gate;
 - the repository's normal regression matrix remaining green.
+
+## Milestone 3 contract
+
+Audio 2.0 lives in `swirengine.audio15` and composes the released `swirengine.audio.AudioEngine` instead of changing the stable root audio API. Completion requires:
+
+- bounded SFX voice budgets with creator priorities, deterministic lowest-priority/oldest-first stealing and protected voices;
+- music remaining outside the SFX voice budget;
+- portable mixer snapshots with deterministic timed interpolation and fade-safe mute/unmute behavior;
+- reuse of stable 1.x spatial attenuation, panning, bus and fade semantics;
+- a deterministic headless backend plus portable diagnostics and state fingerprints for CI/server/replay validation;
+- focused Python 3.10/3.13/3.14 tests, strict Ruff, compile, runnable demo and a 5,000-operation workload gate;
+- the repository's triggered compatibility/regression workflows remaining green on the final milestone head.
 
 Progress is based on milestone completion, not file count or commit count. A milestone is 10 percentage points. SwirEngine 1.5 must not be tagged or published until all 10 milestones are complete and the release gate is green.
