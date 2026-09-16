@@ -89,6 +89,7 @@ class Cube3D:
     visible: bool = True
     name: str = ""
     tags: set[str] = field(default_factory=set)
+    visibility_dynamic: bool = False
 
     @property
     def transform(self) -> Transform:

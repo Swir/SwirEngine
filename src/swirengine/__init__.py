@@ -112,6 +112,7 @@ from .gpu_particles import (
     GPUParticleFrame,
     GPUParticleRenderMode3D,
 )
+from .graphics.accelerated_renderer2 import SceneAcceleratedRenderer2
 from .graphics.animation import AnimatedSprite2D, AnimationClip, SpriteSheet, animated_sprite
 from .graphics.camera import Camera2D
 from .graphics.camera3d import Camera3D
@@ -130,6 +131,8 @@ from .graphics.gltf import GltfSceneMesh, load_gltf, load_gltf_scene
 from .graphics.gltf_asset import GltfPrimitiveAsset, load_gltf_material, load_gltf_primitives
 from .graphics.gltf_dependencies import gltf_asset_dependencies
 from .graphics.gltf_pipeline import register_gltf_asset_processor
+from .graphics.hiz import HiZDepthPyramid3D, HiZQueryDiagnostics3D
+from .graphics.hiz_gpu import HiZPyramidPass3D
 from .graphics.ibl_renderer import ImageBasedPostProcessRenderer
 from .graphics.instancing import (
     Frustum3D,
@@ -223,6 +226,22 @@ from .physics.rigidbody3d import PhysicsWorld3D, RigidBody3D
 from .plugins import PluginError, PluginInfo, PluginManager
 from .prefab import Prefab, PrefabInstance, PrefabOverrides, PrefabSelector
 from .profiler import FrameProfile, Profiler
+from .scene_acceleration import (
+    AcceleratedSceneView3D,
+    SceneAccelerationDiagnostics3D,
+    SceneAccelerationFrame3D,
+    SceneAccelerationRuntime3D,
+    disable_scene_acceleration,
+    enable_scene_acceleration,
+)
+from .scene_visibility import (
+    SceneVisibilityIndex3D,
+    VisibilityAABB3D,
+    VisibilityEntry3D,
+    VisibilityQueryDiagnostics3D,
+    VisibilityQueryResult3D,
+    visibility_bounds_for,
+)
 from .serialization import SceneCodecRegistry, SceneSerializationError, SceneSerializer
 from .storage import SaveStore
 from .tilemap import TileMap2D
@@ -243,6 +262,7 @@ __all__ = [
     "MAX_POINT_LIGHTS",
     "MAX_SPOT_LIGHTS",
     "SURFACE_3D_TEMPLATE",
+    "AcceleratedSceneView3D",
     "AnimatedSprite2D",
     "AnimationClip",
     "AssetDependencyGraph",
@@ -343,6 +363,9 @@ __all__ = [
     "GizmoTransformSnapshot",
     "GltfPrimitiveAsset",
     "GltfSceneMesh",
+    "HiZDepthPyramid3D",
+    "HiZPyramidPass3D",
+    "HiZQueryDiagnostics3D",
     "HierarchyEdit",
     "HierarchyItem",
     "HotReloadSnapshot",
@@ -410,12 +433,17 @@ __all__ = [
     "RigidBody3D",
     "SaveStore",
     "Scene",
+    "SceneAcceleratedRenderer2",
+    "SceneAccelerationDiagnostics3D",
+    "SceneAccelerationFrame3D",
+    "SceneAccelerationRuntime3D",
     "SceneCodecRegistry",
     "SceneDiagnostics",
     "SceneInspector",
     "SceneMount",
     "SceneSerializationError",
     "SceneSerializer",
+    "SceneVisibilityIndex3D",
     "ShaderDiagnostics",
     "ShaderHookPoint",
     "ShaderMaterial3D",
@@ -456,6 +484,10 @@ __all__ = [
     "Vec3",
     "ViewportPick",
     "ViewportRay",
+    "VisibilityAABB3D",
+    "VisibilityEntry3D",
+    "VisibilityQueryDiagnostics3D",
+    "VisibilityQueryResult3D",
     "animated_sprite",
     "apply_deadzone",
     "capture_editor_hierarchy",
@@ -463,6 +495,8 @@ __all__ = [
     "cube_mesh",
     "cubemap_asset_paths",
     "default_editor_panels",
+    "disable_scene_acceleration",
+    "enable_scene_acceleration",
     "follow_character_path",
     "gltf_asset_dependencies",
     "launch_editor",
@@ -486,6 +520,7 @@ __all__ = [
     "shader_material_3d",
     "skybox_mesh_data",
     "upload_cubemap",
+    "visibility_bounds_for",
 ]
 
 __version__ = "1.3.0"
