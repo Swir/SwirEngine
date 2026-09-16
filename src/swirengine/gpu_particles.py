@@ -21,6 +21,13 @@ class GPUParticleBlendMode(str, Enum):
     ADDITIVE = "additive"
 
 
+class GPUParticleRenderMode3D(str, Enum):
+    """Renderer2 submission modes for one GPU-simulated particle state pool."""
+
+    SPRITE = "sprite"
+    MESH = "mesh"
+
+
 @dataclass(frozen=True, slots=True)
 class GPUParticleFrame:
     """One render-frame simulation command consumed by the GPU backend."""
@@ -65,9 +72,15 @@ class GPUParticleEmitter3D:
     end_size_scale: float = 0.15
     start_color: Color = field(default_factory=lambda: Color(1.0, 0.55, 0.12, 1.0))
     end_color: Color = field(default_factory=lambda: Color(1.0, 0.05, 0.01, 0.0))
+    emissive_strength: float = 1.0
     emission_shape: GPUParticleEmissionShape3D | str = GPUParticleEmissionShape3D.POINT
     emission_extent: Vec3 = field(default_factory=Vec3)
     blend_mode: GPUParticleBlendMode | str = GPUParticleBlendMode.ADDITIVE
+    render_mode: GPUParticleRenderMode3D | str = GPUParticleRenderMode3D.SPRITE
+    texture: str | None = None
+    mesh_scale: float = 0.08
+    trail_enabled: bool = False
+    trail_alpha_scale: float = 0.45
     seed: int = 1
     emitting: bool = True
     enabled: bool = True
@@ -98,6 +111,12 @@ class GPUParticleEmitter3D:
             raise ValueError("end_size_scale must be non-negative")
         if self.drag < 0.0:
             raise ValueError("drag must be non-negative")
+        if self.emissive_strength < 0.0:
+            raise ValueError("emissive_strength must be non-negative")
+        if self.mesh_scale < 0.0:
+            raise ValueError("mesh_scale must be non-negative")
+        if not 0.0 <= self.trail_alpha_scale <= 1.0:
+            raise ValueError("trail_alpha_scale must be between 0 and 1")
         if min(self.emission_extent.x, self.emission_extent.y, self.emission_extent.z) < 0.0:
             raise ValueError("emission_extent must be non-negative")
         self.capacity = int(self.capacity)
@@ -106,10 +125,15 @@ class GPUParticleEmitter3D:
         self.size_pixels = (float(self.size_pixels[0]), float(self.size_pixels[1]))
         self.end_size_scale = float(self.end_size_scale)
         self.drag = float(self.drag)
+        self.emissive_strength = float(self.emissive_strength)
+        self.mesh_scale = float(self.mesh_scale)
+        self.trail_alpha_scale = float(self.trail_alpha_scale)
         self.emission_shape = GPUParticleEmissionShape3D(self.emission_shape)
         self.blend_mode = GPUParticleBlendMode(self.blend_mode)
+        self.render_mode = GPUParticleRenderMode3D(self.render_mode)
         self.start_color = self.start_color.clamped()
         self.end_color = self.end_color.clamped()
+        self.texture = None if self.texture is None else str(self.texture)
         self.seed = int(self.seed)
 
     @property
