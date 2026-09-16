@@ -153,7 +153,7 @@ class SceneAccelerationRuntime3D:
 def enable_scene_acceleration(scene: Scene | object, *, leaf_size: int = 8) -> SceneAccelerationRuntime3D:
     """Attach an opt-in acceleration runtime to a scene for Renderer2-aware integrations."""
     runtime = SceneAccelerationRuntime3D(leaf_size=leaf_size)
-    setattr(scene, "scene_acceleration", runtime)
+    scene.scene_acceleration = runtime
     return runtime
 
 
