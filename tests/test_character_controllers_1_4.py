@@ -101,7 +101,7 @@ def test_character_stops_at_wall_instead_of_tunnelling() -> None:
     for _ in range(60):
         controller.update_world(Vec3(1.0, 0.0, 0.0), 1.0 / 60.0)
 
-    assert target.position.x < 1.5
+    assert target.position.x == pytest.approx(1.5, abs=1e-6)
     assert controller.diagnostics.hits >= 1
 
 
