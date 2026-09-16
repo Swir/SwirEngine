@@ -1,12 +1,8 @@
 # SwirEngine 2D Game Demo
 
-A small, asset-free platformer written as a source-code showcase for SwirEngine. It demonstrates the kind of classic 2D game loop that can be built with the engine without shipping a separate game product or release.
-
-The level, colors, characters, collectibles, and gameplay are original generated primitives. The example is inspired only by the broad classic platformer genre and does not copy art, level data, characters, audio, names, or other assets from existing games.
+A source-only scrolling platformer showcase built to look and behave like a small game, not a renderer probe. Core movement and collision use SwirEngine physics. Instead of shipping an external art pack, `procedural_art.py` creates original player/enemy animation frames, energy shards, the portal, and short sound cues at runtime; the rendered game then uses those assets through SwirEngine `Sprite2D` and audio APIs.
 
 ## Run
-
-From the repository root:
 
 ```bash
 python examples/2d_game_demo/run_game.py
@@ -20,13 +16,16 @@ Controls:
 
 ## What it demonstrates
 
-- a complete update-driven 2D game loop
-- keyboard input and jump/platform movement
-- deterministic gravity and platform collision resolution
-- gaps, elevated platforms, patrolling enemies and player damage
-- collectibles and a gated level objective
-- health, collectible progress and status HUD
-- scene primitives with no external image/audio dependencies
-- deterministic headless validation for CI
+- `PhysicsWorld2D`, `RigidBody2D` and `CollisionWorld2D` driving the player
+- a scrolling multi-screen level with gaps, elevated routes and a checkpoint
+- runtime-generated original `Sprite2D` player/enemy/pickup art with movement animation and facing
+- patrol enemies, stomp combat, damage, respawn and game-over flow
+- energy-shard collection and a gated portal objective
+- smooth camera follow with star / mountain / skyline parallax
+- pooled particle feedback for jumps, pickups, checkpoint and combat
+- optional generated sound cues through `Game.sound` when the audio extra is installed
+- HUD/objective UI
+- deterministic headless validation of the real engine physics stack
+- real OpenGL 3.3 smoke boot in CI
 
-The game-demo validation workflow also boots this example through the real OpenGL renderer under Mesa/Xvfb.
+The generated artwork and audio are original to this example. The demo is inspired only by the broad side-scrolling platformer genre and does not copy characters, art, level layouts, audio, names, or other protected content from existing games.
