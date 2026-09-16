@@ -20,7 +20,7 @@ import os
 from dataclasses import dataclass
 from math import atan2, cos, radians, sin, sqrt
 
-from swirengine import Color, Cube3D, Game, Vec3
+from swirengine import Color, Cube3D, Game, Renderer2Settings, Vec3
 from swirengine.graphics.camera3d import Camera3D
 from swirengine.graphics.mesh import Mesh3D, cube_mesh
 
@@ -30,6 +30,21 @@ SMOKE_FRAMES = int(os.environ.get("SWIR_GAME_DEMO_SMOKE_FRAMES", "0"))
 HEADLESS = os.environ.get("SWIR_GAME_DEMO_HEADLESS") == "1"
 FIXED_DT = 1.0 / 120.0
 PLAYER_RADIUS = 0.32
+
+# Keep the live Renderer 2.0 settings in one shared mapping. The headless probe constructs
+# Renderer2Settings from this same mapping so invalid quality values fail before the OpenGL smoke job.
+RENDERER2_OPTIONS: dict[str, object] = {
+    "shadow_cascades": 3,
+    "shadow_resolution": 1024,
+    "shadow_distance": 80.0,
+    "ssao": True,
+    "ssao_samples": 16,
+    "bloom": True,
+    "bloom_levels": 4,
+    "decals": True,
+    "max_decals": 32,
+    "hdr": True,
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -286,6 +301,10 @@ class FPSState:
 
 
 def run_headless_probe() -> dict[str, int | float | bool]:
+    renderer_settings = Renderer2Settings(**RENDERER2_OPTIONS)
+    if renderer_settings.ssao_samples != 16:
+        raise AssertionError("3D demo Renderer 2.0 quality configuration drifted")
+
     state = FPSState()
     start_z = state.z
     for _ in range(30):
@@ -340,20 +359,13 @@ class FPSDemo:
             vsync=False,
             target_fps=144,
         )
-        self.game.configure_renderer2(
-            True,
-            shadow_cascades=3,
-            shadow_resolution=1024,
-            shadow_distance=80.0,
-            ssao=True,
-            ssao_samples=12,
-            bloom=True,
-            bloom_levels=4,
-            decals=True,
-            max_decals=32,
-            hdr=True,
+        self.game.configure_renderer2(True, **RENDERER2_OPTIONS)
+        self.game.configure_postprocess(
+            enabled=True,
+            tone_mapping="aces",
+            exposure=1.05,
+            fxaa=True,
         )
-        self.game.configure_postprocess(enabled=True, tone_mapping="aces", exposure=1.05, fxaa=True)
         self.state = FPSState()
         self.frames = 0
         self._shot_flash = 0.0
@@ -449,7 +461,10 @@ class FPSDemo:
             )
         )
 
-        self.game.directional_light(direction=Vec3(-0.5, -1.0, -0.35), intensity=1.35)
+        self.game.directional_light(
+            direction=Vec3(-0.5, -1.0, -0.35),
+            intensity=1.35,
+        )
         self.game.point_light(
             position=Vec3(-6.5, 2.2, -4.8),
             color=Color(0.2, 0.55, 1.0, 1.0),
@@ -524,7 +539,10 @@ class FPSDemo:
         self.exit_node.color = (
             Color(0.1, 1.0, 0.45, 1.0) if unlocked else Color(0.18, 0.28, 0.3, 1.0)
         )
-        self.hud.text = f"HP {self.state.health:03d}   AMMO {self.state.ammo:02d}   KILLS {self.state.kills}/3"
+        self.hud.text = (
+            f"HP {self.state.health:03d}   AMMO {self.state.ammo:02d}   "
+            f"KILLS {self.state.kills}/3"
+        )
         if self.state.won:
             self.objective.text = "SECTOR CLEAR - press R to restart"
         elif self.state.lost:
