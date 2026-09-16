@@ -56,6 +56,24 @@ class EditorAssetEntry:
 
 
 @dataclass(frozen=True, slots=True)
+class EditorAssetDragPayload:
+    """Portable drag payload for editor asset authoring.
+
+    Only project-relative metadata is carried. Front-ends can therefore move the payload between
+    panels without leaking host-specific absolute paths into scene/editor state.
+    """
+
+    relative_path: str
+    name: str
+    kind: str
+    suffix: str
+
+    @property
+    def key(self) -> str:
+        return self.relative_path
+
+
+@dataclass(frozen=True, slots=True)
 class EditorAssetBrowserFrame:
     """Immutable result of one asset-browser query."""
 
@@ -167,6 +185,30 @@ class EditorAssetBrowser:
             raise KeyError(f"unknown editor asset {key!r}")
         self._selected_key = key
         return entry
+
+    def drag_payload(self, asset: str | Path | None = None) -> EditorAssetDragPayload:
+        """Create a toolkit-neutral payload for a selected or explicit project asset.
+
+        The payload is intentionally independent from the current browser filter and contains no
+        loaded resource object. Dragging therefore stays cheap for large assets and remains valid
+        while a front-end changes tabs or filters during the gesture.
+        """
+
+        if asset is None:
+            entry = self.selected_entry
+            if entry is None:
+                raise RuntimeError("no editor asset selected for drag")
+        else:
+            key = self._normalize_relative(asset)
+            entry = next((item for item in self._entries if item.key == key), None)
+            if entry is None:
+                raise KeyError(f"unknown editor asset {key!r}")
+        return EditorAssetDragPayload(
+            entry.relative_path,
+            entry.name,
+            entry.kind,
+            entry.suffix,
+        )
 
     def resolve_selected(self) -> Path | None:
         entry = self.selected_entry
