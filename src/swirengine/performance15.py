@@ -4,13 +4,13 @@ import hashlib
 import json
 import math
 import os
-import time
 import tracemalloc
 from collections import deque
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, fields, is_dataclass
 from pathlib import Path
+from time import perf_counter
 
 
 MetricNumber = int | float
@@ -280,7 +280,7 @@ class PerformanceDiagnostics2:
         *,
         history: int = 300,
         enabled: bool = True,
-        clock: Clock = time.perf_counter,
+        clock: Clock = perf_counter,
         strict_providers: bool = False,
     ) -> None:
         if isinstance(history, bool) or not isinstance(history, int):
@@ -460,7 +460,7 @@ class PerformanceDiagnostics2:
             try:
                 self.sample_diagnostics(domain, provider())
             # Runtime diagnostics are observational and must not destabilize game code.
-            except Exception:  # noqa: BLE001
+            except Exception:
                 self._provider_errors += 1
                 if self.strict_providers:
                     raise
