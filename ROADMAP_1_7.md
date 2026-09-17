@@ -130,4 +130,19 @@ Milestone 3 is complete only when the exact implementation head satisfies all of
 
 Milestone 3 was implemented as candidate `ac1293401e5a7a6781fbc5c4bc306ad36d25b17e` and merged to `main` as `fed23138faaa0b4713df75127f04fb2f5d599999` after Resource Budget 1.7 passed on Python 3.10/3.13/3.14 together with normal CI, Desktop Export, game demos, 1.4/1.5 hardening and the 1.6 source-checkpoint regression gate. The dedicated Python 3.13 gate completed 53 focused/regression tests in 1.02 seconds; the 5,000-admission workload performed 4,744 deterministic pressure evictions in 0.3615 seconds against the 5.0-second budget.
 
+## Milestone 4 verification contract
+
+Milestone 4 remains incomplete until the exact candidate head satisfies all of the following:
+
+1. `swirengine.work_graph17` is additive and does not change stable root imports, scene/ECS/renderer behavior or published 1.5.0 package metadata.
+2. Graph construction has an explicit positive `max_nodes` bound, rejects duplicate/missing/self dependencies atomically and requires dependencies to be registered first so authored cycles are impossible.
+3. `PREFETCH` and `DECODE` phases execute only through the bounded 1.7 background scheduler while `INSTANTIATE` and `UNLOAD` callbacks execute only from explicit owning-thread `poll(...)` calls.
+4. Successful dependency values flow through a read-only dependency mapping; failed/cancelled/blocked dependencies never execute dependent callbacks.
+5. Ready work uses deterministic higher-priority-first and immutable submission-order tie breaking across both worker submission and main-thread execution.
+6. `max_background_submissions_per_poll`, scheduler pending/worker limits and `poll(max_items=...)` provide independent hard bounds so graph advancement cannot create unbounded worker admission or owning-thread callback drains.
+7. Worker and main-thread callback failures are isolated to their dependent subgraph while independent branches continue and retain their results.
+8. Explicit cascade/non-cascade cancellation produces stable cancelled/blocked semantics without silently cancelling unrelated branches; diagnostics expose progress/state/counters but no work-result payloads.
+9. Focused work-graph plus background-job/async-asset/resource-budget regressions, strict Ruff, compile checks, creator demo and a deterministic 2,048-node / 512-chain workload remain within the documented generous 5.0-second Python 3.13 CI budget without making an FPS claim.
+10. The dedicated Python 3.10/3.13/3.14 Streaming Work Graph 1.7 workflow and repository compatibility workflows pass on the exact final milestone head before merge; Release/PyPI remain frozen until SwirEngine 2.0.
+
 Progress is based on milestone completion, not file count or commit count. Each milestone is worth 10 percentage points.
