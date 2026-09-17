@@ -26,31 +26,25 @@ jobs:
 
           path = Path("src/swirengine/jobs17.py")
           text = path.read_text(encoding="utf-8")
-          old = '''    @staticmethod
-          def _normalize_dependencies(
-              job_id: str, dependencies: tuple[str, ...] | list[str]
-          ) -> tuple[str, ...]:
-              if isinstance(dependencies, str):
-                  raise JobRejectedError(
-                      "invalid_dependencies",
-                      "dependencies must be a sequence of job ids, not one string",
-                      job_id=job_id,
-                  )
-          '''
-          new = '''    @staticmethod
-          def _normalize_dependencies(
-              job_id: str, dependencies: object
-          ) -> tuple[str, ...]:
-              if isinstance(dependencies, str) or not isinstance(dependencies, (tuple, list)):
-                  raise JobRejectedError(
-                      "invalid_dependencies",
-                      "dependencies must be a list or tuple of job ids",
-                      job_id=job_id,
-                  )
-          '''
-          if text.count(old) != 1:
-              raise SystemExit("expected dependency normalization block not found exactly once")
-          path.write_text(text.replace(old, new), encoding="utf-8")
+          replacements = (
+              (
+                  "job_id: str, dependencies: tuple[str, ...] | list[str]",
+                  "job_id: str, dependencies: object",
+              ),
+              (
+                  "if isinstance(dependencies, str):",
+                  "if isinstance(dependencies, str) or not isinstance(dependencies, (tuple, list)):",
+              ),
+              (
+                  "dependencies must be a sequence of job ids, not one string",
+                  "dependencies must be a list or tuple of job ids",
+              ),
+          )
+          for old, new in replacements:
+              if text.count(old) != 1:
+                  raise SystemExit(f"expected source fragment not found exactly once: {old}")
+              text = text.replace(old, new, 1)
+          path.write_text(text, encoding="utf-8")
       - name: Syntax check
         run: python -m compileall -q src/swirengine/jobs17.py
       - name: Commit patch
