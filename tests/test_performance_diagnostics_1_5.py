@@ -148,6 +148,9 @@ def test_capture_json_and_fingerprint_are_reproducible(tmp_path) -> None:
 
 
 def test_memory_tracking_is_explicit_and_records_snapshot() -> None:
+    if tracemalloc.is_tracing():
+        pytest.skip("owned tracemalloc lifecycle requires no pre-existing tracing session")
+
     profiler = PerformanceDiagnostics2()
     profiler.enable_memory_tracking()
     allocation = bytearray(4096)
@@ -162,19 +165,27 @@ def test_memory_tracking_is_explicit_and_records_snapshot() -> None:
     assert not tracemalloc.is_tracing()
 
 
-def test_memory_tracking_does_not_stop_external_tracemalloc_owner() -> None:
-    if tracemalloc.is_tracing():
-        tracemalloc.stop()
-    tracemalloc.start()
+def test_memory_tracking_preserves_external_tracemalloc_session_and_peak() -> None:
+    started_here = not tracemalloc.is_tracing()
+    if started_here:
+        tracemalloc.start()
     try:
+        temporary_peak = bytearray(256 * 1024)
+        _current, peak_before = tracemalloc.get_traced_memory()
+        del temporary_peak
+
         profiler = PerformanceDiagnostics2()
-        profiler.enable_memory_tracking()
+        profiler.enable_memory_tracking(reset_peak=True)
+        _current, peak_after_enable = tracemalloc.get_traced_memory()
         profiler.begin_frame()
         assert profiler.end_frame(0.016).memory is not None
         profiler.disable_memory_tracking(stop_tracing=True)
+
         assert tracemalloc.is_tracing()
+        assert peak_after_enable >= peak_before
     finally:
-        tracemalloc.stop()
+        if started_here and tracemalloc.is_tracing():
+            tracemalloc.stop()
 
 
 def test_disabled_recorder_is_a_true_noop() -> None:
