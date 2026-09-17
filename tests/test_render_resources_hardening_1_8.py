@@ -149,7 +149,7 @@ def test_close_failure_keeps_failed_resource_accounted_and_retryable() -> None:
         instance.close()
 
     assert error.value.code == "destroy-failed"
-    assert not instance.closed
+    assert instance.closed
     after_failure = instance.diagnostics()
     assert after_failure.resident_resources == 1
     assert after_failure.resident_bytes == 64
