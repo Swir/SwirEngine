@@ -462,7 +462,9 @@ class StreamingWorkGraph:
 
     def _advance_locked(self, background_submission_budget: int) -> int:
         self._propagate_dependency_blocks_locked()
-        remaining = background_submission_budget
+        scheduler = self._scheduler.diagnostics()
+        scheduler_capacity = max(0, scheduler.max_pending - scheduler.unfinished)
+        remaining = min(background_submission_budget, scheduler_capacity)
         submitted = 0
         for record in self._ready_waiting_locked():
             if record.spec.affinity is WorkAffinity.BACKGROUND:
