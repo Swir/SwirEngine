@@ -71,6 +71,7 @@ class FakeButton:
     enabled: bool = True
     visible: bool = True
     focusable: bool = True
+    focused: bool = False
     on_click: object | None = None
 
 
@@ -348,12 +349,16 @@ def test_focus_router_uses_semantic_keyboard_actions_and_edges() -> None:
     update = router.update()
     assert update.moved == 1
     assert update.focused is first
+    assert first.focused is True
+    assert second.focused is False
 
     assert router.update().moved == 0
     input_state.keys.clear()
     router.update()
     input_state.keys.add("down")
     assert router.update().focused is second
+    assert first.focused is False
+    assert second.focused is True
 
     input_state.keys.clear()
     router.update()
