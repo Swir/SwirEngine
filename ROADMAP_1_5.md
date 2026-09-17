@@ -5,7 +5,7 @@ SwirEngine 1.5 builds on the released and locked 1.4 line. The compatibility rul
 Current development progress:
 
 ```text
-██████████████████░░ 90.0% — 9/10
+████████████████████ 100.0% — 10/10
 ```
 
 ## Milestones
@@ -19,7 +19,7 @@ Current development progress:
 - [x] **7. UI Toolkit 2.0** — retained creator UI model, layout, focus/input navigation, theming and resolution-independent scaling.
 - [x] **8. Editor Productivity 2.0** — prefab/variant authoring, safer batch workflows, command history improvements and creator diagnostics.
 - [x] **9. Runtime Diagnostics & Profiling 2.0** — structured frame/runtime counters, capture/export surfaces and regression-friendly performance contracts.
-- [ ] **10. Showcase, Hardening & 1.5 Release Gate** — integrated 2D/3D validation, complete compatibility matrix, documentation closeout, packaging and strict release/PyPI verification.
+- [x] **10. Showcase, Hardening & 1.5 Release Gate** — integrated 2D/3D validation, complete compatibility matrix, documentation closeout, packaging and strict release/PyPI verification.
 
 ## Milestone 1 contract
 
@@ -139,5 +139,22 @@ Runtime Diagnostics & Profiling 2.0 lives in the additive, opt-in `swirengine.pe
 - focused Python 3.10/3.13/3.14 tests, strict Ruff, compile and a runnable performance-diagnostics example;
 - a deterministic 12,000-frame diagnostics workload remaining below the documented 4.0-second CI budget, with a representative Python 3.13 CI run completing in 1.7424 seconds;
 - the repository's normal CI, Desktop Export, game-demo and 1.4 compatibility/hardening regression workflows remaining green on the verified milestone implementation head.
+
+## Milestone 10 contract
+
+Showcase, Hardening & 1.5 Release Gate is the repository-wide closeout milestone. It does not add a second release for the source-only 2D/3D game demos; those projects are integration fixtures and examples for the SwirEngine package. Completion requires:
+
+- the strict `tools/verify_1_5_release_candidate.py` contract auditor, with a hard `--require-complete` mode that refuses any final candidate below exactly 10/10 or with mismatched package/runtime metadata;
+- full pytest, Ruff and compile validation on the candidate, while retaining the locked 1.3 and 1.4 compatibility contracts;
+- Python 3.10/3.13/3.14 release-contract validation plus the repository's full supported CI matrix and dedicated Windows CPython 3.14 native-wheel path;
+- all nine 1.5 deterministic/workload gates remaining within their documented budgets on the same candidate line;
+- both source-only SwirEngine 2D Game Demo and SwirEngine 3D Game Demo passing headless execution and real Linux OpenGL 3.3 execution through Mesa/Xvfb;
+- portable wheel/sdist build, `twine check`, clean virtual-environment installation and source-demo probes against the clean installed wheel;
+- Windows one-file packaging and runtime probes for both source demos;
+- normal CI, Desktop Export, Full Game 1.3 and Showcase + Hardening 1.4 workflows remaining green on the verified hardening head;
+- a tag-only publication path that can create `v1.5.0` only from the exact current `main` commit after the complete contract passes;
+- final GitHub Release/PyPI publication remaining blocked until the final 10/10 head passes the complete gate again, followed by public-index installation verification.
+
+The implementation-hardening head completed all of the above pre-finalization runtime, compatibility, benchmark, clean-package and packaged-demo checks before this milestone was marked complete. The final 10/10 metadata/release candidate must pass the same gate again before tagging or publication.
 
 Progress is based on milestone completion, not file count or commit count. A milestone is 10 percentage points. SwirEngine 1.5 must not be tagged or published until all 10 milestones are complete and the release gate is green.
