@@ -4,7 +4,6 @@ from swirengine.upload_residency18 import (
     UploadRequest,
 )
 
-
 queue = BoundedUploadQueue(
     max_outstanding_requests=16,
     max_outstanding_bytes=16 * 1024 * 1024,
