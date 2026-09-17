@@ -40,6 +40,8 @@ def _token(name: str, value: str) -> str:
     value = value.strip()
     if not value:
         raise ValueError(f"{name} must not be empty")
+    if len(value) > 128:
+        raise ValueError(f"{name} must contain at most 128 characters")
     return value
 
 
@@ -253,16 +255,24 @@ class TextureUploadQueue:
             region.validate_for(descriptor)
         if not isinstance(payload, (bytes, bytearray, memoryview)):
             raise TypeError("payload must be bytes-like")
-        snapshot = bytes(payload)
-        if not snapshot:
+
+        payload_bytes = payload.nbytes if isinstance(payload, memoryview) else len(payload)
+        if payload_bytes <= 0:
             raise TextureUploadError("empty-upload", "texture upload payload must not be empty")
-        if len(snapshot) > self.max_bytes_per_flush:
+        if payload_bytes > self.max_bytes_per_flush:
             raise TextureUploadError(
                 "upload-too-large",
                 "single upload exceeds the configured per-flush byte budget",
             )
+        if len(self._queue) >= self.max_pending_uploads:
+            self._counters.backpressure_rejections += 1
+            raise TextureUploadError("queue-full", "texture upload queue is full")
+        if self._queued_bytes + payload_bytes > self.max_pending_bytes:
+            self._counters.backpressure_rejections += 1
+            raise TextureUploadError("queue-bytes-full", "texture upload byte queue is full")
+
         if resident_bytes is None:
-            resident_bytes = descriptor.size_bytes or len(snapshot)
+            resident_bytes = descriptor.size_bytes or payload_bytes
         resident_bytes = _positive_int("resident_bytes", resident_bytes)
         if resident_bytes > self.max_resident_bytes:
             raise TextureUploadError(
@@ -272,12 +282,13 @@ class TextureUploadQueue:
         priority = _priority(priority)
         if not isinstance(pinned, bool):
             raise TypeError("pinned must be a boolean")
-        if len(self._queue) >= self.max_pending_uploads:
-            self._counters.backpressure_rejections += 1
-            raise TextureUploadError("queue-full", "texture upload queue is full")
-        if self._queued_bytes + len(snapshot) > self.max_pending_bytes:
-            self._counters.backpressure_rejections += 1
-            raise TextureUploadError("queue-bytes-full", "texture upload byte queue is full")
+
+        snapshot = bytes(payload)
+        if len(snapshot) != payload_bytes:
+            raise TextureUploadError(
+                "payload-size-mismatch",
+                "bytes-like payload changed size while it was being snapshotted",
+            )
 
         self._sequence += 1
         upload = TextureUpload(
@@ -312,7 +323,7 @@ class TextureUploadQueue:
             upload = self._queue[0]
             if consumed_bytes + upload.byte_count > self.max_bytes_per_flush:
                 break
-            cache_key = self._digest_key(upload.texture_id, upload.region)
+            cache_key = self._digest_key(upload)
             resident = self._residency.get(upload.texture_id)
             if resident is not None and self._digests.get(cache_key) == upload.digest:
                 self._pop_head(upload)
@@ -423,6 +434,7 @@ class TextureUploadQueue:
                 {
                     "sequence": upload.sequence,
                     "texture_id": upload.texture_id,
+                    "descriptor": dict(upload.descriptor.portable()),
                     "digest": upload.digest,
                     "bytes": upload.byte_count,
                     "region": dict(upload.region.portable()) if upload.region else None,
@@ -433,6 +445,10 @@ class TextureUploadQueue:
                 for upload in self._queue
             ],
             "residency": [dict(entry.portable()) for entry in self.residency()],
+            "digests": [
+                {"key": list(key), "digest": digest}
+                for key, digest in sorted(self._digests.items(), key=lambda item: repr(item[0]))
+            ],
             "diagnostics": dict(self.diagnostics().portable()),
         }
         encoded = json.dumps(state, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -515,41 +531,64 @@ class TextureUploadQueue:
         self._counters.evicted_bytes += entry.bytes
 
     @staticmethod
-    def _digest_key(
-        texture_id: str, region: TextureUploadRegion | None
+    def _descriptor_key(
+        descriptor: RenderResourceDescriptor, resident_bytes: int
     ) -> tuple[object, ...]:
-        if region is None:
-            return (texture_id, "full")
         return (
-            texture_id,
+            descriptor.kind,
+            descriptor.format,
+            descriptor.width,
+            descriptor.height,
+            descriptor.layers,
+            descriptor.samples,
+            descriptor.usage,
+            descriptor.size_bytes,
+            resident_bytes,
+        )
+
+    @classmethod
+    def _digest_key(cls, upload: TextureUpload) -> tuple[object, ...]:
+        descriptor_key = cls._descriptor_key(upload.descriptor, upload.resident_bytes)
+        if upload.region is None:
+            return (upload.texture_id, "full", *descriptor_key)
+        return (
+            upload.texture_id,
             "region",
-            region.layer,
-            region.x,
-            region.y,
-            region.width,
-            region.height,
+            upload.region.layer,
+            upload.region.x,
+            upload.region.y,
+            upload.region.width,
+            upload.region.height,
+            *descriptor_key,
         )
 
     def _commit_digest(self, upload: TextureUpload) -> None:
         if upload.region is None:
             self._clear_texture_digests(upload.texture_id)
         else:
-            full_key = self._digest_key(upload.texture_id, None)
-            self._digests.pop(full_key, None)
+            self._clear_texture_full_digests(upload.texture_id)
             self._invalidate_overlapping_regions(upload.texture_id, upload.region)
-        self._digests[self._digest_key(upload.texture_id, upload.region)] = upload.digest
+        self._digests[self._digest_key(upload)] = upload.digest
 
     def _clear_texture_digests(self, texture_id: str) -> None:
         for key in [key for key in self._digests if key[0] == texture_id]:
+            del self._digests[key]
+
+    def _clear_texture_full_digests(self, texture_id: str) -> None:
+        for key in [
+            key
+            for key in self._digests
+            if key[0] == texture_id and len(key) >= 2 and key[1] == "full"
+        ]:
             del self._digests[key]
 
     def _invalidate_overlapping_regions(
         self, texture_id: str, region: TextureUploadRegion
     ) -> None:
         for key in list(self._digests):
-            if len(key) != 7 or key[0] != texture_id or key[1] != "region":
+            if len(key) < 7 or key[0] != texture_id or key[1] != "region":
                 continue
-            _, _, layer, x, y, width, height = key
+            _, _, layer, x, y, width, height, *_ = key
             if layer != region.layer:
                 continue
             if (
