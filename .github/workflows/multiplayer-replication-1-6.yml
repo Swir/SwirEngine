@@ -1,0 +1,91 @@
+name: Multiplayer Replication 1.6 Validation
+
+on:
+  pull_request:
+    paths:
+      - "src/swirengine/multiplayer16.py"
+      - "tests/test_multiplayer_replication_1_6.py"
+      - "tests/test_multiplayer_2_1_4.py"
+      - "tools/benchmark_multiplayer_replication_1_6.py"
+      - "examples/demo_multiplayer_replication_1_6.py"
+      - "docs/REPLICATION_STREAMING_2_1_6.md"
+      - "ROADMAP_1_6.md"
+      - ".github/workflows/multiplayer-replication-1-6.yml"
+  push:
+    branches:
+      - "feat/1.6-replication-streaming"
+    paths:
+      - "src/swirengine/multiplayer16.py"
+      - "tests/test_multiplayer_replication_1_6.py"
+      - "tests/test_multiplayer_2_1_4.py"
+      - "tools/benchmark_multiplayer_replication_1_6.py"
+      - "examples/demo_multiplayer_replication_1_6.py"
+      - "docs/REPLICATION_STREAMING_2_1_6.md"
+      - "ROADMAP_1_6.md"
+      - ".github/workflows/multiplayer-replication-1-6.yml"
+
+concurrency:
+  group: multiplayer-replication-1-6-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Replication Streaming / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13", "3.14"]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install CPython 3.14 native build prerequisites
+        if: matrix.python-version == '3.14'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev
+
+      - name: Install development dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Run 1.6 replication and locked multiplayer/network contracts
+        run: >-
+          pytest
+          tests/test_multiplayer_replication_1_6.py
+          tests/test_multiplayer_2_1_4.py
+          tests/test_networking.py
+          tests/test_network_gameplay.py
+
+      - name: Lint replication surface
+        run: >-
+          ruff check
+          src/swirengine/multiplayer16.py
+          tests/test_multiplayer_replication_1_6.py
+          tools/benchmark_multiplayer_replication_1_6.py
+          examples/demo_multiplayer_replication_1_6.py
+
+      - name: Compile replication surface
+        run: >-
+          python -m compileall -q
+          src/swirengine/multiplayer16.py
+          tests/test_multiplayer_replication_1_6.py
+          tools/benchmark_multiplayer_replication_1_6.py
+          examples/demo_multiplayer_replication_1_6.py
+
+      - name: Enforce replication workload budget
+        if: matrix.python-version == '3.13'
+        run: python tools/benchmark_multiplayer_replication_1_6.py
+
+      - name: Run creator replication demo
+        run: python examples/demo_multiplayer_replication_1_6.py
