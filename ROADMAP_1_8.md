@@ -3,7 +3,7 @@
 SwirEngine 1.7 is a completed source-only checkpoint. SwirEngine 1.8 continues the path toward 2.0
 with additive rendering scalability systems while preserving stable 1.x behavior.
 
-**Current verified progress: 5/10 milestones = 50.0%.**
+**Current verified progress: 6/10 milestones = 60.0%.**
 
 A milestone is checked only after implementation, focused tests, documentation, its dedicated gate,
 and the repository's required compatibility/regression gates pass on the exact implementation head.
@@ -51,7 +51,7 @@ The final roadmap-marked PR head must pass the required gates again before merge
   - stable ordering, hysteresis and portable diagnostics;
   - no mandatory behavior change for existing scenes.
 
-- [ ] **6. GPU Timing & Frame Capture Integration**
+- [x] **6. GPU Timing & Frame Capture Integration**
   - backend timing-provider abstraction with safe unavailable/failure modes;
   - render-pass timing integration with existing performance diagnostics;
   - bounded capture/export metadata and creator-readable hotspots;
@@ -255,3 +255,36 @@ workload processed 69,120 unique candidates, produced 60,750 visible submissions
 states, observed 7,198 transitions and completed in 0.8542 seconds under the documented 5.0-second
 ceiling. This roadmap-marked PR head must now re-pass its triggered gates before merge. Release/PyPI
 remain frozen until SwirEngine 2.0.
+
+## Milestone 6 verification contract
+
+Milestone 6 is complete only when the exact implementation candidate satisfies all of the following:
+
+1. `swirengine.render_timing18` is additive and renderer-independent and leaves stable 1.x renderer
+   behavior unchanged unless a creator/backend explicitly opts into GPU timing capture.
+2. `GpuTimingProvider` owns opaque backend timestamp-query objects behind `begin`, `end` and non-blocking
+   `poll` calls; recorder state never serializes provider tokens or requires a specific graphics API.
+3. The recorder has no wait/finish/synchronization path: unresolved query results remain pending and
+   `poll_ready()` processes only an explicit bounded amount of work per call.
+4. History frames, pending frames, passes per frame, pending queries and poll work are independently
+   hard-bounded; reaching capacity returns stable creator-facing errors instead of allocating forever.
+5. Render Graph integration verifies active pass membership and execution order, stores the plan
+   fingerprint in captures and refuses invalid/misordered timing scopes before corrupting frame state.
+6. Provider unavailability, invalid results and backend begin/end/poll failures are contained in safe
+   unavailable/failed samples by default, with explicit strict-provider behavior for backend development.
+7. Resolved timings integrate explicitly with `PerformanceDiagnostics2` as `gpu.<pass>` timings plus
+   bounded counters, without coupling normal CPU frame diagnostics to GPU query polling.
+8. Portable frame/capture data, metadata, hotspot aggregation, deterministic fingerprints and atomic
+   JSON export exclude backend objects/callbacks and preserve creator-readable pass-level evidence.
+9. A deterministic 500-frame × 128-pass workload (64,000 timestamp queries) remains below the documented
+   generous 5.0-second Python 3.13 CI ceiling without making an FPS or hardware-GPU-throughput claim.
+10. Focused timing/hardening/render regressions, Ruff, compile, creator demo and the dedicated Python
+    3.10/3.13/3.14 workflow pass, followed by the repository-wide compatibility/regression workflows on
+    the exact implementation head.
+
+Verified implementation head `0338d9f5b69ff17d3156a2c87638879004459222` passed the dedicated
+Python 3.10/3.13/3.14 GPU Timing Capture gate plus CI, Desktop Export, game-demo validation, locked
+1.4/1.5 hardening and 1.6/1.7 source-checkpoint regressions. The Python 3.13 gate ran 113 focused/render
+regressions in 0.75 seconds and completed the 64,000-query workload in 0.2587 seconds with 500 retained
+frames and zero pending queries. This roadmap-marked PR head must re-pass its triggered gates before
+merge. Release/PyPI remain frozen until SwirEngine 2.0.
