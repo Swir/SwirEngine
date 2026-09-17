@@ -4,7 +4,6 @@ import time
 
 from swirengine.network_profiler16 import MultiplayerNetworkProfiler
 
-
 CLIENTS = 96
 SAMPLES_PER_CLIENT = 160
 BUDGET_SECONDS = 4.0

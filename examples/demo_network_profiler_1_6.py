@@ -4,7 +4,6 @@ from swirengine.network_profiler16 import MultiplayerNetworkProfiler
 from swirengine.session16 import SessionLifecycle
 from swirengine.transport16 import ChannelPolicy, TransportQoSReceiver, TransportQoSScheduler
 
-
 profiler = MultiplayerNetworkProfiler(max_samples_per_client=8, max_events=16)
 session = SessionLifecycle("demo-session", "host", token_factory=lambda: "demo-token-0001")
 outbound = TransportQoSScheduler([ChannelPolicy("game", priority=10)])
