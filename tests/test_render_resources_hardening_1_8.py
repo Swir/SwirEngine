@@ -101,9 +101,12 @@ def test_factory_returning_none_is_rejected_without_residency_mutation() -> None
 
 
 def test_trim_destroy_failure_does_not_report_resource_as_freed() -> None:
+    def destroy(_resource):
+        raise RuntimeError("destroy failed")
+
     instance = TransientRenderResourcePool(
         create=lambda spec: {"format": spec.format},
-        destroy=lambda _resource: (_ for _ in ()).throw(RuntimeError("destroy failed")),
+        destroy=destroy,
         max_resources=2,
         max_bytes=128,
     )
