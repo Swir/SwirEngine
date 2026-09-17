@@ -146,8 +146,27 @@ def _add_run_parser(subparsers) -> None:
     run.add_argument(
         "game_args",
         nargs="*",
-        help="arguments after -- are forwarded to the game entrypoint",
+        help="plain positional arguments forwarded to the game entrypoint",
     )
+
+
+def _split_run_forwarded_args(argv) -> tuple[list[str], tuple[str, ...]]:
+    """Split the run-command ``--`` boundary before argparse sees it.
+
+    Python 3.10 and newer argparse releases differ when a subparser combines optional
+    arguments with a trailing ``nargs='*'`` positional. Handling the conventional ``--``
+    separator here gives every supported Python version the same creator-facing contract
+    and leaves every other SwirEngine command untouched.
+    """
+
+    values = list(sys.argv[1:] if argv is None else argv)
+    if not values or values[0] != "run":
+        return values, ()
+    try:
+        boundary = values.index("--")
+    except ValueError:
+        return values, ()
+    return values[:boundary], tuple(values[boundary + 1 :])
 
 
 def _profile_from_args(args, project: Path) -> PackagingProfile:
@@ -276,7 +295,10 @@ def main(argv=None) -> int:
     doctor.add_argument("--profile")
     _add_run_parser(sub)
     _add_export_parser(sub)
-    args = parser.parse_args(argv)
+    parse_argv, separator_args = _split_run_forwarded_args(argv)
+    args = parser.parse_args(parse_argv)
+    if args.command == "run" and separator_args:
+        args.game_args.extend(separator_args)
 
     if args.command == "info":
         print(f"SwirEngine {__version__}")
