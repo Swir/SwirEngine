@@ -64,7 +64,7 @@ jobs:
           tests/test_resource_budget_1_7.py
           tests/test_async_assets_1_7.py
           tests/test_background_jobs_1_7.py
-          tests/test_performance_1_5.py
+          tests/test_performance_diagnostics_1_5.py
 
       - name: Lint resource-budget surfaces
         run: >-
