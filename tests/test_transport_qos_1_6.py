@@ -170,6 +170,36 @@ def test_scheduler_rejects_encoded_packet_over_channel_bound_without_sequence_co
     assert scheduler.diagnostics()["channels"]["tiny"]["oversized_rejections"] == 1
 
 
+def test_receiver_rejects_oversized_packet_without_advancing_sequence_baseline() -> None:
+    policy = ChannelPolicy("control", max_packet_bytes=256)
+    receiver = TransportQoSReceiver((policy,))
+    oversized = QoSEnvelope(
+        "control",
+        1,
+        DeliveryPolicy.RELIABLE,
+        NetworkPacket("blob", {"data": "x" * 500}),
+    ).to_packet()
+
+    assert len(oversized.to_bytes()) > policy.max_packet_bytes
+    with pytest.raises(TransportQoError) as rejected:
+        receiver.accept(oversized)
+    assert rejected.value.code == "packet_too_large"
+
+    diagnostics = receiver.diagnostics()["channels"]["control"]
+    assert diagnostics["last_sequence"] == 0
+    assert diagnostics["accepted_packets"] == 0
+    assert diagnostics["oversized_rejections"] == 1
+
+    valid = QoSEnvelope(
+        "control",
+        1,
+        DeliveryPolicy.RELIABLE,
+        NetworkPacket("ok", {}),
+    ).to_packet()
+    assert len(valid.to_bytes()) <= policy.max_packet_bytes
+    assert receiver.accept(valid) == NetworkPacket("ok", {})
+
+
 def test_scheduler_uses_strict_priority_then_enqueue_order_deterministically() -> None:
     scheduler = TransportQoSScheduler(_policies())
     scheduler.enqueue("chat", NetworkPacket("chat", {"n": 1}))
