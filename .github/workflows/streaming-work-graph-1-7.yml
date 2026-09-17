@@ -6,6 +6,7 @@ on:
     paths:
       - "src/swirengine/work_graph17.py"
       - "tests/test_work_graph_1_7.py"
+      - "tests/test_work_graph_1_7_hardening.py"
       - "tools/benchmark_work_graph_1_7.py"
       - "examples/demo_work_graph_1_7.py"
       - "docs/STREAMING_WORK_GRAPH_1_7.md"
@@ -16,6 +17,7 @@ on:
     paths:
       - "src/swirengine/work_graph17.py"
       - "tests/test_work_graph_1_7.py"
+      - "tests/test_work_graph_1_7_hardening.py"
       - "tools/benchmark_work_graph_1_7.py"
       - "examples/demo_work_graph_1_7.py"
       - "docs/STREAMING_WORK_GRAPH_1_7.md"
@@ -62,6 +64,7 @@ jobs:
         run: >-
           pytest
           tests/test_work_graph_1_7.py
+          tests/test_work_graph_1_7_hardening.py
           tests/test_background_jobs_1_7.py
           tests/test_async_assets_1_7.py
           tests/test_resource_budget_1_7.py
@@ -71,6 +74,7 @@ jobs:
           ruff check
           src/swirengine/work_graph17.py
           tests/test_work_graph_1_7.py
+          tests/test_work_graph_1_7_hardening.py
           tools/benchmark_work_graph_1_7.py
           examples/demo_work_graph_1_7.py
 
@@ -79,6 +83,7 @@ jobs:
           python -m compileall -q
           src/swirengine/work_graph17.py
           tests/test_work_graph_1_7.py
+          tests/test_work_graph_1_7_hardening.py
           tools/benchmark_work_graph_1_7.py
           examples/demo_work_graph_1_7.py
 
