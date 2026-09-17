@@ -223,12 +223,12 @@ class JobScheduler:
 
     @staticmethod
     def _normalize_dependencies(
-        job_id: str, dependencies: tuple[str, ...] | list[str]
+        job_id: str, dependencies: object
     ) -> tuple[str, ...]:
-        if isinstance(dependencies, str):
+        if isinstance(dependencies, str) or not isinstance(dependencies, (tuple, list)):
             raise JobRejectedError(
                 "invalid_dependencies",
-                "dependencies must be a sequence of job ids, not one string",
+                "dependencies must be a list or tuple of job ids",
                 job_id=job_id,
             )
         normalized: list[str] = []
