@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tools.verify_1_3_release_candidate import audit, parse_roadmap
+from tools.verify_1_3_release_candidate import ACTIVE_STABLE_VERSIONS, audit, parse_roadmap
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -10,7 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_locked_1_3_compatibility_contract_remains_complete_under_current_stable() -> None:
     report = audit(ROOT)
 
-    assert report.version == "1.4.0"
+    assert report.version in ACTIVE_STABLE_VERSIONS
+    assert "1.5.0" in ACTIVE_STABLE_VERSIONS
     assert report.roadmap.total == 10
     assert report.roadmap.completed == 10
     assert report.roadmap.remaining == 0
@@ -44,11 +45,14 @@ def test_final_game_contract_mentions_every_integrated_1_3_system() -> None:
     assert required <= set(source.split()) | {token for token in required if token in source}
 
 
-def test_active_release_workflow_has_moved_to_the_complete_1_4_contract() -> None:
+def test_active_release_workflow_targets_1_5_and_keeps_locked_compatibility_gates() -> None:
     workflow = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
+    trigger_section = workflow.split("jobs:", 1)[0]
 
+    assert 'tags:\n      - "v1.5.0"' in trigger_section
+    assert "verify_1_5_release_candidate.py --require-complete" in workflow
     assert "verify_1_4_release_candidate.py --require-complete" in workflow
-    assert "verify_1_3_release_candidate.py --require-complete" not in workflow
+    assert "verify_1_3_release_candidate.py" in workflow
     assert "pypa/gh-action-pypi-publish@release/v1" in workflow
     assert "id-token: write" in workflow
     assert "skip-existing: true" not in workflow
