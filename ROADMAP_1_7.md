@@ -2,7 +2,7 @@
 
 SwirEngine 1.6 is complete as a verified source-development checkpoint. SwirEngine 1.7 continues the additive 1.x development line toward 2.0 without changing the published 1.5.0 package version or rewriting any released tag.
 
-**Current verified progress: 4/10 milestones = 40.0%.**
+**Current verified progress: 5/10 milestones = 50.0%.**
 
 A milestone is checked only after its implementation, focused tests, documentation, creator example and dedicated validation gate pass on the exact commit merged to `main`. Scaffolding or documentation alone never counts as completion.
 
@@ -43,7 +43,7 @@ A milestone is checked only after its implementation, focused tests, documentati
   - creator-visible progress and fault isolation;
   - no renderer/window mutation from background workers.
 
-- [ ] **5. Scene Build & Activation Staging**
+- [x] **5. Scene Build & Activation Staging**
   - background-safe immutable scene preparation;
   - bounded main-thread activation slices;
   - transactional rollback when activation fails;
@@ -146,5 +146,22 @@ Milestone 4 is complete only when the exact candidate head satisfies all of the 
 10. The dedicated Python 3.10/3.13/3.14 Streaming Work Graph 1.7 workflow and repository compatibility workflows pass on the exact final milestone head before merge; Release/PyPI remain frozen until SwirEngine 2.0.
 
 Milestone 4 was implemented as candidate `2e77f5db7e24d2353a654c4c17d68b75ae2d3b76` and merged to `main` as `909d570e5512b330778266ed1cf32489edc5d695` after Streaming Work Graph 1.7 passed on Python 3.10/3.13/3.14 together with normal CI, Desktop Export, Game Demos Validation, 1.4/1.5 hardening and the 1.6 source-checkpoint regression gate. The dedicated Python 3.13 gate completed 61 focused/parallel-runtime regression tests in 0.60 seconds; the deterministic 2,048-node / 512-chain workload completed in 0.1051 seconds against the 5.0-second budget.
+
+## Milestone 5 verification contract
+
+Milestone 5 is complete only when the exact candidate head satisfies all of the following:
+
+1. `swirengine.scene_staging17` is additive and leaves stable root imports, `Scene`, `Prefab`, ECS, `LargeWorldStreamer`, World Streaming 2.0 and published 1.5.0 package metadata unchanged.
+2. Background preparation receives `SceneBuildContext` without a live `Scene`; builders return validated immutable `PreparedScenePlan` values with non-empty unique steps and a plan id bound to the request id.
+3. All live scene mutation happens only from explicit owner-thread `poll(...)`, and poll/run-until-idle/forget/shutdown reject calls from a non-owning thread before mutation.
+4. Requests activate in immutable submission order even when background preparation finishes out of order, preserving deterministic scene mutation order.
+5. Worker concurrency, pending preparation, retained request count and per-poll activation/rollback work have independent hard bounds so scene staging cannot create an unbounded background queue or main-thread drain.
+6. Activation failures and activation-time cancellation roll already-successful steps back in strict reverse order; built-in adapters clean partial mutations if their apply path raises before returning a rollback token.
+7. Stable adapters integrate ordinary Scene objects, detached `Prefab` instances, ECS entities and `ChunkContent`/`SceneMount` transactionally without replacing their APIs; the chunk adapter rejects and cleans newly-created ECS entities omitted from `ChunkContent.entities`.
+8. Preparation/callback failures and cancellation are isolated to their request while independent later requests continue; terminal state can be explicitly forgotten and diagnostics expose only state/limits/counters rather than scene payloads or rollback tokens.
+9. Focused scene-staging plus stable Scene/Prefab/ECS/large-world/world-streaming/background-job/work-graph regressions, strict Ruff, compile checks, creator demo and a deterministic 512-plan / 2,048-activation-step workload remain within the documented generous 5.0-second Python 3.13 CI budget without making an FPS claim.
+10. The dedicated Python 3.10/3.13/3.14 Scene Staging 1.7 workflow and repository compatibility workflows pass on the exact final candidate before merge; Release/PyPI remain frozen until SwirEngine 2.0.
+
+Milestone 5 was implemented as candidate `1478368cb5ffcde60ca115f8cedaf0a271f4b14c` and merged to `main` as `d64ee3fde14a540eca63c7d024402770a1b1c963` after Scene Staging 1.7 passed on Python 3.10/3.13/3.14 together with normal CI, Desktop Export, game demos, 1.4/1.5 hardening and the 1.6 source-checkpoint regression gate. The dedicated Python 3.13 gate completed 98 focused/stable scene and parallel-runtime regression tests in 0.83 seconds; the deterministic 512-plan / 2,048-activation-step workload completed in 0.1887 seconds against the 5.0-second budget.
 
 Progress is based on milestone completion, not file count or commit count. Each milestone is worth 10 percentage points.
