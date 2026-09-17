@@ -172,6 +172,45 @@ def test_client_reports_missing_baseline_instead_of_corrupting_state() -> None:
         client.apply(ReplicationUpdate(delta=old_delta))
 
 
+def test_server_resynchronizes_after_client_prunes_ack_baseline() -> None:
+    manager = _manager()
+    server = ReplicationStreamServer(manager)
+    server.register_client("alpha", InterestView(radius=10.0))
+    client = ReplicationStreamClient(max_history=2)
+
+    server.publish(_snapshot(1, _entity(1, 1), _entity(2, 5), _entity(4, 99)))
+    first = server.build_update("alpha")
+    client.apply(first)
+    server.acknowledge("alpha", 1)
+
+    for tick in (2, 3):
+        server.publish(_snapshot(tick, _entity(1, tick), _entity(2, 5), _entity(4, 99)))
+        client.apply(server.build_update("alpha"))
+
+    assert client.history_ticks == (2, 3)
+
+    server.publish(_snapshot(4, _entity(1, 4), _entity(2, 6), _entity(4, 99)))
+    stale_delta = server.build_update("alpha")
+    assert stale_delta.delta is not None and stale_delta.delta.baseline_tick == 1
+    with pytest.raises(LookupError, match="baseline 1"):
+        client.apply(stale_delta)
+
+    recovery = server.resynchronize("alpha")
+    restored = client.apply(recovery)
+    assert recovery.mode == "snapshot"
+    assert restored.tick == 4
+    assert server.acknowledge("alpha", 4) is True
+
+    server.publish(_snapshot(5, _entity(1, 5), _entity(2, 6), _entity(4, 99)))
+    after_recovery = server.build_update("alpha")
+    assert after_recovery.delta is not None
+    assert after_recovery.delta.baseline_tick == 4
+
+    diagnostics = server.diagnostics("alpha")
+    assert diagnostics["snapshot_fallbacks"] == 1
+    assert diagnostics["full_updates"] == 2
+
+
 def test_replication_update_packet_round_trips_over_stable_network_packet() -> None:
     update = ReplicationUpdate(snapshot=_snapshot(7, _entity(1, 9)))
     packet = update.to_packet()
@@ -250,6 +289,8 @@ def test_publish_and_per_client_build_order_are_guarded() -> None:
 
     with pytest.raises(LookupError, match="published"):
         server.build_update("alpha")
+    with pytest.raises(LookupError, match="published"):
+        server.resynchronize("alpha")
 
     server.publish(_snapshot(1, _entity(1, 0), _entity(4, 0)))
     server.build_update("alpha")
