@@ -2,7 +2,7 @@
 
 SwirEngine 1.6 is complete as a verified source-development checkpoint. SwirEngine 1.7 continues the additive 1.x development line toward 2.0 without changing the published 1.5.0 package version or rewriting any released tag.
 
-**Current verified progress: 2/10 milestones = 20.0%.**
+**Current verified progress: 3/10 milestones = 30.0%.**
 
 A milestone is checked only after its implementation, focused tests, documentation, creator example and dedicated validation gate pass on the exact commit merged to `main`. Scaffolding or documentation alone never counts as completion.
 
@@ -31,7 +31,7 @@ A milestone is checked only after its implementation, focused tests, documentati
   - dependency-aware derived artifact production and cancellation;
   - exact cache/diagnostic accounting without blocking the game loop.
 
-- [ ] **3. Shared Resource Budget Broker**
+- [x] **3. Shared Resource Budget Broker**
   - explicit memory/count/work budgets shared by streaming-capable subsystems;
   - deterministic priority and eviction/admission contracts;
   - pressure diagnostics and creator-defined reservation classes;
@@ -112,5 +112,22 @@ Milestone 2 is complete only when the exact implementation head satisfies all of
 10. The dedicated Python 3.10/3.13/3.14 Async Assets 1.7 workflow and repository compatibility workflows pass on the exact final milestone head before merge; Release/PyPI remain frozen until SwirEngine 2.0.
 
 Milestone 2 was implemented and merged as `31ffeaefbe7f24f454b784fc2af6b208651d4f74` after candidate head `078ca08e65724f9c47160402cf06415e50ed1ece` passed Async Assets 1.7 on Python 3.10/3.13/3.14 together with normal CI, Desktop Export, game demos, 1.4/1.5 hardening, Background Jobs 1.7 and the 1.6 source-checkpoint regression gate. The dedicated Python 3.13 gate completed 44 focused/stable-asset/job regression tests in 0.98 seconds and the 1,024-request cold+cached workload in 0.7340 seconds against the 5.0-second budget.
+
+## Milestone 3 verification contract
+
+Milestone 3 is complete only when the exact implementation head satisfies all of the following:
+
+1. `swirengine.resource_budget17` is additive and leaves stable 1.x resource, asset, streaming, renderer and published package surfaces unchanged.
+2. The broker accounts memory bytes, resident counts and abstract work units atomically across multiple streaming-capable subsystems under one explicit global capacity.
+3. Creator-defined reservation classes protect resident usage up to their configured floor while allowing unused reserved capacity to be borrowed; total reservation floors can never exceed global capacity.
+4. Optional subsystem limits are independently enforced and cannot be configured below current subsystem usage or above global capacity.
+5. Admission ordering is deterministic: lower-priority evictable allocations are displaced before higher/equal priority work, with stable same-priority ordering; protected allocations are never silently evicted.
+6. Admission produces explicit structured rejection reasons for duplicate resources, oversized requests, subsystem pressure, reservation protection, priority protection, protected allocations and global capacity exhaustion.
+7. Two-phase `plan_admission()` / `commit()` uses monotonically revised state and rejects stale plans before mutating accounting; direct `admit()` remains atomic under the broker lock.
+8. `release()` and eviction keep global, per-subsystem and per-reservation accounting exact, while diagnostics expose pressure/counters and metadata without resource payloads.
+9. Focused resource-budget plus async-asset/job/performance regressions, strict Ruff, compile checks, creator demo and a 5,000-admission deterministic pressure workload remain within the documented generous 5.0-second Python 3.13 CI budget without making an FPS claim.
+10. The dedicated Python 3.10/3.13/3.14 Resource Budget 1.7 workflow and repository compatibility workflows pass on the exact final milestone head before merge; Release/PyPI remain frozen until SwirEngine 2.0.
+
+Milestone 3 was implemented as candidate `ac1293401e5a7a6781fbc5c4bc306ad36d25b17e` and merged to `main` as `fed23138faaa0b4713df75127f04fb2f5d599999` after Resource Budget 1.7 passed on Python 3.10/3.13/3.14 together with normal CI, Desktop Export, game demos, 1.4/1.5 hardening and the 1.6 source-checkpoint regression gate. The dedicated Python 3.13 gate completed 53 focused/regression tests in 1.02 seconds; the 5,000-admission workload performed 4,744 deterministic pressure evictions in 0.3615 seconds against the 5.0-second budget.
 
 Progress is based on milestone completion, not file count or commit count. Each milestone is worth 10 percentage points.
