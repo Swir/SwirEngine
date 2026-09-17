@@ -1,0 +1,157 @@
+name: Source Checkpoint 1.8
+
+on:
+  push:
+    branches:
+      - main
+      - "feat/1.8-*"
+  pull_request:
+    paths:
+      - "src/swirengine/**"
+      - "tests/**"
+      - "examples/**"
+      - "demo_projects/**"
+      - "tools/**"
+      - "docs/**"
+      - "README.md"
+      - "CHANGELOG.md"
+      - "CHANGELOG.d/**"
+      - "ROADMAP_1_4.md"
+      - "ROADMAP_1_5.md"
+      - "ROADMAP_1_6.md"
+      - "ROADMAP_1_7.md"
+      - "ROADMAP_1_8.md"
+      - "pyproject.toml"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/source-checkpoint-1-7.yml"
+      - ".github/workflows/source-checkpoint-1-8.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: source-checkpoint-1-8-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: 1.8 contracts / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install --upgrade pip
+      - name: Install CPython 3.14 native build prerequisites
+        if: matrix.python-version == '3.14'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev
+      - run: python -m pip install -e ".[dev]"
+      - name: Audit source-checkpoint contracts
+        shell: bash
+        run: |
+          python tools/verify_1_8_source_checkpoint.py
+          python tools/verify_1_7_source_checkpoint.py --require-complete
+          if grep -Fq "Current verified progress: 10/10 milestones = 100.0%." ROADMAP_1_8.md; then
+            python tools/verify_1_8_source_checkpoint.py --require-complete
+          fi
+      - name: Run complete 1.8 rendering contract suite
+        shell: bash
+        run: pytest tests/test_*_1_8.py
+      - name: Full repository tests
+        if: matrix.python-version == '3.13'
+        run: pytest
+      - name: Strict Ruff gate
+        if: matrix.python-version == '3.13'
+        run: ruff check src tests examples demo_projects tools
+      - name: Compile repository surfaces
+        if: matrix.python-version == '3.13'
+        run: python -m compileall -q src tests examples demo_projects tools
+
+  workloads:
+    name: Integrated 1.8 workload + source showcase
+    needs: contract
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Run deterministic 1.8 render soak
+        run: python tools/benchmark_render_showcase_1_8.py
+      - name: Run integrated 1.8 source showcase
+        run: python examples/demo_render_showcase_1_8.py
+      - name: Run source-only 2D and 3D game demos headlessly
+        env:
+          SWIR_GAME_DEMO_HEADLESS: "1"
+        run: |
+          python examples/2d_game_demo/run_game.py
+          python examples/3d_game_demo/run_game.py
+
+  source-platform-smoke:
+    name: Integrated 1.8 source showcase / ${{ matrix.os }}
+    needs: contract
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e .
+      - run: python examples/demo_render_showcase_1_8.py
+
+  clean-package:
+    name: Build + clean wheel checkpoint
+    needs: contract
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip build twine
+      - name: Build local distributions
+        run: python -m build
+      - name: Check local distribution metadata
+        run: python -m twine check dist/*
+      - name: Install wheel in a clean environment
+        shell: bash
+        run: |
+          python -m venv .checkpoint18-venv
+          .checkpoint18-venv/bin/python -m pip install --upgrade pip
+          .checkpoint18-venv/bin/python -m pip install dist/*.whl
+          .checkpoint18-venv/bin/python - <<'PY'
+          import swirengine
+          import swirengine.render_graph18
+          import swirengine.render_quality18
+          import swirengine.render_resources18
+          import swirengine.render_showcase18
+          import swirengine.render_submission18
+          import swirengine.render_timing18
+          import swirengine.render_uploads18
+          import swirengine.renderer2_bridge18
+          import swirengine.visibility18
+
+          assert swirengine.__version__ == "1.5.0"
+          print("clean checkpoint wheel:", swirengine.__version__)
+          PY
+      - name: Probe source showcase and game demos against clean wheel
+        shell: bash
+        run: |
+          .checkpoint18-venv/bin/python examples/demo_render_showcase_1_8.py
+          SWIR_GAME_DEMO_HEADLESS=1 .checkpoint18-venv/bin/python examples/2d_game_demo/run_game.py
+          SWIR_GAME_DEMO_HEADLESS=1 .checkpoint18-venv/bin/python examples/3d_game_demo/run_game.py
