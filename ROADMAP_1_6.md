@@ -2,7 +2,7 @@
 
 SwirEngine 1.5.0 is released and locked as the stable compatibility baseline. The 1.6 line is additive: existing 1.x imports and behavior stay stable unless a genuine maintenance fix is required.
 
-**Current verified progress: 7/10 milestones = 70.0%.**
+**Current verified progress: 8/10 milestones = 80.0%.**
 
 A milestone is checked only after its implementation, focused tests, documentation, and dedicated validation gate pass on the exact commit that is merged to `main`. Repository activity, scaffolding, or an open pull request does not count as completion.
 
@@ -62,7 +62,7 @@ A milestone is checked only after its implementation, focused tests, documentati
   - explicit capability discovery and failure isolation;
   - no hard dependency on a single storefront or external service.
 
-- [ ] **8. Multiplayer Diagnostics & Network Profiler**
+- [x] **8. Multiplayer Diagnostics & Network Profiler**
   - per-client replication, prediction, transport, and session counters;
   - bounded timeline/event capture with deterministic exports;
   - bandwidth/entity-budget hotspot reporting;
@@ -184,3 +184,18 @@ Milestone 7 is complete only when the exact implementation head satisfies all of
 8. `try_call(...)`, deterministic capability discovery, payload-safe diagnostics, and diagnostics fingerprints provide creator/headless fallback surfaces without serializing save payloads, identity values, entitlement inventories, credentials, tokens, or provider exception text.
 9. Focused tests, strict Ruff, compile checks, creator demo, deterministic workload benchmark, and the locked Save & Profile 2.0 regression contract pass on Python 3.10, 3.13, and 3.14 in the dedicated Platform Services workflow.
 10. Normal CI, Desktop Export, source game demos, Full Game 1.3, and locked 1.4/1.5 hardening workflows remain green on the verified implementation head before merge to `main`.
+
+## Milestone 8 verification contract
+
+Milestone 8 is complete only when the exact implementation head satisfies all of the following before the roadmap completion marker is committed:
+
+1. `swirengine.network_profiler16` remains additive and opt-in and does not change stable 1.x root imports or the verified 1.6 multiplayer subsystem contracts.
+2. The profiler consumes the existing replication, prediction, transport and session `diagnostics(...)` surfaces without owning or mutating sockets, simulation truth, session state, transport queues or gameplay payloads.
+3. Captures retain only finite numeric diagnostics from subsystem mappings; booleans, strings and non-diagnostic payload values are ignored, malformed diagnostic sources fail explicitly, and non-finite numeric values are rejected.
+4. Per-client sampling requires strictly increasing ticks and retains a creator-configurable hard history bound with explicit sample-eviction accounting while allowing independent client timelines.
+5. Creator-recorded profiler events use monotonic sequence numbers, a hard global retention bound, counters-only numeric data and explicit event-eviction diagnostics.
+6. Explicit sent/received byte and replicated-entity measurements feed deterministic retained-window hotspot reporting with entity-budget pressure and stable tie breaking.
+7. `portable_capture()` is versioned and deterministic across client insertion order, contains only retained bounded state, and remains safe for headless creator/regression workflows.
+8. Canonical JSON produces stable SHA-256 fingerprints, while `export_json(...)` writes through a same-directory temporary file before replacement so requested captures are not left partially written.
+9. Focused profiler tests, strict Ruff, compile checks, creator demo, the 15,360-sample workload benchmark, and locked 1.6 replication/prediction/transport/session regressions pass on Python 3.10, 3.13 and 3.14 in the dedicated workflow; the representative Python 3.13 workload completed in 0.2575 seconds against the documented 4.0-second CI budget.
+10. Normal CI, Desktop Export, source game demos, Neon Snake 3D, and locked 1.4/1.5 hardening workflows remain green on the verified implementation head before merge to `main`; the single transient Save & Profile 2.0 workload timing outlier was rerun successfully without code changes before the milestone was closed.
