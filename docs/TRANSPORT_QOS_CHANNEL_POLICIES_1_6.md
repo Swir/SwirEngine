@@ -2,7 +2,7 @@
 
 SwirEngine 1.6 adds an **opt-in, transport-independent QoS layer** in `swirengine.transport16`. It sits above the stable 1.x `NetworkPacket` framing instead of replacing or changing `TCPPeer`, `TCPClient`, or `TCPServer`.
 
-The goal is to make multiplayer traffic policy explicit and deterministic: creators can separate reliable control/event traffic from freshness-oriented state traffic, bound every outbound queue, schedule channels by priority, reject or evict packets predictably under pressure, and inspect per-channel counters.
+The goal is to make multiplayer traffic policy explicit and deterministic: creators can separate reliable control/event traffic from freshness-oriented state traffic, bound every outbound queue, schedule channels by priority, reject or evict packets predictably under pressure, validate inbound channel size policy, and inspect per-channel counters.
 
 ## Compatibility model
 
@@ -27,7 +27,7 @@ Each `ChannelPolicy` defines:
 - `name`: normalized non-empty channel identifier;
 - `delivery`: `reliable` or `unreliable`;
 - `priority`: deterministic scheduler priority from `-1000` through `1000`;
-- `max_packet_bytes`: hard limit for the **complete encoded QoS `NetworkPacket` frame**, including the stable length prefix;
+- `max_packet_bytes`: hard limit for the **complete encoded QoS `NetworkPacket` frame**, including the stable length prefix; the same limit is enforced on inbound packets for that channel;
 - `max_queue_packets`: hard count bound for the channel;
 - `max_queue_bytes`: hard byte bound for the channel.
 
@@ -77,7 +77,7 @@ A single encoded packet that cannot satisfy `max_packet_bytes` or `max_queue_byt
 
 This makes a small unreliable `state` channel useful for transient snapshots where an old unsent position update has less value than a current one.
 
-## Receive sequencing and duplicate suppression
+## Receive sequencing, size policy, and duplicate suppression
 
 ```python
 from swirengine.transport16 import TransportQoSReceiver
@@ -90,7 +90,7 @@ for qos_packet in peer.poll():
         handle(inner)
 ```
 
-The receiver validates the QoS envelope and configured channel policy before exposing the nested creator packet.
+The receiver validates the QoS envelope and configured channel policy before exposing the nested creator packet. The complete encoded QoS frame must also fit the channel's `max_packet_bytes` bound. Oversized inbound traffic raises `TransportQoError(code="packet_too_large")` before the accepted sequence baseline changes.
 
 For **reliable** channels:
 
@@ -144,13 +144,14 @@ Inbound counters include:
 - duplicate and stale suppressions;
 - gap events and skipped sequences;
 - policy mismatches;
+- oversized-packet rejections;
 - last accepted sequence.
 
 The diagnostics contain no packet payload data and no session resume secrets.
 
 ## Failure handling recommendations
 
-`packet_too_large` usually indicates a creator payload or channel bound that should be adjusted deliberately. Do not automatically increase limits based on untrusted input.
+`packet_too_large` can be raised on either outbound enqueue or inbound acceptance. It usually indicates a creator payload or channel bound that should be adjusted deliberately. Do not automatically increase limits based on untrusted input. Inbound oversize rejection leaves the accepted sequence baseline unchanged, so a later valid packet at the expected sequence can still be processed.
 
 `backpressure` on reliable traffic means the consumer is not keeping up with the producer. Drain more frequently, reduce production, or treat sustained pressure as a peer-health failure rather than allowing unbounded memory growth.
 
@@ -168,6 +169,7 @@ The dedicated 1.6 QoS gate validates Python 3.10, 3.13, and 3.14 and covers:
 - reliable atomic back-pressure;
 - unreliable oldest-first pressure eviction;
 - strict priority scheduling and packet/byte drain budgets;
+- inbound and outbound encoded-packet size enforcement;
 - reliable gap rejection and duplicate/stale suppression;
 - unreliable gap accounting;
 - policy mismatch/unknown-channel rejection;
@@ -178,7 +180,15 @@ The dedicated 1.6 QoS gate validates Python 3.10, 3.13, and 3.14 and covers:
 Run the focused checks locally with:
 
 ```bash
-pytest tests/test_transport_qos_1_6.py tests/test_networking.py tests/test_multiplayer_2_1_4.py
+pytest \
+  tests/test_transport_qos_1_6.py \
+  tests/test_networking.py \
+  tests/test_multiplayer_2_1_4.py \
+  tests/test_multiplayer_replication_1_6.py \
+  tests/test_prediction_reconciliation_1_6.py \
+  tests/test_session_lifecycle_1_6.py
 python tools/benchmark_transport_qos_1_6.py
 python examples/demo_transport_qos_1_6.py
 ```
+
+SwirEngine 1.6 remains a source-development checkpoint. This work is not a standalone public release; the next public GitHub Release and PyPI publication after 1.5.0 are reserved for SwirEngine 2.0.
