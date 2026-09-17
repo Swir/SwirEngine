@@ -255,7 +255,7 @@ class TransientRenderResourcePool(Generic[ResourceT]):
         self._make_capacity(descriptor.size_bytes)
         try:
             resource = self._create(descriptor)
-        except Exception as exc:  # noqa: BLE001 - backend callback boundary.
+        except Exception as exc:
             self._create_failures += 1
             raise RenderResourcePoolError(
                 "create-failed",
@@ -408,7 +408,7 @@ class TransientRenderResourcePool(Generic[ResourceT]):
             raise RuntimeError("internal error: attempted to evict a leased resource")
         try:
             self._destroy(entry.resource)
-        except Exception as exc:  # noqa: BLE001 - backend callback boundary.
+        except Exception as exc:
             self._destroy_failures += 1
             raise RenderResourcePoolError(
                 "destroy-failed",
