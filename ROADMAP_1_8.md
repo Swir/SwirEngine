@@ -3,7 +3,7 @@
 SwirEngine 1.7 is a completed source-only checkpoint. SwirEngine 1.8 continues the path toward 2.0
 with additive rendering scalability systems while preserving stable 1.x behavior.
 
-**Current verified progress: 1/10 milestones = 10.0%.**
+**Current verified progress: 2/10 milestones = 20.0%.**
 
 A milestone is checked only after implementation, focused tests, documentation, its dedicated gate,
 and the repository's required compatibility/regression gates pass on the exact implementation head.
@@ -27,7 +27,7 @@ The final roadmap-marked PR head must pass the required gates again before merge
   - transient lifetime analysis, deterministic alias slots and memory diagnostics;
   - portable snapshots/fingerprints, creator docs/demo, focused benchmark and Python 3.10/3.13/3.14 gate.
 
-- [ ] **2. Transient GPU Resource Pool & Attachment Reuse**
+- [x] **2. Transient GPU Resource Pool & Attachment Reuse**
   - backend-facing pool contract consuming verified render-graph lifetimes;
   - bounded texture/buffer attachment reuse with generation-safe handles;
   - deterministic acquire/release/trim diagnostics and failure containment;
@@ -106,5 +106,36 @@ Verified implementation head `e99a413e054bdfdbebcddc0a42223be65ed7780b` passed t
 Python 3.10/3.13/3.14 Render Graph gate, the full repository CI, Desktop Export, game-demo validation,
 locked 1.4/1.5 hardening, and 1.6/1.7 source-checkpoint regressions. The Python 3.13 focused gate ran
 21 tests successfully and compiled the 1,200-pass workload in 0.0135 seconds under the documented
-5.0-second regression ceiling. The roadmap-marked PR head is still required to re-pass its triggered
-gates before merge.
+5.0-second regression ceiling. The roadmap-marked PR head re-passed its triggered gates before merge.
+
+## Milestone 2 verification contract
+
+Milestone 2 is complete only when the exact implementation candidate satisfies all of the following:
+
+1. `swirengine.render_resources18` is additive and leaves stable 1.x root renderer/resource APIs
+   unchanged; opting out keeps existing renderer behavior identical.
+2. Backend object creation/destruction stays behind explicit creator/backend callbacks, and the pool
+   never claims ownership of external/persistent graph resources or silently executes GPU work.
+3. Immutable descriptors conservatively key compatible kind/format/dimensions/layers/samples/usage
+   and byte-size properties so incompatible textures/buffers are never reused as one another.
+4. Resident object count and declared byte residency have independent hard bounds; pressure may
+   reclaim only idle allocations and fails explicitly when all reclaimable capacity is leased.
+5. Resource leases use monotonically increasing generations, so a stale handle cannot release or
+   resolve a slot after that physical allocation has been leased again.
+6. `RenderPlanResourceSchedule` consumes only active transient lifetimes from a verified
+   `RenderGraphPlan`, requires explicit descriptors, and creates deterministic acquire/release events.
+7. `RenderPlanPoolSession` enforces strict pass order, keeps same-pass/overlapping lifetimes live, and
+   rolls back every acquisition made for a pass if a later backend allocation in that pass fails.
+8. Deterministic reuse/eviction/trim/close accounting remains coherent after creator/backend failures,
+   and portable diagnostics contain counters/limits only rather than backend resource payloads.
+9. A 100-frame × 512-pass workload (51,200 logical acquisitions) stabilizes at two compatible
+   physical allocations and remains under the documented generous 5.0-second Python 3.13 CI budget
+   without making an FPS or GPU-throughput claim.
+10. Focused pool/render-graph/stable-renderer regressions, Ruff, compile, creator demo and the dedicated
+    Python 3.10/3.13/3.14 workflow pass, followed by the repository's required compatibility/regression
+    workflows on the exact final milestone head.
+
+Verified implementation head `7b0bd23cd70c8858836ab908bbde782169e7bfe4` passed the dedicated
+Python 3.10/3.13/3.14 transient-resource workflow, the full repository CI, Desktop Export, game-demo
+validation, locked 1.4/1.5 hardening, and 1.6/1.7 source-checkpoint regressions. The roadmap-marked PR
+head must re-pass its triggered gates before merge. Release/PyPI remain frozen until SwirEngine 2.0.
