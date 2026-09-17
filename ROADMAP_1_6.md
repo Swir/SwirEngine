@@ -2,7 +2,7 @@
 
 SwirEngine 1.5.0 is released and locked as the stable compatibility baseline. The 1.6 line is additive: existing 1.x imports and behavior stay stable unless a genuine maintenance fix is required.
 
-**Current verified progress: 4/10 milestones = 40.0%.**
+**Current verified progress: 5/10 milestones = 50.0%.**
 
 A milestone is checked only after its implementation, focused tests, documentation, and dedicated validation gate pass on the exact commit that is merged to `main`. Repository activity, scaffolding, or an open pull request does not count as completion.
 
@@ -44,7 +44,7 @@ A milestone is checked only after its implementation, focused tests, documentati
   - channel-level telemetry and deterministic scheduling priorities;
   - transport-independent tests with stable TCP compatibility retained.
 
-- [ ] **5. Dedicated Server Runtime**
+- [x] **5. Dedicated Server Runtime**
   - headless server loop and configuration surface;
   - fixed-tick scheduling, graceful shutdown, and health/readiness reporting;
   - server-safe asset/runtime boundaries and deterministic startup validation;
@@ -139,3 +139,18 @@ Milestone 4 is complete only when the exact candidate commit satisfies all of th
 8. Unknown channels, delivery-policy mismatches, malformed envelopes, and oversize traffic fail explicitly without silently changing accepted receive state.
 9. QoS envelopes round-trip through stable `NetworkPacket` framing and flow through the existing `TCPPeer` transport unchanged; per-channel telemetry remains payload-free and deterministically ordered.
 10. Focused tests, lint, compile, deterministic workload benchmark, creator demo, stable networking/TCP tests, verified 1.6 replication/prediction/session regressions, and the locked 1.4 multiplayer contract pass on Python 3.10, 3.13, and 3.14 in the dedicated CI workflow.
+
+## Milestone 5 verification contract
+
+Milestone 5 is complete only when the exact implementation head satisfies all of the following before the roadmap completion marker is committed:
+
+1. `swirengine.server16` remains additive and does not change stable 1.x root imports, `Game`, or previously verified 1.6 multiplayer contracts.
+2. `DedicatedServerConfig` validates fixed-tick, catch-up, shutdown and deployment settings and supports explicit environment-driven configuration without silently accepting unknown keys.
+3. Server components declare deterministic dependencies; missing dependencies and cycles fail before any startup hook runs, while startup failures roll back entered components in reverse dependency order.
+4. Authoritative ticks use constant `dt` and monotonic tick/simulation-time values; tick callback failure does not advance authoritative tick state.
+5. Wall-clock serving bounds catch-up work through `max_catchup_ticks`, records dropped overdue scheduler slots, and never mutates deterministic tick delta to hide overload.
+6. Shutdown requests are idempotent, remove readiness immediately, execute cleanup in reverse dependency order, continue after individual cleanup failures, and expose shutdown-grace overruns through diagnostics.
+7. Health/readiness probes are creator-facing and fault-contained; runtime diagnostics expose stable state/counter/error payloads rather than callback or asset contents.
+8. `HeadlessRuntimeBoundary` rejects undeclared client-only runtime capabilities and unsafe asset kinds, while `ServerAssetRequirement` rejects absolute/traversal paths and optional asset probes validate required server data before startup without implicit loading or remote execution.
+9. Focused lifecycle/boundary/scheduling tests, strict Ruff, compile checks, deterministic 50,000-tick workload, creator demo, and the locked networking/1.4/1.6 multiplayer regression contracts pass on Python 3.10, 3.13 and 3.14 in the dedicated workflow.
+10. A clean Linux wheel is built, installed into a fresh Python 3.13 virtual environment with display variables removed, imports `swirengine.server16`, reaches readiness, executes 256 authoritative ticks and shuts down cleanly; normal CI, Desktop Export, game demos, and locked 1.4/1.5 hardening workflows remain green on the verified implementation head.
