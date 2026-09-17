@@ -170,6 +170,7 @@ class _InboundCounters:
     gap_events: int = 0
     skipped_sequences: int = 0
     policy_mismatches: int = 0
+    oversized_rejections: int = 0
 
 
 def _policy_table(policies: Iterable[ChannelPolicy]) -> dict[str, ChannelPolicy]:
@@ -353,6 +354,14 @@ class TransportQoSReceiver:
                 f"packet delivery policy does not match channel {policy.name!r}",
             )
 
+        encoded_bytes = len(packet.to_bytes())
+        if encoded_bytes > policy.max_packet_bytes:
+            counters.oversized_rejections += 1
+            raise TransportQoError(
+                "packet_too_large",
+                f"encoded QoS packet requires {encoded_bytes} bytes but channel limit rejects it",
+            )
+
         last = self._last_sequence[policy.name]
         expected = last + 1
         if envelope.sequence <= last:
@@ -390,6 +399,7 @@ class TransportQoSReceiver:
                 "gap_events": counters.gap_events,
                 "skipped_sequences": counters.skipped_sequences,
                 "policy_mismatches": counters.policy_mismatches,
+                "oversized_rejections": counters.oversized_rejections,
             }
         return {"channels": channels}
 
