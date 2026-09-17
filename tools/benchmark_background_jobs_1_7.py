@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 
-from swirengine.jobs17 import JobScheduler, JobState
+import swirengine.jobs17 as jobs17
 
 
 JOB_COUNT = 2_000
@@ -11,7 +11,7 @@ BUDGET_SECONDS = 5.0
 
 def main() -> None:
     started = time.perf_counter()
-    with JobScheduler(max_workers=4, max_pending=JOB_COUNT) as scheduler:
+    with jobs17.JobScheduler(max_workers=4, max_pending=JOB_COUNT) as scheduler:
         for index in range(JOB_COUNT):
             scheduler.submit(f"job-{index}", lambda context, value=index: value * 2)
         outcomes = scheduler.wait_all(timeout=BUDGET_SECONDS)
@@ -21,7 +21,7 @@ def main() -> None:
 
     if len(outcomes) != JOB_COUNT or len(drained) != JOB_COUNT:
         raise SystemExit("background-job workload did not retain every result")
-    if any(outcome.state is not JobState.SUCCEEDED for outcome in outcomes):
+    if any(outcome.state is not jobs17.JobState.SUCCEEDED for outcome in outcomes):
         raise SystemExit("background-job workload contains non-success outcomes")
     if diagnostics.unfinished != 0 or diagnostics.undrained != 0:
         raise SystemExit("background-job diagnostics are inconsistent after drain")

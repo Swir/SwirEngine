@@ -5,10 +5,14 @@ import math
 import threading
 import time
 from collections import deque
+from collections.abc import Callable, Mapping
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Generic, Mapping, TypeVar
+from types import TracebackType
+from typing import Any, Generic, TypeVar
+
+from typing_extensions import Self
 
 
 T = TypeVar("T")
@@ -390,8 +394,8 @@ class JobScheduler:
     def _on_done(self, job_id: str, future: Future[Any]) -> None:
         try:
             value = future.result()
-            error: BaseException | None = None
-        except BaseException as caught:  # Future intentionally isolates worker failures.
+            error: Exception | None = None
+        except Exception as caught:  # Future intentionally isolates worker failures.
             value = None
             error = caught
 
@@ -528,7 +532,7 @@ class JobScheduler:
         if timeout is None:
             return None
         if isinstance(timeout, bool) or not isinstance(timeout, (int, float)):
-            raise ValueError("timeout must be a finite non-negative number or None")
+            raise TypeError("timeout must be a finite non-negative number or None")
         timeout_value = float(timeout)
         if not math.isfinite(timeout_value) or timeout_value < 0.0:
             raise ValueError("timeout must be a finite non-negative number or None")
@@ -614,7 +618,7 @@ class JobScheduler:
 
     def shutdown(self, *, wait: bool = True, cancel_pending: bool = False) -> None:
         if not isinstance(wait, bool) or not isinstance(cancel_pending, bool):
-            raise ValueError("wait and cancel_pending must be bool values")
+            raise TypeError("wait and cancel_pending must be bool values")
 
         if wait and not cancel_pending:
             self.wait_all()
@@ -638,10 +642,15 @@ class JobScheduler:
             self._condition.notify_all()
         self._executor.shutdown(wait=wait, cancel_futures=False)
 
-    def __enter__(self) -> JobScheduler:
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         self.shutdown(wait=True, cancel_pending=True)
 
 
