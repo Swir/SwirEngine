@@ -5,7 +5,7 @@ SwirEngine 1.5 builds on the released and locked 1.4 line. The compatibility rul
 Current development progress:
 
 ```text
-████████████████░░░░ 80.0% — 8/10
+██████████████████░░ 90.0% — 9/10
 ```
 
 ## Milestones
@@ -18,7 +18,7 @@ Current development progress:
 - [x] **6. World Streaming 2.0** — partitioned scene streaming, lifecycle hooks, budgets and deterministic activation/deactivation rules.
 - [x] **7. UI Toolkit 2.0** — retained creator UI model, layout, focus/input navigation, theming and resolution-independent scaling.
 - [x] **8. Editor Productivity 2.0** — prefab/variant authoring, safer batch workflows, command history improvements and creator diagnostics.
-- [ ] **9. Runtime Diagnostics & Profiling 2.0** — structured frame/runtime counters, capture/export surfaces and regression-friendly performance contracts.
+- [x] **9. Runtime Diagnostics & Profiling 2.0** — structured frame/runtime counters, capture/export surfaces and regression-friendly performance contracts.
 - [ ] **10. Showcase, Hardening & 1.5 Release Gate** — integrated 2D/3D validation, complete compatibility matrix, documentation closeout, packaging and strict release/PyPI verification.
 
 ## Milestone 1 contract
@@ -125,5 +125,19 @@ Editor Productivity 2.0 lives in the additive `swirengine.editor15` layer and le
 - focused Python 3.10/3.13/3.14 tests, strict Ruff, compile and a runnable headless creator demo;
 - a 120-object / 200-authoring-iteration workload remaining below the documented 5.0-second CI budget without making an FPS claim;
 - the repository's normal CI, Desktop Export, game-demo, creator-editor and 1.4 compatibility/hardening regression workflows remaining green on the verified milestone head.
+
+## Milestone 9 contract
+
+Runtime Diagnostics & Profiling 2.0 lives in the additive, opt-in `swirengine.performance15` layer and leaves the released 1.x `swirengine.Profiler` surface unchanged. Completion requires:
+
+- bounded frame history with structured frame/update/physics/render timings, arbitrary timing domains, counters, resource counts/bytes and optional `tracemalloc` memory snapshots;
+- creator-friendly timing helpers for frame sections and asset work while preserving explicit recorder lifecycle validation;
+- runtime diagnostics adapters that accept mappings, dataclasses or `portable()` mappings, deterministically flatten nested numeric values and ignore non-numeric fields;
+- bound-provider sampling that is fault-contained by default, reports cumulative provider errors and offers an explicit strict mode without leaving an active frame scope stranded after failure;
+- a versioned portable capture format with normalized metadata, deterministic canonical JSON, stable SHA-256 fingerprints and atomic JSON export;
+- stable 1.x `Profiler` regression coverage proving the new layer is additive rather than a replacement;
+- focused Python 3.10/3.13/3.14 tests, strict Ruff, compile and a runnable performance-diagnostics example;
+- a deterministic 12,000-frame diagnostics workload remaining below the documented 4.0-second CI budget, with a representative Python 3.13 CI run completing in 1.7424 seconds;
+- the repository's normal CI, Desktop Export, game-demo and 1.4 compatibility/hardening regression workflows remaining green on the verified milestone implementation head.
 
 Progress is based on milestone completion, not file count or commit count. A milestone is 10 percentage points. SwirEngine 1.5 must not be tagged or published until all 10 milestones are complete and the release gate is green.
