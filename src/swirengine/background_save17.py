@@ -12,6 +12,8 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any, TypeAlias
 
+from typing_extensions import Self
+
 from .jobs17 import JobContext, JobScheduler, JobState
 from .storage15 import ProfileSaveManager2, SaveLoadResult, SaveSlotInfo, SaveSlotStore2
 
@@ -638,7 +640,8 @@ class BackgroundSavePipeline:
                 cancellable = [
                     request.request_id
                     for request in self._requests.values()
-                    if request.state in {BackgroundSaveState.QUEUED, BackgroundSaveState.WRITING}
+                    if request.state
+                    in {BackgroundSaveState.QUEUED, BackgroundSaveState.WRITING}
                 ]
             for request_id in cancellable:
                 self.cancel(request_id)
@@ -648,7 +651,7 @@ class BackgroundSavePipeline:
             self.poll()
         self._scheduler.shutdown(wait=wait, cancel_pending=False)
 
-    def __enter__(self) -> BackgroundSavePipeline:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type: object, exc: object, traceback: object) -> None:

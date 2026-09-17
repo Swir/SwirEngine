@@ -249,12 +249,12 @@ def test_prepared_snapshot_detects_manual_tampering() -> None:
 def test_owner_thread_operations_reject_cross_thread_submission(tmp_path) -> None:
     store = SaveSlotStore2(tmp_path / "slot.json")
     pipeline = BackgroundSavePipeline(max_workers=1)
-    errors: list[BaseException] = []
+    errors: list[Exception] = []
 
     def submit_elsewhere() -> None:
         try:
             pipeline.submit("wrong-thread", store, {"value": 1})
-        except BaseException as exc:
+        except Exception as exc:
             errors.append(exc)
 
     worker = threading.Thread(target=submit_elsewhere)
