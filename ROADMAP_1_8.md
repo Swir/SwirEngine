@@ -3,7 +3,7 @@
 SwirEngine 1.7 is a completed source-only checkpoint. SwirEngine 1.8 continues the path toward 2.0
 with additive rendering scalability systems while preserving stable 1.x behavior.
 
-**Current verified progress: 3/10 milestones = 30.0%.**
+**Current verified progress: 4/10 milestones = 40.0%.**
 
 A milestone is checked only after implementation, focused tests, documentation, its dedicated gate,
 and the repository's required compatibility/regression gates pass on the exact implementation head.
@@ -39,7 +39,7 @@ The final roadmap-marked PR head must pass the required gates again before merge
   - duplicate upload suppression and explicit back-pressure;
   - renderer-safe diagnostics and workload regression coverage.
 
-- [ ] **4. Material Submission & Pipeline State Cache**
+- [x] **4. Material Submission & Pipeline State Cache**
   - stable material/draw submission keys;
   - deterministic state sorting without changing visual order where ordering is required;
   - bounded pipeline/program state cache with invalidation diagnostics;
@@ -179,3 +179,42 @@ source-checkpoint regressions. The Python 3.13 gate's earlier implementation run
 focused/regression tests successfully and completed the 7,680-operation workload in 0.0743 seconds,
 with 3,840 backend submissions and 3,840 verified duplicate skips. This roadmap-marked PR head must
 re-pass its triggered gates before merge. Release/PyPI remain frozen until SwirEngine 2.0.
+
+## Milestone 4 verification contract
+
+Milestone 4 is complete only when the exact implementation candidate satisfies all of the following:
+
+1. `swirengine.render_submission18` is additive and renderer-independent and leaves stable 1.x root
+   renderer/material APIs unchanged unless creators or backends explicitly instantiate the new systems.
+2. `PipelineStateKey` is immutable, normalized and deterministically fingerprints shader, vertex
+   layout, blend/depth/cull state, primitive topology, render-target signature, sample count and sorted
+   compile-time variants so incompatible pipeline states cannot share one cache entry.
+3. `MaterialKey` provides deterministic static material/resource identity while deliberately excluding
+   fast-changing runtime uniform values that would create a new material identity every frame.
+4. `MaterialSubmissionQueue` has a hard draw bound and sorts only contiguous reorderable runs; an
+   explicit `preserve_order=True` draw is a hard barrier that remains at its authored position and
+   prevents work from crossing it in either direction.
+5. Compiled ordering is deterministic and portable diagnostics accurately report authored/compiled
+   draw counts, sortable segments, pipeline/material switches and state-switch savings.
+6. `PipelineStateCache` has a hard resident-entry bound and deterministic LRU selection, while backend
+   object creation/destruction stays behind explicit callbacks and the cache never submits GPU commands.
+7. Backend create, eviction, invalidation, clear and close failures are contained with stable error
+   codes; failed resident states remain observable/retryable and an untracked candidate is destroyed
+   during eviction rollback before failure is returned.
+8. Shader-specific invalidation and cache/plan fingerprints are deterministic and portable while
+   excluding backend pipeline payloads/callbacks from serialized logical state.
+9. A 20-frame × 4,096-draw workload (81,920 draws) remains below the documented generous 5.0-second
+   Python 3.13 CI budget while validating substantial switch reduction and exact cache accounting,
+   without making an FPS or physical GPU-throughput claim.
+10. Focused submission/cache/hardening and stable-renderer regressions, Ruff, compile, creator demo and
+    the dedicated Python 3.10/3.13/3.14 workflow pass, followed by the full required repository
+    compatibility/regression workflows on the exact implementation head.
+
+Verified implementation head `568abc01e05dc1c33650774434304899acc3b775` passed the dedicated
+Python 3.10/3.13/3.14 Material Pipeline Cache gate, full repository CI, Desktop Export, game-demo
+validation, locked 1.4/1.5 hardening, and 1.6/1.7 source-checkpoint regressions. The Python 3.13 gate
+ran 79 focused/regression tests successfully and completed the 81,920-draw workload in 1.2949 seconds,
+saving 71,397 pipeline switches with 81,888 cache hits and 32 pipeline creations. The implementation
+head also passed clean-wheel/source-demo validation and Windows one-file 2D/3D runtime probes through
+the locked 1.5 hardening gate. This roadmap-marked PR head must re-pass its triggered gates before
+merge. Release/PyPI remain frozen until SwirEngine 2.0.
