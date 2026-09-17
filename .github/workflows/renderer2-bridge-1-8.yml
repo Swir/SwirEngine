@@ -64,8 +64,13 @@ jobs:
           tests/test_renderer2_bridge_1_8.py
           tests/test_renderer2_1_4.py
           tests/test_accelerated_renderer2_1_4.py
+          tests/test_batching.py
+          tests/test_text.py
+          tests/test_instancing.py
+          tests/test_renderer2d_power.py
           tests/test_render_graph_1_8.py
           tests/test_render_quality_1_8.py
+          tests/test_render_quality_hardening_1_8.py
           tests/test_visibility_lod_1_8.py
           tests/test_render_submission_1_8.py
 
