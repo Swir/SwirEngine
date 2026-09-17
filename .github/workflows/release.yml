@@ -1,11 +1,14 @@
 # PyPI and GitHub release workflow for SwirEngine 1.5.0.
-# Publication is tag-only and hard-gated by the complete verified 10/10 1.5 contract.
+# Publication is hard-gated by the complete verified 10/10 1.5 contract.
+# The finalize branch is a one-shot fallback because refs created with GITHUB_TOKEN do not recursively trigger workflows.
 name: Release
 
 on:
   push:
     tags:
       - "v1.5.0"
+    branches:
+      - "release/1.5.0-finalize"
 
 jobs:
   build-release:
@@ -14,6 +17,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: "v1.5.0"
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
@@ -67,7 +72,7 @@ jobs:
       - name: Verify tag and package/runtime versions agree
         shell: python
         env:
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: "v1.5.0"
         run: |
           import os
           import tomllib
