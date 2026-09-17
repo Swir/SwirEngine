@@ -267,7 +267,16 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             _require(token in tagger, f"1.5 tag bridge includes {token}", checks)
 
         readme = _read(root, "README.md")
-        _require("# SwirEngine 1.5.0" in readme, "README title matches 1.5.0", checks)
+        _require(
+            "**SwirEngine 1.5.0**" in readme or "# SwirEngine 1.5.0" in readme,
+            "README identifies stable 1.5.0 release",
+            checks,
+        )
+        _require(
+            "STATUS-1.5.0%20STABLE" in readme,
+            "README stable-status badge identifies 1.5.0",
+            checks,
+        )
         _require("10/10 = 100.0%" in readme, "README reports verified 10/10 progress", checks)
         _require(
             "Runtime Diagnostics & Profiling 2.0" in readme,
