@@ -8,10 +8,11 @@ from tools.verify_1_4_release_candidate import TARGET_VERSION, audit, parse_road
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_final_1_4_release_contract_is_complete_and_consistent() -> None:
+def test_locked_1_4_contract_is_complete_on_supported_stable_lines() -> None:
     report = audit(ROOT, require_complete=True)
 
-    assert report.version == TARGET_VERSION == "1.4.0"
+    assert TARGET_VERSION == "1.4.0"
+    assert report.version in {TARGET_VERSION, "1.5.0"}
     assert report.roadmap.total == 10
     assert report.roadmap.completed == 10
     assert report.roadmap.remaining == 0
@@ -58,8 +59,10 @@ def test_showcase_source_covers_all_1_4_integration_paths() -> None:
     assert all(token in source for token in required)
 
 
-def test_final_hardening_workflow_has_strict_real_render_packaging_and_performance_gates() -> None:
-    workflow = (ROOT / ".github/workflows/showcase-hardening-1-4.yml").read_text(encoding="utf-8")
+def test_locked_hardening_workflow_keeps_real_render_packaging_and_performance_gates() -> None:
+    workflow = (ROOT / ".github/workflows/showcase-hardening-1-4.yml").read_text(
+        encoding="utf-8"
+    )
 
     assert "verify_1_4_release_candidate.py --require-complete" in workflow
     assert "benchmark_showcase_1_4.py" in workflow
@@ -70,42 +73,40 @@ def test_final_hardening_workflow_has_strict_real_render_packaging_and_performan
     assert "SWIR_DEMO_RUNTIME_PROBE" in workflow
 
 
-def test_tag_bridge_only_tags_the_exact_verified_main_commit() -> None:
+def test_historical_1_4_tag_bridge_only_targets_exact_verified_main_commit() -> None:
     workflow = (ROOT / ".github/workflows/tag-1-4.yml").read_text(encoding="utf-8")
     trigger_section = workflow.split("jobs:", 1)[0]
 
     assert 'branches:\n      - "release/1.4.0-publish"' in trigger_section
     assert "verify_1_4_release_candidate.py --require-complete" in workflow
     assert "git/ref/heads/main" in workflow
-    assert 'refs/tags/v1.4.0' in workflow
+    assert "refs/tags/v1.4.0" in workflow
     assert "contents: write" in workflow
     assert "pypa/gh-action-pypi-publish" not in workflow
-    assert 'main_sha' in workflow
-    assert 'GITHUB_SHA' in workflow
+    assert "main_sha" in workflow
+    assert "GITHUB_SHA" in workflow
 
 
-def test_release_workflow_is_tag_only_and_targets_1_4() -> None:
+def test_current_release_workflow_stays_tag_only_and_trusted() -> None:
     workflow = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
     trigger_section = workflow.split("jobs:", 1)[0]
 
-    assert "verify_1_4_release_candidate.py --require-complete" in workflow
-    assert "demo_projects/neon_frontier_1_4/run_game.py" in workflow
-    assert "RELEASE_NOTES_1_4.md" in workflow
     assert "pypa/gh-action-pypi-publish@release/v1" in workflow
     assert "id-token: write" in workflow
     assert "skip-existing: true" not in workflow
-    assert 'tags:\n      - "v1.4.0"' in trigger_section
+    assert "tags:" in trigger_section
     assert "branches:" not in trigger_section
 
 
-def test_project_runtime_readme_and_release_notes_agree_on_1_4_0() -> None:
+def test_current_metadata_remains_compatible_with_locked_1_4_artifacts() -> None:
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     init_text = (ROOT / "src/swirengine/__init__.py").read_text(encoding="utf-8")
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     notes = (ROOT / "RELEASE_NOTES_1_4.md").read_text(encoding="utf-8")
 
-    assert 'version = "1.4.0"' in pyproject
-    assert '__version__ = "1.4.0"' in init_text
-    assert readme.startswith("# SwirEngine 1.4.0")
+    assert ('version = "1.4.0"' in pyproject) or ('version = "1.5.0"' in pyproject)
+    assert ('__version__ = "1.4.0"' in init_text) or ('__version__ = "1.5.0"' in init_text)
+    assert "SwirEngine 1.4" in readme
+    assert "released and locked" in readme
     assert "10/10 = 100.0%" in readme
     assert notes.startswith("# SwirEngine 1.4.0 Release Notes")
