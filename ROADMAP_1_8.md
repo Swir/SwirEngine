@@ -3,7 +3,7 @@
 SwirEngine 1.7 is a completed source-only checkpoint. SwirEngine 1.8 continues the path toward 2.0
 with additive rendering scalability systems while preserving stable 1.x behavior.
 
-**Current verified progress: 8/10 milestones = 80.0%.**
+**Current verified progress: 9/10 milestones = 90.0%.**
 
 A milestone is checked only after implementation, focused tests, documentation, its dedicated gate,
 and the repository's required compatibility/regression gates pass on the exact implementation head.
@@ -69,7 +69,7 @@ The final roadmap-marked PR head must pass the required gates again before merge
   - integration tests covering textures, text, batching, instancing and common 2D/3D paths;
   - explicit fallback when a backend capability is unavailable.
 
-- [ ] **9. Render Showcase, Soak & Failure Injection**
+- [x] **9. Render Showcase, Soak & Failure Injection**
   - source-only 2D/3D render showcase using verified 1.8 systems;
   - deterministic long-run workload and resource churn gate;
   - allocation/upload/backend failure injection with bounded recovery;
@@ -357,3 +357,37 @@ gate ran 128 focused/render regressions in 0.99 seconds, Ruff and compile checks
 run exceeded its historical ceiling on a shared runner; the failed job was re-run rather than bypassed
 and then passed. This roadmap-marked PR head must re-pass its triggered gates before merge. Release/PyPI
 remain frozen until SwirEngine 2.0.
+
+## Milestone 9 verification contract
+
+Milestone 9 is complete only when the exact implementation candidate satisfies all of the following:
+
+1. `swirengine.render_showcase18` is source-only validation infrastructure layered over the opt-in 1.8
+   rendering stack and does not alter stable 1.x runtime behavior or create a separately released demo.
+2. The soak runner has explicit frame, failure-history and consecutive-failure bounds and performs no
+   recursive retry loop or unbounded failure accumulation.
+3. Transient resource churn uses generation-safe pool leases and always attempts to release every
+   successfully acquired lease, including partial-allocation failure paths.
+4. Repeated texture staging uses the verified bounded upload queue and reports real duplicate suppression,
+   submission, residency and failure diagnostics rather than synthetic GPU-throughput claims.
+5. Allocation, upload and render/backend failures are contained at frame boundaries, recovery is
+   observable on later clean frames and exceeding the configured consecutive-failure budget fails hard.
+6. The 2D and 3D source showcases exercise real Renderer2 bridge planning paths and retain deterministic
+   portable workload fingerprints without serializing backend objects or raw content payloads.
+7. Failure injection covers allocation, upload and backend-render errors with regressions for cleanup,
+   bounded history, deterministic recovery and stable creator-facing error codes.
+8. The dedicated gate covers Python 3.10/3.13/3.14 source validation, Windows/Python 3.13 showcase
+   execution and a real Linux Mesa OpenGL 3.3 Renderer2 smoke path.
+9. A deterministic Python 3.13 long soak processes 2,400 total 2D/3D frames under the documented generous
+   15-second CI ceiling while exercising resource reuse and duplicate upload suppression, without making
+   an FPS or physical GPU-throughput claim.
+10. Focused showcase/bridge/resource/upload/render regressions, Ruff, compile and creator showcase pass,
+    followed by the full required repository compatibility/regression workflows on the exact head.
+
+Verified implementation head `8f28a04c3e72e4ad0f7da4fa6c884b69ee114783` passed the dedicated
+Render Showcase 1.8 workflow plus CI, Desktop Export, Demo Game 3D, Game Demos, Neon Snake 3D,
+locked 1.4/1.5 hardening and 1.6/1.7 source checkpoints. The Python 3.13 dedicated gate ran 100
+focused/integration tests in 1.08 seconds; Ruff and compile checks passed, and the deterministic soak
+processed 2,400 total 2D/3D frames in 0.5934 seconds. Windows source-showcase coverage and the Linux
+Mesa OpenGL 3.3 smoke path also passed. This roadmap-marked PR head must re-pass its triggered gates
+before merge. Release/PyPI remain frozen until SwirEngine 2.0.
