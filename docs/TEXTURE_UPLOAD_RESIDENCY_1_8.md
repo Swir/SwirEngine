@@ -14,7 +14,7 @@ contract provides:
 - full-texture and rectangular layer-region updates;
 - strict queue count/byte limits and per-flush upload/byte budgets;
 - deterministic FIFO submission and explicit deferral rather than silent work loss;
-- SHA-256 duplicate suppression based only on content that was successfully submitted;
+- descriptor-aware SHA-256 duplicate suppression based only on content that was successfully submitted;
 - deterministic logical texture residency with creator priorities, last-use ordering and pinning;
 - bounded resident texture/byte limits with explicit backend eviction callbacks;
 - stable failure codes, portable numeric diagnostics and deterministic state fingerprints.
@@ -70,8 +70,10 @@ queue.enqueue(
 queue.flush()
 ```
 
-`bytearray` and `memoryview` inputs are copied to immutable `bytes` when they enter the queue. A
-caller cannot mutate already-queued GPU work accidentally.
+`bytearray` and `memoryview` inputs are copied to immutable `bytes` when they enter the queue. The
+queue checks the bytes-like object's reported size against pending/per-flush limits before taking that
+copy, so an already-over-budget mutable upload is rejected without first allocating a second staging
+buffer. A caller cannot mutate already-queued GPU work accidentally.
 
 ## Upload budgets and back-pressure
 
@@ -86,15 +88,25 @@ remaining permanently stuck at the head of the queue. Pending count/byte pressur
 or `queue-bytes-full`. Work that simply does not fit the remaining budget of the current flush stays
 queued in FIFO order and is reported through `deferred_uploads`.
 
+Texture identifiers use the same bounded token policy as the 1.8 resource layer: after trimming, they
+must be non-empty and at most 128 characters. This keeps queue/residency diagnostics and fingerprints
+bounded by the configured work limits rather than an unbounded identifier string.
+
 ## Duplicate suppression
 
 Duplicate suppression is conservative. A digest becomes authoritative only after the backend submit
 callback succeeds. Failed work stays queued and cannot poison the duplicate cache.
 
+The duplicate key includes texture id, full/region identity, the complete
+`RenderResourceDescriptor`, declared residency byte size and payload SHA-256. Reusing the same payload
+bytes for a resized/reformatted texture or for a different logical residency size therefore causes a
+real backend submission instead of an incorrect skip.
+
 A successful full upload invalidates every remembered region digest for the texture. A successful
-partial update invalidates the remembered full-texture digest and any overlapping region digests.
-This avoids treating stale atlas regions as unchanged after intersecting writes. Eviction clears all
-remembered digests for that texture.
+partial update invalidates every remembered full-texture digest and any overlapping region digests,
+including digests authored under a previous descriptor. This avoids treating stale atlas regions as
+unchanged after intersecting writes or a resource-shape change. Eviction clears all remembered
+digests for that texture.
 
 ## Residency and eviction
 
@@ -123,12 +135,16 @@ submit failure is wrapped as `submit-failed`; the head request remains queued, s
 not advance and no duplicate digest is installed. Retrying a later flush therefore retries the real
 upload rather than silently dropping it.
 
+If a bytes-like object reports a different size when the immutable staging snapshot is produced, the
+queue refuses it with `payload-size-mismatch` instead of accepting ambiguous byte accounting.
+
 ## Diagnostics
 
 `TextureUploadQueue.diagnostics()` exposes only portable numeric accounting: queued/submitted bytes,
 full/partial uploads, duplicate skips, residency, evictions, deferrals, back-pressure, failures and
 queue high-water marks. `state_fingerprint()` produces deterministic SHA-256 state identity from
-request metadata/digests, residency and diagnostics without serializing payload bytes or callbacks.
+request descriptors/metadata/digests, residency, duplicate-cache identity and diagnostics without
+serializing raw payload bytes or callbacks.
 
 See `examples/demo_render_uploads_1_8.py` for a runnable headless example and
 `tools/benchmark_render_uploads_1_8.py` for the deterministic regression workload. Neither is an FPS
