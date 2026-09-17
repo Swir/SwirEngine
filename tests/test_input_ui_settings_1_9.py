@@ -8,6 +8,7 @@ import pytest
 
 from swirengine.input import InputBinding
 from swirengine.shipping19 import (
+    REQUIRED_UI_ACTIONS,
     AccessibilitySettings,
     DisplaySettings,
     FocusActionRouter,
@@ -15,7 +16,6 @@ from swirengine.shipping19 import (
     InputOverrideStore,
     ProductionActionMap,
     ProjectShippingDefaults,
-    REQUIRED_UI_ACTIONS,
     SettingsStore,
     ShippingContractError,
     apply_display_settings,
