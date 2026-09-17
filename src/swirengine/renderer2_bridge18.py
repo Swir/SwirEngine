@@ -69,6 +69,7 @@ class Renderer2RunSummary:
     count: int
     layer: int
     screen_space: bool
+    content_fingerprint: str
 
     def portable(self) -> dict[str, object]:
         return {
@@ -76,6 +77,7 @@ class Renderer2RunSummary:
             "count": self.count,
             "layer": self.layer,
             "screen_space": self.screen_space,
+            "content_fingerprint": self.content_fingerprint,
         }
 
 
@@ -174,6 +176,13 @@ def _renderer_mode(renderer: object) -> BridgeMode:
     return mode
 
 
+def _content_token(payload: object) -> str:
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode(
+        "utf-8"
+    )
+    return hashlib.sha256(encoded).hexdigest()
+
+
 def _chain_graph(
     stage_names: tuple[str, ...],
     *,
@@ -246,9 +255,46 @@ class Renderer2BridgeCompiler:
             raise TypeError("quality must be DynamicQualityController or None")
         self.quality = quality
 
+    @staticmethod
+    def _sprite_token(item: SpriteBatch) -> str:
+        key = item.key
+        return _content_token(
+            {
+                "texture": str(key.texture),
+                "filtering": str(key.filtering),
+                "blend": str(key.blend),
+                "layer": int(key.layer),
+                "screen_space": bool(key.screen_space),
+            }
+        )
+
+    @staticmethod
+    def _rectangle_token(item: Rectangle2D) -> str:
+        return _content_token(
+            {
+                "x": item.x,
+                "y": item.y,
+                "width": item.width,
+                "height": item.height,
+                "color": item.color,
+            }
+        )
+
+    @staticmethod
+    def _text_token(item: Text2D) -> str:
+        return _content_token(
+            {
+                "text": item.text,
+                "font": item.font,
+                "font_size": item.font_size,
+                "color": item.color,
+                "anchor": item.anchor,
+            }
+        )
+
     def _2d_runs(self, scene: object) -> tuple[Renderer2RunSummary, ...]:
         objects = sorted(
-            tuple(getattr(scene, "objects", ())),
+            getattr(scene, "objects", ()),
             key=lambda item: int(getattr(item, "layer", 0)),
         )
         result: list[Renderer2RunSummary] = []
@@ -265,6 +311,7 @@ class Renderer2BridgeCompiler:
                         len(item.sprites),
                         int(item.key.layer),
                         bool(item.key.screen_space),
+                        self._sprite_token(item),
                     )
                 )
             elif isinstance(item, Rectangle2D):
@@ -274,6 +321,7 @@ class Renderer2BridgeCompiler:
                         1,
                         int(item.layer),
                         bool(item.screen_space),
+                        self._rectangle_token(item),
                     )
                 )
             elif isinstance(item, Text2D):
@@ -283,6 +331,7 @@ class Renderer2BridgeCompiler:
                         1,
                         int(item.layer),
                         bool(item.screen_space),
+                        self._text_token(item),
                     )
                 )
         return tuple(result)
