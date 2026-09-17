@@ -2,7 +2,7 @@
 
 SwirEngine 1.5.0 is released and locked as the stable compatibility baseline. The 1.6 line is additive: existing 1.x imports and behavior stay stable unless a genuine maintenance fix is required.
 
-**Current verified progress: 2/10 milestones = 20.0%.**
+**Current verified progress: 3/10 milestones = 30.0%.**
 
 A milestone is checked only after its implementation, focused tests, documentation, and dedicated validation gate pass on the exact commit that is merged to `main`. Repository activity, scaffolding, or an open pull request does not count as completion.
 
@@ -31,7 +31,7 @@ A milestone is checked only after its implementation, focused tests, documentati
   - correction smoothing hooks without changing simulation truth;
   - packet-loss/reordering regression coverage and creator diagnostics.
 
-- [ ] **3. Session, Lobby & Match Lifecycle**
+- [x] **3. Session, Lobby & Match Lifecycle**
   - explicit host/join/leave/ready/match state model;
   - deterministic roster and role ownership;
   - reconnect/resume foundations with bounded session tokens;
@@ -108,3 +108,18 @@ Milestone 2 is complete only when the exact candidate commit satisfies all of th
 8. Corrected simulation truth is committed immediately while `CorrectionTransition` smoothing remains presentation-only and supports a creator blend hook.
 9. Correction packets round-trip through the stable `NetworkPacket` transport and deterministic diagnostics account for prediction, replay, stale input and budget rejection.
 10. Focused tests, lint, compile, deterministic workload benchmark, creator demo, and the locked 1.4 multiplayer contract pass on Python 3.10, 3.13, and 3.14 in the dedicated CI workflow.
+
+## Milestone 3 verification contract
+
+Milestone 3 is complete only when the exact candidate commit satisfies all of the following:
+
+1. `swirengine.session16` is additive and does not change stable 1.x root imports or the verified 1.6 replication/prediction contracts.
+2. Lobby, match, and closed phases enforce host/join/leave/ready/start/end transitions atomically with stable failure codes.
+3. The public roster uses immutable join order and remains deterministic independently of client identifier or mapping order.
+4. Creator roles are single-owner, the host role is protected, and host transfer is explicit rather than silently electing a replacement.
+5. Match start is host-only and requires every retained roster member to be connected and ready; match end returns to lobby and resets readiness.
+6. Disconnect retains roster membership and roles while clearing readiness; resume accepts only a bound active token and rotates that token before further use.
+7. Resume-token storage and lifecycle event history have creator-configurable hard bounds with deterministic eviction diagnostics.
+8. Lifecycle events are monotonically sequenced and bounded, while rule failures expose stable `SessionOperationError.code` values and deterministic counters without leaking tokens.
+9. Immutable session snapshots exclude resume secrets, round-trip through the stable `NetworkPacket` framing model, and reject inconsistent roster/role ownership data.
+10. Focused tests, lint, compile, deterministic workload benchmark, creator demo, verified 1.6 replication/prediction regressions, and the locked 1.4 multiplayer contract pass on Python 3.10, 3.13, and 3.14 in the dedicated CI workflow.
