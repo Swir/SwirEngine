@@ -7,6 +7,7 @@ on:
       - "feat/1.9-input-ui-settings-shipping"
     paths:
       - "src/swirengine/shipping19.py"
+      - "src/swirengine/ui_navigation.py"
       - "tests/test_input_ui_settings_1_9.py"
       - "examples/production_flow_1_9.py"
       - "tools/bench_input_ui_settings_1_9.py"
@@ -16,6 +17,7 @@ on:
   pull_request:
     paths:
       - "src/swirengine/shipping19.py"
+      - "src/swirengine/ui_navigation.py"
       - "tests/test_input_ui_settings_1_9.py"
       - "examples/production_flow_1_9.py"
       - "tools/bench_input_ui_settings_1_9.py"
@@ -65,10 +67,12 @@ jobs:
       - name: Ruff
         if: matrix.python-version == '3.13'
         run: |
-          ruff check src/swirengine/shipping19.py tests/test_input_ui_settings_1_9.py \
-            examples/production_flow_1_9.py tools/bench_input_ui_settings_1_9.py
+          ruff check src/swirengine/shipping19.py src/swirengine/ui_navigation.py \
+            tests/test_input_ui_settings_1_9.py examples/production_flow_1_9.py \
+            tools/bench_input_ui_settings_1_9.py
 
       - name: Compile
         run: |
-          python -m compileall -q src/swirengine/shipping19.py tests/test_input_ui_settings_1_9.py \
-            examples/production_flow_1_9.py tools/bench_input_ui_settings_1_9.py
+          python -m compileall -q src/swirengine/shipping19.py src/swirengine/ui_navigation.py \
+            tests/test_input_ui_settings_1_9.py examples/production_flow_1_9.py \
+            tools/bench_input_ui_settings_1_9.py
