@@ -304,6 +304,27 @@ class ReplicationStreamServer:
         self._prune_sent(state)
         return update
 
+    def resynchronize(self, client_id: str) -> ReplicationUpdate:
+        """Reset one client's baseline and resend the latest filtered state in full.
+
+        This is the explicit recovery path after a receiver reports that a delta baseline is missing.
+        The reset is sticky until the returned/full update is acknowledged: if that full packet is
+        lost, later ticks remain full updates instead of depending on the stale baseline.
+        """
+
+        state = self._state(client_id)
+        if not self._world:
+            raise LookupError("no authoritative snapshot has been published")
+        filtered = self._filter(self._world[-1], state.view)
+        state.acknowledged_tick = -1
+        state.sent.clear()
+        state.sent[filtered.tick] = filtered
+        state.last_built_tick = filtered.tick
+        state.diagnostics.full_updates += 1
+        state.diagnostics.full_entities += len(filtered.entities)
+        state.diagnostics.snapshot_fallbacks += 1
+        return ReplicationUpdate(snapshot=filtered)
+
     def acknowledge(self, client_id: str, tick: int) -> bool:
         state = self._state(client_id)
         if not isinstance(tick, int) or isinstance(tick, bool) or tick < 0:
