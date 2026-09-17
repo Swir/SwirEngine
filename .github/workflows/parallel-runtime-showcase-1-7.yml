@@ -1,0 +1,90 @@
+name: Parallel Runtime Showcase 1.7
+
+on:
+  push:
+    branches: ["feat/1.7-parallel-runtime-showcase"]
+    paths:
+      - "examples/demo_parallel_runtime_showcase_1_7.py"
+      - "tools/soak_parallel_runtime_1_7.py"
+      - "docs/PARALLEL_RUNTIME_SHOWCASE_1_7.md"
+      - "ROADMAP_1_7.md"
+      - "CHANGELOG.d/1.7-parallel-runtime-showcase.md"
+      - ".github/workflows/parallel-runtime-showcase-1-7.yml"
+  pull_request:
+    paths:
+      - "examples/demo_parallel_runtime_showcase_1_7.py"
+      - "tools/soak_parallel_runtime_1_7.py"
+      - "docs/PARALLEL_RUNTIME_SHOWCASE_1_7.md"
+      - "ROADMAP_1_7.md"
+      - "CHANGELOG.d/1.7-parallel-runtime-showcase.md"
+      - ".github/workflows/parallel-runtime-showcase-1-7.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: parallel-runtime-showcase-1-7-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: Parallel runtime contract / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+      - name: Install CPython 3.14 native build prerequisites
+        if: matrix.python-version == '3.14'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev
+      - name: Install development dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Run complete 1.7 parallel-runtime regression surface
+        run: >-
+          pytest
+          tests/test_background_jobs_1_7.py
+          tests/test_async_assets_1_7.py
+          tests/test_resource_budget_1_7.py
+          tests/test_work_graph_1_7.py
+          tests/test_scene_staging_1_7.py
+          tests/test_background_save_1_7.py
+          tests/test_shader_cache_1_7.py
+          tests/test_frame_budget_1_7.py
+      - name: Lint showcase and soak surfaces
+        run: ruff check examples/demo_parallel_runtime_showcase_1_7.py tools/soak_parallel_runtime_1_7.py
+      - name: Compile showcase and soak surfaces
+        run: python -m compileall -q examples/demo_parallel_runtime_showcase_1_7.py tools/soak_parallel_runtime_1_7.py
+      - name: Run integrated source showcase
+        run: python examples/demo_parallel_runtime_showcase_1_7.py
+      - name: Run deterministic parallel-runtime soak
+        if: matrix.python-version == '3.13'
+        run: python tools/soak_parallel_runtime_1_7.py
+
+  source-platform-smoke:
+    name: Source showcase / ${{ matrix.os }} / Python 3.13
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+      - name: Install package
+        run: python -m pip install -e .
+      - name: Run integrated source showcase
+        run: python examples/demo_parallel_runtime_showcase_1_7.py
