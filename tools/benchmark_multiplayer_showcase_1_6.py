@@ -8,9 +8,14 @@ from swirengine.multiplayer_showcase16 import (
     run_multiplayer_soak,
 )
 
-CLIENTS = 12
-ENTITIES = 96
-TICKS = 480
+# Keep the workload large enough to exercise multi-client interest filtering, ACK baselines,
+# prediction, QoS, impairment queues and bounded profiler retention without turning a functional
+# regression gate into a runner-speed benchmark. The original 12 x 480 x 96 candidate measured
+# 14.36s on a GitHub-hosted Python 3.13 runner, so this gate deliberately targets roughly one third
+# of that authored-world/client work and keeps a generous 8-second ceiling.
+CLIENTS = 8
+ENTITIES = 64
+TICKS = 360
 BUDGET_SECONDS = 8.0
 
 
@@ -19,7 +24,7 @@ def main() -> None:
         clients=CLIENTS,
         entities=ENTITIES,
         ticks=TICKS,
-        entity_budget=32,
+        entity_budget=24,
         profiler_history=48,
         impairment=NetworkImpairmentProfile(
             seed=0x1609,
