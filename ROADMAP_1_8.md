@@ -139,3 +139,42 @@ Verified implementation head `7b0bd23cd70c8858836ab908bbde782169e7bfe4` passed t
 Python 3.10/3.13/3.14 transient-resource workflow, the full repository CI, Desktop Export, game-demo
 validation, locked 1.4/1.5 hardening, and 1.6/1.7 source-checkpoint regressions. The roadmap-marked PR
 head must re-pass its triggered gates before merge. Release/PyPI remain frozen until SwirEngine 2.0.
+
+## Milestone 3 verification contract
+
+Milestone 3 is complete only when the exact implementation candidate satisfies all of the following:
+
+1. `swirengine.render_uploads18` is additive, renderer-independent and leaves stable 1.x texture and
+   renderer APIs unchanged unless creators explicitly instantiate the new queue.
+2. Enqueued bytes-like payloads are snapshotted immutably, full and rectangular layer-region uploads
+   validate their resource/geometry contracts, and the backend remains responsible for format-specific
+   payload interpretation rather than the queue guessing texel layout.
+3. Pending request count, pending payload bytes, per-flush request count and per-flush byte work each
+   have independent hard bounds; a single request that cannot fit the flush contract fails explicitly
+   instead of starving FIFO work forever.
+4. Backend submission is deterministic FIFO; work outside the current flush budget remains queued and
+   observable instead of being silently dropped or reordered.
+5. SHA-256 duplicate suppression becomes authoritative only after a successful backend submission;
+   failed uploads remain retryable, full writes invalidate prior region assumptions and partial writes
+   invalidate full/overlapping-region assumptions.
+6. Successful uploads establish deterministic logical residency with independent texture-count and
+   byte budgets, creator priority/pinning/use controls, and eviction ordering by lowest priority,
+   oldest use and stable texture-id tie breaking.
+7. Pinned or otherwise unreclaimable pressure fails with a stable error while preserving queued work;
+   backend upload/eviction failures are contained without corrupting residency, digest or submitted
+   accounting.
+8. Portable diagnostics expose staging, duplicate, residency, eviction, deferral, pressure and failure
+   counters without callbacks/backend payloads, and deterministic state fingerprints omit raw upload
+   bytes while retaining content identity through digests.
+9. A 7,680-operation / 64-texture deterministic workload remains below the documented generous
+   5.0-second Python 3.13 CI budget without making an FPS or physical GPU-throughput claim.
+10. Focused upload/resource-pool/render-graph/stable-renderer regressions, Ruff, compile, creator demo
+    and the dedicated Python 3.10/3.13/3.14 workflow pass, followed by the repository's required
+    compatibility/regression workflows on the exact final milestone head.
+
+Implementation head `4a1eb25f6ba446be9351107eb326b4eb6d88caba` passed the dedicated
+Python 3.10/3.13/3.14 texture-upload gate before this contract was added. The Python 3.13 gate ran
+65 focused/regression tests successfully and the 7,680-operation workload completed in 0.0743 seconds,
+with 3,840 backend submissions and 3,840 verified duplicate skips. This milestone intentionally
+remains unchecked at 2/10 until the roadmap-marked PR head re-passes the dedicated gate and the
+repository's required compatibility/regression workflows. Release/PyPI remain frozen until SwirEngine 2.0.
