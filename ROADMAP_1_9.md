@@ -6,11 +6,11 @@ SwirEngine 1.8 is a completed source-only rendering checkpoint. SwirEngine 1.9 t
 runtime systems into a coherent production path for building, validating, packaging and shipping
 complete games while preserving stable 1.x behavior.
 
-**Current verified progress: 2/10 milestones = 20.0%.**
+**Current verified progress: 3/10 milestones = 30.0%.**
 
-<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 1.9 verified roadmap progress: 2 of 10 milestones, 20.0%, in progress" />
+<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 1.9 verified roadmap progress: 3 of 10 milestones, 30.0%, in progress" />
 
-**Verified active scope:** 2/10 milestones = 20.0% — IN PROGRESS.  
+**Verified active scope:** 3/10 milestones = 30.0% — IN PROGRESS.  
 **Release readiness:** frozen; the next public GitHub Release and PyPI publication remains SwirEngine 2.0.
 
 A milestone is checked only after implementation, focused tests, creator documentation, its dedicated
@@ -39,7 +39,7 @@ gate and the repository's required compatibility/regression gates pass on the ex
   - safe argument/config forwarding without hidden global state;
   - creator workflow usable by both 2D and 3D projects.
 
-- [ ] **3. Input, UI & Settings Shipping Contract**
+- [x] **3. Input, UI & Settings Shipping Contract**
   - project-level action-map and controller/rebinding integration;
   - menu/focus/accessibility defaults suitable for keyboard and gamepad shipping;
   - settings persistence and resolution/display configuration bridge;
@@ -139,5 +139,40 @@ hardening, real OpenGL source demos, clean-wheel probes and Windows one-file 2D/
 Python 3.13 ran 45 focused project/run/export/progress tests, Ruff and compile successfully; the
 5,000-plan workload completed in 0.8142 seconds under the documented 5.0-second ceiling. The
 roadmap-marked PR head must re-pass its triggered gates before merge.
+
+## Milestone 3 verification contract
+
+Milestone 3 is complete only when the exact final implementation candidate satisfies all of the following:
+
+1. Production action maps remain additive over existing `InputActions`/`InputManager` APIs and require a
+   shipping-safe semantic menu navigation surface without changing stable 1.x input behavior.
+2. Keyboard, mouse and standardized gamepad bindings are canonical, bounded and validated before a profile
+   is accepted; unknown gamepad controls and unsafe numeric values fail explicitly.
+3. Player overrides persist only actions that differ from project defaults so new default actions can flow
+   through later game builds without erasing intentional user rebinding.
+4. Binding conflicts are reported deterministically rather than silently rewritten, while intentional shared
+   controls remain possible.
+5. `FocusActionRouter` drives retained UI focus from semantic keyboard, d-pad and analog-stick action state
+   with bounded edge behavior instead of per-frame repeat.
+6. Display and accessibility settings use bounded validated schemas, atomic persistence and project defaults
+   as fallback; malformed, unknown or non-finite values fail explicitly.
+7. Display application stays backend-neutral through explicit callbacks and reports unsupported capabilities
+   instead of guessing or mutating hidden backend state.
+8. Project configuration paths reject absolute, Windows-drive, traversal and symlink-resolved escapes, and
+   configuration payloads are bounded before parsing/writing.
+9. The creator production-flow example proves title/settings/gameplay routing, rebinding, settings persistence
+   and deterministic fingerprints, while the 5,000-cycle configuration workload remains below the documented
+   5.0-second Python 3.13 ceiling without making input-latency/FPS claims.
+10. Focused tests, existing input/gamepad regressions, Ruff, compile and the dedicated Python 3.10/3.13/3.14
+    workflow pass, followed by the full repository compatibility/runtime/packaging matrix on the exact head.
+
+Verified implementation head `3593f54bc7438b92a1dbb75819624cd4d00bf412` passed the dedicated
+Python 3.10/3.13/3.14 Input UI Settings gate and all triggered compatibility/regression workflows,
+including CI, Desktop Export, source checkpoints 1.6/1.7/1.8, game-demo validation and locked 1.4/1.5
+hardening. Python 3.13 ran 35 focused shipping tests plus 12 existing input/gamepad regressions, Ruff
+and compile successfully; the 5,000-cycle parse/fingerprint workload completed in 1.2300 seconds under
+the documented 5.0-second ceiling. A missing `libx11-dev` prerequisite for CPython 3.14 source builds
+was diagnosed and fixed in the dedicated workflow before this verification passed. The roadmap-marked
+PR head must re-pass its triggered gates before merge.
 
 `Release/PyPI: frozen until SwirEngine 2.0`.

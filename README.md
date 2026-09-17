@@ -26,10 +26,10 @@
 
 ## 📊 Project status
 
-<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 1.9 verified roadmap progress: 2 of 10 milestones, 20.0%, in progress" />
+<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 1.9 verified roadmap progress: 3 of 10 milestones, 30.0%, in progress" />
 
 **Active source scope:** SwirEngine 1.9 — Production Workflow & Game Shipping  
-**Verified source progress:** **2/10 milestones = 20.0% — IN PROGRESS**  
+**Verified source progress:** **3/10 milestones = 30.0% — IN PROGRESS**  
 **Latest public stable release:** **SwirEngine 1.5.0**  
 **Release readiness:** intermediate 1.6–1.9 development is source-only.
 
@@ -60,7 +60,7 @@ includes **Deterministic Simulation & Replay**, **Save & Profile 2.0**, **World 
 | Animation | Tween/timeline/state machines, animation graphs, skeletal animation and GPU skinning. |
 | Physics + navigation | 2D/3D collision, Physics 2.0, character controllers, deterministic navigation and local avoidance. |
 | Audio | Audio buses/groups, spatial attenuation and the additive Audio 2.0 mixer/runtime. |
-| UI + input | Retained UI, keyboard/mouse/gamepad focus, controller input and rebinding foundations. |
+| UI + input | Retained UI, keyboard/mouse/gamepad focus, controller input, rebinding foundations and the source-only 1.9 production input/UI/settings contract. |
 | Large worlds | Asset Pipeline 2.0, derived caching, world streaming and bounded resource/runtime diagnostics. |
 | Networking | Stable networking APIs plus source-only replication/server foundations developed after 1.5. |
 | Creator workflow | Editor productivity tooling, manifest/profile validation, unified development sessions, export staging and native desktop build plans. |
@@ -161,12 +161,15 @@ swirengine run MyGame --dry-run
 swirengine run MyGame -- --level arena
 ```
 
-The roadmap-marked Milestone 2 head must re-pass the repository-wide compatibility/regression gates
-before merge to `main`.
+Milestone 3 adds the production input/UI/settings layer: version-controlled semantic action maps,
+keyboard/gamepad menu focus, bounded player rebinding, display/accessibility settings and atomic
+player settings persistence. The source example exercises a title → settings → gameplay flow without
+requiring a rendering window.
 
 See:
 - [`docs/PROJECT_PRODUCTION_1_9.md`](docs/PROJECT_PRODUCTION_1_9.md)
 - [`docs/RUN_SESSIONS_1_9.md`](docs/RUN_SESSIONS_1_9.md)
+- [`docs/INPUT_UI_SETTINGS_1_9.md`](docs/INPUT_UI_SETTINGS_1_9.md)
 - [`ROADMAP_1_9.md`](ROADMAP_1_9.md)
 
 ## 🎮 Validation games and examples
@@ -227,7 +230,7 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
 - SwirEngine 1.6 — [`ROADMAP_1_6.md`](ROADMAP_1_6.md) — **10/10 = 100.0%**, source-only checkpoint
 - SwirEngine 1.7 — [`ROADMAP_1_7.md`](ROADMAP_1_7.md) — **10/10 = 100.0%**, source-only checkpoint
 - SwirEngine 1.8 — [`ROADMAP_1_8.md`](ROADMAP_1_8.md) — **10/10 = 100.0%**, source-only checkpoint
-- **SwirEngine 1.9 — [`ROADMAP_1_9.md`](ROADMAP_1_9.md) — 2/10 = 20.0%, active source roadmap**
+- **SwirEngine 1.9 — [`ROADMAP_1_9.md`](ROADMAP_1_9.md) — 3/10 = 30.0%, active source roadmap**
 
 ## ⚠️ Current limitations
 

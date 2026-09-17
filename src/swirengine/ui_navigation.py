@@ -32,11 +32,17 @@ class UIFocusManager:
             self._buttons.append(button)
         return button
 
+    @staticmethod
+    def _set_visual_focus(button: UIButton | None, focused: bool) -> None:
+        if button is not None and hasattr(button, "focused"):
+            button.focused = bool(focused)
+
     def remove(self, button: UIButton) -> bool:
         for index, existing in enumerate(self._buttons):
             if existing is button:
                 del self._buttons[index]
                 if self._focused is button:
+                    self._set_visual_focus(button, False)
                     self._focused = None
                 return True
         return False
@@ -55,20 +61,22 @@ class UIFocusManager:
     def focus(self, button: UIButton | None) -> UIButton | None:
         if button is not None and button not in self.focusable_buttons():
             return self._focused
+        if self._focused is button:
+            self._set_visual_focus(button, button is not None)
+            return button
+        self._set_visual_focus(self._focused, False)
         self._focused = button
+        self._set_visual_focus(button, True)
         return button
 
     def move(self, step: int = 1) -> UIButton | None:
         buttons = self.focusable_buttons()
         if not buttons:
-            self._focused = None
-            return None
+            return self.focus(None)
         if self._focused not in buttons:
-            self._focused = buttons[0] if step >= 0 else buttons[-1]
-            return self._focused
+            return self.focus(buttons[0] if step >= 0 else buttons[-1])
         index = buttons.index(self._focused)
-        self._focused = buttons[(index + step) % len(buttons)]
-        return self._focused
+        return self.focus(buttons[(index + step) % len(buttons)])
 
     def activate(self) -> bool:
         button = self._focused
