@@ -65,3 +65,6 @@ target-version = "py310"
 [tool.ruff.lint.per-file-ignores]
 # UITheme defaults are frozen Color value objects; sharing them is intentional and safe.
 "src/swirengine/ui15.py" = ["RUF009"]
+# Best-effort server cleanup intentionally catches callback failures so the original
+# startup/tick failure remains the primary diagnostic instead of being masked by on_stop.
+"src/swirengine/server16.py" = ["BLE001"]
