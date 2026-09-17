@@ -316,6 +316,7 @@ class TransientRenderResourcePool(Generic[ResourceT]):
         if self._closed:
             return
         failures: list[BaseException] = []
+        destroyed_slots: list[int] = []
         for slot in sorted(self._entries):
             entry = self._entries[slot]
             try:
@@ -323,15 +324,24 @@ class TransientRenderResourcePool(Generic[ResourceT]):
             except Exception as exc:  # noqa: BLE001 - shutdown attempts every backend object.
                 failures.append(exc)
                 self._destroy_failures += 1
-        self._entries.clear()
-        self._free_by_descriptor.clear()
-        self._resident_bytes = 0
-        self._closed = True
+            else:
+                destroyed_slots.append(slot)
+
+        for slot in destroyed_slots:
+            entry = self._entries.pop(slot)
+            if not entry.leased:
+                self._remove_free(slot, entry.descriptor)
+            self._resident_bytes -= entry.descriptor.size_bytes
+
         if failures:
             raise RenderResourcePoolError(
                 "destroy-failed",
                 f"backend resource destruction failed for {len(failures)} resource(s)",
             ) from failures[0]
+
+        self._free_by_descriptor.clear()
+        self._resident_bytes = 0
+        self._closed = True
 
     def _lease(
         self,
