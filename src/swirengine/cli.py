@@ -10,6 +10,7 @@ from pathlib import Path
 from . import __version__
 from .exporting import ExportTarget, NativeBuildError, PackagingProfile, ProjectExporter
 from .project19 import ProjectManifest, ProjectManifestError
+from .run_sessions19 import RunSessionError, create_run_plan, execute_run_plan
 
 TEMPLATE_2D = '''from swirengine import Color, Game, Rectangle2D
 
@@ -69,6 +70,12 @@ def new_project(name: str, mode: str) -> Path:
                 "[content]",
                 'include = ["assets", "scenes", "scripts"]',
                 "",
+                "[run]",
+                'entrypoint = "main.py"',
+                'working_directory = "."',
+                "arguments = []",
+                "inherit_environment = true",
+                "",
                 "[profiles.windows]",
                 'target = "windows"',
                 f"app_name = {quoted_name}",
@@ -113,6 +120,36 @@ def _add_export_parser(subparsers) -> None:
     )
 
 
+def _add_run_parser(subparsers) -> None:
+    run = subparsers.add_parser(
+        "run",
+        help="start a manifest-driven development session",
+    )
+    run.add_argument("project", nargs="?", default=".")
+    run.add_argument(
+        "--env",
+        action="append",
+        default=[],
+        metavar="NAME=VALUE",
+        help="override one child-process environment variable; repeatable",
+    )
+    run.add_argument(
+        "--clean-env",
+        action="store_true",
+        help="do not inherit the parent process environment",
+    )
+    run.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="validate and print the deterministic run plan without starting the game",
+    )
+    run.add_argument(
+        "game_args",
+        nargs="*",
+        help="arguments after -- are forwarded to the game entrypoint",
+    )
+
+
 def _profile_from_args(args, project: Path) -> PackagingProfile:
     if args.profile:
         manifest = ProjectManifest.load(project)
@@ -143,6 +180,15 @@ def _profile_from_args(args, project: Path) -> PackagingProfile:
     )
 
 
+def _print_diagnostic(diagnostic, *, stream=None) -> None:
+    location = f" [{diagnostic.path}]" if diagnostic.path else ""
+    print(
+        f"{diagnostic.severity.upper()} {diagnostic.code}: "
+        f"{diagnostic.message}{location}",
+        file=stream,
+    )
+
+
 def _run_doctor(project: str | Path, profile_name: str | None) -> int:
     try:
         manifest = ProjectManifest.load(project)
@@ -164,12 +210,58 @@ def _run_doctor(project: str | Path, profile_name: str | None) -> int:
     for diagnostic in diagnostics:
         if diagnostic.severity == "error":
             failed = True
-        location = f" [{diagnostic.path}]" if diagnostic.path else ""
-        print(
-            f"{diagnostic.severity.upper()} {diagnostic.code}: "
-            f"{diagnostic.message}{location}"
-        )
+        _print_diagnostic(diagnostic)
     return 2 if failed else 0
+
+
+def _run_project(args) -> int:
+    try:
+        manifest = ProjectManifest.load(args.project)
+        diagnostics = manifest.run_diagnostics()
+        errors = [item for item in diagnostics if item.severity == "error"]
+        for diagnostic in diagnostics:
+            _print_diagnostic(
+                diagnostic,
+                stream=sys.stderr if diagnostic.severity == "error" else None,
+            )
+        if errors:
+            return 2
+
+        forwarded = tuple(args.game_args)
+        plan = create_run_plan(
+            manifest,
+            forwarded_args=forwarded,
+            environment_overrides=args.env,
+            clean_environment=args.clean_env,
+        )
+    except (FileNotFoundError, ProjectManifestError, RunSessionError) as exc:
+        print(f"Run failed: {exc}", file=sys.stderr)
+        return 2
+
+    print(f"Development session: {manifest.name} ({manifest.mode})")
+    print(f"Run plan fingerprint: {plan.fingerprint}")
+    print(f"Working directory: {plan.working_directory}")
+    print(f"Command: {shlex.join(plan.command)}")
+    print(
+        "Environment: "
+        + ("inherit + declared overrides" if plan.inherit_environment else "declared variables only")
+    )
+    if args.dry_run:
+        print("Dry run: game process was not started")
+        return 0
+
+    try:
+        return_code = execute_run_plan(plan)
+    except RunSessionError as exc:
+        print(f"Run failed: {exc}", file=sys.stderr)
+        return 2
+    except KeyboardInterrupt:
+        print("Development session interrupted", file=sys.stderr)
+        return 130
+
+    if return_code:
+        print(f"Game exited with code {return_code}", file=sys.stderr)
+    return return_code
 
 
 def main(argv=None) -> int:
@@ -182,6 +274,7 @@ def main(argv=None) -> int:
     doctor = sub.add_parser("doctor")
     doctor.add_argument("project", nargs="?", default=".")
     doctor.add_argument("--profile")
+    _add_run_parser(sub)
     _add_export_parser(sub)
     args = parser.parse_args(argv)
 
@@ -199,6 +292,8 @@ def main(argv=None) -> int:
         return 0
     if args.command == "doctor":
         return _run_doctor(args.project, args.profile)
+    if args.command == "run":
+        return _run_project(args)
     if args.command == "export":
         project = Path(args.project).resolve()
         try:

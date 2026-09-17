@@ -27,6 +27,7 @@ _DEFAULT_EXCLUDE = (
     "dist",
 )
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+_ENVIRONMENT_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,127}$")
 
 
 class ProjectManifestError(ValueError):
@@ -48,6 +49,26 @@ class ProjectDiagnostic:
 
 
 @dataclass(slots=True, frozen=True)
+class DevelopmentRunConfig:
+    """Portable development-session settings stored in ``swirproject.toml``."""
+
+    entrypoint: str
+    working_directory: str
+    arguments: tuple[str, ...]
+    environment: Mapping[str, str]
+    inherit_environment: bool = True
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "entrypoint": self.entrypoint,
+            "working_directory": self.working_directory,
+            "arguments": list(self.arguments),
+            "environment": dict(sorted(self.environment.items())),
+            "inherit_environment": self.inherit_environment,
+        }
+
+
+@dataclass(slots=True, frozen=True)
 class ProjectManifest:
     """Validated, portable project-production configuration for SwirEngine 1.9."""
 
@@ -59,6 +80,7 @@ class ProjectManifest:
     entrypoint: str
     include: tuple[str, ...]
     profiles: Mapping[str, PackagingProfile]
+    run: DevelopmentRunConfig
 
     @classmethod
     def load(cls, project: str | Path = ".") -> ProjectManifest:
@@ -115,6 +137,8 @@ class ProjectManifest:
                 project_include=include,
             )
 
+        run = _parse_run_config(raw.get("run", {}), project_entrypoint=entrypoint)
+
         return cls(
             root=path.parent,
             path=path,
@@ -124,7 +148,12 @@ class ProjectManifest:
             entrypoint=entrypoint,
             include=include,
             profiles=MappingProxyType(profiles),
+            run=run,
         )
+
+    @staticmethod
+    def validate_environment_pair(key: str, value: str, *, label: str) -> None:
+        _environment_pair(key, value, label=label)
 
     def packaging_profile(self, name: str) -> PackagingProfile:
         try:
@@ -154,20 +183,7 @@ class ProjectManifest:
                 )
             )
 
-        checked_includes: set[str] = set()
-        for value in self.include:
-            if value in checked_includes:
-                continue
-            checked_includes.add(value)
-            if not (self.root / PurePosixPath(value)).exists():
-                diagnostics.append(
-                    ProjectDiagnostic(
-                        "warning",
-                        "content-missing",
-                        "configured content path does not exist",
-                        value,
-                    )
-                )
+        diagnostics.extend(self._content_diagnostics())
 
         for name, profile in profiles:
             profile_entrypoint = self.root / PurePosixPath(profile.entrypoint)
@@ -190,9 +206,8 @@ class ProjectManifest:
                     )
                 )
             for value in profile.include:
-                if value in checked_includes:
+                if value in self.include:
                     continue
-                checked_includes.add(value)
                 if not (self.root / PurePosixPath(value)).exists():
                     diagnostics.append(
                         ProjectDiagnostic(
@@ -203,6 +218,50 @@ class ProjectManifest:
                         )
                     )
         return tuple(diagnostics)
+
+    def run_diagnostics(self) -> tuple[ProjectDiagnostic, ...]:
+        """Return diagnostics relevant to starting a development session only."""
+
+        diagnostics = list(self._content_diagnostics())
+        entrypoint_path = self.root / PurePosixPath(self.run.entrypoint)
+        if not entrypoint_path.is_file():
+            diagnostics.append(
+                ProjectDiagnostic(
+                    "error",
+                    "run-entrypoint-missing",
+                    "development entrypoint does not exist",
+                    self.run.entrypoint,
+                )
+            )
+        working_directory = (
+            self.root
+            if self.run.working_directory == "."
+            else self.root / PurePosixPath(self.run.working_directory)
+        )
+        if not working_directory.is_dir():
+            diagnostics.append(
+                ProjectDiagnostic(
+                    "error",
+                    "run-working-directory-missing",
+                    "development working directory does not exist",
+                    self.run.working_directory,
+                )
+            )
+        return tuple(diagnostics)
+
+    def _content_diagnostics(self) -> list[ProjectDiagnostic]:
+        diagnostics: list[ProjectDiagnostic] = []
+        for value in self.include:
+            if not (self.root / PurePosixPath(value)).exists():
+                diagnostics.append(
+                    ProjectDiagnostic(
+                        "warning",
+                        "content-missing",
+                        "configured content path does not exist",
+                        value,
+                    )
+                )
+        return diagnostics
 
     @property
     def fingerprint(self) -> str:
@@ -225,7 +284,43 @@ class ProjectManifest:
                 name: profile.to_dict()
                 for name, profile in sorted(self.profiles.items(), key=lambda item: item[0])
             },
+            "run": self.run.to_dict(),
         }
+
+
+def _parse_run_config(data: Any, *, project_entrypoint: str) -> DevelopmentRunConfig:
+    if not isinstance(data, dict):
+        raise ProjectManifestError("[run] must be a TOML table")
+    entrypoint = _safe_project_path(
+        _string(data.get("entrypoint", project_entrypoint), "run.entrypoint", max_length=256),
+        label="run.entrypoint",
+    )
+    working_directory = _safe_working_directory(
+        _string(data.get("working_directory", "."), "run.working_directory", max_length=256),
+        label="run.working_directory",
+    )
+    arguments = _argument_list(data.get("arguments", ()), "run.arguments")
+    environment_raw = data.get("environment", {})
+    if not isinstance(environment_raw, dict):
+        raise ProjectManifestError("[run.environment] must be a TOML table")
+    if len(environment_raw) > 128:
+        raise ProjectManifestError("run.environment must contain at most 128 variables")
+    environment: dict[str, str] = {}
+    for key, value in sorted(environment_raw.items(), key=lambda item: str(item[0])):
+        if not isinstance(key, str) or not isinstance(value, str):
+            raise ProjectManifestError("run.environment keys and values must be strings")
+        _environment_pair(key, value, label="run.environment")
+        environment[key] = value
+    return DevelopmentRunConfig(
+        entrypoint=entrypoint,
+        working_directory=working_directory,
+        arguments=arguments,
+        environment=MappingProxyType(environment),
+        inherit_environment=_boolean(
+            data.get("inherit_environment", True),
+            "run.inherit_environment",
+        ),
+    )
 
 
 def _parse_profile(
@@ -325,6 +420,41 @@ def _path_list(value: Any, label: str) -> tuple[str, ...]:
     if len(set(paths)) != len(paths):
         raise ProjectManifestError(f"{label} must not contain duplicate paths")
     return paths
+
+
+def _argument_list(value: Any, label: str) -> tuple[str, ...]:
+    if not isinstance(value, (list, tuple)):
+        raise ProjectManifestError(f"{label} must be an array of strings")
+    if len(value) > 128:
+        raise ProjectManifestError(f"{label} must contain at most 128 arguments")
+    arguments: list[str] = []
+    for item in value:
+        if not isinstance(item, str):
+            raise ProjectManifestError(f"{label} must contain only strings")
+        if len(item) > 4096:
+            raise ProjectManifestError(f"{label} arguments must be at most 4096 characters")
+        if "\x00" in item:
+            raise ProjectManifestError(f"{label} must not contain NUL characters")
+        arguments.append(item)
+    return tuple(arguments)
+
+
+def _environment_pair(key: str, value: str, *, label: str) -> None:
+    if not _ENVIRONMENT_KEY_RE.fullmatch(key):
+        raise ProjectManifestError(
+            f"{label} variable names must use letters, numbers and '_' and not start with a number"
+        )
+    if len(value) > 16384:
+        raise ProjectManifestError(f"{label}.{key} must be at most 16384 characters")
+    if "\x00" in value:
+        raise ProjectManifestError(f"{label}.{key} must not contain NUL characters")
+
+
+def _safe_working_directory(value: str, *, label: str) -> str:
+    portable = value.replace("\\", "/")
+    if portable in {"", "."}:
+        return "."
+    return _safe_project_path(portable, label=label)
 
 
 def _safe_project_path(value: str, *, label: str) -> str:
