@@ -9,7 +9,6 @@ from enum import Enum
 from pathlib import PurePosixPath
 from typing import Any
 
-
 TickCallback = Callable[["ServerTick"], None]
 LifecycleCallback = Callable[["ServerContext"], None]
 ProbeCallback = Callable[[], bool]
@@ -671,7 +670,7 @@ class DedicatedServerRuntime:
                     continue
                 try:
                     callback(self._context)
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 - creator cleanup is intentionally contained
                     self._shutdown_failures += 1
                     if shutdown_error is None:
                         shutdown_error = (
@@ -699,7 +698,7 @@ class DedicatedServerRuntime:
             return True
         try:
             return bool(callback())
-        except Exception:
+        except Exception:  # noqa: BLE001 - creator probe failures must be fault-contained
             if kind == "health":
                 self._health_failures += 1
             else:
