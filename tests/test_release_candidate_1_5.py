@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from tools.verify_1_5_release_candidate import audit, parse_roadmap
 
+from tools.verify_1_5_release_candidate import audit, parse_roadmap
 
 ROOT = Path(__file__).resolve().parents[1]
 
