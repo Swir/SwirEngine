@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 
-import swirengine.jobs17 as jobs17
+from swirengine import jobs17
 
 
 JOB_COUNT = 2_000

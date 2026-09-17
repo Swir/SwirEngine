@@ -12,8 +12,6 @@ from enum import Enum
 from types import TracebackType
 from typing import Any, Generic, TypeVar
 
-from typing_extensions import Self
-
 
 T = TypeVar("T")
 
@@ -392,12 +390,8 @@ class JobScheduler:
         return function(context)
 
     def _on_done(self, job_id: str, future: Future[Any]) -> None:
-        try:
-            value = future.result()
-            error: Exception | None = None
-        except Exception as caught:  # Future intentionally isolates worker failures.
-            value = None
-            error = caught
+        error = future.exception()
+        value = None if error is not None else future.result()
 
         with self._condition:
             record = self._records[job_id]
@@ -642,7 +636,7 @@ class JobScheduler:
             self._condition.notify_all()
         self._executor.shutdown(wait=wait, cancel_futures=False)
 
-    def __enter__(self) -> Self:
+    def __enter__(self) -> JobScheduler:  # noqa: PYI034 - Python 3.10 compatible API
         return self
 
     def __exit__(
