@@ -3,7 +3,6 @@ from __future__ import annotations
 import runpy
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 DEMO_SCRIPTS = (
     "demo_background_jobs_1_7.py",
