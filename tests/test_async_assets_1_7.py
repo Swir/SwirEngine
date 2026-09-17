@@ -58,7 +58,7 @@ def test_decode_runs_in_worker_and_finalizer_only_runs_during_poll(
         return f"gpu:{value}"
 
     pipeline.register_processor("data", suffixes=[".dat"], decode=decode, finalizer=finalize)
-    request = pipeline.submit("texture.dat")
+    pipeline.submit("texture.dat")
     pipeline.wait_workers(timeout=2.0)
 
     assert "finalize" not in calls
