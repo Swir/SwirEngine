@@ -2,7 +2,7 @@
 
 SwirEngine 1.5.0 is released and locked as the stable compatibility baseline. The 1.6 line is additive: existing 1.x imports and behavior stay stable unless a genuine maintenance fix is required.
 
-**Current verified progress: 9/10 milestones = 90.0%.**
+**Current verified progress: 10/10 milestones = 100.0%.**
 
 A milestone is checked only after its implementation, focused tests, documentation, and dedicated validation gate pass on the exact commit that is merged to `main`. Repository activity, scaffolding, or an open pull request does not count as completion.
 
@@ -74,7 +74,7 @@ A milestone is checked only after its implementation, focused tests, documentati
   - packet loss/reordering/jitter simulation with bounded budgets;
   - Windows/Linux source showcase validation without a separate demo release.
 
-- [ ] **10. 1.6 Hardening & Source Checkpoint Gate**
+- [x] **10. 1.6 Hardening & Source Checkpoint Gate**
   - complete 1.x compatibility re-check and full supported-Python matrix;
   - runtime, packaging, wheel/sdist, clean-install, and source-showcase gates;
   - checkpoint auditor that refuses 1.6 completion unless this roadmap is 10/10;
@@ -214,3 +214,18 @@ Milestone 9 is complete only when the exact implementation head satisfies all of
 8. Focused soak tests, locked 1.6 multiplayer subsystem tests, stable networking/multiplayer regressions, strict Ruff, compile checks and the source-only creator showcase pass in the dedicated workflow on Python 3.10, 3.13 and 3.14, including Windows and Linux execution.
 9. The representative Python 3.13 workload exercises 8 clients × 360 authoritative ticks × 64 authored entities with packet impairment and completed 2,379 applied updates in 5.7402 seconds against the documented 8.0-second regression budget, without making an FPS or real-network latency claim.
 10. Normal CI, Desktop Export, Demo Game 3D, Game Demos, Neon Snake 3D and locked 1.4/1.5 hardening workflows were green on the verified implementation PR head before merge; PR #116 was then squash-merged to `main` as source-only SwirEngine 1.6 development with no release/tag/PyPI action.
+
+## Milestone 10 verification contract
+
+Milestone 10 is complete only when the exact 10/10 checkpoint head satisfies all of the following:
+
+1. `tools/verify_1_6_source_checkpoint.py --require-complete` accepts exactly 10/10 and continues to enforce the source-only 1.6 publication freeze.
+2. `pyproject.toml` and runtime `swirengine.__version__` remain frozen at the public stable baseline `1.5.0`; no 1.6 tag, GitHub Release, PyPI upload, or dedicated publication workflow exists.
+3. Focused 1.6 contract tests pass on Python 3.10, 3.13 and 3.14, while the primary validation lane also passes the full pytest suite, strict Ruff and compile gates.
+4. Locked 1.3, 1.4 and 1.5 compatibility/release auditors continue to pass on the same source checkpoint line.
+5. All nine deterministic 1.6 workload gates and all creator-facing 1.6 examples execute successfully on one coherent candidate head.
+6. The source-only SwirEngine 2D Game Demo and SwirEngine 3D Game Demo pass the checkpoint's headless probes, while the locked 1.5 hardening gate continues to validate real Linux OpenGL execution.
+7. Portable wheel/sdist build, `twine check`, clean virtual-environment wheel installation, all 1.6 module imports and source showcase probes pass without publishing the resulting artifacts.
+8. The repository's full CI, Desktop Export, locked 1.4 hardening and locked 1.5 hardening workflows remain green on the checkpoint candidate, including the Windows one-file 2D/3D runtime probes.
+9. `docs/RELEASE_HARDENING_1_6.md`, the checkpoint workflow and the roadmap all state the same publication rule: 1.6 is source-only and the next public GitHub/PyPI release is SwirEngine 2.0.
+10. After the exact final checkpoint head is green, it may be merged to `main` as the completed 1.6 source checkpoint and development may continue to the next planned source stage toward 2.0 without any 1.6 release action.

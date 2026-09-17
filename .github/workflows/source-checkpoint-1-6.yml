@@ -1,0 +1,170 @@
+name: Source Checkpoint 1.6
+
+on:
+  push:
+    branches:
+      - main
+      - "feat/1.6-*"
+  pull_request:
+    paths:
+      - "src/swirengine/**"
+      - "tests/**"
+      - "examples/**"
+      - "demo_projects/**"
+      - "tools/**"
+      - "docs/**"
+      - "README.md"
+      - "CHANGELOG.md"
+      - "ROADMAP_1_3.md"
+      - "ROADMAP_1_4.md"
+      - "ROADMAP_1_5.md"
+      - "ROADMAP_1_6.md"
+      - "pyproject.toml"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/source-checkpoint-1-6.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: source-checkpoint-1-6-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: 1.6 contracts / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install --upgrade pip
+      - name: Install CPython 3.14 native build prerequisites
+        if: matrix.python-version == '3.14'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev
+      - run: python -m pip install -e ".[dev]"
+      - name: Audit source-checkpoint contract
+        shell: bash
+        run: |
+          python tools/verify_1_6_source_checkpoint.py
+          if grep -q "100.0%" ROADMAP_1_6.md && grep -q "10/10" ROADMAP_1_6.md; then
+            python tools/verify_1_6_source_checkpoint.py --require-complete
+          fi
+      - name: Run focused 1.6 contract suite
+        run: >-
+          pytest
+          tests/test_multiplayer_replication_1_6.py
+          tests/test_prediction_reconciliation_1_6.py
+          tests/test_session_lifecycle_1_6.py
+          tests/test_transport_qos_1_6.py
+          tests/test_dedicated_server_1_6.py
+          tests/test_content_delivery_1_6.py
+          tests/test_platform_services_1_6.py
+          tests/test_network_profiler_1_6.py
+          tests/test_multiplayer_showcase_soak_1_6.py
+          tests/test_source_checkpoint_1_6.py
+      - name: Verify locked compatibility auditors
+        if: matrix.python-version == '3.13'
+        run: |
+          python tools/verify_1_3_release_candidate.py
+          python tools/verify_1_4_release_candidate.py --require-complete
+          python tools/verify_1_5_release_candidate.py --require-complete
+      - name: Full repository tests
+        if: matrix.python-version == '3.13'
+        run: pytest
+      - name: Strict Ruff gate
+        if: matrix.python-version == '3.13'
+        run: ruff check src tests examples demo_projects tools
+      - name: Compile repository surfaces
+        if: matrix.python-version == '3.13'
+        run: python -m compileall -q src tests examples demo_projects tools
+
+  workloads:
+    name: All 1.6 deterministic workload gates
+    needs: contract
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Run all 1.6 workload contracts
+        run: |
+          python tools/benchmark_multiplayer_replication_1_6.py
+          python tools/benchmark_prediction_reconciliation_1_6.py
+          python tools/benchmark_session_lifecycle_1_6.py
+          python tools/benchmark_transport_qos_1_6.py
+          python tools/benchmark_dedicated_server_1_6.py
+          python tools/benchmark_content_delivery_1_6.py
+          python tools/benchmark_platform_services_1_6.py
+          python tools/benchmark_network_profiler_1_6.py
+          python tools/benchmark_multiplayer_showcase_1_6.py
+      - name: Run all 1.6 creator examples
+        run: |
+          python examples/demo_multiplayer_replication_1_6.py
+          python examples/demo_prediction_reconciliation_1_6.py
+          python examples/demo_session_lifecycle_1_6.py
+          python examples/demo_transport_qos_1_6.py
+          python examples/demo_dedicated_server_1_6.py
+          python examples/demo_content_delivery_1_6.py
+          python examples/demo_platform_services_1_6.py
+          python examples/demo_network_profiler_1_6.py
+          python examples/demo_multiplayer_showcase_1_6.py
+      - name: Run source-only 2D and 3D game demos headlessly
+        env:
+          SWIR_GAME_DEMO_HEADLESS: "1"
+        run: |
+          python examples/2d_game_demo/run_game.py
+          python examples/3d_game_demo/run_game.py
+
+  clean-package:
+    name: Build + clean wheel checkpoint
+    needs: contract
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip build twine
+      - name: Build local distributions
+        run: python -m build
+      - name: Check local distribution metadata
+        run: python -m twine check dist/*
+      - name: Install wheel in a clean environment
+        shell: bash
+        run: |
+          python -m venv .checkpoint16-venv
+          .checkpoint16-venv/bin/python -m pip install --upgrade pip
+          .checkpoint16-venv/bin/python -m pip install dist/*.whl
+          .checkpoint16-venv/bin/python - <<'PY'
+          import swirengine
+          import swirengine.content16
+          import swirengine.multiplayer16
+          import swirengine.multiplayer_showcase16
+          import swirengine.network_profiler16
+          import swirengine.platform16
+          import swirengine.prediction16
+          import swirengine.server16
+          import swirengine.session16
+          import swirengine.transport16
+
+          assert swirengine.__version__ == "1.5.0"
+          print("clean checkpoint wheel:", swirengine.__version__)
+          PY
+      - name: Probe source showcases against the clean wheel
+        shell: bash
+        run: |
+          .checkpoint16-venv/bin/python examples/demo_multiplayer_showcase_1_6.py
+          SWIR_GAME_DEMO_HEADLESS=1 .checkpoint16-venv/bin/python examples/2d_game_demo/run_game.py
+          SWIR_GAME_DEMO_HEADLESS=1 .checkpoint16-venv/bin/python examples/3d_game_demo/run_game.py
