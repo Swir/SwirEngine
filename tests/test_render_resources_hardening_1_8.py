@@ -123,6 +123,49 @@ def test_trim_destroy_failure_does_not_report_resource_as_freed() -> None:
     assert diagnostics.free_resources == 1
 
 
+def test_close_failure_keeps_failed_resource_accounted_and_retryable() -> None:
+    failed_once = False
+    attempts: list[str] = []
+
+    def destroy(resource):
+        nonlocal failed_once
+        attempts.append(resource["format"])
+        if resource["format"] == "a" and not failed_once:
+            failed_once = True
+            raise RuntimeError("temporary close failure")
+
+    instance = TransientRenderResourcePool(
+        create=lambda spec: {"format": spec.format},
+        destroy=destroy,
+        max_resources=2,
+        max_bytes=128,
+    )
+    first = instance.acquire(descriptor("a"))
+    second = instance.acquire(descriptor("b"))
+    instance.release(first.handle)
+    instance.release(second.handle)
+
+    with pytest.raises(RenderResourcePoolError) as error:
+        instance.close()
+
+    assert error.value.code == "destroy-failed"
+    assert not instance.closed
+    after_failure = instance.diagnostics()
+    assert after_failure.resident_resources == 1
+    assert after_failure.resident_bytes == 64
+    assert after_failure.free_resources == 1
+    assert after_failure.destroy_failures == 1
+    assert attempts == ["a", "b"]
+
+    instance.close()
+
+    assert instance.closed
+    after_retry = instance.diagnostics()
+    assert after_retry.resident_resources == 0
+    assert after_retry.resident_bytes == 0
+    assert attempts == ["a", "b", "a"]
+
+
 def test_abort_releases_overlapping_render_graph_leases() -> None:
     graph = RenderGraphBuilder()
     graph.add_resource("source", external=True)
