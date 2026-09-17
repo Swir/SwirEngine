@@ -320,9 +320,9 @@ class PredictionTimeline:
 
 
 __all__ = [
+    "PREDICTION_CORRECTION_PACKET_KIND",
     "CorrectionBlend",
     "CorrectionTransition",
-    "PREDICTION_CORRECTION_PACKET_KIND",
     "PredictionCorrection",
     "PredictionDiagnostics",
     "PredictionReconciliation",
