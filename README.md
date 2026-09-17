@@ -1,13 +1,27 @@
-# SwirEngine 1.5.0
+<!-- SWIR-README-STANDARD:v2 -->
 
-<p align="center">
-  <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="https://pypi.org/project/swirengine/"><img alt="PyPI" src="https://img.shields.io/pypi/v/swirengine?style=flat-square"></a>
-  <img alt="Python" src="https://img.shields.io/badge/Python-3.10--3.13%20cross--platform%20%7C%203.14%20Windows-3776AB?style=flat-square&logo=python&logoColor=white">
-  <img alt="1.5 roadmap" src="https://img.shields.io/badge/1.5%20ROADMAP-100%25-2ea043?style=flat-square">
-  <img alt="Status" src="https://img.shields.io/badge/status-1.5.0%20stable-2ea043?style=flat-square">
-  <img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square">
-</p>
+<div align="center">
+
+<img width="100%" src="assets/readme/hero.svg" alt="SwirEngine — Python-first engine for complete 2D and 3D games" />
+
+<br>
+
+![CI](https://img.shields.io/github/actions/workflow/status/Swir/SwirEngine/ci.yml?branch=main&style=for-the-badge&label=CI&color=02050A&logo=githubactions&logoColor=62E5FF)
+[![PyPI](https://img.shields.io/pypi/v/swirengine?style=for-the-badge&color=02050A&logo=pypi&logoColor=62E5FF)](https://pypi.org/project/swirengine/)
+![Python](https://img.shields.io/badge/Python-3.10--3.13%20cross--platform%20%7C%203.14%20Windows-02050A?style=for-the-badge&logo=python&logoColor=62E5FF)
+![Status](https://img.shields.io/badge/STATUS-1.5.0%20STABLE-02050A?style=for-the-badge&logoColor=62E5FF)
+![License](https://img.shields.io/badge/LICENSE-MIT-02050A?style=for-the-badge&logo=opensourceinitiative&logoColor=62E5FF)
+
+[![Author](https://img.shields.io/badge/Author-Swir-0088FF?style=flat-square&logo=github)](https://github.com/Swir)
+[![Stars](https://img.shields.io/github/stars/Swir/SwirEngine?style=flat-square&color=0088FF)](https://github.com/Swir/SwirEngine/stargazers)
+
+<br>
+
+[**Install**](#install) · [**2D Quick Start**](#quick-2d-game) · [**3D Quick Start**](#quick-3d-game) · [**Roadmaps**](#roadmaps) · [**Releases**](https://github.com/Swir/SwirEngine/releases)
+
+</div>
+
+<img width="100%" src="https://raw.githubusercontent.com/Swir/Swir/main/assets/power-divider-v4.svg" alt="SWIR electric divider" />
 
 **SwirEngine 1.5.0** is the Production Runtime & Creator Scale stable release of a Python-first 2D/3D game engine with a stable 1.x compatibility contract. Version 1.5 extends the released 1.4 engine with deterministic simulation/replay, resilient save/profile storage, richer audio and animation systems, navigation, world streaming, a retained UI toolkit, creator/editor productivity tooling, and opt-in runtime diagnostics/profiling.
 
@@ -287,6 +301,22 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
 - Releases: https://github.com/Swir/SwirEngine/releases
 - Changelog: https://github.com/Swir/SwirEngine/blob/main/CHANGELOG.md
 
+## 🔎 Search Keywords
+
+`python game engine` • `python 2d game engine` • `python 3d game engine` • `python game development` • `cross platform game engine` • `python OpenGL engine` • `2d 3d game engine` • `python game framework` • `python creator tools` • `game engine python windows` • `python 3d rendering` • `python game runtime` • `python game audio` • `pip install game engine`
+
 ## License
 
 MIT
+
+<img width="100%" src="https://raw.githubusercontent.com/Swir/Swir/main/assets/power-divider-v4.svg" alt="SWIR electric divider" />
+
+<div align="center">
+
+### `BUILD • TEST • RELEASE • EVOLVE`
+
+⭐ **If SwirEngine is useful to you, consider leaving a star.**
+
+[**← SWIR profile**](https://github.com/Swir) · [**All projects →**](https://github.com/Swir?tab=repositories)
+
+</div>
