@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from time import perf_counter
+import time
 
 from swirengine.server16 import (
     DedicatedServerRuntime,
@@ -9,7 +9,6 @@ from swirengine.server16 import (
     ServerConfig,
     ServerStartupCheck,
 )
-
 
 TICKS = 100_000
 BUDGET_SECONDS = 2.0
@@ -31,11 +30,11 @@ def main() -> None:
         ),
     )
 
-    started = perf_counter()
+    started = time.perf_counter()
     runtime.start()
     runtime.run_ticks(TICKS)
     runtime.shutdown("benchmark-complete")
-    elapsed = perf_counter() - started
+    elapsed = time.perf_counter() - started
 
     if runtime.tick != TICKS or state["value"] != TICKS:
         raise SystemExit("dedicated-server deterministic tick workload produced an invalid result")
