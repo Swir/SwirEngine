@@ -313,8 +313,9 @@ class TransientRenderResourcePool(Generic[ResourceT]):
         return removed
 
     def close(self) -> None:
-        if self._closed:
+        if self._closed and not self._entries:
             return
+        self._closed = True
         failures: list[BaseException] = []
         destroyed_slots: list[int] = []
         for slot in sorted(self._entries):
@@ -341,7 +342,6 @@ class TransientRenderResourcePool(Generic[ResourceT]):
 
         self._free_by_descriptor.clear()
         self._resident_bytes = 0
-        self._closed = True
 
     def _lease(
         self,
