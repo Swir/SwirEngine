@@ -14,7 +14,8 @@ A single authoritative world snapshot is useful, but sending every replicated en
 - later updates become deltas only from a snapshot that the client explicitly acknowledged;
 - if a packet is lost, that lost tick is never silently selected as a baseline;
 - moving out of relevance becomes a normal `SnapshotDelta.removed` entry;
-- clients retain bounded baseline history so a newer delta can still reference the last ACKed snapshot.
+- clients retain bounded baseline history so a newer delta can still reference the last ACKed snapshot;
+- a client that no longer has the requested baseline can explicitly recover with a full-state resynchronization.
 
 ## Minimal server/client flow
 
@@ -116,7 +117,18 @@ swir.multiplayer16.update
 
 `ReplicationStreamClient` stores a bounded tick-indexed snapshot history. A delta can reference any retained baseline, not only the receiver's latest speculative/unacknowledged state. If the requested baseline was pruned or never received, application raises `LookupError` rather than applying the delta to the wrong state.
 
-A server can recover by sending a full snapshot. Full delivery is also used automatically when the server cannot use an acknowledged retained baseline.
+The receiver can then request a full-state recovery from the server:
+
+```python
+try:
+    client.apply(update)
+except LookupError:
+    recovery = server.resynchronize("player-1")
+    client.apply(recovery)
+    server.acknowledge("player-1", recovery.tick)
+```
+
+`resynchronize()` clears that client's stale server-side baseline, resends the latest filtered snapshot in full, and keeps the client in full-update mode until the recovery tick is acknowledged. A lost recovery packet therefore cannot create another invalid delta dependency. The recovery path is counted in `snapshot_fallbacks` diagnostics.
 
 ## Diagnostics
 
