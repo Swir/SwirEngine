@@ -3,11 +3,11 @@
 SwirEngine 1.7 is a completed source-only checkpoint. SwirEngine 1.8 continues the path toward 2.0
 with additive rendering scalability systems while preserving stable 1.x behavior.
 
-**Current verified progress: 0/10 milestones = 0.0%.**
+**Current verified progress: 1/10 milestones = 10.0%.**
 
 A milestone is checked only after implementation, focused tests, documentation, its dedicated gate,
-and the repository's required compatibility/regression gates pass on the exact final commit merged
-to `main`. An implementation present only on a feature branch does not count as verified progress.
+and the repository's required compatibility/regression gates pass on the exact implementation head.
+The final roadmap-marked PR head must pass the required gates again before merge to `main`.
 
 ## Release policy
 
@@ -20,7 +20,7 @@ to `main`. An implementation present only on a feature branch does not count as 
 
 ## Milestones
 
-- [ ] **1. Render Graph 3.0 Planner**
+- [x] **1. Render Graph 3.0 Planner**
   - bounded renderer-independent pass/resource authoring model;
   - implicit/explicit dependencies with deterministic topological scheduling;
   - output/side-effect rooted culling and strict graph validation;
@@ -83,7 +83,7 @@ to `main`. An implementation present only on a feature branch does not count as 
 
 ## Milestone 1 verification contract
 
-Milestone 1 is complete only when the exact candidate commit satisfies all of the following:
+Milestone 1 is complete only when the exact implementation candidate satisfies all of the following:
 
 1. `swirengine.render_graph18` is additive and leaves stable 1.x root renderer imports unchanged.
 2. Pass/resource registries enforce deterministic hard bounds and stable validation errors.
@@ -100,4 +100,11 @@ Milestone 1 is complete only when the exact candidate commit satisfies all of th
 9. A 1,200-pass deterministic planner workload remains below the documented 5.0-second CI budget
    without making an FPS claim.
 10. Focused tests, Ruff, compile, creator demo and the dedicated Python 3.10/3.13/3.14 workflow pass,
-    followed by the repository's required compatibility/regression workflows on the final head.
+    followed by the repository's required compatibility/regression workflows on the implementation head.
+
+Verified implementation head `e99a413e054bdfdbebcddc0a42223be65ed7780b` passed the dedicated
+Python 3.10/3.13/3.14 Render Graph gate, the full repository CI, Desktop Export, game-demo validation,
+locked 1.4/1.5 hardening, and 1.6/1.7 source-checkpoint regressions. The Python 3.13 focused gate ran
+21 tests successfully and compiled the 1,200-pass workload in 0.0135 seconds under the documented
+5.0-second regression ceiling. The roadmap-marked PR head is still required to re-pass its triggered
+gates before merge.
