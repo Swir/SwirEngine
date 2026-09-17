@@ -27,6 +27,7 @@ _DEFAULT_EXCLUDE = (
     "dist",
 )
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+_ENVIRONMENT_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
 
 
 class ProjectManifestError(ValueError):
@@ -48,6 +49,24 @@ class ProjectDiagnostic:
 
 
 @dataclass(slots=True, frozen=True)
+class DevelopmentRunConfig:
+    """Portable manifest-owned development run configuration."""
+
+    entrypoint: str
+    arguments: tuple[str, ...]
+    environment: Mapping[str, str]
+    inherit_environment: bool
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "entrypoint": self.entrypoint,
+            "arguments": list(self.arguments),
+            "environment": dict(sorted(self.environment.items())),
+            "inherit_environment": self.inherit_environment,
+        }
+
+
+@dataclass(slots=True, frozen=True)
 class ProjectManifest:
     """Validated, portable project-production configuration for SwirEngine 1.9."""
 
@@ -59,6 +78,7 @@ class ProjectManifest:
     entrypoint: str
     include: tuple[str, ...]
     profiles: Mapping[str, PackagingProfile]
+    run: DevelopmentRunConfig
 
     @classmethod
     def load(cls, project: str | Path = ".") -> ProjectManifest:
@@ -115,6 +135,11 @@ class ProjectManifest:
                 project_include=include,
             )
 
+        run_table = raw.get("run", {})
+        if not isinstance(run_table, dict):
+            raise ProjectManifestError("[run] must be a TOML table")
+        run = _parse_run(run_table, project_entrypoint=entrypoint)
+
         return cls(
             root=path.parent,
             path=path,
@@ -124,6 +149,7 @@ class ProjectManifest:
             entrypoint=entrypoint,
             include=include,
             profiles=MappingProxyType(profiles),
+            run=run,
         )
 
     def packaging_profile(self, name: str) -> PackagingProfile:
@@ -153,6 +179,17 @@ class ProjectManifest:
                     self.entrypoint,
                 )
             )
+        if self.run.entrypoint != self.entrypoint:
+            run_entrypoint = self.root / PurePosixPath(self.run.entrypoint)
+            if not run_entrypoint.is_file():
+                diagnostics.append(
+                    ProjectDiagnostic(
+                        "error",
+                        "run-entrypoint-missing",
+                        "development run entrypoint does not exist",
+                        self.run.entrypoint,
+                    )
+                )
 
         checked_includes: set[str] = set()
         for value in self.include:
@@ -225,6 +262,7 @@ class ProjectManifest:
                 name: profile.to_dict()
                 for name, profile in sorted(self.profiles.items(), key=lambda item: item[0])
             },
+            "run": self.run.to_dict(),
         }
 
 
@@ -289,6 +327,31 @@ def _parse_profile(
     )
 
 
+def _parse_run(data: dict[str, Any], *, project_entrypoint: str) -> DevelopmentRunConfig:
+    entrypoint = _safe_project_path(
+        _string(data.get("entrypoint", project_entrypoint), "run.entrypoint", max_length=256),
+        label="run.entrypoint",
+    )
+    arguments = _string_list(data.get("arguments", ()), "run.arguments", max_items=128, max_length=512)
+    environment_raw = data.get("environment", {})
+    if not isinstance(environment_raw, dict):
+        raise ProjectManifestError("run.environment must be a TOML table")
+    if len(environment_raw) > 64:
+        raise ProjectManifestError("run.environment must contain at most 64 variables")
+    environment: dict[str, str] = {}
+    for key, value in sorted(environment_raw.items(), key=lambda item: str(item[0])):
+        name = _string(key, "run.environment key", max_length=64)
+        if not _ENVIRONMENT_KEY_RE.fullmatch(name):
+            raise ProjectManifestError(f"invalid run.environment variable name: {name!r}")
+        environment[name] = _string(value, f"run.environment.{name}", max_length=1024)
+    return DevelopmentRunConfig(
+        entrypoint=entrypoint,
+        arguments=arguments,
+        environment=MappingProxyType(environment),
+        inherit_environment=_boolean(data.get("inherit_environment", True), "run.inherit_environment"),
+    )
+
+
 def _required_string(data: dict[str, Any], key: str, *, max_length: int) -> str:
     if key not in data:
         raise ProjectManifestError(f"{key} is required")
@@ -325,6 +388,14 @@ def _path_list(value: Any, label: str) -> tuple[str, ...]:
     if len(set(paths)) != len(paths):
         raise ProjectManifestError(f"{label} must not contain duplicate paths")
     return paths
+
+
+def _string_list(value: Any, label: str, *, max_items: int, max_length: int) -> tuple[str, ...]:
+    if not isinstance(value, (list, tuple)):
+        raise ProjectManifestError(f"{label} must be an array of strings")
+    if len(value) > max_items:
+        raise ProjectManifestError(f"{label} must contain at most {max_items} values")
+    return tuple(_string(item, label, max_length=max_length) for item in value)
 
 
 def _safe_project_path(value: str, *, label: str) -> str:
