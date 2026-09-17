@@ -25,7 +25,8 @@ def test_supported_python_range_is_explicit():
 
 def test_readme_tracks_current_release_support_window_and_major_1_5_systems():
     readme = Path("README.md").read_text(encoding="utf-8")
-    assert f"# SwirEngine {swirengine.__version__}" in readme
+    assert "<!-- SWIR-README-STANDARD:v2 -->" in readme
+    assert f"**SwirEngine {swirengine.__version__}**" in readme
     assert "Python 3.10-3.13" in readme
     assert "Python 3.14 on Windows x86-64" in readme
     assert "gamepad" in readme.lower()
