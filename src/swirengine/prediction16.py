@@ -273,6 +273,10 @@ class PredictionTimeline:
             raise ValueError("newer authoritative tick cannot regress command acknowledgement")
         if correction.acknowledged_sequence > self._last_sequence:
             raise ValueError("server cannot acknowledge an unsent prediction command")
+        if correction.acknowledged_sequence > self._last_acknowledged_sequence and not any(
+            command.sequence == correction.acknowledged_sequence for command in self._pending
+        ):
+            raise ValueError("server cannot acknowledge a prediction command the client did not predict")
 
         remaining = tuple(
             command

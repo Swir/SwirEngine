@@ -101,6 +101,22 @@ def test_server_cannot_acknowledge_unsent_prediction_command() -> None:
         timeline.reconcile(PredictionCorrection(1, 1, {"x": 0}))
 
 
+def test_server_cannot_acknowledge_sequence_never_predicted() -> None:
+    timeline = PredictionTimeline({"x": 0}, _simulate)
+    timeline.predict(_command(1, 1))
+    timeline.predict(_command(3, 3))
+    before_state = timeline.state.copy()
+    before_pending = timeline.pending_commands
+
+    with pytest.raises(ValueError, match="did not predict"):
+        timeline.reconcile(PredictionCorrection(2, 4, {"x": 2, "stance": "idle"}))
+
+    assert timeline.state == before_state
+    assert timeline.pending_commands == before_pending
+    assert timeline.last_authoritative_tick == 0
+    assert timeline.last_acknowledged_sequence == 0
+
+
 def test_replay_budget_failure_is_atomic() -> None:
     timeline = PredictionTimeline(
         {"x": 0},
