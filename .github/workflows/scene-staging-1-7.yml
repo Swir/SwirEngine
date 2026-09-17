@@ -1,0 +1,95 @@
+name: Scene Staging 1.7
+
+on:
+  push:
+    branches: ["feat/1.7-scene-staging"]
+    paths:
+      - "src/swirengine/scene_staging17.py"
+      - "tests/test_scene_staging_1_7.py"
+      - "tools/benchmark_scene_staging_1_7.py"
+      - "examples/demo_scene_staging_1_7.py"
+      - "docs/SCENE_STAGING_1_7.md"
+      - "ROADMAP_1_7.md"
+      - "CHANGELOG.d/1.7-scene-staging.md"
+      - ".github/workflows/scene-staging-1-7.yml"
+  pull_request:
+    paths:
+      - "src/swirengine/scene_staging17.py"
+      - "tests/test_scene_staging_1_7.py"
+      - "tools/benchmark_scene_staging_1_7.py"
+      - "examples/demo_scene_staging_1_7.py"
+      - "docs/SCENE_STAGING_1_7.md"
+      - "ROADMAP_1_7.md"
+      - "CHANGELOG.d/1.7-scene-staging.md"
+      - ".github/workflows/scene-staging-1-7.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: scene-staging-1-7-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  scene-staging:
+    name: Scene Staging / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install CPython 3.14 native build prerequisites
+        if: matrix.python-version == '3.14'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev
+
+      - name: Install development dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Run scene-staging and stable scene regressions
+        run: >-
+          pytest
+          tests/test_scene_staging_1_7.py
+          tests/test_scene.py
+          tests/test_scene_ecs_ergonomics.py
+          tests/test_prefab.py
+          tests/test_ecs.py
+          tests/test_large_world.py
+          tests/test_world_streaming_2_1_5.py
+          tests/test_background_jobs_1_7.py
+          tests/test_work_graph_1_7.py
+
+      - name: Lint scene staging surfaces
+        run: >-
+          ruff check
+          src/swirengine/scene_staging17.py
+          tests/test_scene_staging_1_7.py
+          tools/benchmark_scene_staging_1_7.py
+          examples/demo_scene_staging_1_7.py
+
+      - name: Compile scene staging surfaces
+        run: >-
+          python -m compileall -q
+          src/swirengine/scene_staging17.py
+          tests/test_scene_staging_1_7.py
+          tools/benchmark_scene_staging_1_7.py
+          examples/demo_scene_staging_1_7.py
+
+      - name: Run deterministic scene-staging workload
+        if: matrix.python-version == '3.13'
+        run: python tools/benchmark_scene_staging_1_7.py
+
+      - name: Run creator demo
+        run: python examples/demo_scene_staging_1_7.py
