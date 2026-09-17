@@ -60,7 +60,11 @@ def test_poll_enforces_main_thread_callback_budget() -> None:
     graph = StreamingWorkGraph()
     calls: list[str] = []
     for node_id in ("first", "second", "third"):
-        graph.add(node_id, WorkPhase.INSTANTIATE, lambda _ctx, value=node_id: calls.append(value))
+        graph.add(
+            node_id,
+            WorkPhase.INSTANTIATE,
+            lambda _ctx, value=node_id: calls.append(value),
+        )
     graph.start()
 
     try:
@@ -78,12 +82,52 @@ def test_poll_enforces_main_thread_callback_budget() -> None:
         graph.shutdown()
 
 
+def test_poll_enforces_one_shared_background_submission_budget() -> None:
+    graph = StreamingWorkGraph(
+        max_workers=1,
+        max_pending_background=8,
+        max_background_submissions_per_poll=1,
+    )
+    graph.add("root", WorkPhase.INSTANTIATE, lambda _ctx: "ready")
+    for index in range(3):
+        graph.add(
+            f"decode:{index}",
+            WorkPhase.DECODE,
+            lambda _ctx, value=index: value,
+            dependencies=["root"],
+        )
+    graph.start()
+
+    try:
+        assert graph.diagnostics().submitted_background_total == 0
+        graph.poll(max_items=1)
+        diagnostics = graph.diagnostics()
+        assert diagnostics.background_submissions_last_poll == 1
+        assert diagnostics.submitted_background_total == 1
+        assert diagnostics.scheduled == 1
+        assert diagnostics.waiting == 2
+    finally:
+        graph.shutdown()
+
+
 def test_higher_priority_main_work_runs_first_with_fifo_tie_breaking() -> None:
     graph = StreamingWorkGraph()
     order: list[str] = []
-    graph.add("low", WorkPhase.INSTANTIATE, lambda _ctx: order.append("low"), priority=0)
-    graph.add("high-a", WorkPhase.INSTANTIATE, lambda _ctx: order.append("high-a"), priority=5)
-    graph.add("high-b", WorkPhase.INSTANTIATE, lambda _ctx: order.append("high-b"), priority=5)
+    graph.add(
+        "low", WorkPhase.INSTANTIATE, lambda _ctx: order.append("low"), priority=0
+    )
+    graph.add(
+        "high-a",
+        WorkPhase.INSTANTIATE,
+        lambda _ctx: order.append("high-a"),
+        priority=5,
+    )
+    graph.add(
+        "high-b",
+        WorkPhase.INSTANTIATE,
+        lambda _ctx: order.append("high-b"),
+        priority=5,
+    )
     graph.start()
 
     try:
@@ -101,7 +145,12 @@ def test_failure_blocks_only_dependent_branch() -> None:
         raise ValueError("decode exploded")
 
     graph.add("bad", WorkPhase.DECODE, fail)
-    graph.add("blocked", WorkPhase.INSTANTIATE, lambda _ctx: "never", dependencies=["bad"])
+    graph.add(
+        "blocked",
+        WorkPhase.INSTANTIATE,
+        lambda _ctx: "never",
+        dependencies=["bad"],
+    )
     graph.add("independent", WorkPhase.INSTANTIATE, lambda _ctx: "ok")
 
     try:
@@ -131,7 +180,9 @@ def test_cascade_cancel_does_not_cancel_independent_branch() -> None:
         return "unexpected"
 
     graph.add("root", WorkPhase.PREFETCH, slow)
-    graph.add("child", WorkPhase.DECODE, lambda _ctx: "child", dependencies=["root"])
+    graph.add(
+        "child", WorkPhase.DECODE, lambda _ctx: "child", dependencies=["root"]
+    )
     graph.add("independent", WorkPhase.INSTANTIATE, lambda _ctx: "ok")
     graph.start()
 
@@ -151,7 +202,9 @@ def test_cascade_cancel_does_not_cancel_independent_branch() -> None:
 def test_cancel_without_cascade_blocks_dependent_after_cancelled_root() -> None:
     graph = StreamingWorkGraph()
     graph.add("root", WorkPhase.INSTANTIATE, lambda _ctx: "root")
-    graph.add("child", WorkPhase.INSTANTIATE, lambda _ctx: "child", dependencies=["root"])
+    graph.add(
+        "child", WorkPhase.INSTANTIATE, lambda _ctx: "child", dependencies=["root"]
+    )
     graph.start()
 
     try:
@@ -222,7 +275,9 @@ def test_diagnostics_are_payload_free_and_report_progress() -> None:
 def test_phase_strings_are_normalized_and_affinity_is_fixed() -> None:
     graph = StreamingWorkGraph()
     prefetch = graph.add("prefetch", "prefetch", lambda _ctx: None)
-    unload = graph.add("unload", "unload", lambda _ctx: None, dependencies=["prefetch"])
+    unload = graph.add(
+        "unload", "unload", lambda _ctx: None, dependencies=["prefetch"]
+    )
     assert prefetch.phase is WorkPhase.PREFETCH
     assert prefetch.affinity is WorkAffinity.BACKGROUND
     assert unload.affinity is WorkAffinity.MAIN_THREAD
