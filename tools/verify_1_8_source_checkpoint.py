@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Audit the SwirEngine 1.8 source-only checkpoint contract.
 
 The auditor deliberately separates development validation from final closeout:
@@ -243,7 +242,7 @@ def main() -> int:
     parser.add_argument(
         "--require-complete",
         action="store_true",
-        help="refuse to pass until ROADMAP_1_8.md is exactly 10/10 = 100.0%",
+        help="refuse to pass until ROADMAP_1_8.md is exactly 10/10 = 100.0%%",
     )
     args = parser.parse_args()
 
