@@ -4,7 +4,6 @@ import time
 
 from swirengine.platform16 import PlatformIdentity, PlatformServices
 
-
 CLOUD_WRITES = 5_000
 PROGRESSION_UPDATES = 10_000
 CLOUD_SLOTS = 64
