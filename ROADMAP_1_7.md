@@ -2,7 +2,7 @@
 
 SwirEngine 1.6 is complete as a verified source-development checkpoint. SwirEngine 1.7 continues the additive 1.x development line toward 2.0 without changing the published 1.5.0 package version or rewriting any released tag.
 
-**Current verified progress: 1/10 milestones = 10.0%.**
+**Current verified progress: 0/10 milestones = 0.0%.**
 
 A milestone is checked only after its implementation, focused tests, documentation, creator example and dedicated validation gate pass on the exact commit merged to `main`. Scaffolding or documentation alone never counts as completion.
 
@@ -17,7 +17,7 @@ A milestone is checked only after its implementation, focused tests, documentati
 
 ## Milestones
 
-- [x] **1. Background Jobs & Main-thread Handoff**
+- [ ] **1. Background Jobs & Main-thread Handoff**
   - bounded worker concurrency and unfinished-job back-pressure;
   - deterministic priority/FIFO dispatch among ready work;
   - explicit dependency gating with failure/cancellation propagation;
