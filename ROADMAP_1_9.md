@@ -4,7 +4,7 @@ SwirEngine 1.8 is a completed source-only rendering checkpoint. SwirEngine 1.9 t
 runtime systems into a coherent production path for building, validating, packaging and shipping
 complete games while preserving stable 1.x behavior.
 
-**Current verified progress: 0/10 milestones = 0.0%.**
+**Current verified progress: 1/10 milestones = 10.0%.**
 
 A milestone is checked only after implementation, focused tests, creator documentation, its dedicated
 gate and the repository's required compatibility/regression gates pass on the exact final head.
@@ -19,7 +19,7 @@ gate and the repository's required compatibility/regression gates pass on the ex
 
 ## Milestones
 
-- [ ] **1. Project Manifest & Production Profiles**
+- [x] **1. Project Manifest & Production Profiles**
   - validated `swirproject.toml` loader with legacy-manifest compatibility;
   - deterministic project fingerprint and safe project-relative path contracts;
   - named desktop/export profiles mapped onto the existing `PackagingProfile` contract;
@@ -98,5 +98,13 @@ Milestone 1 is complete only when the exact final implementation head satisfies 
    5.0-second Python 3.13 CI ceiling without making runtime/FPS claims.
 10. Focused tests, Ruff, compile and the dedicated Python 3.10/3.13/3.14 workflow pass, followed by
     repository compatibility/regression gates before the roadmap checkbox is marked complete.
+
+Verified implementation head `d9e4b5fcc98d64847d75ae3e02c9910d56dcf2f6` passed the dedicated
+Python 3.10/3.13/3.14 Project Production gate and all triggered compatibility/regression workflows,
+including CI, Desktop Export, source checkpoints 1.6/1.7/1.8, game-demo validation, locked 1.4/1.5
+hardening and real packaged-game probes. Python 3.13 ran 23 focused CLI/export/manifest tests, Ruff and
+compile successfully; the 2,000-cycle parse/profile/fingerprint workload completed in 1.1970 seconds
+under the documented 5.0-second ceiling. The roadmap-marked PR head must re-pass its triggered gates
+before merge.
 
 `Release/PyPI: frozen until SwirEngine 2.0`.
