@@ -2,7 +2,7 @@
 
 SwirEngine 1.5.0 is released and locked as the stable compatibility baseline. The 1.6 line is additive: existing 1.x imports and behavior stay stable unless a genuine maintenance fix is required.
 
-**Current verified progress: 2/10 milestones = 20.0%.**
+**Current verified progress: 3/10 milestones = 30.0%.**
 
 A milestone is checked only after its implementation, focused tests, documentation, and dedicated validation gate pass on the exact commit that is merged to `main`. Repository activity, scaffolding, or an open pull request does not count as completion.
 
@@ -31,7 +31,7 @@ A milestone is checked only after its implementation, focused tests, documentati
   - correction smoothing hooks without changing simulation truth;
   - packet-loss/reordering regression coverage and creator diagnostics.
 
-- [ ] **3. Session, Lobby & Match Lifecycle**
+- [x] **3. Session, Lobby & Match Lifecycle**
   - explicit host/join/leave/ready/match state model;
   - deterministic roster and role ownership;
   - reconnect/resume foundations with bounded session tokens;
