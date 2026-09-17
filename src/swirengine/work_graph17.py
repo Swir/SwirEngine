@@ -8,7 +8,6 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from types import MappingProxyType
-from typing import Any
 
 from .jobs17 import JobContext, JobScheduler, JobState
 
