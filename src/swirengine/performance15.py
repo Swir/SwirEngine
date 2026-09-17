@@ -11,7 +11,6 @@ from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, fields, is_dataclass
 from pathlib import Path
-from typing import Any
 
 
 MetricNumber = int | float
@@ -53,7 +52,7 @@ def _nonnegative_int(value: int, *, label: str) -> int:
     return value
 
 
-def _diagnostics_mapping(value: object) -> Mapping[str, Any]:
+def _diagnostics_mapping(value: object) -> Mapping[str, object]:
     if isinstance(value, Mapping):
         return value
     portable = getattr(value, "portable", None)
@@ -68,7 +67,7 @@ def _diagnostics_mapping(value: object) -> Mapping[str, Any]:
 
 
 def _numeric_items(
-    mapping: Mapping[str, Any],
+    mapping: Mapping[str, object],
     *,
     prefix: str = "",
 ) -> Iterator[tuple[str, MetricNumber]]:
@@ -437,7 +436,9 @@ class PerformanceDiagnostics2:
         if not tracemalloc.is_tracing():
             tracemalloc.start()
             self._owns_tracemalloc = True
-        elif reset_peak:
+            if reset_peak:
+                tracemalloc.reset_peak()
+        elif self._owns_tracemalloc and reset_peak:
             tracemalloc.reset_peak()
         self._capture_memory = True
 
@@ -458,7 +459,8 @@ class PerformanceDiagnostics2:
         for domain, provider in sorted(self._providers.items()):
             try:
                 self.sample_diagnostics(domain, provider())
-            except Exception:
+            # Runtime diagnostics are observational and must not destabilize game code.
+            except Exception:  # noqa: BLE001
                 self._provider_errors += 1
                 if self.strict_providers:
                     raise
