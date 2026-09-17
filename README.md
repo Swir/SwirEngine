@@ -26,10 +26,10 @@
 
 ## 📊 Project status
 
-<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 1.9 verified roadmap progress: 1 of 10 milestones, 10.0%, in progress" />
+<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 1.9 verified roadmap progress: 2 of 10 milestones, 20.0%, in progress" />
 
 **Active source scope:** SwirEngine 1.9 — Production Workflow & Game Shipping  
-**Verified source progress:** **1/10 milestones = 10.0% — IN PROGRESS**  
+**Verified source progress:** **2/10 milestones = 20.0% — IN PROGRESS**  
 **Latest public stable release:** **SwirEngine 1.5.0**  
 **Release readiness:** intermediate 1.6–1.9 development is source-only.
 
@@ -63,7 +63,7 @@ includes **Deterministic Simulation & Replay**, **Save & Profile 2.0**, **World 
 | UI + input | Retained UI, keyboard/mouse/gamepad focus, controller input and rebinding foundations. |
 | Large worlds | Asset Pipeline 2.0, derived caching, world streaming and bounded resource/runtime diagnostics. |
 | Networking | Stable networking APIs plus source-only replication/server foundations developed after 1.5. |
-| Creator workflow | Editor productivity tooling, manifest/profile validation, export staging and native desktop build plans. |
+| Creator workflow | Editor productivity tooling, manifest/profile validation, unified development sessions, export staging and native desktop build plans. |
 | Diagnostics | Stable profiler plus additive runtime/resource/timing capture systems. |
 | Compatibility | Stable 1.x public baseline with later source systems kept additive or opt-in where behavior could change. |
 
@@ -147,22 +147,22 @@ swirengine new MyGame --mode 3d
 swirengine doctor MyGame
 ```
 
-Milestone 1 on `main` provides validated `swirproject.toml` manifests, deterministic project
-fingerprints, named production profiles and profile-driven export:
+Milestone 1 provides validated `swirproject.toml` manifests, deterministic project fingerprints, named
+production profiles and profile-driven export:
 
 ```bash
 swirengine export MyGame --profile windows
 ```
 
-The active Milestone 2 candidate adds one run path for both 2D and 3D projects:
+Milestone 2 adds one verified run path for both 2D and 3D projects:
 
 ```bash
 swirengine run MyGame --dry-run
 swirengine run MyGame -- --level arena
 ```
 
-The candidate is not counted as roadmap completion until its exact final head passes the dedicated
-Python matrix and repository-wide compatibility/regression gates.
+The roadmap-marked Milestone 2 head must re-pass the repository-wide compatibility/regression gates
+before merge to `main`.
 
 See:
 - [`docs/PROJECT_PRODUCTION_1_9.md`](docs/PROJECT_PRODUCTION_1_9.md)
@@ -227,7 +227,7 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
 - SwirEngine 1.6 — [`ROADMAP_1_6.md`](ROADMAP_1_6.md) — **10/10 = 100.0%**, source-only checkpoint
 - SwirEngine 1.7 — [`ROADMAP_1_7.md`](ROADMAP_1_7.md) — **10/10 = 100.0%**, source-only checkpoint
 - SwirEngine 1.8 — [`ROADMAP_1_8.md`](ROADMAP_1_8.md) — **10/10 = 100.0%**, source-only checkpoint
-- **SwirEngine 1.9 — [`ROADMAP_1_9.md`](ROADMAP_1_9.md) — 1/10 = 10.0%, active source roadmap**
+- **SwirEngine 1.9 — [`ROADMAP_1_9.md`](ROADMAP_1_9.md) — 2/10 = 20.0%, active source roadmap**
 
 ## ⚠️ Current limitations
 
