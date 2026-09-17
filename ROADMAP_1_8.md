@@ -137,5 +137,38 @@ Milestone 2 is complete only when the exact implementation candidate satisfies a
 
 Verified implementation head `7b0bd23cd70c8858836ab908bbde782169e7bfe4` passed the dedicated
 Python 3.10/3.13/3.14 transient-resource workflow, the full repository CI, Desktop Export, game-demo
-validation, locked 1.4/1.5 hardening, and 1.6/1.7 source-checkpoint regressions. The roadmap-marked PR
-head must re-pass its triggered gates before merge. Release/PyPI remain frozen until SwirEngine 2.0.
+validation, locked 1.4/1.5 hardening, and 1.6/1.7 source-checkpoint regressions. During final review,
+close-path hardening additionally preserved failed backend resources/residency accounting while keeping
+the established closed-state contract and allowing explicit cleanup retry. Final PR head
+`863ecd32eaffae15492c06ecd61fec6e3bba3243` re-passed all required workflows before squash merge as
+`de6dce18179c6d5e0579f9c0182137419f590e42`.
+
+## Milestone 3 verification contract
+
+Milestone 3 is complete only when the exact implementation candidate satisfies all of the following:
+
+1. `swirengine.upload_residency18` is additive, metadata-only and leaves stable 1.x renderer/root
+   imports and the verified 1.8 Render Graph/transient-resource APIs unchanged.
+2. Upload requests validate stable asset ids, non-negative revisions, positive declared byte costs and
+   creator priorities without storing creator payloads or backend objects in portable state.
+3. Outstanding request count/bytes, staging bytes, batch bytes and batch request count have independent
+   hard bounds with explicit stable back-pressure failures and no partial mutation on rejection.
+4. Equal/older pending or staged revisions are suppressed; newer pending revisions supersede older
+   pending revisions atomically; aborting an older staged revision never overwrites a newer pending one.
+5. Batch staging is deterministic by creator priority, original enqueue sequence and asset id, can make
+   progress with fitting work under a byte ceiling, and releases staging/outstanding accounting only
+   through explicit complete/abort operations.
+6. Residency has independent count/byte ceilings and deterministic eviction order by lowest creator
+   priority, least-recently-used sequence and asset id; pinned entries are protected.
+7. A lower-priority incoming resource cannot evict a strictly higher-priority resident, and admission
+   failure is atomic when protected/higher-priority resources prevent satisfying the budgets.
+8. Newer resident revisions replace old revisions without consuming a second logical slot; equal/older
+   resident revisions are suppressed; touch/pin/explicit-evict controls remain deterministic.
+9. Payload-free numeric diagnostics cover queue/staging pressure, duplicates/supersession, batch
+   lifecycle, residency peaks/evictions/touches/failures; an 8,000-request workload remains below the
+   documented generous 5.0-second Python 3.13 CI ceiling without making an FPS/GPU-throughput claim.
+10. Focused tests, Ruff, compile, creator demo and the dedicated Python 3.10/3.13/3.14 workflow pass,
+    followed by the repository's required compatibility/regression workflows on the exact final head.
+
+Milestone 3 remains unchecked until the implementation and its full verification contract pass on the
+exact candidate head. Release/PyPI remain frozen until SwirEngine 2.0.
