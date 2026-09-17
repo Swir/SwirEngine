@@ -6,7 +6,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from time import perf_counter
 from types import MappingProxyType
-from typing import Any, Protocol
+from typing import Protocol
 
 Clock = Callable[[], float]
 DrainCallback = Callable[[int], int]
@@ -122,10 +122,7 @@ class FrameBudgetDiagnostics:
     lanes: Mapping[str, Mapping[str, int | float]]
 
     def portable(self) -> Mapping[str, object]:
-        lane_values = {
-            name: dict(values)
-            for name, values in sorted(self.lanes.items())
-        }
+        lane_values = {name: dict(values) for name, values in sorted(self.lanes.items())}
         return MappingProxyType(
             {
                 "frame_budget_ms": self.frame_budget_ms,
@@ -309,10 +306,11 @@ class FrameTimeBudgetController:
         return lane.config
 
     def lane(self, name: str) -> FrameBudgetLaneConfig:
+        normalized = _lane_name(name)
         try:
-            return self._lanes[_lane_name(name)].config
+            return self._lanes[normalized].config
         except KeyError:
-            raise KeyError(_lane_name(name)) from None
+            raise KeyError(normalized) from None
 
     def lanes(self) -> tuple[FrameBudgetLaneConfig, ...]:
         return tuple(
