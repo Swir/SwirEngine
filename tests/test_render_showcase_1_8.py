@@ -6,6 +6,7 @@ import pytest
 
 from swirengine.graphics.camera3d import Camera3D
 from swirengine.graphics.primitives import Cube3D, Rectangle2D
+from swirengine.math.types import Vec3
 from swirengine.render_resources18 import (
     RenderResourceDescriptor,
     TransientRenderResourcePool,
@@ -141,7 +142,7 @@ def test_3d_showcase_uses_real_renderer2_planning_and_camera_path():
     renderer = GraphRenderer("3d")
     report = run_render_showcase(
         Renderer2CompatibilityBridge(renderer),
-        lambda frame: scene(Cube3D(x=float(frame % 3))),
+        lambda frame: scene(Cube3D(position=Vec3(float(frame % 3), 0.0, -4.0))),
         camera_factory=lambda frame: Camera3D(),
         settings=RenderShowcaseSettings(frames=12),
     )

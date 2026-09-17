@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 from swirengine.graphics.camera3d import Camera3D
 from swirengine.graphics.primitives import Cube3D, Rectangle2D
+from swirengine.math.types import Vec3
 from swirengine.render_resources18 import RenderResourceDescriptor, TransientRenderResourcePool
 from swirengine.render_showcase18 import (
     RenderShowcaseSettings,
@@ -80,7 +81,9 @@ def _run_3d(frames: int):
     renderer = HeadlessGraphRenderer("3d")
     report = run_render_showcase(
         Renderer2CompatibilityBridge(renderer),
-        lambda frame: _scene(Cube3D(x=float(frame % 7), z=-4.0)),
+        lambda frame: _scene(
+            Cube3D(position=Vec3(float(frame % 7), 0.0, -4.0))
+        ),
         camera_factory=lambda frame: Camera3D(),
         settings=RenderShowcaseSettings(frames=frames),
     )
