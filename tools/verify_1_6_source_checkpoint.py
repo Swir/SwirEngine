@@ -3,8 +3,12 @@ from __future__ import annotations
 import argparse
 import re
 import sys
-import tomllib
 from pathlib import Path
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10 compatibility
+    import tomli as tomllib
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 STABLE_PUBLIC_VERSION = "1.5.0"
