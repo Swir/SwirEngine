@@ -261,8 +261,6 @@ class Renderer2BridgeCompiler:
         return _content_token(
             {
                 "texture": str(key.texture),
-                "filtering": str(key.filtering),
-                "blend": str(key.blend),
                 "layer": int(key.layer),
                 "screen_space": bool(key.screen_space),
             }
@@ -277,6 +275,7 @@ class Renderer2BridgeCompiler:
                 "width": item.width,
                 "height": item.height,
                 "color": item.color,
+                "rotation": item.rotation,
             }
         )
 
@@ -285,10 +284,12 @@ class Renderer2BridgeCompiler:
         return _content_token(
             {
                 "text": item.text,
+                "x": item.x,
+                "y": item.y,
                 "font": item.font,
                 "font_size": item.font_size,
+                "scale": item.scale,
                 "color": item.color,
-                "anchor": item.anchor,
             }
         )
 
