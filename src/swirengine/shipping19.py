@@ -892,6 +892,7 @@ def _strict_float(value: Any, label: str) -> float:
 
 
 __all__ = [
+    "REQUIRED_UI_ACTIONS",
     "AccessibilitySettings",
     "BindingConflict",
     "DisplayApplyResult",
@@ -902,7 +903,6 @@ __all__ = [
     "NavigationUpdate",
     "ProductionActionMap",
     "ProjectShippingDefaults",
-    "REQUIRED_UI_ACTIONS",
     "SettingsStore",
     "ShippingContractError",
     "apply_display_settings",
