@@ -1,10 +1,17 @@
+<!-- SWIR-PROGRESS-SVG-PRO:v1 -->
+
 # SwirEngine 1.9 Roadmap — Production Workflow & Game Shipping
 
 SwirEngine 1.8 is a completed source-only rendering checkpoint. SwirEngine 1.9 turns the mature
 runtime systems into a coherent production path for building, validating, packaging and shipping
 complete games while preserving stable 1.x behavior.
 
-**Current verified progress: 1/10 milestones = 10.0%.**
+**Current verified progress: 2/10 milestones = 20.0%.**
+
+<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 1.9 verified roadmap progress: 2 of 10 milestones, 20.0%, in progress" />
+
+**Verified active scope:** 2/10 milestones = 20.0% — IN PROGRESS.  
+**Release readiness:** frozen; the next public GitHub Release and PyPI publication remains SwirEngine 2.0.
 
 A milestone is checked only after implementation, focused tests, creator documentation, its dedicated
 gate and the repository's required compatibility/regression gates pass on the exact final head.
@@ -26,7 +33,7 @@ gate and the repository's required compatibility/regression gates pass on the ex
   - `swirengine doctor` plus profile-driven `swirengine export` without breaking legacy CLI use;
   - Python 3.10/3.13/3.14 gate, focused regression coverage and creator documentation.
 
-- [ ] **2. Unified Run & Development Session Workflow**
+- [x] **2. Unified Run & Development Session Workflow**
   - manifest-driven project run command with explicit entrypoint and environment handling;
   - deterministic development configuration and actionable startup diagnostics;
   - safe argument/config forwarding without hidden global state;
@@ -104,7 +111,33 @@ Python 3.10/3.13/3.14 Project Production gate and all triggered compatibility/re
 including CI, Desktop Export, source checkpoints 1.6/1.7/1.8, game-demo validation, locked 1.4/1.5
 hardening and real packaged-game probes. Python 3.13 ran 23 focused CLI/export/manifest tests, Ruff and
 compile successfully; the 2,000-cycle parse/profile/fingerprint workload completed in 1.1970 seconds
-under the documented 5.0-second ceiling. The roadmap-marked PR head must re-pass its triggered gates
+under the documented 5.0-second ceiling. The roadmap-marked PR head re-passed its triggered gates
 before merge.
+
+## Milestone 2 verification contract
+
+Milestone 2 is complete only when the exact final implementation candidate satisfies all of the following:
+
+1. Existing manifests without `[run]` retain a safe project-entrypoint/default-working-directory run contract.
+2. `[run]` can select a project-contained entrypoint, working directory, bounded arguments and child-process
+   environment without mutating parent process state.
+3. Absolute/traversal paths and symlink-resolved escapes cannot start outside the project root.
+4. `swirengine run` works for both generated 2D and 3D projects and provides a deterministic `--dry-run` plan.
+5. Creator arguments after `--` are forwarded consistently on supported Python versions, including Python 3.10.
+6. Environment overrides are validated, duplicate override names fail explicitly and `--clean-env` is opt-in.
+7. Process launch never uses a shell; startup failures and child exit codes are surfaced without being hidden.
+8. Portable run-plan fingerprints are checkout-independent and change when effective run configuration changes.
+9. A deterministic 5,000-plan workload remains below the documented 5.0-second Python 3.13 CI ceiling
+   without making runtime/FPS claims.
+10. Focused tests, progress-asset checks, Ruff, compile and the dedicated Python 3.10/3.13/3.14 workflow pass,
+    followed by the repository compatibility/regression gates before the roadmap checkbox is marked complete.
+
+Verified implementation head `e18aa3777598a47c64bcb400946227e6d14583ff` passed the dedicated
+Python 3.10/3.13/3.14 Run Sessions + Progress gate and all triggered compatibility/regression workflows,
+including CI, Desktop Export, source checkpoints 1.6/1.7/1.8, game-demo validation, locked 1.4/1.5
+hardening, real OpenGL source demos, clean-wheel probes and Windows one-file 2D/3D runtime probes.
+Python 3.13 ran 45 focused project/run/export/progress tests, Ruff and compile successfully; the
+5,000-plan workload completed in 0.8142 seconds under the documented 5.0-second ceiling. The
+roadmap-marked PR head must re-pass its triggered gates before merge.
 
 `Release/PyPI: frozen until SwirEngine 2.0`.
