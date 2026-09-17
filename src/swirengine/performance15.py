@@ -12,7 +12,6 @@ from dataclasses import dataclass, fields, is_dataclass
 from pathlib import Path
 from time import perf_counter
 
-
 MetricNumber = int | float
 Clock = Callable[[], float]
 DiagnosticsProvider = Callable[[], object]
