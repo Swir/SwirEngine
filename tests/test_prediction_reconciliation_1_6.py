@@ -159,7 +159,7 @@ def test_correction_transition_supports_creator_smoothing_hook() -> None:
     assert transition.sample(0.49, blend=snap_after_half) == {"x": 10}
     assert transition.sample(0.5, blend=snap_after_half) == {"x": 4}
 
-    with pytest.raises(ValueError, match="\[0, 1\]"):
+    with pytest.raises(ValueError, match=r"\[0, 1\]"):
         transition.sample(1.1)
 
 
