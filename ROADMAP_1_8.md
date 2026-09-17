@@ -3,7 +3,7 @@
 SwirEngine 1.7 is a completed source-only checkpoint. SwirEngine 1.8 continues the path toward 2.0
 with additive rendering scalability systems while preserving stable 1.x behavior.
 
-**Current verified progress: 7/10 milestones = 70.0%.**
+**Current verified progress: 8/10 milestones = 80.0%.**
 
 A milestone is checked only after implementation, focused tests, documentation, its dedicated gate,
 and the repository's required compatibility/regression gates pass on the exact implementation head.
@@ -63,7 +63,7 @@ The final roadmap-marked PR head must pass the required gates again before merge
   - integration with frame pacing/diagnostics without changing simulation truth;
   - creator override and reproducible workload validation.
 
-- [ ] **8. Renderer2 Integration & Compatibility Bridge**
+- [x] **8. Renderer2 Integration & Compatibility Bridge**
   - opt-in graph-backed submission path for existing renderer capabilities;
   - compatibility bridge preserving stable root/public renderer behavior;
   - integration tests covering textures, text, batching, instancing and common 2D/3D paths;
@@ -322,3 +322,38 @@ suite: CI, Desktop Export, Demo Game 3D, Game Demos, Neon Snake 3D, locked 1.4/1
 seconds, Ruff and compile checks passed, and the 200,000-frame workload completed in 0.7995 seconds
 with 3,335 deterministic transitions and final authored tier `low`. This roadmap-marked PR head must
 re-pass its triggered gates before merge. Release/PyPI remain frozen until SwirEngine 2.0.
+
+## Milestone 8 verification contract
+
+Milestone 8 is complete only when the exact implementation candidate satisfies all of the following:
+
+1. `swirengine.renderer2_bridge18` is additive and opt-in and does not replace, monkey-patch or change
+   stable 1.x root/public renderer behavior when the bridge is not explicitly constructed.
+2. Stable 2D scene submission reuses the existing layer ordering and sprite-run batching contract while
+   representing rectangles, text and sprite batches in a bounded deterministic graph-backed frame plan.
+3. 3D preparation reuses the existing backend-independent `Renderer2Planner` pass schedule without
+   requiring a GPU context, and common Renderer2 pass ordering remains covered by compatibility tests.
+4. Active `InstancedMesh3D` batches and visible instances are accounted for explicitly, while a backend
+   is never reported as native graph-capable unless it actually exposes the `render_graph18` hook.
+5. The active Dynamic Quality 1.8 tier is carried as portable frame metadata without mutating legacy
+   framebuffer dimensions, fixed-step timing, physics or other simulation truth.
+6. Native graph execution, graph-validated legacy compatibility execution and explicit fallback are
+   distinct observable paths; compatibility execution invokes the historical renderer exactly once.
+7. Preparation/capability failures are contained before backend submission and creators can require
+   strict behavior by disabling preparation fallback or compatibility execution.
+8. Graph/run counts are hard-bounded and portable SHA-256 frame fingerprints retain hashed submission
+   identity while excluding raw texture paths, text payloads and backend objects from portable output.
+9. A deterministic 500-frame × 128-run workload (64,000 logical runs) remains below the documented
+   generous 5.0-second Python 3.13 CI ceiling without making an FPS or GPU-throughput claim.
+10. Focused bridge/Renderer2/batching/text/instancing/render regressions, Ruff, compile and creator demo
+    pass on Python 3.10/3.13/3.14, followed by the full required repository compatibility/regression
+    suite on the exact implementation head.
+
+Verified implementation head `68ac179cff1f43681203a9819e7bb012194ed54e` passed the dedicated
+Python 3.10/3.13/3.14 Renderer2 Bridge gate plus CI, Desktop Export, Demo Game 3D, Game Demos,
+Neon Snake 3D, locked 1.4/1.5 hardening and the 1.6/1.7 source checkpoints. The Python 3.13 dedicated
+gate ran 128 focused/render regressions in 0.99 seconds, Ruff and compile checks passed, and the
+64,000-logical-run workload completed in 1.1937 seconds. A transient locked-1.5 save/profile workload
+run exceeded its historical ceiling on a shared runner; the failed job was re-run rather than bypassed
+and then passed. This roadmap-marked PR head must re-pass its triggered gates before merge. Release/PyPI
+remain frozen until SwirEngine 2.0.
