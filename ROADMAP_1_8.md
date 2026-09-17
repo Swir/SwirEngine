@@ -3,7 +3,7 @@
 SwirEngine 1.7 is a completed source-only checkpoint. SwirEngine 1.8 continues the path toward 2.0
 with additive rendering scalability systems while preserving stable 1.x behavior.
 
-**Current verified progress: 6/10 milestones = 60.0%.**
+**Current verified progress: 7/10 milestones = 70.0%.**
 
 A milestone is checked only after implementation, focused tests, documentation, its dedicated gate,
 and the repository's required compatibility/regression gates pass on the exact implementation head.
@@ -57,7 +57,7 @@ The final roadmap-marked PR head must pass the required gates again before merge
   - bounded capture/export metadata and creator-readable hotspots;
   - no forced GPU synchronization in default runtime paths.
 
-- [ ] **7. Dynamic Resolution & Quality Budget Controller**
+- [x] **7. Dynamic Resolution & Quality Budget Controller**
   - opt-in deterministic quality budget policy;
   - bounded resolution/quality steps with hysteresis and recovery rules;
   - integration with frame pacing/diagnostics without changing simulation truth;
@@ -288,3 +288,37 @@ Python 3.10/3.13/3.14 GPU Timing Capture gate plus CI, Desktop Export, game-demo
 regressions in 0.75 seconds and completed the 64,000-query workload in 0.2587 seconds with 500 retained
 frames and zero pending queries. This roadmap-marked PR head must re-pass its triggered gates before
 merge. Release/PyPI remain frozen until SwirEngine 2.0.
+
+## Milestone 7 verification contract
+
+Milestone 7 is complete only when the exact implementation candidate satisfies all of the following:
+
+1. `swirengine.render_quality18` is additive and renderer-independent; stable 1.x renderer behavior is
+   unchanged unless a creator explicitly instantiates and wires the dynamic-quality controller.
+2. Creator-authored quality steps have hard count/name/value bounds and must be monotonically ordered so
+   degradation cannot silently increase resolution or generic quality scale.
+3. Timing input is finite and atomic, with deterministic selection of CPU frame time, resolved GPU frame
+   time, or their maximum; missing GPU timing falls back safely without changing simulation timing.
+4. Rolling timing evidence, asymmetric degrade/recover thresholds, streak requirements and transition
+   cooldown provide deterministic hysteresis and prevent one-frame spikes from causing quality thrash.
+5. Adaptation moves at most one authored quality step per transition, respects authored upper/lower
+   bounds and preserves fixed-step, physics, gameplay and other simulation truth.
+6. Creator manual baseline changes and persistent overrides are explicit, bounded and observable; an
+   override pins the requested tier until cleared without being misreported as adaptive degradation.
+7. `PerformanceDiagnostics2` integration exposes numeric quality state and consumes the explicit
+   `gpu.frame_ms` counter from GPU Timing Capture 1.8 without forcing GPU synchronization.
+8. Portable diagnostics/state and deterministic SHA-256 fingerprints contain logical evidence only and
+   exclude renderer/backend objects; invalid samples fail before mutating controller state.
+9. A deterministic 200,000-frame workload remains below the documented generous 5.0-second Python 3.13
+   CI ceiling while exercising thousands of transitions, without making an FPS/GPU-throughput claim.
+10. Focused quality/timing/render regressions, Ruff, compile, creator demo and the dedicated Python
+    3.10/3.13/3.14 workflow pass, followed by CI, Desktop Export, game-demo validation, locked 1.4/1.5
+    hardening and 1.6/1.7 source-checkpoint regressions on the exact implementation head.
+
+Verified implementation head `d44a8d0d6e9a7dd2f96340cc1b4326d41617e0fc` passed the dedicated
+Python 3.10/3.13/3.14 Dynamic Quality gate plus the full required repository compatibility/regression
+suite: CI, Desktop Export, Demo Game 3D, Game Demos, Neon Snake 3D, locked 1.4/1.5 hardening and the
+1.6/1.7 source checkpoints. The Python 3.13 dedicated gate ran 81 focused/regression tests in 1.06
+seconds, Ruff and compile checks passed, and the 200,000-frame workload completed in 0.7995 seconds
+with 3,335 deterministic transitions and final authored tier `low`. This roadmap-marked PR head must
+re-pass its triggered gates before merge. Release/PyPI remain frozen until SwirEngine 2.0.
