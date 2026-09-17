@@ -1,0 +1,121 @@
+name: Dedicated Server 1.6
+
+on:
+  push:
+    branches: ["feat/1.6-dedicated-server-runtime"]
+    paths:
+      - "src/swirengine/server16.py"
+      - "tests/test_dedicated_server_1_6.py"
+      - "tests/test_multiplayer_2_1_4.py"
+      - "tests/test_multiplayer_replication_1_6.py"
+      - "tests/test_prediction_reconciliation_1_6.py"
+      - "tests/test_session_lifecycle_1_6.py"
+      - "tests/test_transport_qos_1_6.py"
+      - "tools/benchmark_dedicated_server_1_6.py"
+      - "examples/dedicated_server_1_6/**"
+      - "docs/DEDICATED_SERVER_RUNTIME_1_6.md"
+      - "ROADMAP_1_6.md"
+      - ".github/workflows/dedicated-server-1-6.yml"
+  pull_request:
+    paths:
+      - "src/swirengine/server16.py"
+      - "tests/test_dedicated_server_1_6.py"
+      - "tests/test_multiplayer_2_1_4.py"
+      - "tests/test_multiplayer_replication_1_6.py"
+      - "tests/test_prediction_reconciliation_1_6.py"
+      - "tests/test_session_lifecycle_1_6.py"
+      - "tests/test_transport_qos_1_6.py"
+      - "tools/benchmark_dedicated_server_1_6.py"
+      - "examples/dedicated_server_1_6/**"
+      - "docs/DEDICATED_SERVER_RUNTIME_1_6.md"
+      - "ROADMAP_1_6.md"
+      - ".github/workflows/dedicated-server-1-6.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: dedicated-server-1-6-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  dedicated-server:
+    name: Dedicated Server / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install CPython 3.14 native build prerequisites
+        if: matrix.python-version == '3.14'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev
+
+      - name: Install development dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Run dedicated-server and locked multiplayer contracts
+        run: >-
+          pytest
+          tests/test_dedicated_server_1_6.py
+          tests/test_multiplayer_2_1_4.py
+          tests/test_multiplayer_replication_1_6.py
+          tests/test_prediction_reconciliation_1_6.py
+          tests/test_session_lifecycle_1_6.py
+          tests/test_transport_qos_1_6.py
+
+      - name: Lint dedicated-server surface
+        run: >-
+          ruff check
+          src/swirengine/server16.py
+          tests/test_dedicated_server_1_6.py
+          tools/benchmark_dedicated_server_1_6.py
+          examples/dedicated_server_1_6/run_server.py
+
+      - name: Compile dedicated-server surfaces
+        run: >-
+          python -m compileall -q
+          src/swirengine/server16.py
+          tests/test_dedicated_server_1_6.py
+          tools/benchmark_dedicated_server_1_6.py
+          examples/dedicated_server_1_6/run_server.py
+
+      - name: Run deterministic dedicated-server workload
+        if: matrix.python-version == '3.13'
+        run: python tools/benchmark_dedicated_server_1_6.py
+
+      - name: Run dedicated-server creator smoke
+        env:
+          SWIR_SERVER_TICK_RATE_HZ: "500"
+          SWIR_SERVER_MAX_TICKS: "8"
+        run: python examples/dedicated_server_1_6/run_server.py
+
+  linux-container-smoke:
+    name: Linux container smoke
+    needs: dedicated-server
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build headless dedicated-server image
+        run: >-
+          docker build
+          -f examples/dedicated_server_1_6/Dockerfile
+          -t swirengine-dedicated-server-1-6 .
+      - name: Run bounded container server
+        run: >-
+          docker run --rm
+          -e SWIR_SERVER_TICK_RATE_HZ=500
+          -e SWIR_SERVER_MAX_TICKS=8
+          swirengine-dedicated-server-1-6
