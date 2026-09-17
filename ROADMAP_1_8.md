@@ -3,7 +3,7 @@
 SwirEngine 1.7 is a completed source-only checkpoint. SwirEngine 1.8 continues the path toward 2.0
 with additive rendering scalability systems while preserving stable 1.x behavior.
 
-**Current verified progress: 9/10 milestones = 90.0%.**
+**Current verified progress: 10/10 milestones = 100.0%.**
 
 A milestone is checked only after implementation, focused tests, documentation, its dedicated gate,
 and the repository's required compatibility/regression gates pass on the exact implementation head.
@@ -75,7 +75,7 @@ The final roadmap-marked PR head must pass the required gates again before merge
   - allocation/upload/backend failure injection with bounded recovery;
   - Linux OpenGL and Windows source/showcase coverage without a separate demo release.
 
-- [ ] **10. 1.8 Source Checkpoint & Roadmap Closeout**
+- [x] **10. 1.8 Source Checkpoint & Roadmap Closeout**
   - full supported CI matrix plus locked 1.4/1.5/1.6/1.7 contracts;
   - package build/install and source showcase validation;
   - source-checkpoint auditor refusing completion below 10/10;
@@ -391,3 +391,40 @@ focused/integration tests in 1.08 seconds; Ruff and compile checks passed, and t
 processed 2,400 total 2D/3D frames in 0.5934 seconds. Windows source-showcase coverage and the Linux
 Mesa OpenGL 3.3 smoke path also passed. This roadmap-marked PR head must re-pass its triggered gates
 before merge. Release/PyPI remain frozen until SwirEngine 2.0.
+
+## Milestone 10 verification contract
+
+Milestone 10 is complete only when the exact source-checkpoint candidate satisfies all of the following:
+
+1. `tools/verify_1_8_source_checkpoint.py --require-complete` refuses every roadmap state below exactly
+   10/10 = 100.0% and validates that declared progress matches the authoritative milestone checkboxes.
+2. Public package metadata remains frozen at `1.5.0`, the 2.0-only release policy remains explicit and
+   no dedicated 1.8 release, tag or PyPI publication workflow is introduced.
+3. Every verified 1.8 rendering subsystem, dedicated workflow and closeout artifact is present, while
+   the completed 1.4/1.5/1.6/1.7 compatibility and source-checkpoint contracts remain locked in place.
+4. The dedicated source-checkpoint matrix passes on Python 3.10, 3.13 and 3.14 and re-runs the strict
+   completed 1.7 checkpoint audit before accepting the 1.8 closeout candidate.
+5. Focused 1.8 regressions plus the full Python 3.13 repository suite, Ruff and compile validation pass
+   without weakening historical correctness or performance gates.
+6. Wheel and sdist builds succeed, `twine check` validates distribution metadata and no intermediate
+   publication occurs as part of packaging validation.
+7. A clean wheel install retains public version `1.5.0`, imports every 1.8 subsystem from the installed
+   artifact and executes the source-only 1.8 showcase plus headless 2D and 3D game workflows.
+8. Linux and Windows source-showcase validation passes, while the existing desktop-export, real OpenGL,
+   Windows one-file game probes and representative creator-facing runtime gates remain green.
+9. Deterministic render-soak evidence remains part of the integrated checkpoint and transient shared-runner
+   timing noise must be re-run and verified rather than bypassed or hidden by relaxing historical gates.
+10. After the roadmap is marked 10/10, the exact roadmap-marked head must re-run the strict 1.8 auditor
+    and all required repository compatibility/regression gates before merge to `main`.
+
+Verified pre-roadmap checkpoint head `b9acf38e940bab7536753a096b1b732a0a95a173` passed the dedicated
+Python 3.10/3.13/3.14 Source Checkpoint 1.8 gate, CI, Desktop Export, locked 1.4/1.5 hardening and the
+1.6/1.7 source checkpoints. Python 3.13 ran 179 focused 1.8 tests in 1.47 seconds and 1,368 full
+repository tests in 6.77 seconds; Ruff and compile validation passed. Wheel/sdist build, `twine check`,
+clean-wheel installation, complete 1.8 imports, installed-artifact showcase/game probes, Ubuntu/Windows
+source-showcase coverage and Windows one-file 2D/3D runtime probes passed. A shared-runner locked-1.5
+save/profile workload initially exceeded its historical ceiling at 12.470769 seconds; the failed job was
+re-run without changing the gate and passed. This 10/10 roadmap-marked head must now re-pass the strict
+checkpoint and required gates before merge. No 1.8 release/tag/PyPI publication is permitted.
+
+Release/PyPI remain frozen until SwirEngine 2.0.
