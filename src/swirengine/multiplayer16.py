@@ -5,7 +5,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Any
 
-from .multiplayer14 import ReplicatedEntity, SnapshotDelta, WorldSnapshot
+from .multiplayer14 import SnapshotDelta, WorldSnapshot
 from .networking import NetworkPacket
 
 REPLICATION_UPDATE_PACKET_KIND = "swir.multiplayer16.update"
@@ -335,9 +335,7 @@ class ReplicationStreamServer:
             if missing:
                 preview = ", ".join(str(item) for item in missing[:8])
                 raise KeyError(f"missing interest metadata for replicated entities: {preview}")
-        relevant = set(
-            self.interest.query(view, limit=self.max_entities_per_client)
-        )
+        relevant = set(self.interest.query(view, limit=self.max_entities_per_client))
         entities = tuple(entity for entity in snapshot.entities if entity.net_id in relevant)
         return WorldSnapshot(snapshot.tick, snapshot.server_time, entities)
 
