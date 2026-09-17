@@ -38,6 +38,15 @@ def _priority(value: object) -> int:
     return value
 
 
+def _wire_snapshot(packet: NetworkPacket) -> NetworkPacket:
+    """Detach a packet through the stable wire codec so queued bounds cannot drift."""
+
+    if not isinstance(packet, NetworkPacket):
+        raise TypeError("packet must be a NetworkPacket")
+    framed = packet.to_bytes()
+    return NetworkPacket.from_body(framed[4:])
+
+
 class DeliveryPolicy(str, Enum):
     RELIABLE = "reliable"
     UNRELIABLE = "unreliable"
@@ -100,6 +109,7 @@ class QoSEnvelope:
             raise TypeError("packet must be a NetworkPacket")
 
     def to_packet(self) -> NetworkPacket:
+        inner = _wire_snapshot(self.packet)
         return NetworkPacket(
             TRANSPORT_QOS_PACKET_KIND,
             {
@@ -107,8 +117,8 @@ class QoSEnvelope:
                 "sequence": self.sequence,
                 "delivery": self.delivery.value,
                 "packet": {
-                    "kind": self.packet.kind,
-                    "payload": self.packet.payload,
+                    "kind": inner.kind,
+                    "payload": inner.payload,
                 },
             },
         )
@@ -129,7 +139,7 @@ class QoSEnvelope:
             channel=payload.get("channel"),
             sequence=payload.get("sequence"),
             delivery=payload.get("delivery"),
-            packet=NetworkPacket(kind, nested_payload),
+            packet=_wire_snapshot(NetworkPacket(kind, nested_payload)),
         )
 
 
@@ -205,8 +215,14 @@ class TransportQoSScheduler:
             raise TypeError("packet must be a NetworkPacket")
 
         sequence = self._next_sequence[policy.name]
-        envelope = QoSEnvelope(policy.name, sequence, policy.delivery, packet)
-        encoded_bytes = len(envelope.to_packet().to_bytes())
+        envelope = QoSEnvelope(
+            policy.name,
+            sequence,
+            policy.delivery,
+            _wire_snapshot(packet),
+        )
+        wire_packet = envelope.to_packet()
+        encoded_bytes = len(wire_packet.to_bytes())
         counters = self._counters[policy.name]
         if encoded_bytes > policy.max_packet_bytes or encoded_bytes > policy.max_queue_bytes:
             counters.oversized_rejections += 1
@@ -239,7 +255,8 @@ class TransportQoSScheduler:
                 counters.dropped_bytes += dropped.encoded_bytes
 
         self._enqueue_order += 1
-        queue.append(_QueuedPacket(envelope, encoded_bytes, self._enqueue_order))
+        stored_envelope = QoSEnvelope.from_packet(wire_packet)
+        queue.append(_QueuedPacket(stored_envelope, encoded_bytes, self._enqueue_order))
         self._queue_bytes[policy.name] = queue_bytes + encoded_bytes
         self._next_sequence[policy.name] = sequence + 1
         counters.enqueued_packets += 1
