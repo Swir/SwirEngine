@@ -2,7 +2,7 @@
 
 SwirEngine 1.5.0 is released and locked as the stable compatibility baseline. The 1.6 line is additive: existing 1.x imports and behavior stay stable unless a genuine maintenance fix is required.
 
-**Current verified progress: 8/10 milestones = 80.0%.**
+**Current verified progress: 9/10 milestones = 90.0%.**
 
 A milestone is checked only after its implementation, focused tests, documentation, and dedicated validation gate pass on the exact commit that is merged to `main`. Repository activity, scaffolding, or an open pull request does not count as completion.
 
@@ -68,7 +68,7 @@ A milestone is checked only after its implementation, focused tests, documentati
   - bandwidth/entity-budget hotspot reporting;
   - creator-readable diagnostics that remain safe in headless runtimes.
 
-- [ ] **9. Multiplayer Showcase & Soak Gate**
+- [x] **9. Multiplayer Showcase & Soak Gate**
   - source-only multiplayer example integrating the verified 1.6 systems;
   - deterministic headless multi-client soak workload;
   - packet loss/reordering/jitter simulation with bounded budgets;
@@ -199,3 +199,18 @@ Milestone 8 is complete only when the exact implementation head satisfies all of
 8. Canonical JSON produces stable SHA-256 fingerprints, while `export_json(...)` writes through a same-directory temporary file before replacement so requested captures are not left partially written.
 9. Focused profiler tests, strict Ruff, compile checks, creator demo, the 15,360-sample workload benchmark, and locked 1.6 replication/prediction/transport/session regressions pass on Python 3.10, 3.13 and 3.14 in the dedicated workflow; the representative Python 3.13 workload completed in 0.2575 seconds against the documented 4.0-second CI budget.
 10. Normal CI, Desktop Export, source game demos, Neon Snake 3D, and locked 1.4/1.5 hardening workflows remain green on the verified implementation head before merge to `main`; the single transient Save & Profile 2.0 workload timing outlier was rerun successfully without code changes before the milestone was closed.
+
+## Milestone 9 verification contract
+
+Milestone 9 is complete only when the exact implementation head satisfies all of the following before the roadmap completion marker is committed:
+
+1. `swirengine.multiplayer_showcase16` remains additive and source-only: it composes the verified 1.6 multiplayer/runtime systems without changing stable 1.x root imports, transport framing, or published 1.5 behavior.
+2. `DeterministicPacketLink` snapshots accepted packets through the stable `NetworkPacket` codec before queueing them, so later creator-side payload mutation cannot alter simulated wire state.
+3. Packet impairment is seed-deterministic and explicitly models loss, duplication, jitter and reorder delay while enforcing a creator-configurable hard in-flight packet bound with capacity-drop diagnostics instead of unbounded queue growth.
+4. `MultiplayerSoakRunner` integrates interest-aware replication, prediction/reconciliation, session lifecycle, Transport QoS, `DedicatedServerRuntime` fixed ticks and `MultiplayerNetworkProfiler` in one headless multi-client match rather than introducing a parallel networking stack.
+5. Replication ACKs advance only after successfully applied updates; stale/duplicate QoS traffic is suppressed, missing client delta baselines enter the explicit resynchronization path, and impairment never silently becomes a new replication dependency.
+6. Prediction corrections remain authoritative-simulation inputs with bounded replay work, while the showcase records deterministic correction, traffic, replication and profiler counters without treating presentation smoothing or wall-clock timing as simulation truth.
+7. `MultiplayerSoakReport` is portable and fingerprintable across identical seed/input runs; wall-clock dedicated-server tick durations are deliberately excluded from the deterministic report fingerprint while bounded runtime performance is measured separately by the workload gate.
+8. Focused soak tests, locked 1.6 multiplayer subsystem tests, stable networking/multiplayer regressions, strict Ruff, compile checks and the source-only creator showcase pass in the dedicated workflow on Python 3.10, 3.13 and 3.14, including Windows and Linux execution.
+9. The representative Python 3.13 workload exercises 8 clients × 360 authoritative ticks × 64 authored entities with packet impairment and completed 2,379 applied updates in 5.7402 seconds against the documented 8.0-second regression budget, without making an FPS or real-network latency claim.
+10. Normal CI, Desktop Export, Demo Game 3D, Game Demos, Neon Snake 3D and locked 1.4/1.5 hardening workflows were green on the verified implementation PR head before merge; PR #116 was then squash-merged to `main` as source-only SwirEngine 1.6 development with no release/tag/PyPI action.
