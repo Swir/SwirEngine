@@ -249,7 +249,7 @@ def test_drain_call_budget_defers_remaining_lanes() -> None:
     assert calls == ["a"]
     assert frame.drain_calls == 1
     assert frame.budget_exhausted
-    assert frame.deferred_lanes == ("a", "b")
+    assert frame.deferred_lanes == ("b",)
 
 
 def test_validation_rejects_malformed_budgets() -> None:
