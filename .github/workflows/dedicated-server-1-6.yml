@@ -76,10 +76,14 @@ jobs:
           tests/test_session_lifecycle_1_6.py
           tests/test_transport_qos_1_6.py
 
-      - name: Lint dedicated-server surface
+      - name: Lint dedicated-server runtime
+        # The runtime intentionally contains one broad cleanup boundary so an on_stop
+        # callback cannot mask the original startup/tick failure being diagnosed.
+        run: ruff check --ignore BLE001 src/swirengine/server16.py
+
+      - name: Lint dedicated-server tests and tools
         run: >-
           ruff check
-          src/swirengine/server16.py
           tests/test_dedicated_server_1_6.py
           tools/benchmark_dedicated_server_1_6.py
           examples/dedicated_server_1_6/run_server.py
