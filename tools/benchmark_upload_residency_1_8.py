@@ -8,7 +8,6 @@ from swirengine.upload_residency18 import (
     UploadRequest,
 )
 
-
 FRAMES = 250
 ASSETS = 256
 REQUESTS_PER_FRAME = 32
