@@ -12,6 +12,7 @@ except ModuleNotFoundError:  # Python 3.10
 
 TARGET_VERSION = "1.4.0"
 PREVIOUS_STABLE_VERSION = "1.3.0"
+ACTIVE_STABLE_VERSIONS = {PREVIOUS_STABLE_VERSION, TARGET_VERSION, "1.5.0"}
 EXPECTED_TOTAL = 10
 EXPECTED_PYTHON_RANGE = ">=3.10,<3.15"
 REQUIRED_1_4_DOCS = (
@@ -79,6 +80,11 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
     project = tomllib.loads(_read(root, "pyproject.toml"))["project"]
     version = str(project["version"])
     _require(
+        version in ACTIVE_STABLE_VERSIONS,
+        f"package version preserves the locked 1.4 compatibility line: {version}",
+        checks,
+    )
+    _require(
         project["requires-python"] == EXPECTED_PYTHON_RANGE,
         f"Python contract is {EXPECTED_PYTHON_RANGE}",
         checks,
@@ -91,11 +97,18 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             checks,
         )
     urls = project.get("urls", {})
-    _require(
-        str(urls.get("Roadmap", "")).endswith("/ROADMAP_1_4.md"),
-        "project metadata points at the 1.4 roadmap",
-        checks,
-    )
+    if version == TARGET_VERSION:
+        _require(
+            str(urls.get("Roadmap", "")).endswith("/ROADMAP_1_4.md"),
+            "1.4 publication metadata points at the 1.4 roadmap",
+            checks,
+        )
+    else:
+        _require(
+            str(urls.get("1.4 Roadmap", "")).endswith("/ROADMAP_1_4.md"),
+            "later stable metadata preserves the locked 1.4 roadmap link",
+            checks,
+        )
 
     roadmap_text = _read(root, "ROADMAP_1_4.md")
     roadmap = parse_roadmap(roadmap_text)
@@ -126,7 +139,7 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
     if require_complete:
         _require(
             roadmap.completed == 10 and roadmap.remaining == 0,
-            "1.4 release requires exactly 10/10 deliverables",
+            "locked 1.4 contract requires exactly 10/10 deliverables",
             checks,
         )
         _require(
@@ -134,29 +147,28 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             "completed 1.4 roadmap status is COMPLETE",
             checks,
         )
-        _require(version == TARGET_VERSION, f"final package version is {TARGET_VERSION}", checks)
+        _require(
+            version in {TARGET_VERSION, "1.5.0"},
+            "complete 1.4 compatibility contract permits the 1.4 publication or later 1.5 stable line",
+            checks,
+        )
     else:
         _require(
             roadmap.completed in {9, 10},
-            "1.4 hardening phase must be at milestone 9 or 10",
-            checks,
-        )
-        _require(
-            version in {PREVIOUS_STABLE_VERSION, TARGET_VERSION},
-            f"package version is valid for the 1.4 hardening phase: {version}",
+            "1.4 hardening/compatibility phase must be at milestone 9 or 10",
             checks,
         )
         if roadmap.completed < 10:
             _require(
                 version == PREVIOUS_STABLE_VERSION,
-                "stable package remains 1.3.0 before 10/10",
+                "stable package remains 1.3.0 before 1.4 reaches 10/10",
                 checks,
             )
 
     init_text = _read(root, "src/swirengine/__init__.py")
     _require(
         f'__version__ = "{version}"' in init_text,
-        "runtime __version__ matches project metadata",
+        "runtime __version__ matches current project metadata",
         checks,
     )
 
@@ -194,14 +206,14 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
     if require_complete:
         _require(
             "verify_1_4_release_candidate.py --require-complete" in hardening,
-            "final hardening workflow runs the strict complete contract",
+            "locked 1.4 hardening workflow keeps the complete compatibility contract",
             checks,
         )
 
     release = _read(root, ".github/workflows/release.yml")
     _require(
         "pypa/gh-action-pypi-publish@release/v1" in release,
-        "PyPI publication uses Trusted Publishing",
+        "current publication workflow uses Trusted Publishing",
         checks,
     )
     _require("id-token: write" in release, "release workflow keeps OIDC publication permission", checks)
@@ -210,27 +222,27 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         "publication cannot hide duplicate artifacts",
         checks,
     )
-    if require_complete:
+    if require_complete and version == TARGET_VERSION:
         _require(
             "verify_1_4_release_candidate.py --require-complete" in release,
-            "release workflow hard-gates the complete 1.4 contract",
+            "historical 1.4 publication workflow hard-gates the complete 1.4 contract",
             checks,
         )
         _require(
             "neon_frontier_1_4/run_game.py" in release,
-            "release workflow validates Neon Frontier 1.4",
+            "historical 1.4 publication workflow validates Neon Frontier 1.4",
             checks,
         )
         _require(
             "RELEASE_NOTES_1_4.md" in release,
-            "GitHub release is wired to the 1.4 release notes",
+            "historical GitHub release is wired to the 1.4 release notes",
             checks,
         )
-        _require(
-            "branches:" not in release.split("jobs:", 1)[0],
-            "publication workflow has no main-branch publish trigger",
-            checks,
-        )
+    _require(
+        "branches:" not in release.split("jobs:", 1)[0],
+        "publication workflow has no main-branch publish trigger",
+        checks,
+    )
 
     ci = _read(root, ".github/workflows/ci.yml")
     _require(
@@ -240,28 +252,35 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
     )
     _require(
         "verify_1_4_release_candidate.py" in ci,
-        "normal CI audits the 1.4 release contract",
+        "normal CI audits the locked 1.4 compatibility contract",
         checks,
     )
 
     readme = _read(root, "README.md")
+    _require("Neon Frontier 1.4" in readme, "README keeps the locked 1.4 showcase documented", checks)
     if require_complete:
-        _require(
-            f"# SwirEngine {TARGET_VERSION}" in readme,
-            "README title matches the final 1.4 version",
-            checks,
-        )
-        _require("10/10 = 100.0%" in readme, "README reports verified 10/10 progress", checks)
-        _require("Neon Frontier 1.4" in readme, "README documents the final showcase", checks)
+        _require("10/10 = 100.0%" in readme, "README reports a verified complete stable roadmap", checks)
+        if version == TARGET_VERSION:
+            _require(
+                f"# SwirEngine {TARGET_VERSION}" in readme,
+                "README title matches the historical 1.4 publication",
+                checks,
+            )
+        else:
+            _require(
+                "SwirEngine 1.4" in readme and "released and locked" in readme,
+                "later README preserves 1.4 as a released and locked compatibility line",
+                checks,
+            )
         notes = _read(root, "RELEASE_NOTES_1_4.md")
-        _require(TARGET_VERSION in notes, "1.4 release notes name the release version", checks)
+        _require(TARGET_VERSION in notes, "locked 1.4 release notes still name version 1.4.0", checks)
 
     return AuditReport(version=version, roadmap=roadmap, checks=tuple(checks))
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Verify the SwirEngine 1.4 release-candidate contract."
+        description="Verify the locked SwirEngine 1.4 release/compatibility contract."
     )
     parser.add_argument("--require-complete", action="store_true")
     args = parser.parse_args()

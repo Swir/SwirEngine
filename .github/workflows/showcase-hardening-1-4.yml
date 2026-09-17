@@ -32,9 +32,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e ".[dev]"
-      - name: Verify complete 1.4 release-candidate contract
+      - name: Verify locked complete 1.4 compatibility contract
         run: python tools/verify_1_4_release_candidate.py --require-complete
-      - name: Run final 1.4 contract tests
+      - name: Run locked 1.4 contract tests
         run: pytest tests/test_release_1_4_contract.py
       - name: Run complete headless integration probe
         env:
@@ -42,12 +42,12 @@ jobs:
         run: python demo_projects/neon_frontier_1_4/run_game.py
       - name: Enforce integrated performance budget
         run: python tools/benchmark_showcase_1_4.py --rounds 3 --budget-ms 2500
-      - name: Lint final hardening surface
+      - name: Lint locked hardening surface
         run: >-
           ruff check demo_projects/neon_frontier_1_4 tests/test_release_1_4_contract.py
           tools/benchmark_showcase_1_4.py tools/verify_1_4_release_candidate.py
           tools/verify_1_3_release_candidate.py
-      - name: Compile final hardening surface
+      - name: Compile locked hardening surface
         run: >-
           python -m compileall -q demo_projects/neon_frontier_1_4 tools
           tests/test_release_1_4_contract.py
@@ -74,7 +74,7 @@ jobs:
         run: xvfb-run -a python demo_projects/neon_frontier_1_4/run_game.py
 
   clean-wheel:
-    name: Clean wheel install
+    name: Clean wheel install + locked 1.4 compatibility probe
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -84,13 +84,13 @@ jobs:
       - run: python -m pip install --upgrade pip build twine
       - run: python -m build
       - run: python -m twine check dist/*
-      - name: Install wheel into clean environment and run integration probe
+      - name: Install current wheel into clean environment and run 1.4 integration probe
         shell: bash
         run: |
           python -m venv .verify14
           .verify14/bin/python -m pip install --upgrade pip
           .verify14/bin/python -m pip install dist/swirengine-*.whl
-          .verify14/bin/python -c "import swirengine; assert swirengine.__version__ == '1.4.0'"
+          .verify14/bin/python -c "import tomllib, swirengine; expected=tomllib.load(open('pyproject.toml','rb'))['project']['version']; assert swirengine.__version__ == expected; assert expected in {'1.4.0','1.5.0'}; print(expected)"
           SWIR_1_4_HEADLESS_PROBE=1 .verify14/bin/python demo_projects/neon_frontier_1_4/run_game.py
 
   packaged-windows:
