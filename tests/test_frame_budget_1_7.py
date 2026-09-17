@@ -115,6 +115,34 @@ def test_callback_underfill_marks_lane_exhausted_without_false_deferral() -> Non
     assert diagnostics.lanes["assets"]["exhausted_frames"] == 1
 
 
+def test_lane_diagnostics_report_full_frame_totals_across_multiple_calls() -> None:
+    clock = FakeClock()
+
+    def drain(limit: int) -> int:
+        clock.advance_ms(0.1)
+        return limit
+
+    controller = FrameTimeBudgetController(frame_budget_ms=5.0, clock=clock)
+    controller.register(
+        "assets",
+        drain,
+        max_items_per_frame=3,
+        reserved_items=1,
+    )
+
+    frame = controller.run_frame()
+    diagnostics = controller.diagnostics().lanes["assets"]
+
+    assert frame.items_drained == 3
+    assert frame.lane_reports[0].calls == 2
+    assert frame.lane_reports[0].elapsed_ms == pytest.approx(0.2)
+    assert diagnostics["calls_total"] == 2
+    assert diagnostics["items_total"] == 3
+    assert diagnostics["last_items"] == 3
+    assert diagnostics["last_elapsed_ms"] == pytest.approx(0.2)
+    assert diagnostics["max_elapsed_ms"] == pytest.approx(0.2)
+
+
 def test_callback_failure_is_isolated_and_later_lane_continues() -> None:
     calls: list[str] = []
 
@@ -255,6 +283,8 @@ def test_drain_call_budget_defers_remaining_lanes() -> None:
 def test_validation_rejects_malformed_budgets() -> None:
     with pytest.raises(ValueError, match="frame_budget_ms"):
         FrameTimeBudgetController(frame_budget_ms=0.0)
+    with pytest.raises(TypeError, match="frame_budget_ms"):
+        FrameTimeBudgetController(frame_budget_ms=True)
     with pytest.raises(TypeError, match="max_items_per_frame"):
         FrameTimeBudgetController(max_items_per_frame=True)
 
@@ -268,3 +298,9 @@ def test_validation_rejects_malformed_budgets() -> None:
         )
     with pytest.raises(TypeError, match="priority"):
         controller.register("bad-priority", lambda limit: 0, priority=True)
+    with pytest.raises(TypeError, match="enabled"):
+        controller.register("bad-enabled", lambda limit: 0, enabled=1)  # type: ignore[arg-type]
+
+    controller.register("valid", lambda limit: 0)
+    with pytest.raises(TypeError, match="enabled"):
+        controller.configure("valid", enabled=1)  # type: ignore[arg-type]
