@@ -1,0 +1,41 @@
+name: Game State Production 1.9
+
+on:
+  push:
+    branches: [main, "feat/1.9-game-state-production"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  game-state-production:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install CPython 3.14 prerequisites
+        if: matrix.python-version == '3.14'
+        run: sudo apt-get update && sudo apt-get install -y libx11-dev
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Focused tests
+        run: pytest -q tests/test_game_state_production_1_9.py
+      - name: Stable save regressions
+        run: pytest -q tests/test_storage.py tests/test_save_profile_2_1_5.py tests/test_background_save_1_7.py
+      - name: Creator flow
+        run: python examples/demo_game_state_production_1_9.py
+      - name: Bounded workload
+        if: matrix.python-version == '3.13'
+        run: python tools/benchmark_game_state_production_1_9.py
+      - name: Ruff
+        if: matrix.python-version == '3.13'
+        run: ruff check src/swirengine/game_state19.py tests/test_game_state_production_1_9.py examples/demo_game_state_production_1_9.py tools/benchmark_game_state_production_1_9.py
+      - name: Compile
+        run: python -m compileall -q src/swirengine/game_state19.py tests/test_game_state_production_1_9.py examples/demo_game_state_production_1_9.py tools/benchmark_game_state_production_1_9.py
