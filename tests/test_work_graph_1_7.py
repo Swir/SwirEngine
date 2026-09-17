@@ -110,6 +110,40 @@ def test_poll_enforces_one_shared_background_submission_budget() -> None:
         graph.shutdown()
 
 
+def test_background_admission_defers_when_scheduler_pending_budget_is_full() -> None:
+    gate = threading.Event()
+    graph = StreamingWorkGraph(
+        max_workers=1,
+        max_pending_background=1,
+        max_background_submissions_per_poll=8,
+    )
+
+    def hold(_context, value: int) -> int:
+        gate.wait(timeout=0.5)
+        return value
+
+    for index in range(3):
+        graph.add(
+            f"prefetch:{index}",
+            WorkPhase.PREFETCH,
+            lambda ctx, value=index: hold(ctx, value),
+        )
+
+    graph.start()
+    try:
+        diagnostics = graph.diagnostics()
+        assert diagnostics.submitted_background_total == 1
+        assert diagnostics.scheduled == 1
+        assert diagnostics.waiting == 2
+        gate.set()
+        results = graph.run_until_complete(timeout=2.0)
+        assert all(result.successful for result in results)
+        assert graph.diagnostics().submitted_background_total == 3
+    finally:
+        gate.set()
+        graph.shutdown()
+
+
 def test_higher_priority_main_work_runs_first_with_fifo_tie_breaking() -> None:
     graph = StreamingWorkGraph()
     order: list[str] = []
