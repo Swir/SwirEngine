@@ -113,10 +113,21 @@ def _runtime_version(root: Path) -> str:
 
 def _assert_locked_roadmap(root: Path, version: str) -> None:
     text = _read_text(root, f"ROADMAP_{version.replace('.', '_')}.md")
-    checked, total = milestone_progress(text)
-    _assert(total == EXPECTED_MILESTONES, f"locked {version} roadmap must contain 10 milestones; found {total}")
-    _assert(checked == EXPECTED_MILESTONES, f"locked {version} roadmap must remain 10/10; found {checked}/{total}")
-    _assert("100.0%" in text and "10/10" in text, f"locked {version} roadmap must preserve its 100.0% / 10/10 marker")
+    _assert("100.0%" in text, f"locked {version} roadmap must preserve its 100.0% completion marker")
+    _assert(
+        "10/10" in text or "DONE-10%2F10" in text,
+        f"locked {version} roadmap must preserve its 10/10 completion marker",
+    )
+    # 1.6+ use the numbered milestone format understood by milestone_progress().
+    # Earlier locked roadmaps use the SWIR dashboard plus unnumbered deliverable
+    # checkboxes, so their dedicated locked compatibility auditors remain the
+    # authoritative structural validators.
+    if version == "1.6":
+        checked, total = milestone_progress(text)
+        _assert(
+            (checked, total) == (EXPECTED_MILESTONES, EXPECTED_MILESTONES),
+            f"locked {version} roadmap must remain 10/10; found {checked}/{total}",
+        )
 
 
 def validate_checkpoint(root: Path = PROJECT_ROOT, *, require_complete: bool = False) -> tuple[int, int]:
