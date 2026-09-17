@@ -56,6 +56,7 @@ def test_2d_bridge_preserves_layer_order_and_sprite_batching(tmp_path):
         ("text", 1, 2),
         ("rectangle", 1, 3),
     ]
+    assert all(len(run.content_fingerprint) == 64 for run in frame.runs_2d)
     assert frame.graph.diagnostics.active_passes == 3
     assert frame.graph.passes == (
         "stage_0000_sprite_batch",
@@ -193,6 +194,22 @@ def test_frame_fingerprint_is_deterministic_for_same_submission_contract(tmp_pat
         renderer, scene(Text2D("score", layer=1), Rectangle2D(0, 0, 8, 8, layer=2))
     )
     assert changed.fingerprint != left.fingerprint
+
+
+def test_frame_fingerprint_tracks_text_and_texture_identity(tmp_path):
+    renderer = FakeRenderer("2d")
+    compiler = Renderer2BridgeCompiler()
+
+    text_left = compiler.prepare(renderer, scene(Text2D("score", layer=1)))
+    text_right = compiler.prepare(renderer, scene(Text2D("health", layer=1)))
+    assert text_left.graph.fingerprint == text_right.graph.fingerprint
+    assert text_left.fingerprint != text_right.fingerprint
+
+    texture_left = compiler.prepare(renderer, scene(Sprite2D(tmp_path / "a.png", layer=1)))
+    texture_right = compiler.prepare(renderer, scene(Sprite2D(tmp_path / "b.png", layer=1)))
+    assert texture_left.graph.fingerprint == texture_right.graph.fingerprint
+    assert texture_left.fingerprint != texture_right.fingerprint
+    assert "a.png" not in str(texture_left.portable())
 
 
 def test_invalid_renderer_dimensions_are_contained_by_legacy_fallback():
