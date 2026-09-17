@@ -5,13 +5,13 @@
   <a href="https://pypi.org/project/swirengine/"><img alt="PyPI" src="https://img.shields.io/pypi/v/swirengine?style=flat-square"></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.10--3.13%20cross--platform%20%7C%203.14%20Windows-3776AB?style=flat-square&logo=python&logoColor=white">
   <img alt="1.5 roadmap" src="https://img.shields.io/badge/1.5%20ROADMAP-100%25-2ea043?style=flat-square">
-  <img alt="Status" src="https://img.shields.io/badge/status-1.5%20release%20candidate-1f6feb?style=flat-square">
+  <img alt="Status" src="https://img.shields.io/badge/status-1.5.0%20stable-2ea043?style=flat-square">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square">
 </p>
 
-**SwirEngine 1.5.0** is the Production Runtime & Creator Scale release line of a Python-first 2D/3D game engine with a stable 1.x compatibility contract. Version 1.5 extends the released 1.4 engine with deterministic simulation/replay, resilient save/profile storage, richer audio and animation systems, navigation, world streaming, a retained UI toolkit, creator/editor productivity tooling, and opt-in runtime diagnostics/profiling.
+**SwirEngine 1.5.0** is the Production Runtime & Creator Scale stable release of a Python-first 2D/3D game engine with a stable 1.x compatibility contract. Version 1.5 extends the released 1.4 engine with deterministic simulation/replay, resilient save/profile storage, richer audio and animation systems, navigation, world streaming, a retained UI toolkit, creator/editor productivity tooling, and opt-in runtime diagnostics/profiling.
 
-The SwirEngine 1.5 roadmap is now **10/10 = 100.0%**. This source tree is the final 1.5 release candidate: tagging and publication remain blocked until the exact final candidate and the exact merged `main` commit pass the complete compatibility/runtime/packaging gate. The source-only 2D and 3D game demos are integration examples and do not receive separate releases.
+The SwirEngine 1.5 roadmap is complete at **10/10 = 100.0%**. Version **1.5.0 is released and locked**: the final compatibility/runtime/packaging gate passed, the `v1.5.0` GitHub Release is published, and clean public PyPI installation was verified after publication. The source-only 2D and 3D game demos remain integration examples and do not receive separate releases.
 
 ```text
 ████████████████████ 100.0% — 10/10
@@ -31,7 +31,7 @@ Optional audio support:
 python -m pip install -U "swirengine[audio]"
 ```
 
-After the 1.5 release is publicly available, a pinned installation is:
+To pin the stable 1.5 release:
 
 ```bash
 python -m pip install -U swirengine==1.5.0
@@ -169,7 +169,7 @@ The final 1.5 hardening line validates the package as a whole instead of creatin
 - the dedicated Windows CPython 3.14 native-wheel route
 - locked 1.3 and 1.4 compatibility gates
 - tag-only Trusted Publishing to PyPI
-- public-index installation verification before a release is accepted as complete
+- public-index installation verification before the release is accepted as complete
 
 See [`docs/RELEASE_HARDENING_1_5.md`](docs/RELEASE_HARDENING_1_5.md).
 
@@ -254,7 +254,7 @@ Dedicated milestone benchmarks, OpenGL validators, clean-wheel checks and native
 
 SwirEngine follows semantic versioning for the stable 1.x public API. Version 1.5.0 is additive to established 1.x behavior: existing projects are not required to adopt deterministic replay, Save & Profile 2.0, Audio 2.0, Animation Graphs 2.0, Navigation 2.0, World Streaming 2.0, UI Toolkit 2.0, Editor Productivity 2.0 or Runtime Diagnostics & Profiling 2.0.
 
-SwirEngine 1.4 is **released and locked** at 10/10, and its compatibility/runtime showcase continues to run as a regression gate. Historical 1.0-1.4 roadmaps stay locked except for genuine maintenance needed to keep their compatibility validation working on later stable lines.
+SwirEngine 1.4 and **1.5.0 are released and locked**. Their compatibility/runtime showcases continue to run as regression gates. Historical 1.0-1.5 roadmaps stay locked except for genuine maintenance needed to keep their compatibility validation working on later stable lines.
 
 See [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
 
@@ -278,7 +278,7 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
 - SwirEngine 1.2 — [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **10/10 = 100%**, released and locked
 - SwirEngine 1.3 — [`ROADMAP_1_3.md`](ROADMAP_1_3.md) — **10/10 = 100%**, released and locked
 - SwirEngine 1.4 — [`ROADMAP_1_4.md`](ROADMAP_1_4.md) — **10/10 = 100.0%**, released and locked
-- SwirEngine 1.5 — [`ROADMAP_1_5.md`](ROADMAP_1_5.md) — **10/10 = 100.0%**, final release candidate
+- SwirEngine 1.5 — [`ROADMAP_1_5.md`](ROADMAP_1_5.md) — **10/10 = 100.0%**, released and locked
 
 ## Links
 
