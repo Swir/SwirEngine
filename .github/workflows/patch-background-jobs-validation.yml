@@ -1,0 +1,63 @@
+name: Temporary Background Jobs Validation Patch
+
+on:
+  push:
+    branches: ["feat/1.7-background-jobs"]
+    paths:
+      - ".github/workflows/patch-background-jobs-validation.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/1.7-background-jobs
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Harden dependency container validation
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("src/swirengine/jobs17.py")
+          text = path.read_text(encoding="utf-8")
+          old = '''    @staticmethod
+          def _normalize_dependencies(
+              job_id: str, dependencies: tuple[str, ...] | list[str]
+          ) -> tuple[str, ...]:
+              if isinstance(dependencies, str):
+                  raise JobRejectedError(
+                      "invalid_dependencies",
+                      "dependencies must be a sequence of job ids, not one string",
+                      job_id=job_id,
+                  )
+          '''
+          new = '''    @staticmethod
+          def _normalize_dependencies(
+              job_id: str, dependencies: object
+          ) -> tuple[str, ...]:
+              if isinstance(dependencies, str) or not isinstance(dependencies, (tuple, list)):
+                  raise JobRejectedError(
+                      "invalid_dependencies",
+                      "dependencies must be a list or tuple of job ids",
+                      job_id=job_id,
+                  )
+          '''
+          if text.count(old) != 1:
+              raise SystemExit("expected dependency normalization block not found exactly once")
+          path.write_text(text.replace(old, new), encoding="utf-8")
+      - name: Syntax check
+        run: python -m compileall -q src/swirengine/jobs17.py
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/swirengine/jobs17.py
+          git commit -m "fix: reject malformed SwirEngine 1.7 dependencies"
+          git push origin HEAD:feat/1.7-background-jobs
