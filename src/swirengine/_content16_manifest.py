@@ -2,19 +2,20 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any
 
 from ._content16_common import (
     ContentSafetyError,
     _canonical_json_bytes,
+    _coerce_non_negative_int,
     _normalize_relative_path,
     _resolve_root,
     _safe_path,
     _sha256_bytes,
     _sha256_file,
-    _coerce_non_negative_int,
     _validate_sha256,
     _validate_version,
 )
@@ -80,27 +81,27 @@ class ContentManifest:
         entries: Iterable[ContentEntry],
         *,
         metadata: Mapping[str, str] | None = None,
-    ) -> "ContentManifest":
-        ordered_entries = tuple(sorted(tuple(entries), key=lambda entry: entry.path))
+    ) -> ContentManifest:
+        ordered_entries = tuple(sorted(entries, key=lambda entry: entry.path))
         ordered_metadata = tuple(sorted((key, value) for key, value in (metadata or {}).items()))
         return cls(content_version, ordered_entries, ordered_metadata)
 
     @classmethod
-    def parse_json(cls, payload: str | bytes | bytearray) -> "ContentManifest":
+    def parse_json(cls, payload: str | bytes | bytearray) -> ContentManifest:
         if isinstance(payload, (bytes, bytearray)):
             payload = bytes(payload).decode("utf-8")
         if not isinstance(payload, str):
             raise TypeError("manifest payload must be JSON text or UTF-8 bytes")
         data = json.loads(payload)
         if not isinstance(data, dict):
-            raise ValueError("manifest JSON root must be an object")
+            raise TypeError("manifest JSON root must be an object")
         expected = {"schema", "schema_version", "content_version", "metadata", "entries"}
         if set(data) != expected:
             raise ValueError("manifest JSON fields do not match the supported schema")
         if data["schema"] != _MANIFEST_SCHEMA or data["schema_version"] != _MANIFEST_VERSION:
             raise ValueError("unsupported content manifest schema")
         if not isinstance(data["entries"], list):
-            raise ValueError("manifest entries must be an array")
+            raise TypeError("manifest entries must be an array")
         entries: list[ContentEntry] = []
         for item in data["entries"]:
             if not isinstance(item, dict) or set(item) != {"path", "sha256", "size"}:
