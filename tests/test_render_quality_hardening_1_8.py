@@ -3,7 +3,11 @@ from dataclasses import dataclass
 import pytest
 
 from swirengine.performance15 import PerformanceDiagnostics2
-from swirengine.render_quality18 import DynamicQualityController, RenderQualityPolicy, RenderQualityStep
+from swirengine.render_quality18 import (
+    DynamicQualityController,
+    RenderQualityPolicy,
+    RenderQualityStep,
+)
 
 
 def steps():
@@ -15,15 +19,15 @@ def steps():
 
 
 def policy(**overrides):
-    values = dict(
-        target_frame_ms=16.0,
-        degrade_ratio=1.05,
-        recover_ratio=0.8,
-        degrade_frames=2,
-        recover_frames=3,
-        cooldown_frames=0,
-        sample_window=1,
-    )
+    values = {
+        "target_frame_ms": 16.0,
+        "degrade_ratio": 1.05,
+        "recover_ratio": 0.8,
+        "degrade_frames": 2,
+        "recover_frames": 3,
+        "cooldown_frames": 0,
+        "sample_window": 1,
+    }
     values.update(overrides)
     return RenderQualityPolicy(**values)
 

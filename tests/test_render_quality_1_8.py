@@ -19,16 +19,16 @@ def steps():
 
 
 def policy(**overrides):
-    values = dict(
-        target_frame_ms=10.0,
-        metric_source="max",
-        degrade_ratio=1.1,
-        recover_ratio=0.8,
-        degrade_frames=2,
-        recover_frames=3,
-        cooldown_frames=2,
-        sample_window=1,
-    )
+    values = {
+        "target_frame_ms": 10.0,
+        "metric_source": "max",
+        "degrade_ratio": 1.1,
+        "recover_ratio": 0.8,
+        "degrade_frames": 2,
+        "recover_frames": 3,
+        "cooldown_frames": 2,
+        "sample_window": 1,
+    }
     values.update(overrides)
     return RenderQualityPolicy(**values)
 

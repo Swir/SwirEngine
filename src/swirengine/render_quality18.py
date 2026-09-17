@@ -5,6 +5,7 @@ import json
 import math
 from collections import deque
 from dataclasses import dataclass
+from itertools import pairwise
 from types import MappingProxyType
 from typing import Literal, Protocol
 
@@ -265,7 +266,7 @@ class DynamicQualityController:
             raise TypeError("steps must contain RenderQualityStep values")
         if len({step.name for step in authored}) != len(authored):
             raise ValueError("quality step names must be unique")
-        for previous, current in zip(authored, authored[1:]):
+        for previous, current in pairwise(authored):
             if current.resolution_scale > previous.resolution_scale:
                 raise ValueError("quality steps must not increase resolution_scale as quality drops")
             if current.quality_scale > previous.quality_scale:
