@@ -2,7 +2,7 @@
 
 SwirEngine 1.5.0 is released and locked as the stable compatibility baseline. The 1.6 line is additive: existing 1.x imports and behavior stay stable unless a genuine maintenance fix is required.
 
-**Current verified progress: 5/10 milestones = 50.0%.**
+**Current verified progress: 6/10 milestones = 60.0%.**
 
 A milestone is checked only after its implementation, focused tests, documentation, and dedicated validation gate pass on the exact commit that is merged to `main`. Repository activity, scaffolding, or an open pull request does not count as completion.
 
@@ -50,7 +50,7 @@ A milestone is checked only after its implementation, focused tests, documentati
   - server-safe asset/runtime boundaries and deterministic startup validation;
   - Linux packaging/smoke coverage suitable for container hosting.
 
-- [ ] **6. Content Delivery & Patch Manifests**
+- [x] **6. Content Delivery & Patch Manifests**
   - deterministic content manifests with hashes and version metadata;
   - incremental patch planning and cache-safe verification;
   - resumable/local content staging foundations;
@@ -154,3 +154,18 @@ Milestone 5 is complete only when the exact implementation head satisfies all of
 8. `HeadlessRuntimeBoundary` rejects undeclared client-only runtime capabilities and unsafe asset kinds, while `ServerAssetRequirement` rejects absolute/traversal paths and optional asset probes validate required server data before startup without implicit loading or remote execution.
 9. Focused lifecycle/boundary/scheduling tests, strict Ruff, compile checks, deterministic 50,000-tick workload, creator demo, and the locked networking/1.4/1.6 multiplayer regression contracts pass on Python 3.10, 3.13 and 3.14 in the dedicated workflow.
 10. A clean Linux wheel is built, installed into a fresh Python 3.13 virtual environment with display variables removed, imports `swirengine.server16`, reaches readiness, executes 256 authoritative ticks and shuts down cleanly; normal CI, Desktop Export, game demos, and locked 1.4/1.5 hardening workflows remain green on the verified implementation head.
+
+## Milestone 6 verification contract
+
+Milestone 6 is complete only when the exact implementation head satisfies all of the following before the roadmap completion marker is committed:
+
+1. `swirengine.content16` remains additive and does not change stable 1.x root imports, asset APIs, or previously verified 1.6 multiplayer/server contracts.
+2. Content manifests are canonical and deterministic, validate portable relative paths, include version/size/SHA-256 metadata, and reject malformed, duplicate, unsafe, or inconsistent entries before staging.
+3. Patch planning compares trusted current/target manifests deterministically and emits bounded add/update/remove work without treating manifest metadata as executable instructions.
+4. The content-addressed cache verifies bytes against the expected digest before acceptance, isolates corrupted entries, and never serves unverified payloads as trusted content.
+5. Local staging supports resumable verified writes with explicit expected sizes/digests, safe temporary paths, deterministic restart behavior, and no implicit network downloader or remote execution path.
+6. Promotion into the verified cache is integrity-gated and atomic from the creator contract's perspective; failed verification leaves the previously trusted cache state unchanged.
+7. Patch materialization applies only verified cached objects into a bounded local destination, refuses path traversal/absolute paths/symlink escapes, and removes only manifest-authorized obsolete files.
+8. Creator-facing diagnostics and portable state/fingerprints remain deterministic and payload-safe, exposing counts/status/hash metadata rather than arbitrary content bytes.
+9. Focused tests, strict Ruff, compile checks, creator demo, deterministic workload benchmark, and the locked asset-pipeline/cache/streaming regression contracts pass on Python 3.10, 3.13, and 3.14 in the dedicated workflow.
+10. Normal CI, Desktop Export, source game demos, and locked 1.4/1.5 hardening workflows remain green on the verified implementation head before merge to `main`.
