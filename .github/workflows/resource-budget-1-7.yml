@@ -1,0 +1,90 @@
+name: Resource Budget 1.7
+
+on:
+  push:
+    branches: ["feat/1.7-resource-budget-broker"]
+    paths:
+      - "src/swirengine/resource_budget17.py"
+      - "tests/test_resource_budget_1_7.py"
+      - "tools/benchmark_resource_budget_1_7.py"
+      - "examples/demo_resource_budget_1_7.py"
+      - "docs/RESOURCE_BUDGETS_1_7.md"
+      - "ROADMAP_1_7.md"
+      - "CHANGELOG.d/1.7-resource-budget.md"
+      - ".github/workflows/resource-budget-1-7.yml"
+  pull_request:
+    paths:
+      - "src/swirengine/resource_budget17.py"
+      - "tests/test_resource_budget_1_7.py"
+      - "tools/benchmark_resource_budget_1_7.py"
+      - "examples/demo_resource_budget_1_7.py"
+      - "docs/RESOURCE_BUDGETS_1_7.md"
+      - "ROADMAP_1_7.md"
+      - "CHANGELOG.d/1.7-resource-budget.md"
+      - ".github/workflows/resource-budget-1-7.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: resource-budget-1-7-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  resource-budget:
+    name: Resource Budget / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install CPython 3.14 native build prerequisites
+        if: matrix.python-version == '3.14'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev
+
+      - name: Install development dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Run focused resource-budget and parallel-runtime regressions
+        run: >-
+          pytest
+          tests/test_resource_budget_1_7.py
+          tests/test_async_assets_1_7.py
+          tests/test_background_jobs_1_7.py
+          tests/test_performance_1_5.py
+
+      - name: Lint resource-budget surfaces
+        run: >-
+          ruff check
+          src/swirengine/resource_budget17.py
+          tests/test_resource_budget_1_7.py
+          tools/benchmark_resource_budget_1_7.py
+          examples/demo_resource_budget_1_7.py
+
+      - name: Compile resource-budget surfaces
+        run: >-
+          python -m compileall -q
+          src/swirengine/resource_budget17.py
+          tests/test_resource_budget_1_7.py
+          tools/benchmark_resource_budget_1_7.py
+          examples/demo_resource_budget_1_7.py
+
+      - name: Run resource-budget workload benchmark
+        if: matrix.python-version == '3.13'
+        run: python tools/benchmark_resource_budget_1_7.py
+
+      - name: Run creator demo
+        run: python examples/demo_resource_budget_1_7.py
