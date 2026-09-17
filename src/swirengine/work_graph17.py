@@ -128,6 +128,7 @@ class WorkGraphDiagnostics:
     poll_calls: int
     main_thread_callbacks_last_poll: int
     background_handoffs_last_poll: int
+    background_submissions_last_poll: int
     phase_counts: tuple[tuple[str, int], ...]
 
     @property
@@ -167,6 +168,7 @@ class WorkGraphDiagnostics:
             "poll_calls": self.poll_calls,
             "main_thread_callbacks_last_poll": self.main_thread_callbacks_last_poll,
             "background_handoffs_last_poll": self.background_handoffs_last_poll,
+            "background_submissions_last_poll": self.background_submissions_last_poll,
             "phase_counts": dict(self.phase_counts),
         }
 
@@ -231,6 +233,7 @@ class StreamingWorkGraph:
         self._poll_calls = 0
         self._main_thread_callbacks_last_poll = 0
         self._background_handoffs_last_poll = 0
+        self._background_submissions_last_poll = 0
 
     @staticmethod
     def _positive_int(value: int, *, label: str) -> int:
@@ -265,7 +268,9 @@ class StreamingWorkGraph:
             try:
                 return WorkPhase(value.strip().lower())
             except ValueError as error:
-                raise WorkGraphRejectedError("invalid_phase", f"unknown work phase {value!r}") from error
+                raise WorkGraphRejectedError(
+                    "invalid_phase", f"unknown work phase {value!r}"
+                ) from error
         raise WorkGraphRejectedError("invalid_phase", "phase must be a WorkPhase or string")
 
     def add(
@@ -314,7 +319,9 @@ class StreamingWorkGraph:
 
         with self._lock:
             if self._closed:
-                raise WorkGraphRejectedError("closed", "work graph is closed", node_id=normalized_id)
+                raise WorkGraphRejectedError(
+                    "closed", "work graph is closed", node_id=normalized_id
+                )
             if self._started:
                 raise WorkGraphRejectedError(
                     "already_started",
@@ -395,7 +402,9 @@ class StreamingWorkGraph:
             if record.state is WorkNodeState.WAITING
             and self._dependencies_succeeded_locked(record)
         ]
-        ready.sort(key=lambda item: (-item.spec.priority, item.spec.sequence, item.spec.node_id))
+        ready.sort(
+            key=lambda item: (-item.spec.priority, item.spec.sequence, item.spec.node_id)
+        )
         return ready
 
     def _mark_blocked_locked(self, record: _NodeRecord, dependency_id: str) -> None:
@@ -410,7 +419,9 @@ class StreamingWorkGraph:
         changed = True
         while changed:
             changed = False
-            for record in sorted(self._nodes.values(), key=lambda item: item.spec.sequence):
+            for record in sorted(
+                self._nodes.values(), key=lambda item: item.spec.sequence
+            ):
                 if record.state is not WorkNodeState.WAITING:
                     continue
                 failed_dependency = self._dependency_failed_locked(record)
@@ -449,17 +460,20 @@ class StreamingWorkGraph:
             (-record.spec.priority, record.spec.sequence, record.spec.node_id),
         )
 
-    def _advance_locked(self, background_submission_budget: int) -> None:
+    def _advance_locked(self, background_submission_budget: int) -> int:
         self._propagate_dependency_blocks_locked()
         remaining = background_submission_budget
+        submitted = 0
         for record in self._ready_waiting_locked():
             if record.spec.affinity is WorkAffinity.BACKGROUND:
                 if remaining <= 0:
                     continue
                 self._schedule_background_locked(record)
                 remaining -= 1
+                submitted += 1
             else:
                 self._queue_main_locked(record)
+        return submitted
 
     def _process_background_handoffs_locked(self, max_items: int) -> int:
         outcomes = self._scheduler.drain_completed(max_items=max_items)
@@ -522,18 +536,19 @@ class StreamingWorkGraph:
                 raise StreamingWorkGraphError("work graph is closed")
             if not self._started:
                 raise StreamingWorkGraphError("start() must be called before poll()")
-            before = {
-                node_id: record.state
-                for node_id, record in self._nodes.items()
-            }
+            before = {node_id: record.state for node_id, record in self._nodes.items()}
             handoffs = self._process_background_handoffs_locked(item_budget)
-            remaining = item_budget - handoffs
-            self._advance_locked(self.max_background_submissions_per_poll)
-            main_callbacks = self._execute_main_locked(remaining)
-            self._advance_locked(self.max_background_submissions_per_poll)
+            remaining_items = item_budget - handoffs
+            submitted = self._advance_locked(self.max_background_submissions_per_poll)
+            main_callbacks = self._execute_main_locked(remaining_items)
+            remaining_submissions = max(
+                0, self.max_background_submissions_per_poll - submitted
+            )
+            submitted += self._advance_locked(remaining_submissions)
             self._poll_calls += 1
             self._background_handoffs_last_poll = handoffs
             self._main_thread_callbacks_last_poll = main_callbacks
+            self._background_submissions_last_poll = submitted
             changed = [
                 self._result_locked(record)
                 for node_id, record in sorted(
@@ -561,7 +576,9 @@ class StreamingWorkGraph:
                             pending.append(dependent)
 
             cancelled: list[str] = []
-            for current_id in sorted(selected, key=lambda item: self._nodes[item].spec.sequence):
+            for current_id in sorted(
+                selected, key=lambda item: self._nodes[item].spec.sequence
+            ):
                 record = self._nodes[current_id]
                 if record.state in _TERMINAL:
                     continue
@@ -577,7 +594,7 @@ class StreamingWorkGraph:
                 record.error_message = "work node cancellation requested"
                 self._cancelled_total += 1
                 cancelled.append(current_id)
-            self._advance_locked(self.max_background_submissions_per_poll)
+            self._propagate_dependency_blocks_locked()
             return tuple(cancelled)
 
     def state(self, node_id: str) -> WorkNodeState:
@@ -635,7 +652,10 @@ class StreamingWorkGraph:
                 poll_calls=self._poll_calls,
                 main_thread_callbacks_last_poll=self._main_thread_callbacks_last_poll,
                 background_handoffs_last_poll=self._background_handoffs_last_poll,
-                phase_counts=tuple((phase.value, phase_counts[phase]) for phase in WorkPhase),
+                background_submissions_last_poll=self._background_submissions_last_poll,
+                phase_counts=tuple(
+                    (phase.value, phase_counts[phase]) for phase in WorkPhase
+                ),
             )
 
     @property
@@ -674,7 +694,9 @@ class StreamingWorkGraph:
         with self._lock:
             return tuple(
                 self._result_locked(record)
-                for record in sorted(self._nodes.values(), key=lambda item: item.spec.sequence)
+                for record in sorted(
+                    self._nodes.values(), key=lambda item: item.spec.sequence
+                )
             )
 
     def shutdown(self, *, wait: bool = True, cancel_pending: bool = True) -> None:
