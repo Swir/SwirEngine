@@ -9,7 +9,7 @@
 ![CI](https://img.shields.io/github/actions/workflow/status/Swir/SwirEngine/ci.yml?branch=main&style=for-the-badge&label=CI&color=02050A&logo=githubactions&logoColor=62E5FF)
 [![PyPI](https://img.shields.io/pypi/v/swirengine?style=for-the-badge&color=02050A&logo=pypi&logoColor=62E5FF)](https://pypi.org/project/swirengine/)
 ![Python](https://img.shields.io/badge/Python-3.10--3.13%20cross--platform%20%7C%203.14%20Windows-02050A?style=for-the-badge&logo=python&logoColor=62E5FF)
-![Stable](https://img.shields.io/badge/STABLE-1.5.0-02050A?style=for-the-badge&logoColor=62E5FF)
+![Status](https://img.shields.io/badge/STATUS-1.5.0%20STABLE-02050A?style=for-the-badge&logoColor=62E5FF)
 ![Source](https://img.shields.io/badge/SOURCE%20ROADMAP-1.9-02050A?style=for-the-badge&logoColor=62E5FF)
 ![License](https://img.shields.io/badge/LICENSE-MIT-02050A?style=for-the-badge&logo=opensourceinitiative&logoColor=62E5FF)
 
@@ -45,6 +45,11 @@ remaining production workflow gap: project configuration, development sessions, 
 save/profile integration, scenes, content builds, diagnostics, reproducible desktop shipping and
 end-to-end real-game gates.
 
+**SwirEngine 1.5.0** remains the released and locked public compatibility baseline. Its locked contract
+includes **Deterministic Simulation & Replay**, **Save & Profile 2.0**, **World Streaming 2.0**,
+**UI Toolkit 2.0** and **Runtime Diagnostics & Profiling 2.0**. `ROADMAP_1_5.md` remains
+**10/10 = 100.0%**; that historical completion is separate from the active 1.9 source progress above.
+
 ## ✨ Highlights
 
 | Area | What creators get |
@@ -66,7 +71,7 @@ end-to-end real-game gates.
 
 The latest **public stable package is 1.5.0**.
 
-Verified published support covers **Python 3.10–3.13** on Windows, Linux and macOS, plus
+Verified published support covers **Python 3.10-3.13** on Windows, Linux and macOS, plus
 **Python 3.14 on Windows x86-64** through the dedicated validated native-wheel path.
 
 ```bash
