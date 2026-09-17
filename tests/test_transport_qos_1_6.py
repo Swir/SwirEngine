@@ -194,13 +194,18 @@ def test_drain_respects_packet_and_byte_budgets_without_discarding_blocked_heads
     first_size = len(first.to_packet().to_bytes())
     second_size = len(second.to_packet().to_bytes())
 
-    assert scheduler.drain(max_packets=1, max_bytes=first_size - 1) == ()
-    assert scheduler.queued_packets == 2
-
-    drained = scheduler.drain(max_packets=1, max_bytes=second_size)
+    drained = scheduler.drain(max_packets=1, max_bytes=first_size - 1)
     assert len(drained) == 1
     assert _decode(drained[0]).channel == "chat"
     assert scheduler.queued_packets == 1
+
+    assert scheduler.drain(max_packets=1, max_bytes=second_size) == ()
+    assert scheduler.queued_packets == 1
+
+    final = scheduler.drain(max_packets=1, max_bytes=first_size)
+    assert len(final) == 1
+    assert _decode(final[0]).channel == "control"
+    assert scheduler.queued_packets == 0
 
 
 def test_scheduler_rejects_unknown_channel_with_stable_code() -> None:
