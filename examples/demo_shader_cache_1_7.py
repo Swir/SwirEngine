@@ -53,7 +53,7 @@ def main() -> None:
         if not result.successful:
             raise RuntimeError(result.error_message or "shader preparation failed")
 
-        repeated = cache.submit(
+        cache.submit(
             {"fragment": FRAGMENT, "vertex": VERTEX},
             defines={"QUALITY": 2},
             material={"roughness": 0.35, "name": "neon-blue"},
