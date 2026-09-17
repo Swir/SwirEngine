@@ -6,6 +6,7 @@ on:
     paths:
       - "src/swirengine/jobs17.py"
       - "tests/test_background_jobs_1_7.py"
+      - "tests/test_background_jobs_1_7_validation.py"
       - "tools/benchmark_background_jobs_1_7.py"
       - "examples/demo_background_jobs_1_7.py"
       - "docs/BACKGROUND_JOBS_1_7.md"
@@ -16,6 +17,7 @@ on:
     paths:
       - "src/swirengine/jobs17.py"
       - "tests/test_background_jobs_1_7.py"
+      - "tests/test_background_jobs_1_7_validation.py"
       - "tools/benchmark_background_jobs_1_7.py"
       - "examples/demo_background_jobs_1_7.py"
       - "docs/BACKGROUND_JOBS_1_7.md"
@@ -59,13 +61,14 @@ jobs:
         run: python -m pip install -e ".[dev]"
 
       - name: Run focused background-job contracts
-        run: pytest tests/test_background_jobs_1_7.py
+        run: pytest tests/test_background_jobs_1_7.py tests/test_background_jobs_1_7_validation.py
 
       - name: Lint background-job surfaces
         run: >-
           ruff check
           src/swirengine/jobs17.py
           tests/test_background_jobs_1_7.py
+          tests/test_background_jobs_1_7_validation.py
           tools/benchmark_background_jobs_1_7.py
           examples/demo_background_jobs_1_7.py
 
@@ -74,6 +77,7 @@ jobs:
           python -m compileall -q
           src/swirengine/jobs17.py
           tests/test_background_jobs_1_7.py
+          tests/test_background_jobs_1_7_validation.py
           tools/benchmark_background_jobs_1_7.py
           examples/demo_background_jobs_1_7.py
 
