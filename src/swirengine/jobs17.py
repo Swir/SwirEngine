@@ -12,7 +12,6 @@ from enum import Enum
 from types import TracebackType
 from typing import Any, Generic, TypeVar
 
-
 T = TypeVar("T")
 
 

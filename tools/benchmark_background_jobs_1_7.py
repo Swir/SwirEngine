@@ -4,7 +4,6 @@ import time
 
 from swirengine import jobs17
 
-
 JOB_COUNT = 2_000
 BUDGET_SECONDS = 5.0
 
