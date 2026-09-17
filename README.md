@@ -1,17 +1,17 @@
-# SwirEngine 1.4.0
+# SwirEngine 1.5.0
 
 <p align="center">
   <a href="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Swir/SwirEngine/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://pypi.org/project/swirengine/"><img alt="PyPI" src="https://img.shields.io/pypi/v/swirengine?style=flat-square"></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.10--3.13%20cross--platform%20%7C%203.14%20Windows-3776AB?style=flat-square&logo=python&logoColor=white">
-  <img alt="1.4 roadmap" src="https://img.shields.io/badge/1.4%20ROADMAP-100%25-2ea043?style=flat-square">
-  <img alt="Status" src="https://img.shields.io/badge/status-1.4%20stable-2ea043?style=flat-square">
+  <img alt="1.5 roadmap" src="https://img.shields.io/badge/1.5%20ROADMAP-100%25-2ea043?style=flat-square">
+  <img alt="Status" src="https://img.shields.io/badge/status-1.5%20release%20candidate-1f6feb?style=flat-square">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square">
 </p>
 
-**SwirEngine 1.4.0** is the Production World & Engine Power release line of a Python-first 2D/3D game engine with a stable 1.x compatibility contract. It combines an approachable gameplay API with a real OpenGL renderer, production-oriented world systems, physics, character controllers, GPU VFX, scalable visibility, asset processing, editor authoring, multiplayer foundations and native desktop export.
+**SwirEngine 1.5.0** is the Production Runtime & Creator Scale release line of a Python-first 2D/3D game engine with a stable 1.x compatibility contract. Version 1.5 extends the released 1.4 engine with deterministic simulation/replay, resilient save/profile storage, richer audio and animation systems, navigation, world streaming, a retained UI toolkit, creator/editor productivity tooling, and opt-in runtime diagnostics/profiling.
 
-The 1.4 roadmap is complete at **10/10 = 100.0%** and **v1.4.0 is published**. The release workflow gates the GitHub Release behind the PyPI publishing stage and follows publication with clean public-index installation checks, while preserving the strict CI/runtime/packaging and tag/version contracts used to close the roadmap.
+The SwirEngine 1.5 roadmap is now **10/10 = 100.0%**. This source tree is the final 1.5 release candidate: tagging and publication remain blocked until the exact final candidate and the exact merged `main` commit pass the complete compatibility/runtime/packaging gate. The source-only 2D and 3D game demos are integration examples and do not receive separate releases.
 
 ```text
 ████████████████████ 100.0% — 10/10
@@ -29,6 +29,12 @@ Optional audio support:
 
 ```bash
 python -m pip install -U "swirengine[audio]"
+```
+
+After the 1.5 release is publicly available, a pinned installation is:
+
+```bash
+python -m pip install -U swirengine==1.5.0
 ```
 
 ## Quick 2D game
@@ -72,105 +78,102 @@ def update(dt):
 game.run()
 ```
 
-## What is new in 1.4
+## What is new in 1.5
 
-### 1. Terrain + World LOD
+### 1. Deterministic Simulation & Replay
 
-- immutable heightmaps and chunk mesh generation
-- distance-based LOD with bounded local chunk selection
-- terrain material/splat metadata and heightfield ground queries
-- direct `LargeWorldStreamer` integration
-- deterministic cache/LOD performance contracts and real OpenGL validation
+- opt-in fixed-step simulation clock
+- deterministic replay recording and playback
+- canonical portable replay data and state fingerprints
+- checkpoints, seeking and bounded recording
+- deterministic long-run validation workload
 
-### 2. Physics 2.0
+### 2. Save & Profile 2.0
 
-- additive `PhysicsScene3D` / `PhysicsBody3D` APIs
-- deterministic box/sphere contact generation and response
-- friction, restitution, sleeping/wake behavior and distance joints
-- shape sweeps and continuous-collision foundations
-- backend-ready public protocol while preserving established 1.x physics APIs
+- versioned integrity-checked save envelopes
+- atomic primary/backup writes and safe recovery
+- ordered project migrations and profile isolation
+- legacy 1.x import without rewriting old save files
+- bounded autosave rotation and health inspection
 
-### 3. Character Controllers
+### 3. Audio 2.0
 
-- production `CharacterController3D`
-- first-person, third-person and platformer presets
-- grounded state, jumping, coyote time and jump buffering
-- step-up, slope handling and ground snapping
-- camera collision/synchronization and navigation steering
+- bounded priority-aware SFX voice budgets
+- deterministic voice stealing and protected voices
+- portable mixer snapshots with timed interpolation
+- stable 1.x spatial composition reused underneath the new layer
+- deterministic headless diagnostics and state fingerprints
 
-### 4. Renderer 2.0
+### 4. Animation Graphs 2.0
 
-- opt-in `Renderer2`, `Renderer2Settings` and `Decal3D`
-- one-to-four cascade directional shadows with texel stabilization and 3×3 PCF
-- depth/view-normal prepass and SSAO with depth-aware blur
-- HDR bloom and bounded screen-space decals
-- deterministic frame-pass diagnostics
-- real EGL/OpenGL 3.3 execution validation
+- reusable clips and typed graph parameters
+- prioritized transitions, wildcard sources and exit-time gates
+- deterministic timed source/target cross-fades
+- generic portable poses and nested property bindings
+- headless diagnostics and reproducible fingerprints
 
-### 5. GPU VFX + Particle Power
+### 5. Navigation 2.0
 
-- `GPUParticleEmitter3D` and `Game.gpu_particles(...)`
-- OpenGL 3.3 transform-feedback ping-pong simulation
-- point, box and sphere emitters
-- GPU gravity, drag, lifetime, size and color evolution
-- HDR textured sprite particles, alpha/additive blending and trails
-- built-in instanced mesh-particle rendering
+- deterministic waypoint-graph routing
+- node/edge filters, area costs and bounded endpoint snapping
+- creator-facing agents and multi-waypoint path following
+- deterministic local avoidance with spatial-bucket broad phase
+- portable query/runtime diagnostics
 
-### 6. Asset Pipeline 2.0
+### 6. World Streaming 2.0
 
-- bounded background import with caller-thread finalization
-- SHA-256 source/dependency fingerprints
-- transitive hot-reload and cache invalidation
-- persistent content-addressed derived artifacts
-- dependency-aware glTF/GLB processing
-- stronger PBR preservation, conservative mesh cleanup and opt-in texture optimization
+- finite deterministic partition registry
+- dependency-safe activation/deactivation and lifecycle rollback
+- hard active-cost budgets and bounded local-window updates
+- retention hysteresis, failure isolation and explicit retry
+- creator-first `WorldStream` facade with Game-aware cleanup
 
-### 7. Scene Acceleration + Occlusion
+### 7. UI Toolkit 2.0
 
-- deterministic static BVH and separate dynamic-refit layer
-- conservative world AABBs and broad frustum pruning
-- `SceneAcceleratedRenderer2` candidate-view integration
-- CPU Hi-Z reference queries
-- real OpenGL 3.3 GPU maximum-depth pyramid without CPU readback
-- deterministic 16,384-object validation workload
+- retained widget trees
+- responsive horizontal/vertical layout
+- resolution-independent scaling
+- unified mouse, keyboard and gamepad focus navigation
+- centralized themes, portable snapshots and deterministic diagnostics
 
-### 8. Editor Authoring Power
+### 8. Editor Productivity 2.0
 
-- ordered multi-selection with replace/add/toggle/range behavior
-- grouped property, gizmo and asset authoring
-- transaction-safe undo/redo and persistent authoring sidecars
-- safe asset drag/drop paths
-- material, physics and navigation inspector adapters
-- explicit Play/Edit authoring isolation
-- opt-in `swirengine.editor14` creator-facing facade
+- non-destructive prefab authoring and variants
+- selective apply/revert with graph-safe references
+- bounded shared creator command history
+- previewable transactional multi-object batch edits
+- asset-reference diagnostics without loading asset contents
 
-### 9. Multiplayer 2.0
+### 9. Runtime Diagnostics & Profiling 2.0
 
-- replicated-component schemas
-- canonical snapshots and sparse deltas
-- bounded out-of-order interpolation
-- deterministic client prediction and reconciliation
-- bounded server rewind foundations
-- per-channel bandwidth diagnostics
-- stable `NetworkPacket` bridge
+- bounded structured frame/update/physics/render timing history
+- arbitrary timing domains, subsystem counters and resource accounting
+- optional Python allocation snapshots
+- fault-contained diagnostics providers
+- deterministic versioned capture/export with SHA-256 fingerprints
+- stable 1.x `Profiler` remains unchanged
 
-### 10. Showcase + hardening + release gate
+### 10. Showcase, Hardening & Release Gate
 
-**Neon Frontier 1.4** is the integrated release-validation project. It intentionally uses generated geometry/data so source checkouts, CI and packaged probes do not depend on external game assets. A single application exercises terrain/LOD, Physics 2.0, Character Controllers, Renderer 2.0, GPU VFX, large-world streaming, Editor Authoring and Multiplayer 2.0.
+The final 1.5 hardening line validates the package as a whole instead of creating standalone releases for the example games. The gate covers:
 
-The final hardening path validates:
+- full pytest, Ruff and compile validation
+- Python 3.10/3.13/3.14 focused release-contract testing
+- the complete supported cross-platform CI matrix
+- all nine 1.5 deterministic/workload benchmark contracts
+- both source-only game demos in headless mode and real Linux OpenGL 3.3 under Xvfb/Mesa
+- portable wheel/sdist build plus `twine check`
+- clean virtual-environment installation outside the editable source tree
+- source-demo probes against the clean wheel
+- Windows one-file packaging/runtime probes for both demos
+- the dedicated Windows CPython 3.14 native-wheel route
+- locked 1.3 and 1.4 compatibility gates
+- tag-only Trusted Publishing to PyPI
+- public-index installation verification before a release is accepted as complete
 
-- deterministic headless full-system integration
-- the integrated performance budget
-- real Linux OpenGL 3.3 execution under Xvfb/Mesa
-- clean wheel installation outside the source tree
-- Windows one-file `NeonFrontier14.exe` packaging and runtime probing
-- Python 3.10-3.13 cross-platform compatibility plus the Windows CPython 3.14 native-wheel path
-- strict 10/10 version/roadmap/release-workflow consistency
-- Trusted Publishing to PyPI without duplicate-artifact masking
-- post-publication installation from public PyPI before the release is considered complete
+See [`docs/RELEASE_HARDENING_1_5.md`](docs/RELEASE_HARDENING_1_5.md).
 
-## Stable feature set
+## Stable 1.x feature set
 
 ### 2D
 
@@ -189,13 +192,13 @@ The final hardening path validates:
 - mesh primitives, OBJ and glTF/GLB import
 - Phong and Cook-Torrance GGX metallic/roughness PBR
 - directional, point and spot lights
-- skybox/environment cubemaps and IBL
-- cascaded directional shadows, SSAO, bloom, decals, tone mapping and FXAA
+- skyboxes, environment cubemaps and IBL
+- cascaded shadows, SSAO, bloom, decals, tone mapping and FXAA
 - GPU instancing, frustum culling and scene acceleration
 - skeletal animation and GPU skinning
 - 3D collision, Physics 2.0 and character controllers
-- deterministic navigation and large-world chunk residency
-- terrain/LOD and GPU particle/VFX systems
+- deterministic navigation, large-world streaming and terrain/LOD
+- GPU particle/VFX systems
 - controlled shader/material variants
 
 ### Production systems
@@ -206,34 +209,34 @@ The final hardening path validates:
 - plugin runtime and transactional hot reload
 - Asset Pipeline 2.0 with derived caching and dependency invalidation
 - audio buses/groups and spatial attenuation
-- stable networking plus opt-in Multiplayer 2.0 replication foundations
-- creator/editor workflow with advanced authoring and reversible playtest state
+- stable networking plus opt-in replication foundations
+- creator/editor workflow with reversible playtest state
 - native export manifests and PyInstaller desktop builds
-- debug overlay and profiler
+- debug overlay, stable profiler and additive 1.5 diagnostics
 
 ## Performance regression policy
 
-SwirEngine keeps performance claims reproducible and workload-specific. The repository contains deterministic contracts for terrain locality/LOD, Physics 2.0 broad-phase/CCD behavior, controller sweep budgets, Renderer 2.0 planning, GPU-particle CPU scheduling, Asset Pipeline 2.0 cold/warm/invalidation behavior, scene-visibility pruning, editor multi-selection authoring, Multiplayer 2.0 snapshot/delta workloads and the final integrated showcase.
+SwirEngine keeps performance claims reproducible and workload-specific. The repository contains deterministic contracts for every completed 1.5 subsystem plus the established 1.x engine workloads.
 
-Host timings are diagnostics only. SwirEngine does **not** turn host-side timing numbers into unmeasured FPS claims. GPU correctness is validated separately with real OpenGL smoke tests.
+Host timings are diagnostics only. SwirEngine does **not** turn host-side timing numbers into unmeasured FPS claims. Renderer correctness is validated separately with real OpenGL smoke tests.
 
 ## Validation demos and examples
 
-- **Neon Frontier 1.4** — integrated 1.4 release validation
+- **SwirEngine 2D Game Demo** — source-only classic platformer showcase under [`examples/2d_game_demo/`](examples/2d_game_demo/)
+- **SwirEngine 3D Game Demo** — source-only corridor-FPS showcase under [`examples/3d_game_demo/`](examples/3d_game_demo/)
+- **Neon Frontier 1.4** — released and locked 1.4 compatibility/showcase project
 - **Neon Frontier 1.3** — locked 1.3 regression game
 - **Neon Cube Hunt 3D** — OpenGL + packaged-runtime regression arena
 - **Neon Snake 3D** — complete 3D regression project
-- [`examples/2d_game_demo/`](examples/2d_game_demo/) — source-only classic platformer showcase
-- [`examples/3d_game_demo/`](examples/3d_game_demo/) — source-only classic corridor-FPS showcase
-- `examples/demo_terrain_world_lod.py`
-- `examples/demo_physics2_contacts.py`
-- `examples/demo_character_controllers.py`
-- `examples/demo_renderer2_1_4.py`
-- `examples/demo_gpu_particles_1_4.py`
-- `examples/demo_asset_pipeline2.py`
-- `examples/demo_scene_acceleration_1_4.py`
-- `examples/demo_editor_authoring_1_4.py`
-- `examples/demo_multiplayer_2_1_4.py`
+- `examples/demo_deterministic_replay_1_5.py`
+- `examples/demo_save_profile_2_1_5.py`
+- `examples/demo_audio_2_1_5.py`
+- `examples/demo_animation_graphs_2_1_5.py`
+- `examples/demo_navigation_2_1_5.py`
+- `examples/demo_world_streaming_2_1_5.py`
+- `examples/demo_ui_toolkit_2_1_5.py`
+- `examples/demo_editor_productivity_1_5.py`
+- `examples/demo_performance_diagnostics_2_1_5.py`
 
 ## Development and verification
 
@@ -242,29 +245,31 @@ python -m pip install -e ".[dev]"
 pytest
 ruff check src tests examples demo_projects tools
 python -m compileall -q src examples demo_projects tools
-python tools/verify_1_4_release_candidate.py --require-complete
+python tools/verify_1_5_release_candidate.py --require-complete
 ```
 
 Dedicated milestone benchmarks, OpenGL validators, clean-wheel checks and native packaging probes live under `tools/` and `.github/workflows/`.
 
 ## API stability
 
-SwirEngine follows semantic versioning for the stable 1.x public API. Version 1.4.0 is additive to established 1.x behavior: existing projects are not required to adopt Renderer 2.0, Physics 2.0, the 1.4 editor facade or Multiplayer 2.0. Historical 1.0-1.3 roadmaps remain locked.
+SwirEngine follows semantic versioning for the stable 1.x public API. Version 1.5.0 is additive to established 1.x behavior: existing projects are not required to adopt deterministic replay, Save & Profile 2.0, Audio 2.0, Animation Graphs 2.0, Navigation 2.0, World Streaming 2.0, UI Toolkit 2.0, Editor Productivity 2.0 or Runtime Diagnostics & Profiling 2.0.
+
+SwirEngine 1.4 is **released and locked** at 10/10, and its compatibility/runtime showcase continues to run as a regression gate. Historical 1.0-1.4 roadmaps stay locked except for genuine maintenance needed to keep their compatibility validation working on later stable lines.
 
 See [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
 
-## 1.4 documentation
+## 1.5 documentation
 
-- [`docs/TERRAIN_WORLD_LOD_1_4.md`](docs/TERRAIN_WORLD_LOD_1_4.md)
-- [`docs/PHYSICS_2_1_4.md`](docs/PHYSICS_2_1_4.md)
-- [`docs/CHARACTER_CONTROLLERS_1_4.md`](docs/CHARACTER_CONTROLLERS_1_4.md)
-- [`docs/RENDERER2_1_4.md`](docs/RENDERER2_1_4.md)
-- [`docs/GPU_VFX_PARTICLES_1_4.md`](docs/GPU_VFX_PARTICLES_1_4.md)
-- [`docs/ASSET_PIPELINE_2_1_4.md`](docs/ASSET_PIPELINE_2_1_4.md)
-- [`docs/SCENE_ACCELERATION_OCCLUSION_1_4.md`](docs/SCENE_ACCELERATION_OCCLUSION_1_4.md)
-- [`docs/EDITOR_AUTHORING_1_4.md`](docs/EDITOR_AUTHORING_1_4.md)
-- [`docs/MULTIPLAYER_2_1_4.md`](docs/MULTIPLAYER_2_1_4.md)
-- [`docs/RELEASE_HARDENING_1_4.md`](docs/RELEASE_HARDENING_1_4.md)
+- [`docs/DETERMINISTIC_REPLAY_1_5.md`](docs/DETERMINISTIC_REPLAY_1_5.md)
+- [`docs/SAVE_PROFILE_2_1_5.md`](docs/SAVE_PROFILE_2_1_5.md)
+- [`docs/AUDIO_2_1_5.md`](docs/AUDIO_2_1_5.md)
+- [`docs/ANIMATION_GRAPHS_2_1_5.md`](docs/ANIMATION_GRAPHS_2_1_5.md)
+- [`docs/NAVIGATION_2_1_5.md`](docs/NAVIGATION_2_1_5.md)
+- [`docs/WORLD_STREAMING_2_1_5.md`](docs/WORLD_STREAMING_2_1_5.md)
+- [`docs/UI_TOOLKIT_2_1_5.md`](docs/UI_TOOLKIT_2_1_5.md)
+- [`docs/EDITOR_PRODUCTIVITY_2_1_5.md`](docs/EDITOR_PRODUCTIVITY_2_1_5.md)
+- [`docs/PERFORMANCE_DIAGNOSTICS_2_1_5.md`](docs/PERFORMANCE_DIAGNOSTICS_2_1_5.md)
+- [`docs/RELEASE_HARDENING_1_5.md`](docs/RELEASE_HARDENING_1_5.md)
 
 ## Roadmaps
 
@@ -273,6 +278,7 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
 - SwirEngine 1.2 — [`ROADMAP_1_2.md`](ROADMAP_1_2.md) — **10/10 = 100%**, released and locked
 - SwirEngine 1.3 — [`ROADMAP_1_3.md`](ROADMAP_1_3.md) — **10/10 = 100%**, released and locked
 - SwirEngine 1.4 — [`ROADMAP_1_4.md`](ROADMAP_1_4.md) — **10/10 = 100.0%**, released and locked
+- SwirEngine 1.5 — [`ROADMAP_1_5.md`](ROADMAP_1_5.md) — **10/10 = 100.0%**, final release candidate
 
 ## Links
 
