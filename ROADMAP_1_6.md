@@ -2,7 +2,7 @@
 
 SwirEngine 1.5.0 is released and locked as the stable compatibility baseline. The 1.6 line is additive: existing 1.x imports and behavior stay stable unless a genuine maintenance fix is required.
 
-**Current verified progress: 0/10 milestones = 0.0%.**
+**Current verified progress: 1/10 milestones = 10.0%.**
 
 A milestone is checked only after its implementation, focused tests, documentation, and dedicated validation gate pass on the exact commit that is merged to `main`. Repository activity, scaffolding, or an open pull request does not count as completion.
 
@@ -16,12 +16,12 @@ A milestone is checked only after its implementation, focused tests, documentati
 
 ## Milestones
 
-- [ ] **1. Interest-aware Replication Streaming 2.0**
+- [x] **1. Interest-aware Replication Streaming 2.0**
   - deterministic spatial/channel interest filtering separated from creator-owned replicated state;
   - per-client entity budgets with stable priority/distance ordering;
   - explicit client ACK baselines so lost packets never silently become delta dependencies;
   - relevance exits encoded as removals and relevance entries encoded as upserts/full state;
-  - bounded server/client baseline history, strict missing-baseline failure, and full-snapshot fallback;
+  - bounded server/client baseline history, strict missing-baseline failure, and explicit full-state resynchronization;
   - packet bridge layered on the stable 1.x `NetworkPacket` transport;
   - focused contract tests, workload benchmark, creator documentation/demo, and Python 3.10/3.13/3.14 CI gate.
 
@@ -81,7 +81,7 @@ A milestone is checked only after its implementation, focused tests, documentati
 
 ## Milestone 1 verification contract
 
-Milestone 1 remains unchecked until the exact candidate commit satisfies all of the following:
+Milestone 1 is complete only when the exact candidate commit satisfies all of the following:
 
 1. `swirengine.multiplayer16` is additive and does not change stable 1.x root imports.
 2. Interest queries are deterministic across insertion order and enforce radius, channel, always-relevant, priority, and entity-budget semantics.
@@ -89,7 +89,7 @@ Milestone 1 remains unchecked until the exact candidate commit satisfies all of 
 4. An unacknowledged/lost update is never selected as the next baseline.
 5. Entities leaving interest produce removals; entering/changing entities produce current state.
 6. Server ACKs are monotonic and reject unsent ticks.
-7. Client application keeps bounded baseline history and fails loudly when a requested baseline is unavailable.
+7. Client application keeps bounded baseline history, fails loudly when a requested baseline is unavailable, and can recover through explicit full-state resynchronization without creating a stale delta dependency.
 8. Packet encoding round-trips through the stable `NetworkPacket` framing model.
 9. Strict metadata mode prevents silent omission of replicated entities; custom interest sources can opt out explicitly.
 10. Focused tests, lint, compile, benchmark, demo, and the locked 1.4 multiplayer contract pass on Python 3.10, 3.13, and 3.14 in the dedicated CI workflow.
