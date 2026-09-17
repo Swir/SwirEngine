@@ -2,7 +2,7 @@
 
 SwirEngine 1.5.0 is released and locked as the stable compatibility baseline. The 1.6 line is additive: existing 1.x imports and behavior stay stable unless a genuine maintenance fix is required.
 
-**Current verified progress: 6/10 milestones = 60.0%.**
+**Current verified progress: 7/10 milestones = 70.0%.**
 
 A milestone is checked only after its implementation, focused tests, documentation, and dedicated validation gate pass on the exact commit that is merged to `main`. Repository activity, scaffolding, or an open pull request does not count as completion.
 
@@ -56,7 +56,7 @@ A milestone is checked only after its implementation, focused tests, documentati
   - resumable/local content staging foundations;
   - no implicit remote execution or unverified content loading.
 
-- [ ] **7. Platform Services Abstraction**
+- [x] **7. Platform Services Abstraction**
   - opt-in identity, cloud-save, achievements/stats, and entitlement interfaces;
   - local/offline reference providers for tests and creator development;
   - explicit capability discovery and failure isolation;
@@ -169,3 +169,18 @@ Milestone 6 is complete only when the exact implementation head satisfies all of
 8. Creator-facing diagnostics and portable state/fingerprints remain deterministic and payload-safe, exposing counts/status/hash metadata rather than arbitrary content bytes.
 9. Focused tests, strict Ruff, compile checks, creator demo, deterministic workload benchmark, and the locked asset-pipeline/cache/streaming regression contracts pass on Python 3.10, 3.13, and 3.14 in the dedicated workflow.
 10. Normal CI, Desktop Export, source game demos, and locked 1.4/1.5 hardening workflows remain green on the verified implementation head before merge to `main`.
+
+## Milestone 7 verification contract
+
+Milestone 7 is complete only when the exact implementation head satisfies all of the following before the roadmap completion marker is committed:
+
+1. `swirengine.platform16` remains additive and opt-in, leaving stable 1.x root imports and the published 1.5 compatibility surface unchanged.
+2. Identity, cloud-save, achievements, stats, and entitlements are independent discoverable capabilities whose providers must satisfy the complete protocol for the capability they register.
+3. `LocalPlatformProvider` remains dependency-free, bounds cloud-save slot count and payload size, snapshots bytes on write, and exposes SHA-256 metadata without pretending to be a durable remote service.
+4. Cloud-save compare-and-swap semantics reject stale revisions deterministically, preserve monotonically increasing per-slot revisions across deletion, and never silently overwrite a conflicting revision.
+5. Cloud slot identifiers are portable single-segment names and reject traversal, absolute/nested path syntax, while achievement/stat numeric inputs reject non-finite or out-of-contract values.
+6. Achievement progress is monotonic and unlocks at exactly complete progress; stats and entitlement enumeration are deterministic and the local entitlement mutation helpers remain explicitly development-only configuration surfaces.
+7. Missing capabilities, unsupported operations, and provider failures expose stable creator-facing error codes; unexpected external failures are sanitized and isolated so one failing capability does not disable independent providers.
+8. `try_call(...)`, deterministic capability discovery, payload-safe diagnostics, and diagnostics fingerprints provide creator/headless fallback surfaces without serializing save payloads, identity values, entitlement inventories, credentials, tokens, or provider exception text.
+9. Focused tests, strict Ruff, compile checks, creator demo, deterministic workload benchmark, and the locked Save & Profile 2.0 regression contract pass on Python 3.10, 3.13, and 3.14 in the dedicated Platform Services workflow.
+10. Normal CI, Desktop Export, source game demos, Full Game 1.3, and locked 1.4/1.5 hardening workflows remain green on the verified implementation head before merge to `main`.
