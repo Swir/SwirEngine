@@ -9,7 +9,6 @@ from typing import Any
 from .multiplayer14 import PredictionCommand, ReplicatedEntity, WorldSnapshot
 from .multiplayer16 import (
     EntityInterest,
-    InterestManager,
     InterestView,
     ReplicationStreamClient,
     ReplicationStreamServer,
@@ -232,8 +231,6 @@ class DeterministicPacketLink:
             if reorder:
                 self._reorder_injections += 1
             if copy_index:
-                # Do not make a duplicate byte-identical in time as well as content; a small
-                # deterministic offset gives duplicate/stale suppression realistic exercise.
                 extra += self._rng.below(self.profile.jitter_ticks + 2)
             deliver_tick = tick + self.profile.base_latency_ticks + jitter + extra
             self._order += 1
@@ -382,14 +379,14 @@ class MultiplayerSoakRunner:
 
     def __init__(self, config: MultiplayerSoakConfig | None = None) -> None:
         self.config = config or MultiplayerSoakConfig()
-        self.interest = InterestManager()
         self.server = ReplicationStreamServer(
-            self.interest,
+            None,
             max_world_history=max(64, self.config.prediction_correction_interval * 4),
             max_client_history=32,
             max_entities_per_client=self.config.entity_budget,
             strict_metadata=True,
         )
+        self.interest = self.server.interest
         token_counter = {"value": 0}
 
         def token_factory() -> str:
