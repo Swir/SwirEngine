@@ -1,0 +1,90 @@
+name: Content Delivery 1.6
+
+on:
+  pull_request:
+    paths:
+      - "src/swirengine/content16.py"
+      - "src/swirengine/_content16_*.py"
+      - "tests/test_content_delivery_1_6.py"
+      - "tests/test_asset_pipeline_1_4.py"
+      - "tests/test_asset_cache_1_4.py"
+      - "tests/test_asset_streaming.py"
+      - "tools/benchmark_content_delivery_1_6.py"
+      - "examples/demo_content_delivery_1_6.py"
+      - "docs/CONTENT_DELIVERY_1_6.md"
+      - "ROADMAP_1_6.md"
+      - ".github/workflows/content-delivery-1-6.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: content-delivery-1-6-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  content-delivery:
+    name: Content delivery / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install CPython 3.14 native build prerequisites
+        if: matrix.python-version == '3.14'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev
+
+      - name: Install development dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Run content-delivery and locked asset contracts
+        run: >-
+          pytest
+          tests/test_content_delivery_1_6.py
+          tests/test_asset_pipeline_1_4.py
+          tests/test_asset_cache_1_4.py
+          tests/test_asset_streaming.py
+
+      - name: Lint content-delivery surface
+        run: >-
+          ruff check
+          src/swirengine/content16.py
+          src/swirengine/_content16_common.py
+          src/swirengine/_content16_manifest.py
+          src/swirengine/_content16_cache.py
+          src/swirengine/_content16_patch.py
+          tests/test_content_delivery_1_6.py
+          tools/benchmark_content_delivery_1_6.py
+          examples/demo_content_delivery_1_6.py
+
+      - name: Compile content-delivery surfaces
+        run: >-
+          python -m compileall -q
+          src/swirengine/content16.py
+          src/swirengine/_content16_common.py
+          src/swirengine/_content16_manifest.py
+          src/swirengine/_content16_cache.py
+          src/swirengine/_content16_patch.py
+          tests/test_content_delivery_1_6.py
+          tools/benchmark_content_delivery_1_6.py
+          examples/demo_content_delivery_1_6.py
+
+      - name: Run deterministic content workload
+        if: matrix.python-version == '3.13'
+        run: python tools/benchmark_content_delivery_1_6.py
+
+      - name: Run creator demo
+        run: python examples/demo_content_delivery_1_6.py
