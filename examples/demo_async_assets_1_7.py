@@ -10,8 +10,8 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from swirengine.assets import AssetManager  # noqa: E402
-from swirengine.assets17 import AsyncAssetPipeline  # noqa: E402
+from swirengine.assets import AssetManager
+from swirengine.assets17 import AsyncAssetPipeline
 
 
 def main() -> int:
