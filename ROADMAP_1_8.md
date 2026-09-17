@@ -3,7 +3,7 @@
 SwirEngine 1.7 is a completed source-only checkpoint. SwirEngine 1.8 continues the path toward 2.0
 with additive rendering scalability systems while preserving stable 1.x behavior.
 
-**Current verified progress: 2/10 milestones = 20.0%.**
+**Current verified progress: 3/10 milestones = 30.0%.**
 
 A milestone is checked only after implementation, focused tests, documentation, its dedicated gate,
 and the repository's required compatibility/regression gates pass on the exact implementation head.
@@ -33,7 +33,7 @@ The final roadmap-marked PR head must pass the required gates again before merge
   - deterministic acquire/release/trim diagnostics and failure containment;
   - stable renderer behavior retained when the pool is not enabled.
 
-- [ ] **3. Batched Upload, Staging & Texture Residency**
+- [x] **3. Batched Upload, Staging & Texture Residency**
   - bounded upload queues and staging budgets;
   - deterministic texture residency/eviction priorities;
   - duplicate upload suppression and explicit back-pressure;
@@ -172,9 +172,10 @@ Milestone 3 is complete only when the exact implementation candidate satisfies a
     and the dedicated Python 3.10/3.13/3.14 workflow pass, followed by the repository's required
     compatibility/regression workflows on the exact final milestone head.
 
-Implementation head `4a1eb25f6ba446be9351107eb326b4eb6d88caba` passed the dedicated
-Python 3.10/3.13/3.14 texture-upload gate before this contract was added. The Python 3.13 gate ran
-65 focused/regression tests successfully and the 7,680-operation workload completed in 0.0743 seconds,
-with 3,840 backend submissions and 3,840 verified duplicate skips. This milestone intentionally
-remains unchecked at 2/10 until the roadmap-marked PR head re-passes the dedicated gate and the
-repository's required compatibility/regression workflows. Release/PyPI remain frozen until SwirEngine 2.0.
+Verified implementation head `c78a58beebea6601dfd5964487856beeaab4f549` passed the dedicated
+Python 3.10/3.13/3.14 texture-upload gate, full repository CI, Desktop Export, game-demo validation,
+locked 1.4/1.5 hardening, Render Graph and Transient Render Resources 1.8 gates, and 1.6/1.7
+source-checkpoint regressions. The Python 3.13 gate's earlier implementation run executed 65
+focused/regression tests successfully and completed the 7,680-operation workload in 0.0743 seconds,
+with 3,840 backend submissions and 3,840 verified duplicate skips. This roadmap-marked PR head must
+re-pass its triggered gates before merge. Release/PyPI remain frozen until SwirEngine 2.0.
