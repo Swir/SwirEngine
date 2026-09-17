@@ -142,6 +142,8 @@ class MaterialKey:
     def __post_init__(self) -> None:
         object.__setattr__(self, "material_id", _token(self.material_id, label="material_id"))
         object.__setattr__(self, "uniform_layout", _token(self.uniform_layout, label="uniform_layout"))
+        if isinstance(self.textures, (str, bytes)):
+            raise TypeError("textures must be an iterable of texture ids, not a string")
         textures: list[str] = []
         for texture in self.textures:
             textures.append(_token(texture, label="texture id"))
@@ -291,6 +293,7 @@ class MaterialSubmissionQueue:
 
     def clear(self) -> None:
         self._draws.clear()
+        self._sequence = 0
 
     def compile(self) -> MaterialSubmissionPlan:
         ordered: list[DrawSubmission] = []
@@ -522,7 +525,7 @@ class PipelineStateCache(Generic[PipelineT]):
                 continue
             try:
                 self._destroy(entry.pipeline)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - backend callback failures are isolated per entry
                 self._destroy_failures += 1
                 failures.append(str(exc))
                 continue
@@ -540,13 +543,13 @@ class PipelineStateCache(Generic[PipelineT]):
         self._ensure_open()
         destroyed = 0
         failures = 0
-        for key in sorted(tuple(self._entries), key=lambda item: item.fingerprint):
+        for key in sorted(self._entries, key=lambda item: item.fingerprint):
             entry = self._entries.get(key)
             if entry is None:
                 continue
             try:
                 self._destroy(entry.pipeline)
-            except Exception:
+            except Exception:  # noqa: BLE001 - continue cleaning independent backend entries
                 self._destroy_failures += 1
                 failures += 1
                 continue
