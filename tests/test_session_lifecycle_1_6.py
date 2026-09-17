@@ -6,6 +6,7 @@ from swirengine.networking import NetworkPacket
 from swirengine.session16 import (
     SESSION_SNAPSHOT_PACKET_KIND,
     SessionLifecycle,
+    SessionMember,
     SessionOperationError,
     SessionPhase,
     SessionSnapshot,
@@ -201,6 +202,10 @@ def test_last_host_leave_closes_session_and_invalidates_operations() -> None:
     assert session.phase is SessionPhase.CLOSED
     assert session.members == ()
     assert session.role_owners == {}
+    closed_snapshot = session.snapshot()
+    assert closed_snapshot.phase is SessionPhase.CLOSED
+    assert closed_snapshot.members == ()
+    assert closed_snapshot.role_owners == {}
     with pytest.raises(SessionOperationError) as closed:
         session.resume(token)
     assert closed.value.code == "session_closed"
@@ -318,6 +323,37 @@ def test_snapshot_decoder_rejects_wrong_kind_and_inconsistent_role_table() -> No
     )
     with pytest.raises(ValueError, match="agree"):
         SessionSnapshot.from_packet(packet)
+
+
+def test_snapshot_rejects_duplicate_join_order_and_normalized_role_aliases() -> None:
+    host = SessionMember("host", 0, True, False, ("host",))
+    guest = SessionMember("guest", 0, True, False)
+    with pytest.raises(ValueError, match="join orders must be unique"):
+        SessionSnapshot("room", 1, SessionPhase.LOBBY, "host", (host, guest), {"host": "host"})
+
+    host_with_role = SessionMember("host", 0, True, False, ("host", "pilot"))
+    with pytest.raises(ValueError, match="unique after normalization"):
+        SessionSnapshot(
+            "room",
+            1,
+            SessionPhase.LOBBY,
+            "host",
+            (host_with_role,),
+            {"host": "host", "pilot": "host", " pilot ": "host"},
+        )
+
+
+def test_closed_snapshot_rejects_retained_roster_state() -> None:
+    host = SessionMember("host", 0, True, False, ("host",))
+    with pytest.raises(ValueError, match="must not retain roster"):
+        SessionSnapshot(
+            "room",
+            2,
+            SessionPhase.CLOSED,
+            "host",
+            (host,),
+            {"host": "host"},
+        )
 
 
 def test_member_leave_releases_roles_and_invalidates_resume_token() -> None:
