@@ -1,0 +1,92 @@
+name: Project Production 1.9
+
+on:
+  push:
+    branches: ["feat/1.9-project-production"]
+    paths:
+      - "src/swirengine/project19.py"
+      - "src/swirengine/cli.py"
+      - "tests/test_project_manifest_1_9.py"
+      - "tests/test_cli.py"
+      - "tests/test_exporting.py"
+      - "tools/benchmark_project_manifest_1_9.py"
+      - "docs/PROJECT_PRODUCTION_1_9.md"
+      - "ROADMAP_1_9.md"
+      - "CHANGELOG.d/1.9-project-production.md"
+      - "pyproject.toml"
+      - ".github/workflows/project-production-1-9.yml"
+  pull_request:
+    paths:
+      - "src/swirengine/project19.py"
+      - "src/swirengine/cli.py"
+      - "tests/test_project_manifest_1_9.py"
+      - "tests/test_cli.py"
+      - "tests/test_exporting.py"
+      - "tools/benchmark_project_manifest_1_9.py"
+      - "docs/PROJECT_PRODUCTION_1_9.md"
+      - "ROADMAP_1_9.md"
+      - "CHANGELOG.d/1.9-project-production.md"
+      - "pyproject.toml"
+      - ".github/workflows/project-production-1-9.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: project-production-1-9-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  project-production:
+    name: Project Production / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install CPython 3.14 native build prerequisites
+        if: matrix.python-version == '3.14'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev
+
+      - name: Install development dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Run project-production and export regressions
+        run: >-
+          pytest
+          tests/test_project_manifest_1_9.py
+          tests/test_cli.py
+          tests/test_exporting.py
+
+      - name: Lint project-production surfaces
+        run: >-
+          ruff check
+          src/swirengine/project19.py
+          src/swirengine/cli.py
+          tests/test_project_manifest_1_9.py
+          tools/benchmark_project_manifest_1_9.py
+
+      - name: Compile project-production surfaces
+        run: >-
+          python -m compileall -q
+          src/swirengine/project19.py
+          src/swirengine/cli.py
+          tests/test_project_manifest_1_9.py
+          tools/benchmark_project_manifest_1_9.py
+
+      - name: Run deterministic project-manifest workload
+        if: matrix.python-version == '3.13'
+        run: python tools/benchmark_project_manifest_1_9.py

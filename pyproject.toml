@@ -29,11 +29,12 @@ dependencies = [
   "glfw>=2.10,<3",
   "Pillow>=10,<13",
   "typing-extensions>=4.12,<5",
+  "tomli>=2,<3; python_version < '3.11'",
 ]
 
 [project.optional-dependencies]
 audio = ["pygame>=2.6,<3"]
-dev = ["pytest>=8,<10", "ruff>=0.16,<0.17", "tomli>=2,<3; python_version < '3.11'"]
+dev = ["pytest>=8,<10", "ruff>=0.16,<0.17"]
 
 [project.scripts]
 swirengine = "swirengine.cli:main"
