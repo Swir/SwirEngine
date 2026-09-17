@@ -9,6 +9,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from types import MappingProxyType
 
+from typing_extensions import Self
+
 from .jobs17 import JobContext, JobScheduler, JobState
 
 
@@ -519,7 +521,7 @@ class StreamingWorkGraph:
             )
             try:
                 record.value = record.function(context)
-            except Exception as error:  # creator callback isolation is intentional
+            except Exception as error:  # noqa: BLE001 - creator callbacks are isolated
                 record.state = WorkNodeState.FAILED
                 record.error_type = type(error).__name__
                 record.error_message = str(error)
@@ -713,7 +715,7 @@ class StreamingWorkGraph:
             self._closed = True
         self._scheduler.shutdown(wait=wait, cancel_pending=cancel_pending)
 
-    def __enter__(self) -> StreamingWorkGraph:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
