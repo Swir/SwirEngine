@@ -199,16 +199,20 @@ def test_server_resynchronizes_after_client_prunes_ack_baseline() -> None:
     restored = client.apply(recovery)
     assert recovery.mode == "snapshot"
     assert restored.tick == 4
-    assert server.acknowledge("alpha", 4) is True
 
     server.publish(_snapshot(5, _entity(1, 5), _entity(2, 6), _entity(4, 99)))
+    unacked_recovery_retry = server.build_update("alpha")
+    assert unacked_recovery_retry.mode == "snapshot"
+
+    assert server.acknowledge("alpha", 4) is True
+    server.publish(_snapshot(6, _entity(1, 6), _entity(2, 7), _entity(4, 99)))
     after_recovery = server.build_update("alpha")
     assert after_recovery.delta is not None
     assert after_recovery.delta.baseline_tick == 4
 
     diagnostics = server.diagnostics("alpha")
     assert diagnostics["snapshot_fallbacks"] == 1
-    assert diagnostics["full_updates"] == 2
+    assert diagnostics["full_updates"] == 3
 
 
 def test_replication_update_packet_round_trips_over_stable_network_packet() -> None:
