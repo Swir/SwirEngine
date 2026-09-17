@@ -6,6 +6,7 @@ on:
     paths:
       - "src/swirengine/render_resources18.py"
       - "tests/test_render_resources_1_8.py"
+      - "tests/test_render_resources_hardening_1_8.py"
       - "tools/benchmark_render_resources_1_8.py"
       - "examples/demo_render_resources_1_8.py"
       - "docs/TRANSIENT_RENDER_RESOURCES_1_8.md"
@@ -16,6 +17,7 @@ on:
     paths:
       - "src/swirengine/render_resources18.py"
       - "tests/test_render_resources_1_8.py"
+      - "tests/test_render_resources_hardening_1_8.py"
       - "tools/benchmark_render_resources_1_8.py"
       - "examples/demo_render_resources_1_8.py"
       - "docs/TRANSIENT_RENDER_RESOURCES_1_8.md"
@@ -62,6 +64,7 @@ jobs:
         run: >-
           pytest
           tests/test_render_resources_1_8.py
+          tests/test_render_resources_hardening_1_8.py
           tests/test_render_graph_1_8.py
           tests/test_accelerated_renderer2_1_4.py
 
@@ -70,6 +73,7 @@ jobs:
           ruff check
           src/swirengine/render_resources18.py
           tests/test_render_resources_1_8.py
+          tests/test_render_resources_hardening_1_8.py
           tools/benchmark_render_resources_1_8.py
           examples/demo_render_resources_1_8.py
 
@@ -78,6 +82,7 @@ jobs:
           python -m compileall -q
           src/swirengine/render_resources18.py
           tests/test_render_resources_1_8.py
+          tests/test_render_resources_hardening_1_8.py
           tools/benchmark_render_resources_1_8.py
           examples/demo_render_resources_1_8.py
 
