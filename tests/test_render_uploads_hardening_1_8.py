@@ -1,7 +1,7 @@
 import pytest
 
 from swirengine.render_resources18 import RenderResourceDescriptor
-from swirengine.render_uploads18 import TextureUploadQueue
+from swirengine.render_uploads18 import TextureUploadError, TextureUploadQueue
 
 
 def descriptor(*, width: int = 8, height: int = 8, size: int = 64):
@@ -81,9 +81,9 @@ def test_byte_backpressure_is_checked_before_mutable_payload_snapshot() -> None:
     queue.enqueue("first", descriptor(), b"1234")
     payload = bytearray(b"5678")
 
-    with pytest.raises(Exception) as error:
+    with pytest.raises(TextureUploadError) as error:
         queue.enqueue("second", descriptor(), payload)
 
-    assert getattr(error.value, "code", None) == "queue-bytes-full"
+    assert error.value.code == "queue-bytes-full"
     assert queue.queued_uploads == 1
     assert queue.queued_bytes == 4
