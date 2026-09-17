@@ -10,6 +10,7 @@ Large content transitions commonly mix work that is safe in background threads w
 - `INSTANTIATE` and `UNLOAD` phases execute only from creator-controlled `poll(...)` calls;
 - dependencies are explicit and graph construction requires dependencies to be added first, so cycles cannot be authored accidentally;
 - graph size, scheduler pending work, background submissions per poll and main-thread callback execution are all bounded;
+- worker saturation defers ready background nodes instead of turning normal scheduler back-pressure into a graph failure;
 - one failed/cancelled branch blocks only its dependents while independent branches continue;
 - diagnostics report progress/state/counters without exposing work-result payloads.
 
@@ -73,16 +74,17 @@ Requiring dependencies to exist at `add(...)` time provides three useful guarant
 - `max_nodes` limits authored graph size;
 - `max_workers` limits concurrent background execution;
 - `max_pending_background` is delegated to the verified bounded `JobScheduler`;
-- `max_background_submissions_per_poll` limits newly scheduled worker work from one graph advancement;
+- `max_background_submissions_per_poll` is a shared hard ceiling across all graph-advancement passes inside one `poll(...)` call;
+- scheduler pending capacity is checked before admission, so excess ready background nodes remain `WAITING` and are retried by later polls rather than raising ordinary back-pressure errors;
 - `poll(max_items=...)` limits completed-worker handoffs plus main-thread callbacks handled in one owning-thread call.
 
-These are work contracts, not FPS claims. The dedicated 1.7 validation gate also runs a deterministic 2,048-node workload (512 four-stage chains) against a generous 5.0-second CI budget.
+Initial `start()` admission is also bounded by the configured background-submission ceiling. These are work contracts, not FPS claims. The dedicated 1.7 validation gate also runs a deterministic 2,048-node workload (512 four-stage chains) against a generous 5.0-second CI budget.
 
 ## Fault isolation
 
 Worker exceptions and main-thread callback exceptions become node-level `FAILED` results. Dependents become `BLOCKED` with a stable dependency diagnostic while unrelated graph branches continue normally.
 
-`cancel(node_id, cascade=True)` explicitly cancels a node and its dependent subgraph. With `cascade=False`, only the selected node is cancelled and normal dependency propagation blocks its dependents. Cancellation never silently marks unrelated work as cancelled.
+`cancel(node_id, cascade=True)` explicitly cancels a node and its dependent subgraph. With `cascade=False`, only the selected node is cancelled and normal dependency propagation blocks its dependents. Cancellation never silently marks unrelated work as cancelled and does not use cancellation as an excuse to schedule unrelated worker work outside the next normal graph advancement.
 
 ## Diagnostics
 
@@ -92,7 +94,7 @@ Worker exceptions and main-thread callback exceptions become node-level `FAILED`
 - total/terminal node counts and deterministic progress;
 - background submission and main-thread execution totals;
 - failure/cancellation/block counters;
-- last-poll handoff/callback counts;
+- last-poll worker handoffs, background submissions and main-thread callback counts;
 - phase counts.
 
 `portable()` intentionally contains no work payloads. Actual node values remain available only through `graph.result(node_id)` after the node is terminal.
