@@ -170,29 +170,32 @@ class SessionSnapshot:
         members = tuple(self.members)
         if len({member.client_id for member in members}) != len(members):
             raise ValueError("session snapshot member ids must be unique")
-        if [member.join_order for member in members] != sorted(
-            member.join_order for member in members
-        ):
+        join_orders = [member.join_order for member in members]
+        if len(set(join_orders)) != len(join_orders):
+            raise ValueError("session snapshot join orders must be unique")
+        if join_orders != sorted(join_orders):
             raise ValueError("session snapshot members must use deterministic join order")
         member_ids = {member.client_id for member in members}
         if self.phase is not SessionPhase.CLOSED and self.host_client_id not in member_ids:
             raise ValueError("open session snapshot host must be present in roster")
+        if self.phase is SessionPhase.CLOSED and members:
+            raise ValueError("closed session snapshot must not retain roster members")
 
         role_owners: dict[str, str] = {}
         for role, owner in self.role_owners.items():
             normalized_role = _bounded_text(role, "role", maximum=64)
             normalized_owner = _bounded_text(owner, "role owner", maximum=128)
+            if normalized_role in role_owners:
+                raise ValueError("session snapshot role names must be unique after normalization")
             if normalized_owner not in member_ids:
                 raise ValueError("role owner must be present in session roster")
             role_owners[normalized_role] = normalized_owner
-        if self.phase is not SessionPhase.CLOSED:
-            if role_owners.get("host") != self.host_client_id:
-                raise ValueError("open session snapshot must bind the host role to host_client_id")
+        if self.phase is not SessionPhase.CLOSED and role_owners.get("host") != self.host_client_id:
+            raise ValueError("open session snapshot must bind the host role to host_client_id")
+        if self.phase is SessionPhase.CLOSED and role_owners:
+            raise ValueError("closed session snapshot must not retain role ownership")
 
-        expected_roles = {
-            (role, owner)
-            for role, owner in role_owners.items()
-        }
+        expected_roles = {(role, owner) for role, owner in role_owners.items()}
         actual_roles = {
             (role, member.client_id)
             for member in members
