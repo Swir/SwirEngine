@@ -1,0 +1,104 @@
+name: Multiplayer Showcase 1.6
+
+on:
+  pull_request:
+    paths:
+      - "src/swirengine/multiplayer_showcase16.py"
+      - "src/swirengine/multiplayer16.py"
+      - "src/swirengine/prediction16.py"
+      - "src/swirengine/session16.py"
+      - "src/swirengine/transport16.py"
+      - "src/swirengine/server16.py"
+      - "src/swirengine/network_profiler16.py"
+      - "tests/test_multiplayer_showcase_soak_1_6.py"
+      - "tests/test_multiplayer_replication_1_6.py"
+      - "tests/test_prediction_reconciliation_1_6.py"
+      - "tests/test_session_lifecycle_1_6.py"
+      - "tests/test_transport_qos_1_6.py"
+      - "tests/test_dedicated_server_1_6.py"
+      - "tests/test_network_profiler_1_6.py"
+      - "tools/benchmark_multiplayer_showcase_1_6.py"
+      - "examples/demo_multiplayer_showcase_1_6.py"
+      - "docs/MULTIPLAYER_SHOWCASE_SOAK_1_6.md"
+      - "ROADMAP_1_6.md"
+      - ".github/workflows/multiplayer-showcase-1-6.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: multiplayer-showcase-1-6-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  multiplayer-showcase:
+    name: Multiplayer showcase / Python ${{ matrix.python-version }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: "3.10"
+          - os: ubuntu-latest
+            python-version: "3.13"
+          - os: windows-latest
+            python-version: "3.13"
+          - os: ubuntu-latest
+            python-version: "3.14"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install CPython 3.14 native build prerequisites
+        if: matrix.python-version == '3.14' && runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev
+
+      - name: Install development dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Run showcase and locked 1.6 multiplayer contracts
+        run: >-
+          pytest
+          tests/test_multiplayer_showcase_soak_1_6.py
+          tests/test_multiplayer_replication_1_6.py
+          tests/test_prediction_reconciliation_1_6.py
+          tests/test_session_lifecycle_1_6.py
+          tests/test_transport_qos_1_6.py
+          tests/test_dedicated_server_1_6.py
+          tests/test_network_profiler_1_6.py
+
+      - name: Run locked stable multiplayer/networking regressions
+        run: pytest tests/test_multiplayer_2_1_4.py tests/test_networking.py
+
+      - name: Lint showcase surface
+        run: >-
+          ruff check
+          src/swirengine/multiplayer_showcase16.py
+          tests/test_multiplayer_showcase_soak_1_6.py
+          tools/benchmark_multiplayer_showcase_1_6.py
+          examples/demo_multiplayer_showcase_1_6.py
+
+      - name: Compile showcase surfaces
+        run: >-
+          python -m compileall -q
+          src/swirengine/multiplayer_showcase16.py
+          tests/test_multiplayer_showcase_soak_1_6.py
+          tools/benchmark_multiplayer_showcase_1_6.py
+          examples/demo_multiplayer_showcase_1_6.py
+
+      - name: Run deterministic multi-client workload
+        if: matrix.python-version == '3.13' && runner.os == 'Linux'
+        run: python tools/benchmark_multiplayer_showcase_1_6.py
+
+      - name: Run source-only multiplayer showcase
+        run: python examples/demo_multiplayer_showcase_1_6.py
