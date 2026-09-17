@@ -288,7 +288,7 @@ def test_chunk_content_adapter_rejects_unlisted_new_entities_without_leak() -> N
 
 def test_poll_from_non_owner_thread_is_rejected_before_scene_mutation() -> None:
     scene = Scene()
-    errors: list[BaseException] = []
+    errors: list[RuntimeError] = []
 
     with SceneStager(scene, max_workers=1) as stager:
         stager.submit("owner-only", lambda context: _single_object_plan(context.request_id))
@@ -296,7 +296,7 @@ def test_poll_from_non_owner_thread_is_rejected_before_scene_mutation() -> None:
         def wrong_thread() -> None:
             try:
                 stager.poll()
-            except BaseException as exc:
+            except RuntimeError as exc:
                 errors.append(exc)
 
         thread = threading.Thread(target=wrong_thread)

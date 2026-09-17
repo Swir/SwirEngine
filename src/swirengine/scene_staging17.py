@@ -10,6 +10,8 @@ from enum import Enum
 from types import MappingProxyType
 from typing import Any, TypeAlias
 
+from typing_extensions import Self
+
 from .core.scene import Scene, SceneMount
 from .jobs17 import JobContext, JobOutcome, JobScheduler, JobState
 from .large_world import ChunkContent
@@ -389,7 +391,7 @@ class SceneStager:
         step = plan.steps[request.next_step]
         try:
             token = step.apply(self.scene)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             request.error_type = type(exc).__name__
             request.error_message = str(exc)
             self._activation_failures_total += 1
@@ -422,7 +424,7 @@ class SceneStager:
         applied = request.applied[request.rollback_index]
         try:
             applied.step.rollback(self.scene, applied.token)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             message = f"{applied.step.step_id}: {type(exc).__name__}: {exc}"
             request.rollback_errors.append(message)
             self._rollback_failures_total += 1
@@ -621,7 +623,7 @@ class SceneStager:
 
         self._scheduler.shutdown(wait=wait, cancel_pending=cancel_pending)
 
-    def __enter__(self) -> SceneStager:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *_exc: object) -> None:
