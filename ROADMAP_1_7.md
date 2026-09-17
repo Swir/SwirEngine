@@ -2,7 +2,7 @@
 
 SwirEngine 1.6 is complete as a verified source-development checkpoint. SwirEngine 1.7 continues the additive 1.x development line toward 2.0 without changing the published 1.5.0 package version or rewriting any released tag.
 
-**Current verified progress: 0/10 milestones = 0.0%.**
+**Current verified progress: 1/10 milestones = 10.0%.**
 
 A milestone is checked only after its implementation, focused tests, documentation, creator example and dedicated validation gate pass on the exact commit merged to `main`. Scaffolding or documentation alone never counts as completion.
 
@@ -17,7 +17,7 @@ A milestone is checked only after its implementation, focused tests, documentati
 
 ## Milestones
 
-- [ ] **1. Background Jobs & Main-thread Handoff**
+- [x] **1. Background Jobs & Main-thread Handoff**
   - bounded worker concurrency and unfinished-job back-pressure;
   - deterministic priority/FIFO dispatch among ready work;
   - explicit dependency gating with failure/cancellation propagation;
@@ -93,5 +93,7 @@ Milestone 1 is complete only when the exact implementation head satisfies all of
 8. `drain_completed(max_items=...)` provides an explicit bounded handoff surface for main-thread-owned engine changes; diagnostics expose only counts/budgets and never job result payloads.
 9. Focused tests, strict Ruff, compile checks, creator demo and a 2,000-job workload remain within the documented generous 5.0-second CI budget without making an FPS claim.
 10. The dedicated Python 3.10/3.13/3.14 workflow passes on the final milestone head before merge to `main`; Release/PyPI remain frozen until SwirEngine 2.0.
+
+Milestone 1 was implemented and merged as `3fc63010da56634ee7e5f416a88e7f6c6245b1c7` after the exact candidate head passed Background Jobs 1.7 on Python 3.10/3.13/3.14 plus normal CI, Desktop Export, game-demo, 1.4/1.5 hardening and the 1.6 source-checkpoint regressions. The Python 3.13 gate completed 15 focused tests in 0.70 seconds and the 2,000-job workload in 0.2994 seconds against the 5.0-second budget.
 
 Progress is based on milestone completion, not file count or commit count. Each milestone is worth 10 percentage points.
