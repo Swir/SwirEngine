@@ -190,6 +190,8 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
     hardening = _read(root, ".github/workflows/showcase-hardening-1-5.yml")
     for token in (
         "verify_1_5_release_candidate.py",
+        "verify_1_3_release_candidate.py",
+        "verify_1_4_release_candidate.py --require-complete",
         "pytest",
         "ruff check",
         "compileall",
@@ -197,6 +199,7 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         "SWIR_GAME_DEMO_SMOKE_FRAMES",
         "xvfb-run",
         "python -m build",
+        "      - main",
     ) + tuple(Path(item).name for item in REQUIRED_BENCHMARKS):
         _require(token in hardening, f"1.5 hardening workflow includes {token}", checks)
 
@@ -218,17 +221,29 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
     )
 
     if require_complete:
+        _require(
+            "verify_1_5_release_candidate.py --require-complete" in ci,
+            "normal CI uses the complete 1.5 contract after 10/10",
+            checks,
+        )
+
         release = _read(root, ".github/workflows/release.yml")
         for token in (
             '"v1.5.0"',
             "verify_1_5_release_candidate.py --require-complete",
+            "verify_1_3_release_candidate.py",
+            "verify_1_4_release_candidate.py --require-complete",
             "RELEASE_NOTES_1_5.md",
             "swirengine==1.5.0",
             "pypa/gh-action-pypi-publish@release/v1",
             "id-token: write",
             "examples/2d_game_demo/run_game.py",
             "examples/3d_game_demo/run_game.py",
-        ):
+            "SWIR_GAME_DEMO_SMOKE_FRAMES",
+            "xvfb-run",
+            "dist-base\\swirengine-1.5.0-py3-none-any.whl",
+            "https://pypi.org/pypi/swirengine/1.5.0/json",
+        ) + tuple(Path(item).name for item in REQUIRED_BENCHMARKS):
             _require(token in release, f"release workflow includes {token}", checks)
         _require(
             "skip-existing: true" not in release,
@@ -241,10 +256,24 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             checks,
         )
 
+        tagger = _read(root, ".github/workflows/tag-1-5.yml")
+        for token in (
+            "release/1.5.0-publish",
+            "verify_1_5_release_candidate.py --require-complete",
+            "git/ref/heads/main",
+            'refs/tags/v1.5.0',
+            '"$main_sha" != "$GITHUB_SHA"',
+        ):
+            _require(token in tagger, f"1.5 tag bridge includes {token}", checks)
+
         readme = _read(root, "README.md")
         _require("# SwirEngine 1.5.0" in readme, "README title matches 1.5.0", checks)
         _require("10/10 = 100.0%" in readme, "README reports verified 10/10 progress", checks)
-        _require("Runtime Diagnostics & Profiling 2.0" in readme, "README documents milestone 9", checks)
+        _require(
+            "Runtime Diagnostics & Profiling 2.0" in readme,
+            "README documents milestone 9",
+            checks,
+        )
         notes = _read(root, "RELEASE_NOTES_1_5.md")
         _require(TARGET_VERSION in notes, "1.5 release notes name the release version", checks)
 
