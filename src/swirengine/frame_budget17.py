@@ -29,6 +29,8 @@ def _nonnegative_int(value: int, *, label: str) -> int:
 
 
 def _positive_ms(value: float, *, label: str) -> float:
+    if isinstance(value, bool):
+        raise TypeError(f"{label} must be a real number")
     result = float(value)
     if not math.isfinite(result) or result <= 0.0:
         raise ValueError(f"{label} must be finite and > 0")
@@ -248,12 +250,14 @@ class FrameTimeBudgetController:
             raise ValueError("lane reserved_items cannot exceed max_items_per_frame")
         if isinstance(priority, bool) or not isinstance(priority, int):
             raise TypeError("lane priority must be an integer")
+        if not isinstance(enabled, bool):
+            raise TypeError("lane enabled must be a boolean")
         config = FrameBudgetLaneConfig(
             name=normalized,
             priority=priority,
             max_items_per_frame=per_frame,
             reserved_items=reserved,
-            enabled=bool(enabled),
+            enabled=enabled,
             sequence=self._next_sequence,
         )
         self._next_sequence += 1
@@ -295,12 +299,14 @@ class FrameTimeBudgetController:
         )
         if new_reserved > new_max:
             raise ValueError("lane reserved_items cannot exceed max_items_per_frame")
+        if enabled is not None and not isinstance(enabled, bool):
+            raise TypeError("lane enabled must be a boolean")
         lane.config = FrameBudgetLaneConfig(
             name=current.name,
             priority=new_priority,
             max_items_per_frame=new_max,
             reserved_items=new_reserved,
-            enabled=current.enabled if enabled is None else bool(enabled),
+            enabled=current.enabled if enabled is None else enabled,
             sequence=current.sequence,
         )
         return lane.config
@@ -425,9 +431,6 @@ class FrameTimeBudgetController:
                 raise RuntimeError("frame budget clock returned a non-finite callback duration")
             lane.calls_total += 1
             lane.items_total += consumed
-            lane.last_items = consumed
-            lane.last_elapsed_ms = call_elapsed
-            lane.max_elapsed_ms = max(lane.max_elapsed_ms, call_elapsed)
             elapsed_by_lane[lane.config.name] += call_elapsed
             consumed_by_lane[lane.config.name] += consumed
             items_drained += consumed
@@ -466,6 +469,9 @@ class FrameTimeBudgetController:
         for lane in enabled:
             name = lane.config.name
             consumed = consumed_by_lane[name]
+            lane.last_items = consumed
+            lane.last_elapsed_ms = elapsed_by_lane[name]
+            lane.max_elapsed_ms = max(lane.max_elapsed_ms, lane.last_elapsed_ms)
             was_fully_probed = name in explicitly_exhausted or consumed >= lane.config.max_items_per_frame
             lane_deferred = not was_fully_probed and name not in errors and (
                 budget_exhausted or name not in attempted
