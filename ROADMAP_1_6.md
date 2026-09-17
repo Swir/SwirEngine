@@ -2,7 +2,7 @@
 
 SwirEngine 1.5.0 is released and locked as the stable compatibility baseline. The 1.6 line is additive: existing 1.x imports and behavior stay stable unless a genuine maintenance fix is required.
 
-**Current verified progress: 1/10 milestones = 10.0%.**
+**Current verified progress: 2/10 milestones = 20.0%.**
 
 A milestone is checked only after its implementation, focused tests, documentation, and dedicated validation gate pass on the exact commit that is merged to `main`. Repository activity, scaffolding, or an open pull request does not count as completion.
 
@@ -25,7 +25,7 @@ A milestone is checked only after its implementation, focused tests, documentati
   - packet bridge layered on the stable 1.x `NetworkPacket` transport;
   - focused contract tests, workload benchmark, creator documentation/demo, and Python 3.10/3.13/3.14 CI gate.
 
-- [ ] **2. Prediction & Reconciliation 2.0**
+- [x] **2. Prediction & Reconciliation 2.0**
   - authoritative command acknowledgements tied to replication ticks;
   - configurable prediction windows and deterministic replay budgets;
   - correction smoothing hooks without changing simulation truth;
@@ -93,3 +93,18 @@ Milestone 1 is complete only when the exact candidate commit satisfies all of th
 8. Packet encoding round-trips through the stable `NetworkPacket` framing model.
 9. Strict metadata mode prevents silent omission of replicated entities; custom interest sources can opt out explicitly.
 10. Focused tests, lint, compile, benchmark, demo, and the locked 1.4 multiplayer contract pass on Python 3.10, 3.13, and 3.14 in the dedicated CI workflow.
+
+## Milestone 2 verification contract
+
+Milestone 2 is complete only when the exact candidate commit satisfies all of the following:
+
+1. `swirengine.prediction16` remains additive and the stable 1.4 `ClientPredictor` contract is unchanged.
+2. Every authoritative correction binds a command acknowledgement to a monotonically increasing replication tick.
+3. Duplicate/out-of-order authoritative ticks are ignored without rolling simulation state or acknowledgements backward.
+4. Newer authoritative ticks cannot regress the acknowledged command sequence or acknowledge commands the client never predicted.
+5. Prediction commands are rejected atomically when they fall behind the authoritative timeline or exceed the configured future tick window.
+6. Pending command history and per-reconciliation replay work have independent hard bounds.
+7. Replay-budget rejection is atomic: simulation truth, pending commands, acknowledgement and authoritative tick remain unchanged.
+8. Corrected simulation truth is committed immediately while `CorrectionTransition` smoothing remains presentation-only and supports a creator blend hook.
+9. Correction packets round-trip through the stable `NetworkPacket` transport and deterministic diagnostics account for prediction, replay, stale input and budget rejection.
+10. Focused tests, lint, compile, deterministic workload benchmark, creator demo, and the locked 1.4 multiplayer contract pass on Python 3.10, 3.13, and 3.14 in the dedicated CI workflow.
