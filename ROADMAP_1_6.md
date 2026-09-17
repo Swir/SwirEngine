@@ -139,3 +139,18 @@ Milestone 4 is complete only when the exact candidate commit satisfies all of th
 8. Unknown channels, delivery-policy mismatches, malformed envelopes, and oversize traffic fail explicitly without silently changing accepted receive state.
 9. QoS envelopes round-trip through stable `NetworkPacket` framing and flow through the existing `TCPPeer` transport unchanged; per-channel telemetry remains payload-free and deterministically ordered.
 10. Focused tests, lint, compile, deterministic workload benchmark, creator demo, stable networking/TCP tests, verified 1.6 replication/prediction/session regressions, and the locked 1.4 multiplayer contract pass on Python 3.10, 3.13, and 3.14 in the dedicated CI workflow.
+
+## Milestone 5 verification contract
+
+Milestone 5 is complete only when the exact candidate commit satisfies all of the following:
+
+1. `swirengine.server16` remains additive and does not change stable 1.x root imports, `Game`, networking, or the verified 1.6 multiplayer contracts.
+2. `ServerConfig` provides finite validated fixed-tick/runtime bounds, deterministic `fixed_dt`, and explicit environment-based configuration suitable for process/container hosting.
+3. The runtime is genuinely headless: it owns no window, renderer, audio device, or network transport; server asset manifests are bounded, normalized, deterministic, duplicate-safe, and reject client-only presentation resource kinds before creator startup.
+4. Startup checks execute deterministically before creator startup, expose stable failure codes, and stop later startup work after the first failed check or exception.
+5. The real-time loop uses monotonic pacing with constant fixed-step callbacks, bounded catch-up work, explicit dropped-tick accounting, plus a deterministic no-sleep `run_ticks()` surface for tests and soak workloads.
+6. Readiness becomes true only after the configured successful warm-up ticks while health/readiness/failure state remains inspectable and readiness clears immediately during stop or failure.
+7. Explicit shutdown plus optional SIGINT/SIGTERM handling drive graceful lifecycle transitions with exactly-once creator cleanup; startup, tick, and shutdown callback failures remain isolated behind stable diagnostic codes.
+8. Lifecycle event history is bounded and deterministic, and portable health/diagnostics expose operational counters without creator packet payloads or session secrets.
+9. A 100,000-tick deterministic workload remains below the documented 2.0-second CI budget, the creator server example completes a bounded smoke, and the Linux container image builds and runs the installed package successfully.
+10. Focused tests, strict lint/compile, workload/example/container smokes, verified 1.6 replication/prediction/session/transport-QoS regressions, and the locked 1.4 multiplayer contract pass on Python 3.10, 3.13, and 3.14 in the dedicated CI workflow.
