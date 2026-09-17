@@ -10,6 +10,7 @@ on:
       - "examples/demo_work_graph_1_7.py"
       - "docs/STREAMING_WORK_GRAPH_1_7.md"
       - "ROADMAP_1_7.md"
+      - "CHANGELOG.d/1.7-streaming-work-graph.md"
       - ".github/workflows/streaming-work-graph-1-7.yml"
   pull_request:
     paths:
@@ -19,6 +20,7 @@ on:
       - "examples/demo_work_graph_1_7.py"
       - "docs/STREAMING_WORK_GRAPH_1_7.md"
       - "ROADMAP_1_7.md"
+      - "CHANGELOG.d/1.7-streaming-work-graph.md"
       - ".github/workflows/streaming-work-graph-1-7.yml"
   workflow_dispatch:
 
