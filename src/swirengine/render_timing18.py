@@ -14,6 +14,8 @@ from typing import Protocol, runtime_checkable
 from .render_graph18 import RenderGraphPlan
 
 _MAX_NAME = 128
+_MAX_METADATA_ENTRIES = 64
+_MAX_METADATA_VALUE = 1024
 
 
 def _name(value: str, *, label: str) -> str:
@@ -43,19 +45,21 @@ def _nonnegative_int(value: int, *, label: str) -> int:
     return value
 
 
-def _metadata_value(value: object) -> str:
-    result = str(value)
-    if len(result) > 1024:
-        raise ValueError("metadata value must contain at most 1024 characters")
-    return result
-
-
 def _milliseconds(value: float, *, label: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise TypeError(f"{label} must be a number")
     result = float(value)
     if not math.isfinite(result) or result < 0.0:
         raise ValueError(f"{label} must be finite and >= 0")
+    return result
+
+
+def _metadata_value(value: object) -> str:
+    result = str(value)
+    if len(result) > _MAX_METADATA_VALUE:
+        raise ValueError(
+            f"metadata value must contain at most {_MAX_METADATA_VALUE} characters"
+        )
     return result
 
 
@@ -71,18 +75,18 @@ class GpuTimingError(RuntimeError):
 class GpuTimingProvider(Protocol):
     """Backend contract for non-blocking timestamp queries.
 
-    ``poll`` must return ``None`` while a query is not ready. Providers must not wait,
-    flush, finish, or otherwise force GPU synchronization from ``poll``.
+    ``poll`` returns ``None`` while a result is unavailable. Implementations must not
+    wait, flush, finish, or otherwise force GPU synchronization from ``poll``.
     """
 
     def begin(self, frame_index: int, pass_name: str) -> object | None:
-        """Start a timestamp query and return an opaque token, or ``None`` if unavailable."""
+        """Start a query and return an opaque token, or ``None`` if unavailable."""
 
     def end(self, token: object) -> None:
-        """Close the timestamp query represented by ``token``."""
+        """Close a timestamp query."""
 
     def poll(self, token: object) -> float | None:
-        """Return elapsed seconds when ready, otherwise ``None`` without blocking."""
+        """Return elapsed seconds when ready, otherwise ``None`` immediately."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -142,7 +146,7 @@ class GpuFrameTiming:
         samples = tuple(self.samples)
         if not all(isinstance(sample, GpuPassTiming) for sample in samples):
             raise TypeError("samples must contain GpuPassTiming values")
-        names = [sample.pass_name for sample in samples]
+        names = tuple(sample.pass_name for sample in samples)
         if len(set(names)) != len(names):
             raise ValueError("GPU frame samples must contain unique pass names")
         object.__setattr__(self, "samples", samples)
@@ -157,13 +161,10 @@ class GpuFrameTiming:
             _nonnegative_int(self.unavailable_queries, label="unavailable_queries"),
         )
         payload = self._portable_payload()
-        object.__setattr__(
-            self,
-            "fingerprint",
-            hashlib.sha256(
-                json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
-            ).hexdigest(),
-        )
+        digest = hashlib.sha256(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+        object.__setattr__(self, "fingerprint", digest)
 
     @property
     def ready_samples(self) -> tuple[GpuPassTiming, ...]:
@@ -239,17 +240,22 @@ class GpuTimingCapture:
         if not all(isinstance(frame, GpuFrameTiming) for frame in frames):
             raise TypeError("frames must contain GpuFrameTiming values")
         object.__setattr__(self, "frames", frames)
-        if len(self.metadata) > 64:
-            raise ValueError("GPU timing capture supports at most 64 metadata entries")
-        normalized: list[tuple[str, str]] = []
-        for key, value in self.metadata:
-            normalized.append(
-                (_name(str(key), label="metadata key"), _metadata_value(value))
+        if len(self.metadata) > _MAX_METADATA_ENTRIES:
+            raise ValueError(
+                f"GPU timing capture supports at most {_MAX_METADATA_ENTRIES} metadata entries"
             )
-        normalized.sort()
+        normalized = tuple(
+            sorted(
+                (
+                    _name(str(key), label="metadata key"),
+                    _metadata_value(value),
+                )
+                for key, value in self.metadata
+            )
+        )
         if len({key for key, _value in normalized}) != len(normalized):
             raise ValueError("GPU timing capture metadata keys must be unique")
-        object.__setattr__(self, "metadata", tuple(normalized))
+        object.__setattr__(self, "metadata", normalized)
 
     def hotspots(self, *, limit: int = 10) -> tuple[GpuTimingHotspot, ...]:
         limit = _positive_int(limit, label="hotspot limit")
@@ -284,7 +290,7 @@ class GpuTimingCapture:
 
     def canonical_json(self) -> str:
         return json.dumps(
-            self.portable(),
+            dict(self.portable()),
             ensure_ascii=False,
             sort_keys=True,
             separators=(",", ":"),
@@ -296,7 +302,7 @@ class GpuTimingCapture:
 
     def to_json(self, *, indent: int | None = 2) -> str:
         return json.dumps(
-            self.portable(),
+            dict(self.portable()),
             ensure_ascii=False,
             sort_keys=True,
             indent=indent,
@@ -333,11 +339,7 @@ class _PendingFrame:
 
 
 class GpuTimingRecorder:
-    """Bounded non-blocking GPU pass timing and portable frame capture.
-
-    The recorder never waits for a query. ``poll_ready`` asks the backend only for
-    already-available results and leaves unresolved queries pending for a later call.
-    """
+    """Bounded, non-blocking GPU pass timing and portable frame capture."""
 
     def __init__(
         self,
@@ -458,7 +460,9 @@ class GpuTimingRecorder:
         if len(self._active_queries) >= self.max_passes_per_frame:
             raise GpuTimingError("pass-limit", "GPU timing pass-per-frame limit reached")
         if self.pending_queries + len(self._active_queries) >= self.max_pending_queries:
-            raise GpuTimingError("pending-query-limit", "GPU timing pending query limit reached")
+            raise GpuTimingError(
+                "pending-query-limit", "GPU timing pending query limit reached"
+            )
         self._validate_plan_order(pass_name)
 
         query = _PendingQuery(pass_name=pass_name, token=None)
@@ -468,7 +472,8 @@ class GpuTimingRecorder:
             self._unavailable_queries += 1
         else:
             try:
-                token = provider.begin(self._active_frame_index or 0, pass_name)
+                assert self._active_frame_index is not None
+                token = provider.begin(self._active_frame_index, pass_name)
             except Exception as exc:
                 query.status = "failed"
                 self._provider_failure(
@@ -513,16 +518,18 @@ class GpuTimingRecorder:
         plan_fingerprint = (
             None if self._active_plan is None else self._active_plan.fingerprint
         )
-        pending = _PendingFrame(
-            frame_index=self._active_frame_index,
-            plan_fingerprint=plan_fingerprint,
-            queries=list(self._active_queries),
+        self._pending.append(
+            _PendingFrame(
+                frame_index=self._active_frame_index,
+                plan_fingerprint=plan_fingerprint,
+                queries=list(self._active_queries),
+            )
         )
-        self._pending.append(pending)
         self._active_frame_index = None
         self._active_plan = None
         self._active_queries = []
         self._active_names = set()
+        self._active_open = None
         self._plan_cursor = -1
         self._commit_terminal_frames()
 
@@ -599,12 +606,18 @@ class GpuTimingRecorder:
         return count
 
     def capture(self, metadata: Mapping[str, object] | None = None) -> GpuTimingCapture:
-        items = () if metadata is None else tuple((str(k), str(v)) for k, v in metadata.items())
+        items = (
+            ()
+            if metadata is None
+            else tuple((str(key), str(value)) for key, value in metadata.items())
+        )
         return GpuTimingCapture(frames=self.frames, metadata=items)
 
     def clear(self) -> None:
         if self.active:
-            raise GpuTimingError("frame-active", "cannot clear during an active GPU timing frame")
+            raise GpuTimingError(
+                "frame-active", "cannot clear during an active GPU timing frame"
+            )
         if self._pending:
             raise GpuTimingError(
                 "pending-queries",
@@ -655,16 +668,16 @@ class GpuTimingRecorder:
                 )
                 for query in pending.queries
             )
-            failures = sum(1 for query in pending.queries if query.status == "failed")
-            unavailable = sum(
-                1 for query in pending.queries if query.status == "unavailable"
-            )
             frame = GpuFrameTiming(
                 frame_index=pending.frame_index,
                 plan_fingerprint=pending.plan_fingerprint,
                 samples=samples,
-                provider_failures=failures,
-                unavailable_queries=unavailable,
+                provider_failures=sum(
+                    1 for query in pending.queries if query.status == "failed"
+                ),
+                unavailable_queries=sum(
+                    1 for query in pending.queries if query.status == "unavailable"
+                ),
             )
             if len(self._frames) == self.history:
                 self._dropped_frames += 1
