@@ -1,3 +1,5 @@
+<!-- SWIR-PROGRESS-SVG-PRO:v1 -->
+
 # SwirEngine 1.9 Roadmap — Production Workflow & Game Shipping
 
 SwirEngine 1.8 is a completed source-only rendering checkpoint. SwirEngine 1.9 turns the mature
@@ -5,6 +7,11 @@ runtime systems into a coherent production path for building, validating, packag
 complete games while preserving stable 1.x behavior.
 
 **Current verified progress: 1/10 milestones = 10.0%.**
+
+<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 1.9 verified roadmap progress: 1 of 10 milestones, 10.0%, in progress" />
+
+**Verified active scope:** 1/10 milestones = 10.0% — IN PROGRESS.  
+**Release readiness:** frozen; the next public GitHub Release and PyPI publication remains SwirEngine 2.0.
 
 A milestone is checked only after implementation, focused tests, creator documentation, its dedicated
 gate and the repository's required compatibility/regression gates pass on the exact final head.

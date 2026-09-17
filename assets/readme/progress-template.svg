@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="180" viewBox="0 0 1200 180" role="img" aria-labelledby="title desc">
+  <title id="title">SWIR Progress SVG PRO template</title>
+  <desc id="desc">Reusable visual template only. TEMPLATE / NOT PROJECT DATA. Generate live progress from an authoritative source.</desc>
+  <defs>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#02050A"/>
+      <stop offset="1" stop-color="#07111C"/>
+    </linearGradient>
+    <style>text { font-family: "Segoe UI", Arial, sans-serif; }</style>
+  </defs>
+  <rect x="1" y="1" width="1198" height="178" rx="18" fill="url(#panel)" stroke="#0088FF" stroke-opacity="0.42"/>
+  <text x="50" y="31" fill="#62E5FF" font-size="13" font-weight="700" letter-spacing="2">SWIR PROJECT · PROGRESS TEMPLATE</text>
+  <text x="50" y="67" fill="#F4FAFF" font-size="28" font-weight="700">TEMPLATE / NOT PROJECT DATA</text>
+  <text x="50" y="96" fill="#8DA8B8" font-size="16">Project, scope, status, counter and percentage are inserted by the deterministic generator.</text>
+  <rect x="50" y="125" width="1100" height="18" rx="9" fill="#07111C" stroke="#0088FF" stroke-opacity="0.42"/>
+  <text x="50" y="166" fill="#8DA8B8" font-size="12">Never embed this template as live project progress.</text>
+</svg>
