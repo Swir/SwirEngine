@@ -12,6 +12,7 @@ on:
       - "docs/GPU_TIMING_CAPTURE_1_8.md"
       - "ROADMAP_1_8.md"
       - "CHANGELOG.d/1.8-gpu-timing-capture.md"
+      - "pyproject.toml"
       - ".github/workflows/gpu-timing-capture-1-8.yml"
   pull_request:
     paths:
@@ -23,6 +24,7 @@ on:
       - "docs/GPU_TIMING_CAPTURE_1_8.md"
       - "ROADMAP_1_8.md"
       - "CHANGELOG.d/1.8-gpu-timing-capture.md"
+      - "pyproject.toml"
       - ".github/workflows/gpu-timing-capture-1-8.yml"
   workflow_dispatch:
 
