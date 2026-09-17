@@ -96,4 +96,19 @@ Milestone 1 is complete only when the exact implementation head satisfies all of
 
 Milestone 1 was implemented and merged as `3fc63010da56634ee7e5f416a88e7f6c6245b1c7` after the exact candidate head passed Background Jobs 1.7 on Python 3.10/3.13/3.14 plus normal CI, Desktop Export, game-demo, 1.4/1.5 hardening and the 1.6 source-checkpoint regressions. The Python 3.13 gate completed 15 focused tests in 0.70 seconds and the 2,000-job workload in 0.2994 seconds against the 5.0-second budget.
 
+## Milestone 2 verification contract
+
+Milestone 2 is complete only when the exact implementation head satisfies all of the following:
+
+1. `swirengine.assets17` is additive and leaves stable `AssetManager`, `AssetPreloader`, `AssetPipeline`, root imports and published 1.5.0 package metadata unchanged.
+2. `AsyncAssetPipeline.submit()` performs only request validation/path resolution plus bounded scheduler admission; file hashing, dependency discovery, decode and cook work execute through `JobScheduler` workers.
+3. GPU/audio/thread-affine finalizers execute only from explicit `poll(max_items=...)` calls, and each poll has a positive hard item budget so owning-thread handoff cannot become an unbounded per-frame drain.
+4. Request dependencies use existing scheduler dependency gates and expose only successful CPU-side worker products to dependent builds; failed/cancelled scheduler dependencies never execute blocked derived workers.
+5. File-dependency resolvers run on workers, exact SHA-256 source/dependency fingerprints guard CPU-product cache reuse, and any input mutation during decode/cook returns `STALE` without finalization or cache commit.
+6. Worker-to-finalizer cancellation discards an already-computed product, skips finalization and does not populate the cache; cooperative worker cancellation remains available through `AssetBuildContext.raise_if_cancelled()`.
+7. Cache entries contain CPU-side cooked products rather than owning-thread finalizer outputs, remain scoped by processor + canonical source path, and support explicit scoped/full invalidation.
+8. Worker and finalizer exceptions remain isolated as request failures; diagnostics provide exact submitted/completed/failed/cancelled/stale/cache/finalizer counters without exposing asset payloads.
+9. Focused tests, strict Ruff, compile checks, creator demo, stable asset/job regressions and a 512-asset cold + cached workload (1,024 requests) remain within the documented generous 5.0-second Python 3.13 CI budget without making an FPS claim.
+10. The dedicated Python 3.10/3.13/3.14 Async Assets 1.7 workflow and repository compatibility workflows pass on the exact final milestone head before merge; Release/PyPI remain frozen until SwirEngine 2.0.
+
 Progress is based on milestone completion, not file count or commit count. Each milestone is worth 10 percentage points.
