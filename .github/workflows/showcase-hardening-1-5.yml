@@ -1,0 +1,187 @@
+name: Showcase + Hardening 1.5 Validation
+
+on:
+  push:
+    branches:
+      - release/1.5-hardening
+  pull_request:
+    paths:
+      - "src/swirengine/**"
+      - "tests/**"
+      - "examples/**"
+      - "demo_projects/**"
+      - "tools/**"
+      - "docs/**"
+      - "README.md"
+      - "RELEASE_NOTES_1_5.md"
+      - "ROADMAP_1_5.md"
+      - "pyproject.toml"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/release.yml"
+      - ".github/workflows/showcase-hardening-1-5.yml"
+
+concurrency:
+  group: showcase-hardening-1-5-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  release-contract:
+    name: Release contract / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install --upgrade pip
+      - name: Install CPython 3.14 native build prerequisites
+        if: matrix.python-version == '3.14'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev
+      - run: python -m pip install -e ".[dev]"
+      - name: Audit SwirEngine 1.5 release contract
+        run: |
+          python tools/verify_1_5_release_candidate.py
+          if grep -q "100.0% — 10/10" ROADMAP_1_5.md; then
+            python tools/verify_1_5_release_candidate.py --require-complete
+          fi
+      - name: Run full test suite
+        run: pytest
+      - name: Strict Ruff gate
+        if: matrix.python-version == '3.13'
+        run: ruff check src tests examples demo_projects tools
+      - name: Compile release tree
+        if: matrix.python-version == '3.13'
+        run: python -m compileall -q src examples demo_projects tools
+
+  milestone-benchmarks:
+    name: All 1.5 workload contracts
+    needs: release-contract
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Run all SwirEngine 1.5 deterministic workload gates
+        run: |
+          python tools/benchmark_deterministic_replay_1_5.py
+          python tools/benchmark_save_profile_2_1_5.py
+          python tools/benchmark_audio_2_1_5.py
+          python tools/benchmark_animation_graphs_2_1_5.py
+          python tools/benchmark_navigation_2_1_5.py
+          python tools/benchmark_world_streaming_2_1_5.py
+          python tools/benchmark_ui_toolkit_2_1_5.py
+          python tools/benchmark_editor_productivity_1_5.py
+          python tools/benchmark_performance_diagnostics_2_1_5.py
+
+  source-game-demos:
+    name: Integrated source 2D + 3D validation
+    needs: release-contract
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Headless SwirEngine 2D Game Demo
+        env:
+          SWIR_GAME_DEMO_HEADLESS: "1"
+        run: python examples/2d_game_demo/run_game.py
+      - name: Headless SwirEngine 3D Game Demo
+        env:
+          SWIR_GAME_DEMO_HEADLESS: "1"
+        run: python examples/3d_game_demo/run_game.py
+      - name: Install software OpenGL/Xvfb runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 libgl-dev libegl-dev
+      - name: Real OpenGL SwirEngine 2D Game Demo
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          MESA_GL_VERSION_OVERRIDE: "3.3"
+          SWIR_GAME_DEMO_SMOKE_FRAMES: "24"
+        run: xvfb-run -a python examples/2d_game_demo/run_game.py
+      - name: Real OpenGL SwirEngine 3D Game Demo
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          MESA_GL_VERSION_OVERRIDE: "3.3"
+          SWIR_GAME_DEMO_SMOKE_FRAMES: "24"
+        run: xvfb-run -a python examples/3d_game_demo/run_game.py
+
+  clean-package:
+    name: Clean wheel install + source demo probes
+    needs: [release-contract, milestone-benchmarks, source-game-demos]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip build twine
+      - name: Build portable distributions
+        run: python -m build
+      - name: Validate distribution metadata
+        run: python -m twine check dist/*
+      - name: Install wheel in a clean environment
+        shell: bash
+        run: |
+          python -m venv .release15-venv
+          .release15-venv/bin/python -m pip install --upgrade pip
+          .release15-venv/bin/python -m pip install dist/*.whl
+          .release15-venv/bin/python -c "import tomllib, swirengine; expected=tomllib.load(open('pyproject.toml','rb'))['project']['version']; assert swirengine.__version__ == expected; print(swirengine.__version__)"
+      - name: Probe source-only games against the clean installed wheel
+        shell: bash
+        run: |
+          SWIR_GAME_DEMO_HEADLESS=1 .release15-venv/bin/python examples/2d_game_demo/run_game.py
+          SWIR_GAME_DEMO_HEADLESS=1 .release15-venv/bin/python examples/3d_game_demo/run_game.py
+
+  packaged-games-windows:
+    name: Windows one-file 2D + 3D runtime probes
+    needs: [release-contract, source-game-demos]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e . pyinstaller
+      - name: Build 2D game one-file executable
+        run: >-
+          python -m PyInstaller --noconfirm --clean --onefile
+          --collect-all glfw --collect-all glcontext
+          --paths examples/2d_game_demo
+          --name SwirEngine2D15 examples/2d_game_demo/run_game.py
+      - name: Probe packaged 2D game
+        shell: pwsh
+        env:
+          SWIR_GAME_DEMO_HEADLESS: "1"
+        run: |
+          & .\dist\SwirEngine2D15.exe
+          if ($LASTEXITCODE -ne 0) { throw "SwirEngine 2D 1.5 packaged probe failed: $LASTEXITCODE" }
+      - name: Build 3D game one-file executable
+        run: >-
+          python -m PyInstaller --noconfirm --clean --onefile
+          --collect-all glfw --collect-all glcontext
+          --paths examples/3d_game_demo
+          --name SwirEngine3D15 examples/3d_game_demo/run_game.py
+      - name: Probe packaged 3D game
+        shell: pwsh
+        env:
+          SWIR_GAME_DEMO_HEADLESS: "1"
+        run: |
+          & .\dist\SwirEngine3D15.exe
+          if ($LASTEXITCODE -ne 0) { throw "SwirEngine 3D 1.5 packaged probe failed: $LASTEXITCODE" }
