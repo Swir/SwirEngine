@@ -1,23 +1,6 @@
 name: Dedicated Server 1.6
 
 on:
-  push:
-    branches: ["feat/1.6-dedicated-server"]
-    paths:
-      - "src/swirengine/server16.py"
-      - "tests/test_dedicated_server_1_6.py"
-      - "tests/test_networking.py"
-      - "tests/test_multiplayer_2_1_4.py"
-      - "tests/test_multiplayer_replication_1_6.py"
-      - "tests/test_prediction_reconciliation_1_6.py"
-      - "tests/test_session_lifecycle_1_6.py"
-      - "tests/test_transport_qos_1_6.py"
-      - "tools/benchmark_dedicated_server_1_6.py"
-      - "tools/smoke_dedicated_server_1_6.py"
-      - "examples/demo_dedicated_server_1_6.py"
-      - "docs/DEDICATED_SERVER_RUNTIME_1_6.md"
-      - "ROADMAP_1_6.md"
-      - ".github/workflows/dedicated-server-1-6.yml"
   pull_request:
     paths:
       - "src/swirengine/server16.py"
@@ -37,7 +20,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: dedicated-server-1-6-${{ github.head_ref || github.ref_name }}
+  group: dedicated-server-1-6-${{ github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: true
 
 permissions:
