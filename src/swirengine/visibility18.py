@@ -5,6 +5,7 @@ import json
 import math
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
+from itertools import pairwise
 from types import MappingProxyType
 
 Cell = tuple[int, int, int]
@@ -35,7 +36,7 @@ def _integer(value: int, *, label: str) -> int:
     return value
 
 
-def _number(value: float | int, *, label: str) -> float:
+def _number(value: float, *, label: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise TypeError(f"{label} must be a number")
     result = float(value)
@@ -136,7 +137,7 @@ class VisibilityItem:
         )
         if any(value < 0.0 for value in thresholds):
             raise ValueError("lod thresholds must be >= 0")
-        if any(right <= left for left, right in zip(thresholds, thresholds[1:])):
+        if any(right <= left for left, right in pairwise(thresholds)):
             raise ValueError("lod thresholds must be strictly increasing")
         object.__setattr__(self, "lod_thresholds", thresholds)
         hysteresis = _number(self.lod_hysteresis, label="lod_hysteresis")
