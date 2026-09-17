@@ -3,7 +3,7 @@
 SwirEngine 1.7 is a completed source-only checkpoint. SwirEngine 1.8 continues the path toward 2.0
 with additive rendering scalability systems while preserving stable 1.x behavior.
 
-**Current verified progress: 4/10 milestones = 40.0%.**
+**Current verified progress: 5/10 milestones = 50.0%.**
 
 A milestone is checked only after implementation, focused tests, documentation, its dedicated gate,
 and the repository's required compatibility/regression gates pass on the exact implementation head.
@@ -45,7 +45,7 @@ The final roadmap-marked PR head must pass the required gates again before merge
   - bounded pipeline/program state cache with invalidation diagnostics;
   - measurable draw/state-change workload contracts.
 
-- [ ] **5. Visibility & LOD Submission 3.0**
+- [x] **5. Visibility & LOD Submission 3.0**
   - deterministic visibility submission contracts for 2D/3D scenes;
   - bounded spatial candidate filtering and creator-owned LOD policy hooks;
   - stable ordering, hysteresis and portable diagnostics;
@@ -218,3 +218,40 @@ saving 71,397 pipeline switches with 81,888 cache hits and 32 pipeline creations
 head also passed clean-wheel/source-demo validation and Windows one-file 2D/3D runtime probes through
 the locked 1.5 hardening gate. This roadmap-marked PR head must re-pass its triggered gates before
 merge. Release/PyPI remain frozen until SwirEngine 2.0.
+
+## Milestone 5 verification contract
+
+Milestone 5 is complete only when the exact implementation candidate satisfies all of the following:
+
+1. `swirengine.visibility18` is additive and renderer-independent, leaves stable 1.x renderer/scene
+   behavior untouched by default, and models 2D and 3D candidates with finite validated `AABB3` bounds.
+2. `VisibilityIndex` enforces independent hard limits for indexed items, global cells, cells per item,
+   query cells and unique candidates; register/replace capacity failures leave the previous index state
+   intact and return stable creator-facing error codes.
+3. Candidate collection uses deterministic uniform-grid buckets, suppresses duplicate bucket hits,
+   refines conservatively collected candidates with exact AABB overlap and emits stable ordered results.
+4. Optional tag filtering and creator/backend visibility predicates support stricter frustum, portal,
+   room, occlusion-result or gameplay culling without coupling the core index to a GPU backend; callback
+   failures and invalid callback results fail explicitly before LOD state is committed.
+5. Creator-authored distance LOD bands are deterministic, `VisibilitySession` provides bounded
+   cross-frame hysteresis, and transitions may cross multiple bands without oscillating at thresholds.
+6. Optional creator-owned LOD policy callbacks receive the item, distance, previous LOD and default LOD;
+   invalid ranges/results and callback failures are contained with stable errors and no partial commit.
+7. Item replacement/removal, tag ordering, candidate deduplication and bounded-session reuse are covered
+   by hardening regressions so spatial bookkeeping and creator-facing state remain coherent under churn.
+8. Item/index/session/query fingerprints and portable diagnostics remain deterministic and exclude
+   creator callbacks/backend payloads while retaining enough logical state to reproduce planning results.
+9. A deterministic workload indexing 12,000 items and executing 120 moving camera queries stays below
+   the documented generous 5.0-second Python 3.13 CI ceiling while exercising candidate reduction and
+   LOD transitions; it is explicitly a CPU-side workload contract, not an FPS/GPU-throughput claim.
+10. Focused visibility/render regressions, Ruff, compile, creator demo and the dedicated Python
+    3.10/3.13/3.14 workflow pass, followed by the repository-wide compatibility/regression workflows on
+    the exact implementation head.
+
+Verified implementation head `19679c7f25a3574caab72502ff593ef93fb5aa3c` passed the dedicated
+Python 3.10/3.13/3.14 Visibility LOD gate plus the full required pull-request compatibility/regression
+suite. The Python 3.13 gate ran 99 focused/render regressions in 1.05 seconds; the 12,000-item / 120-query
+workload processed 69,120 unique candidates, produced 60,750 visible submissions, tracked 5,925 LOD
+states, observed 7,198 transitions and completed in 0.8542 seconds under the documented 5.0-second
+ceiling. This roadmap-marked PR head must now re-pass its triggered gates before merge. Release/PyPI
+remain frozen until SwirEngine 2.0.
