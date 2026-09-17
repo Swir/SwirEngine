@@ -123,3 +123,18 @@ Milestone 3 is complete only when the exact candidate commit satisfies all of th
 8. Lifecycle events are monotonically sequenced and bounded, while rule failures expose stable `SessionOperationError.code` values and deterministic counters without leaking tokens.
 9. Immutable session snapshots exclude resume secrets, round-trip through the stable `NetworkPacket` framing model, and reject inconsistent roster/role ownership data.
 10. Focused tests, lint, compile, deterministic workload benchmark, creator demo, verified 1.6 replication/prediction regressions, and the locked 1.4 multiplayer contract pass on Python 3.10, 3.13, and 3.14 in the dedicated CI workflow.
+
+## Milestone 4 verification contract
+
+Milestone 4 is complete only when the exact candidate commit satisfies all of the following:
+
+1. `swirengine.transport16` is additive and leaves the stable 1.x `networking` API and root imports unchanged.
+2. Logical channels have validated reliable/unreliable delivery policy, deterministic priority, encoded-packet size bounds, and hard packet/byte queue bounds.
+3. Accepted outbound packets receive monotonic per-channel sequences; rejected reliable/oversized enqueues do not consume a sequence number.
+4. Reliable pressure rejects atomically with stable `backpressure` diagnostics and never evicts an accepted queued packet.
+5. Unreliable pressure deterministically evicts oldest queued packets until the newest valid packet fits, with exact drop counters.
+6. Drain work obeys hard packet/byte budgets and strict deterministic priority/FIFO ordering without discarding heads that do not fit the current byte budget.
+7. Reliable receive sequencing suppresses duplicate/stale traffic and refuses forward gaps without advancing the accepted baseline; unreliable sequencing accepts fresh traffic while accounting for skipped sequences.
+8. Unknown channels, delivery-policy mismatches, malformed envelopes, and oversize traffic fail explicitly without silently changing accepted receive state.
+9. QoS envelopes round-trip through stable `NetworkPacket` framing and flow through the existing `TCPPeer` transport unchanged; per-channel telemetry remains payload-free and deterministically ordered.
+10. Focused tests, lint, compile, deterministic workload benchmark, creator demo, stable networking/TCP tests, verified 1.6 replication/prediction/session regressions, and the locked 1.4 multiplayer contract pass on Python 3.10, 3.13, and 3.14 in the dedicated CI workflow.
