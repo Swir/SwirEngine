@@ -10,9 +10,10 @@ A milestone is checked only after its implementation, focused tests, documentati
 
 - Keep `v1.5.0` immutable; do not rewrite the tag or release assets.
 - Keep 1.6 systems additive or opt-in when they could change existing 1.x behavior.
-- Do not tag `v1.6.0`, create the GitHub Release, or publish PyPI until all 10 milestones below are verified and the complete compatibility/runtime/packaging release gate is green.
-- Before release, re-run the locked 1.3, 1.4, and 1.5 compatibility contracts, the full test suite, lint/compile checks, package build/install checks, supported Python matrix, and source showcase smokes.
-- After publication, verify a clean public `pip install swirengine==1.6.0` before moving to the next development line.
+- SwirEngine 1.6 is a **source-development checkpoint only**. Do not create a `v1.6.0` tag, GitHub Release, or PyPI publication even after this roadmap reaches 10/10.
+- When 1.6 reaches verified 10/10, run the complete 1.x compatibility/runtime/packaging gate, record the verified source checkpoint, and continue the planned source-development stages toward 2.0.
+- The next public GitHub Release and next PyPI publication after 1.5.0 are reserved for **SwirEngine 2.0**.
+- SwirEngine 2.0 may be published only after its own dedicated roadmap reaches verified 10/10 and the full final release gate passes on the exact candidate commit, followed by clean public-index installation verification.
 
 ## Milestones
 
@@ -73,11 +74,11 @@ A milestone is checked only after its implementation, focused tests, documentati
   - packet loss/reordering/jitter simulation with bounded budgets;
   - Windows/Linux source showcase validation without a separate demo release.
 
-- [ ] **10. 1.6 Hardening & Release Gate**
+- [ ] **10. 1.6 Hardening & Source Checkpoint Gate**
   - complete 1.x compatibility re-check and full supported-Python matrix;
   - runtime, packaging, wheel/sdist, clean-install, and source-showcase gates;
-  - release auditor that refuses publication unless this roadmap is 10/10;
-  - only after the exact release candidate is fully green: tag, GitHub Release, PyPI publish, and clean public-install verification.
+  - checkpoint auditor that refuses 1.6 completion unless this roadmap is 10/10;
+  - after the exact 10/10 source checkpoint is fully green, mark 1.6 complete and continue development toward 2.0 without tagging, GitHub Release creation, or PyPI publication.
 
 ## Milestone 1 verification contract
 
@@ -123,3 +124,18 @@ Milestone 3 is complete only when the exact candidate commit satisfies all of th
 8. Lifecycle events are monotonically sequenced and bounded, while rule failures expose stable `SessionOperationError.code` values and deterministic counters without leaking tokens.
 9. Immutable session snapshots exclude resume secrets, round-trip through the stable `NetworkPacket` framing model, and reject inconsistent roster/role ownership data.
 10. Focused tests, lint, compile, deterministic workload benchmark, creator demo, verified 1.6 replication/prediction regressions, and the locked 1.4 multiplayer contract pass on Python 3.10, 3.13, and 3.14 in the dedicated CI workflow.
+
+## Milestone 4 verification contract
+
+Milestone 4 is complete only when the exact candidate commit satisfies all of the following:
+
+1. `swirengine.transport16` is additive and leaves the stable 1.x `networking` API and root imports unchanged.
+2. Logical channels have validated reliable/unreliable delivery policy, deterministic priority, encoded-packet size bounds, and hard packet/byte queue bounds.
+3. Accepted outbound packets receive monotonic per-channel sequences; rejected reliable/oversized enqueues do not consume a sequence number.
+4. Reliable pressure rejects atomically with stable `backpressure` diagnostics and never evicts an accepted queued packet.
+5. Unreliable pressure deterministically evicts oldest queued packets until the newest valid packet fits, with exact drop counters.
+6. Drain work obeys hard packet/byte budgets and deterministic priority/FIFO ordering among packets that fit the remaining budget, without discarding blocked heads.
+7. Reliable receive sequencing suppresses duplicate/stale traffic and refuses forward gaps without advancing the accepted baseline; unreliable sequencing accepts fresh traffic while accounting for skipped sequences.
+8. Unknown channels, delivery-policy mismatches, malformed envelopes, and oversize traffic fail explicitly without silently changing accepted receive state.
+9. QoS envelopes round-trip through stable `NetworkPacket` framing and flow through the existing `TCPPeer` transport unchanged; per-channel telemetry remains payload-free and deterministically ordered.
+10. Focused tests, lint, compile, deterministic workload benchmark, creator demo, stable networking/TCP tests, verified 1.6 replication/prediction/session regressions, and the locked 1.4 multiplayer contract pass on Python 3.10, 3.13, and 3.14 in the dedicated CI workflow.
