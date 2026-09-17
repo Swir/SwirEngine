@@ -1,0 +1,121 @@
+name: Render Showcase 1.8
+
+on:
+  push:
+    branches: ["feat/1.8-render-showcase-soak"]
+    paths:
+      - "src/swirengine/render_showcase18.py"
+      - "tests/test_render_showcase_1_8.py"
+      - "tools/benchmark_render_showcase_1_8.py"
+      - "examples/demo_render_showcase_1_8.py"
+      - "docs/RENDER_SHOWCASE_1_8.md"
+      - "ROADMAP_1_8.md"
+      - "CHANGELOG.d/1.8-render-showcase-soak.md"
+      - ".github/workflows/render-showcase-1-8.yml"
+  pull_request:
+    paths:
+      - "src/swirengine/render_showcase18.py"
+      - "tests/test_render_showcase_1_8.py"
+      - "tools/benchmark_render_showcase_1_8.py"
+      - "examples/demo_render_showcase_1_8.py"
+      - "docs/RENDER_SHOWCASE_1_8.md"
+      - "ROADMAP_1_8.md"
+      - "CHANGELOG.d/1.8-render-showcase-soak.md"
+      - ".github/workflows/render-showcase-1-8.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: render-showcase-1-8-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  source-regressions:
+    name: Source soak / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+      - name: Install CPython 3.14 native build prerequisites
+        if: matrix.python-version == '3.14'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev
+      - name: Install development dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Run render showcase and 1.8 integration regressions
+        run: >-
+          pytest
+          tests/test_render_showcase_1_8.py
+          tests/test_renderer2_bridge_1_8.py
+          tests/test_render_resources_1_8.py
+          tests/test_render_resources_hardening_1_8.py
+          tests/test_render_uploads_1_8.py
+          tests/test_render_uploads_hardening_1_8.py
+          tests/test_render_graph_1_8.py
+          tests/test_render_quality_1_8.py
+      - name: Lint showcase surfaces
+        run: >-
+          ruff check
+          src/swirengine/render_showcase18.py
+          tests/test_render_showcase_1_8.py
+          tools/benchmark_render_showcase_1_8.py
+          examples/demo_render_showcase_1_8.py
+      - name: Compile showcase surfaces
+        run: >-
+          python -m compileall -q
+          src/swirengine/render_showcase18.py
+          tests/test_render_showcase_1_8.py
+          tools/benchmark_render_showcase_1_8.py
+          examples/demo_render_showcase_1_8.py
+      - name: Run deterministic long soak workload
+        if: matrix.python-version == '3.13'
+        run: python tools/benchmark_render_showcase_1_8.py --frames 1200
+      - name: Run source showcase
+        run: python examples/demo_render_showcase_1_8.py
+
+  windows-showcase:
+    name: Windows source showcase / Python 3.13
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - run: pytest tests/test_render_showcase_1_8.py tests/test_renderer2_bridge_1_8.py
+      - run: python tools/benchmark_render_showcase_1_8.py --frames 600 --ceiling-seconds 15
+      - run: python examples/demo_render_showcase_1_8.py
+
+  linux-opengl-smoke:
+    name: Linux OpenGL 3.3 smoke / Python 3.13
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Install Mesa runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libegl1-mesa-dev libgl1-mesa-dri libglx-mesa0 mesa-utils
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Real Renderer2 OpenGL smoke
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          MESA_GL_VERSION_OVERRIDE: "3.3"
+        run: python tools/smoke_renderer2_gl.py
+      - name: Source showcase after OpenGL smoke
+        run: python examples/demo_render_showcase_1_8.py
