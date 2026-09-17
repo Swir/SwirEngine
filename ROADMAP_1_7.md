@@ -2,7 +2,7 @@
 
 SwirEngine 1.6 is complete as a verified source-development checkpoint. SwirEngine 1.7 continues the additive 1.x development line toward 2.0 without changing the published 1.5.0 package version or rewriting any released tag.
 
-**Current verified progress: 1/10 milestones = 10.0%.**
+**Current verified progress: 2/10 milestones = 20.0%.**
 
 A milestone is checked only after its implementation, focused tests, documentation, creator example and dedicated validation gate pass on the exact commit merged to `main`. Scaffolding or documentation alone never counts as completion.
 
@@ -25,7 +25,7 @@ A milestone is checked only after its implementation, focused tests, documentati
   - bounded main-thread completion draining plus payload-free diagnostics;
   - creator documentation, example, workload benchmark and Python 3.10/3.13/3.14 validation.
 
-- [ ] **2. Async Asset Decode/Cook Pipeline**
+- [x] **2. Async Asset Decode/Cook Pipeline**
   - background-safe file/decode/cook stages on top of the job scheduler;
   - main-thread-only GPU/audio finalization contracts;
   - dependency-aware derived artifact production and cancellation;
@@ -110,5 +110,7 @@ Milestone 2 is complete only when the exact implementation head satisfies all of
 8. Worker and finalizer exceptions remain isolated as request failures; diagnostics provide exact submitted/completed/failed/cancelled/stale/cache/finalizer counters without exposing asset payloads.
 9. Focused tests, strict Ruff, compile checks, creator demo, stable asset/job regressions and a 512-asset cold + cached workload (1,024 requests) remain within the documented generous 5.0-second Python 3.13 CI budget without making an FPS claim.
 10. The dedicated Python 3.10/3.13/3.14 Async Assets 1.7 workflow and repository compatibility workflows pass on the exact final milestone head before merge; Release/PyPI remain frozen until SwirEngine 2.0.
+
+Milestone 2 was implemented and merged as `31ffeaefbe7f24f454b784fc2af6b208651d4f74` after candidate head `078ca08e65724f9c47160402cf06415e50ed1ece` passed Async Assets 1.7 on Python 3.10/3.13/3.14 together with normal CI, Desktop Export, game demos, 1.4/1.5 hardening, Background Jobs 1.7 and the 1.6 source-checkpoint regression gate. The dedicated Python 3.13 gate completed 44 focused/stable-asset/job regression tests in 0.98 seconds and the 1,024-request cold+cached workload in 0.7340 seconds against the 5.0-second budget.
 
 Progress is based on milestone completion, not file count or commit count. Each milestone is worth 10 percentage points.
