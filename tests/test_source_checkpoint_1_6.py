@@ -19,13 +19,11 @@ def _load_auditor():
 
 def test_milestone_progress_counts_only_numbered_top_level_milestones() -> None:
     auditor = _load_auditor()
-    text = "\n".join(
-        (
-            "- [x] **1. Done**",
-            "  - [ ] nested detail",
-            "- [ ] **2. Pending**",
-            "- [x] unrelated checkbox",
-        )
+    text = (
+        "- [x] **1. Done**\n"
+        "  - [ ] nested detail\n"
+        "- [ ] **2. Pending**\n"
+        "- [x] unrelated checkbox"
     )
     assert auditor.milestone_progress(text) == (1, 2)
 
