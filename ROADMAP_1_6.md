@@ -2,7 +2,7 @@
 
 SwirEngine 1.5.0 is released and locked as the stable compatibility baseline. The 1.6 line is additive: existing 1.x imports and behavior stay stable unless a genuine maintenance fix is required.
 
-**Current verified progress: 1/10 milestones = 10.0%.**
+**Current verified progress: 2/10 milestones = 20.0%.**
 
 A milestone is checked only after its implementation, focused tests, documentation, and dedicated validation gate pass on the exact commit that is merged to `main`. Repository activity, scaffolding, or an open pull request does not count as completion.
 
@@ -25,7 +25,7 @@ A milestone is checked only after its implementation, focused tests, documentati
   - packet bridge layered on the stable 1.x `NetworkPacket` transport;
   - focused contract tests, workload benchmark, creator documentation/demo, and Python 3.10/3.13/3.14 CI gate.
 
-- [ ] **2. Prediction & Reconciliation 2.0**
+- [x] **2. Prediction & Reconciliation 2.0**
   - authoritative command acknowledgements tied to replication ticks;
   - configurable prediction windows and deterministic replay budgets;
   - correction smoothing hooks without changing simulation truth;
@@ -96,7 +96,7 @@ Milestone 1 is complete only when the exact candidate commit satisfies all of th
 
 ## Milestone 2 verification contract
 
-Milestone 2 remains unchecked until the exact candidate commit satisfies all of the following:
+Milestone 2 is complete only when the exact candidate commit satisfies all of the following:
 
 1. `swirengine.prediction16` remains additive and the stable 1.4 `ClientPredictor` contract is unchanged.
 2. Every authoritative correction binds a command acknowledgement to a monotonically increasing replication tick.
