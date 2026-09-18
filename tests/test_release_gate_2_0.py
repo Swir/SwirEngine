@@ -19,14 +19,10 @@ def test_release_candidate_preflight_contract_matches_current_repository():
 
 def test_roadmap_parser_counts_only_top_level_milestones():
     state = parse_roadmap(
-        "\n".join(
-            (
-                "- [x] one",
-                "  - [x] nested evidence",
-                "- [ ] two",
-                "- [X] three",
-            )
-        )
+        "- [x] one\n"
+        "  - [x] nested evidence\n"
+        "- [ ] two\n"
+        "- [X] three"
     )
     assert state.completed == 2
     assert state.remaining == 1
