@@ -8,8 +8,6 @@ from collections.abc import Sequence
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from swirengine.exporting import PackagingProfile, ProjectExporter
-
 from verify_real_game_production_1_9 import (
     FIXTURES,
     _host_target,
@@ -17,6 +15,8 @@ from verify_real_game_production_1_9 import (
     _validate_project,
     run_production_gate,
 )
+
+from swirengine.exporting import PackagingProfile, ProjectExporter
 
 _EXPECTED_FIXTURES = {"2d-game", "3d-game", "multiplayer-game"}
 _FORBIDDEN_SHIPPING_PARTS = {
