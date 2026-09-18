@@ -12,6 +12,7 @@ from swirengine.multiplayer20 import (
     ProductionMultiplayerSession,
 )
 from swirengine.server16 import DedicatedServerConfig, ServerTick
+from swirengine.session16 import SessionOperationError
 
 
 def _contract(*, build_id: str = "build-001") -> MultiplayerCompatibility:
@@ -73,6 +74,10 @@ def test_disconnect_resume_rotates_token_and_forces_full_resynchronization():
     session.publish_authoritative(WorldSnapshot(1, 1 / 30, ()))
 
     session.disconnect("client")
+    with pytest.raises(MultiplayerContractError):
+        session.resume(joined.resume_token, _contract(build_id="wrong"))
+    assert session.lifecycle.member("client").connected is False
+
     resumed = session.resume(joined.resume_token, _contract())
 
     assert resumed.join.member.connected is True
@@ -81,8 +86,10 @@ def test_disconnect_resume_rotates_token_and_forces_full_resynchronization():
     assert resumed.resynchronization.mode == "snapshot"
     assert resumed.resynchronization.tick == 1
 
-    with pytest.raises(Exception):
+    session.disconnect("client")
+    with pytest.raises(SessionOperationError) as exc:
         session.resume(joined.resume_token, _contract())
+    assert exc.value.code == "invalid_resume_token"
 
 
 def test_player_local_state_is_explicitly_separate_from_authoritative_state():
@@ -109,6 +116,14 @@ def test_player_local_state_is_explicitly_separate_from_authoritative_state():
     with pytest.raises(MultiplayerContractError) as exc:
         session.set_authoritative_player_state("host", {"settings": {"volume": 1.0}})
     assert exc.value.code == "player_local_state_forbidden"
+
+    with pytest.raises(MultiplayerContractError) as nested:
+        session.set_authoritative_player_state(
+            "host",
+            {"inventory": [{"slot": 1}, {"profile": {"name": "local"}}]},
+        )
+    assert nested.value.code == "player_local_state_forbidden"
+    assert "inventory[1].profile" in str(nested.value)
 
 
 def test_authoritative_state_is_bounded():
