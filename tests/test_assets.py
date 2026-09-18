@@ -97,6 +97,19 @@ def test_asset_invalidation_notifies_runtime_caches(tmp_path):
     assert invalidated == [path.resolve(), path.resolve()]
 
 
+def test_asset_invalidation_reports_cached_none_value(tmp_path):
+    path = tmp_path / "optional.asset"
+    path.write_text("ignored", encoding="utf-8")
+    assets = AssetManager(tmp_path)
+    assets.register_loader("asset", lambda _path: None)
+
+    assert assets.load(path) is None
+    assert assets.cached(path)
+    assert assets.invalidate(path) is True
+    assert not assets.cached(path)
+    assert assets.invalidate(path) is False
+
+
 def test_live_asset_reload_replaces_cached_value(tmp_path):
     path = tmp_path / "level.txt"
     path.write_text("one", encoding="utf-8")
