@@ -151,9 +151,12 @@ class AssetStreamingManager:
             started = perf_counter_ns()
             self._pending.pop(path, None)
             pin = self._pending_pin.pop(path, False)
+            exceptional_failure = False
+            cancelled = False
             try:
                 result = future.result()
             except CancelledError:
+                cancelled = True
                 self._cancelled += 1
                 result = AssetLoadResult(
                     asset=str(path),
@@ -164,6 +167,7 @@ class AssetStreamingManager:
                     error="CancelledError: streaming request was cancelled",
                 )
             except Exception as exc:  # noqa: BLE001 - custom/shared preloaders may fail unexpectedly.
+                exceptional_failure = True
                 self._failed += 1
                 result = AssetLoadResult(
                     asset=str(path),
@@ -195,11 +199,9 @@ class AssetStreamingManager:
                     self._resident_bytes,
                 )
                 self._evict_to_budget()
-            elif not isinstance(future.exception(), CancelledError):
-                # Normal AssetPreloader failures arrive as an AssetLoadResult rather than an
-                # exceptional Future; exceptional futures were counted in the except branch above.
-                if future.exception() is None:
-                    self._failed += 1
+            elif not cancelled and not exceptional_failure:
+                # Normal AssetPreloader failures arrive as AssetLoadResult values.
+                self._failed += 1
             finalized.append(result)
         return tuple(finalized)
 
