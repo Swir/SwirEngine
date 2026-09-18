@@ -174,13 +174,18 @@ def _verify_public_version() -> None:
 
 def _verify_release_freeze(roadmap_text: str) -> None:
     lowered = roadmap_text.lower()
-    required = (
-        "do not create `v1.9.0`, a github release, a release tag or a pypi publish",
-        "next public github release and pypi publication remains swirengine 2.0 only",
+    active_wording = "do not create `v1.9.0`, a github release, a release tag or a pypi publish"
+    historical_wording = (
+        "no `v1.9.0`, github release, release tag or pypi publication was created"
     )
-    missing = [token for token in required if token not in lowered]
-    if missing:
-        raise CheckpointError("ROADMAP_1_9.md does not preserve the 2.0-only release freeze")
+    if active_wording not in lowered and historical_wording not in lowered:
+        raise CheckpointError(
+            "ROADMAP_1_9.md must explicitly preserve the no-1.9-publication contract"
+        )
+    if "next public github release and pypi publication remains swirengine 2.0" not in lowered:
+        raise CheckpointError("ROADMAP_1_9.md does not preserve the 2.0-only next-release contract")
+    if "release/pypi: frozen until swirengine 2.0" not in lowered:
+        raise CheckpointError("ROADMAP_1_9.md does not preserve the explicit Release/PyPI freeze")
 
     forbidden = []
     for path in WORKFLOWS.glob("*.y*ml"):
