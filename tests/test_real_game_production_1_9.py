@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import json
+import pathlib
 import subprocess
 import sys
-from pathlib import Path
 
 
-REPOSITORY = Path(__file__).resolve().parents[1]
+REPOSITORY = pathlib.Path(__file__).resolve().parents[1]
 VERIFIER = REPOSITORY / "tools" / "verify_real_game_production_1_9.py"
 MULTIPLAYER_DEMO = REPOSITORY / "examples" / "multiplayer_game_demo" / "run_game.py"
 
