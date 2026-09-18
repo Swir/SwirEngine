@@ -226,7 +226,7 @@ def test_configuration_and_run_are_owner_thread_only() -> None:
 
 
 def test_lane_configuration_cannot_mutate_reentrantly() -> None:
-    controller = FrameTimeBudgetController()
+    controller = FrameTimeBudgetController(clock=FakeClock())
     errors: list[BaseException] = []
 
     def drain(limit: int) -> int:

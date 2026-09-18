@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import xml.etree.ElementTree as ET
 
 import pytest
@@ -15,6 +16,11 @@ from tools.generate_progress_svg import (
     parse_progress,
     render_card,
     render_mini,
+)
+
+README_PATH = ROADMAP_PATH.with_name("README.md")
+LEGACY_PROGRESS_RE = re.compile(
+    r"(?:[█▓▒░]{2,}|\[(?=[^\]\n]*[#=█▓▒░])(?:[#=█▓▒░ .-]){6,}\])"
 )
 
 
@@ -37,6 +43,21 @@ def test_authoritative_roadmap_math_matches_committed_assets() -> None:
     assert CARD_PATH.is_file()
     assert MINI_PATH.is_file()
     assert TEMPLATE_PATH.is_file()
+
+
+def test_maintained_progress_surfaces_are_svg_only_and_nonduplicated() -> None:
+    readme = README_PATH.read_text(encoding="utf-8")
+    roadmap = ROADMAP_PATH.read_text(encoding="utf-8")
+
+    assert "<!-- SWIR-README-STANDARD:v2 -->" in readme
+    for path, text in ((README_PATH, readme), (ROADMAP_PATH, roadmap)):
+        assert not LEGACY_PROGRESS_RE.search(text), f"legacy progress meter found in {path}"
+        assert "progress-template.svg" not in text
+
+    assert readme.count("assets/readme/progress-card.svg") == 1
+    assert "assets/readme/progress-mini.svg" not in readme
+    assert roadmap.count("assets/readme/progress-mini.svg") == 1
+    assert "assets/readme/progress-card.svg" not in roadmap
 
 
 @pytest.mark.parametrize(
