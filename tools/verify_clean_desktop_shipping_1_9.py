@@ -19,21 +19,21 @@ from swirengine.shipping19 import build_desktop_shipping, verify_desktop_shippin
 
 root = Path(sys.argv[1]).resolve()
 target = "windows" if sys.platform == "win32" else "macos" if sys.platform == "darwin" else "linux"
-(root / "main.py").write_text("print('SWIR_DESKTOP_SHIPPING_PROBE_OK')\\n", encoding="utf-8")
+(root / "main.py").write_text("print('SWIR_DESKTOP_SHIPPING_PROBE_OK')\n", encoding="utf-8")
 manifest_text = (
-    'name = "Clean Shipping Probe"\\n'
-    'mode = "2d"\\n'
-    'entrypoint = "main.py"\\n'
-    '\\n'
-    '[content]\\n'
-    'include = []\\n'
-    '\\n'
-    '[profiles.native]\\n'
-    f'target = "{target}"\\n'
-    'app_name = "CleanShip"\\n'
-    'include = []\\n'
-    'onefile = true\\n'
-    'console = true\\n'
+    'name = "Clean Shipping Probe"\n'
+    'mode = "2d"\n'
+    'entrypoint = "main.py"\n'
+    '\n'
+    '[content]\n'
+    'include = []\n'
+    '\n'
+    '[profiles.native]\n'
+    f'target = "{target}"\n'
+    'app_name = "CleanShip"\n'
+    'include = []\n'
+    'onefile = true\n'
+    'console = true\n'
 )
 (root / "swirproject.toml").write_text(manifest_text, encoding="utf-8")
 manifest = ProjectManifest.load(root)
@@ -94,7 +94,7 @@ def main() -> int:
         )
         if install.returncode:
             raise SystemExit(
-                "clean wheel install failed:\\n"
+                "clean wheel install failed:\n"
                 + (install.stderr[-4000:] or install.stdout[-4000:])
             )
 
@@ -107,7 +107,7 @@ def main() -> int:
         )
         if probe.returncode:
             raise SystemExit(
-                "clean desktop shipping probe failed:\\n"
+                "clean desktop shipping probe failed:\n"
                 + (probe.stderr[-4000:] or probe.stdout[-4000:])
             )
 
@@ -127,7 +127,7 @@ def main() -> int:
         )
         if runtime.returncode:
             raise SystemExit(
-                f"packaged probe exited with {runtime.returncode}:\\n"
+                f"packaged probe exited with {runtime.returncode}:\n"
                 + (runtime.stderr[-4000:] or runtime.stdout[-4000:])
             )
         if "SWIR_DESKTOP_SHIPPING_PROBE_OK" not in runtime.stdout:
