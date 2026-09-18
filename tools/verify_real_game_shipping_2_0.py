@@ -140,7 +140,7 @@ def verify_runtime_diagnostics(repository: Path, workspace: Path) -> dict[str, s
             raise RuntimeError(f"{fixture.name} diagnostics leaked the project root")
         decoded = json.loads(encoded)
         if not isinstance(decoded, dict):
-            raise RuntimeError(f"{fixture.name} diagnostics did not produce an object report")
+            raise TypeError(f"{fixture.name} diagnostics did not produce an object report")
         roundtrip = RuntimeCrashReport.from_dict(decoded)
         if roundtrip.fingerprint != report.fingerprint:
             raise RuntimeError(f"{fixture.name} diagnostics fingerprint changed after roundtrip")
