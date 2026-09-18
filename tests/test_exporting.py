@@ -58,6 +58,19 @@ def test_export_plan_is_deterministic_and_desktop_ready(tmp_path: Path) -> None:
     assert "swirengine-build.spec" in plan.native_build_command
 
 
+def test_export_without_scene_registry_preserves_legacy_manifest_behavior(tmp_path: Path) -> None:
+    root = _project(tmp_path / "project")
+    (root / "swirproject.toml").write_text(
+        '[legacy]\nformat = "pre-1.9"\n',
+        encoding="utf-8",
+    )
+
+    plan = ProjectExporter(root).plan(PackagingProfile(include=("assets",)))
+
+    assert Path("swirproject.toml") in plan.files
+    assert Path("assets/sprite.txt") in plan.files
+
+
 def test_export_plan_stages_declared_scene_package_files(tmp_path: Path) -> None:
     root = _project(tmp_path / "project")
     levels = root / "levels"
