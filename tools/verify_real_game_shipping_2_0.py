@@ -25,6 +25,8 @@ from swirengine.diagnostics19 import (
 )
 from swirengine.exporting import PackagingProfile, ProjectExporter
 from swirengine.project19 import ProjectManifest
+from swirengine.ui import UIButton
+from swirengine.ui_navigation import UIFocusManager
 
 _EXPECTED_FIXTURES = {"2d-game", "3d-game", "multiplayer-game"}
 _FORBIDDEN_SHIPPING_PARTS = {
@@ -153,6 +155,33 @@ def verify_runtime_diagnostics(repository: Path, workspace: Path) -> dict[str, s
     return dict(sorted(evidence.items()))
 
 
+def verify_ui_navigation() -> dict[str, bool]:
+    """Exercise the creator-facing focus/activation path for every representative fixture."""
+
+    evidence: dict[str, bool] = {}
+    for fixture in FIXTURES:
+        activated: list[str] = []
+        play = UIButton(
+            "Play",
+            0,
+            0,
+            on_click=lambda _button: activated.append("play"),
+        )
+        settings = UIButton("Settings", 0, 64)
+        focus = UIFocusManager((play, settings))
+        if focus.move(1) is not play or not play.focused:
+            raise RuntimeError(f"{fixture.name} UI could not acquire deterministic initial focus")
+        if not focus.activate() or activated != ["play"]:
+            raise RuntimeError(f"{fixture.name} UI focused action did not activate")
+        if focus.move(1) is not settings or not settings.focused or play.focused:
+            raise RuntimeError(f"{fixture.name} UI focus navigation did not advance")
+        evidence[fixture.name] = True
+
+    if set(evidence) != _EXPECTED_FIXTURES:
+        raise RuntimeError("UI navigation did not cover every representative fixture")
+    return dict(sorted(evidence.items()))
+
+
 def verify_failure_paths(repository: Path, workspace: Path) -> dict[str, bool]:
     """Prove malformed shipping content fails before a successful package can be claimed."""
 
@@ -201,6 +230,7 @@ def run_shipping_gate(
     production = run_production_gate(repository, workspace / "production", run_runtime=run_runtime)
     validate_gate_report(production, runtime_required=run_runtime)
     diagnostics = verify_runtime_diagnostics(repository, workspace / "diagnostics")
+    ui_navigation = verify_ui_navigation()
     failures = verify_failure_paths(repository, workspace / "failure-paths")
     return {
         "status": "ok",
@@ -210,6 +240,7 @@ def run_shipping_gate(
         "fixture_names": sorted(_EXPECTED_FIXTURES),
         "production_fingerprint": production["fingerprint"],
         "diagnostic_fingerprints": diagnostics,
+        "ui_navigation": ui_navigation,
         "failure_paths": failures,
         "player_data_boundary": "external-to-shipping-content",
     }
