@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path, PurePosixPath
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeVar
 
 try:  # Python 3.11+
     import tomllib
@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 _MAX_NODES = 1024
 _MAX_DEPENDENCIES = 128
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,95}$")
+_EnumT = TypeVar("_EnumT", bound=Enum)
 
 
 class ContentBuildError(ValueError):
@@ -75,6 +76,7 @@ class ContentBuildPlan:
 
     targets: tuple[str, ...]
     ordered_nodes: tuple[str, ...]
+    ordered_paths: tuple[str, ...]
     warmup_paths: tuple[str, ...]
     preload_paths: tuple[str, ...]
     stream_paths: tuple[str, ...]
@@ -83,20 +85,14 @@ class ContentBuildPlan:
 
     @property
     def all_paths(self) -> tuple[str, ...]:
-        """Return all unique shipping paths in deterministic dependency order."""
-        seen: set[str] = set()
-        ordered: list[str] = []
-        for path in (*self.warmup_paths, *self.preload_paths, *self.stream_paths):
-            if path in seen:
-                continue
-            seen.add(path)
-            ordered.append(path)
-        return tuple(ordered)
+        """Return all shipping paths in exact dependency-first order."""
+        return self.ordered_paths
 
     def to_dict(self) -> dict[str, object]:
         return {
             "targets": list(self.targets),
             "ordered_nodes": list(self.ordered_nodes),
+            "ordered_paths": list(self.ordered_paths),
             "warmup_paths": list(self.warmup_paths),
             "preload_paths": list(self.preload_paths),
             "stream_paths": list(self.stream_paths),
@@ -300,12 +296,14 @@ class ContentBuildGraph:
         for target in requested:
             visit(target)
 
+        ordered_paths: list[str] = []
         warmup: list[str] = []
         preload: list[str] = []
         stream: list[str] = []
         generated: list[str] = []
         for name in ordered:
             node = self.nodes[name]
+            ordered_paths.append(node.path)
             group = {
                 ContentLoadPolicy.WARMUP: warmup,
                 ContentLoadPolicy.PRELOAD: preload,
@@ -320,6 +318,7 @@ class ContentBuildGraph:
             "graph": self.fingerprint,
             "targets": target_tuple,
             "ordered_nodes": ordered,
+            "ordered_paths": ordered_paths,
             "warmup_paths": warmup,
             "preload_paths": preload,
             "stream_paths": stream,
@@ -328,6 +327,7 @@ class ContentBuildGraph:
         return ContentBuildPlan(
             targets=target_tuple,
             ordered_nodes=tuple(ordered),
+            ordered_paths=tuple(ordered_paths),
             warmup_paths=tuple(warmup),
             preload_paths=tuple(preload),
             stream_paths=tuple(stream),
@@ -445,7 +445,7 @@ def _safe_project_path(value: str, *, label: str) -> str:
     return pure.as_posix()
 
 
-def _enum_value(value: Any, enum_type: type[Enum], label: str):
+def _enum_value(value: Any, enum_type: type[_EnumT], label: str) -> _EnumT:
     cleaned = _string(value, label, max_length=32)
     try:
         return enum_type(cleaned)
