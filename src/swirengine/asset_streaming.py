@@ -200,7 +200,6 @@ class AssetStreamingManager:
                 )
                 self._evict_to_budget()
             elif not cancelled and not exceptional_failure:
-                # Normal AssetPreloader failures arrive as AssetLoadResult values.
                 self._failed += 1
             finalized.append(result)
         return tuple(finalized)
@@ -289,17 +288,26 @@ class AssetStreamingManager:
     ) -> None:
         if self._closed:
             return
-        if cancel_futures and self._owns_preloader:
-            for future in tuple(self._pending.values()):
-                future.cancel()
+        self._closed = True
+        pending = tuple(self._pending.items())
         self._pending.clear()
         self._pending_pin.clear()
+        if cancel_futures and self._owns_preloader:
+            for _path, future in pending:
+                if future.cancel():
+                    self._cancelled += 1
+        if self._owns_preloader:
+            # Explicit residency teardown is a complete session boundary: wait for owned workers so
+            # they cannot repopulate AssetManager after we invalidate their pending paths.
+            self.preloader.shutdown(
+                wait=wait or release_resident,
+                cancel_futures=cancel_futures,
+            )
         if release_resident:
             for path in tuple(self._resident):
                 self._evict_path(path, force=True)
-        self._closed = True
-        if self._owns_preloader:
-            self.preloader.shutdown(wait=wait, cancel_futures=cancel_futures)
+            for path, _future in pending:
+                self.assets.invalidate(path)
 
     def __enter__(self) -> AssetStreamingManager:  # noqa: PYI034
         self._ensure_open()
