@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from collections.abc import Callable, Iterable
-from concurrent.futures import Future
+from concurrent.futures import CancelledError, Future
 from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter_ns
@@ -42,13 +42,18 @@ class AssetStreamingDiagnostics:
     staged: int
     completed: int
     failed: int
+    cancelled: int
     evictions: int
     resident_assets: int
     resident_bytes: int
+    peak_resident_assets: int
     peak_resident_bytes: int
     hitch_count: int
     max_finalize_ms: float
     pending: int
+    budget_pressure_events: int
+    over_budget: bool
+    closed: bool
 
 
 class AssetStreamingManager:
@@ -58,6 +63,11 @@ class AssetStreamingManager:
     called from the game loop and only finalizes already-completed futures, so creators control the
     amount of work admitted per frame. Residency uses deterministic LRU eviction and never evicts
     explicitly pinned assets.
+
+    The manager owns its scheduling/residency lifecycle even when the underlying preloader is shared.
+    ``shutdown()`` always detaches pending work and closes this manager; it only shuts down the
+    preloader when the manager created it. Resident cache entries are preserved by default for 1.x
+    compatibility and can be released explicitly with ``release_all()`` or ``release_resident=True``.
     """
 
     def __init__(
@@ -80,12 +90,17 @@ class AssetStreamingManager:
         self._staged = 0
         self._completed = 0
         self._failed = 0
+        self._cancelled = 0
         self._evictions = 0
+        self._peak_resident_assets = 0
         self._peak_resident_bytes = 0
         self._hitch_count = 0
         self._max_finalize_ns = 0
+        self._budget_pressure_events = 0
+        self._closed = False
 
     def stage(self, asset: str | Path, *, pin: bool = False) -> Future[AssetLoadResult]:
+        self._ensure_open()
         path = self.assets.require(asset).expanduser().resolve()
         if path in self._resident:
             self.touch(path)
@@ -119,10 +134,12 @@ class AssetStreamingManager:
         *,
         pin: bool = False,
     ) -> tuple[Future[AssetLoadResult], ...]:
+        self._ensure_open()
         return tuple(self.stage(asset, pin=pin) for asset in assets)
 
     def pump(self, *, max_completions: int = 4) -> tuple[AssetLoadResult, ...]:
         """Finalize ready loads without waiting on unfinished background work."""
+        self._ensure_open()
         if max_completions < 1:
             raise ValueError("max_completions must be >= 1")
         finalized: list[AssetLoadResult] = []
@@ -132,13 +149,34 @@ class AssetStreamingManager:
             if not future.done():
                 continue
             started = perf_counter_ns()
-            result = future.result()
+            self._pending.pop(path, None)
+            pin = self._pending_pin.pop(path, False)
+            try:
+                result = future.result()
+            except CancelledError:
+                self._cancelled += 1
+                result = AssetLoadResult(
+                    asset=str(path),
+                    path=path,
+                    value=None,
+                    duration_ns=0,
+                    cache_hit=False,
+                    error="CancelledError: streaming request was cancelled",
+                )
+            except Exception as exc:  # noqa: BLE001 - custom/shared preloaders may fail unexpectedly.
+                self._failed += 1
+                result = AssetLoadResult(
+                    asset=str(path),
+                    path=path,
+                    value=None,
+                    duration_ns=0,
+                    cache_hit=False,
+                    error=f"{type(exc).__name__}: {exc}",
+                )
             finalize_ns = perf_counter_ns() - started
             self._max_finalize_ns = max(self._max_finalize_ns, finalize_ns)
             if finalize_ns >= int(self.budget.hitch_threshold_ms * 1_000_000):
                 self._hitch_count += 1
-            self._pending.pop(path, None)
-            pin = self._pending_pin.pop(path, False)
             if result.ok:
                 size = max(0, int(self._size_estimator(path, result.value)))
                 previous = self._resident.get(path)
@@ -148,17 +186,25 @@ class AssetStreamingManager:
                 self._resident_bytes += size
                 self._resident.move_to_end(path)
                 self._completed += 1
+                self._peak_resident_assets = max(
+                    self._peak_resident_assets,
+                    len(self._resident),
+                )
                 self._peak_resident_bytes = max(
                     self._peak_resident_bytes,
                     self._resident_bytes,
                 )
                 self._evict_to_budget()
-            else:
-                self._failed += 1
+            elif not isinstance(future.exception(), CancelledError):
+                # Normal AssetPreloader failures arrive as an AssetLoadResult rather than an
+                # exceptional Future; exceptional futures were counted in the except branch above.
+                if future.exception() is None:
+                    self._failed += 1
             finalized.append(result)
         return tuple(finalized)
 
     def touch(self, asset: str | Path) -> bool:
+        self._ensure_open()
         path = self.assets.resolve(asset).expanduser().resolve()
         if path not in self._resident:
             return False
@@ -166,6 +212,7 @@ class AssetStreamingManager:
         return True
 
     def pin(self, asset: str | Path) -> bool:
+        self._ensure_open()
         path = self.assets.resolve(asset).expanduser().resolve()
         current = self._resident.get(path)
         if current is None:
@@ -175,14 +222,104 @@ class AssetStreamingManager:
         return True
 
     def unpin(self, asset: str | Path) -> bool:
+        self._ensure_open()
         path = self.assets.resolve(asset).expanduser().resolve()
         current = self._resident.get(path)
         if current is None:
             return False
         self._resident[path] = AssetResidency(path, current.size_bytes, False)
+        self._evict_to_budget()
         return True
 
     def evict(self, asset: str | Path, *, force: bool = False) -> bool:
+        self._ensure_open()
+        return self._evict_path(asset, force=force)
+
+    def release_all(self, *, force: bool = False) -> int:
+        """Release resident streaming assets and invalidate their shared asset-cache entries.
+
+        By default pinned assets remain resident. ``force=True`` is intended for project/session
+        teardown where the caller owns the lifetime boundary.
+        """
+        self._ensure_open()
+        released = 0
+        for path in tuple(self._resident):
+            if self._evict_path(path, force=force):
+                released += 1
+        return released
+
+    def resident(self) -> tuple[AssetResidency, ...]:
+        return tuple(self._resident.values())
+
+    @property
+    def resident_bytes(self) -> int:
+        return self._resident_bytes
+
+    @property
+    def closed(self) -> bool:
+        return self._closed
+
+    def diagnostics(self) -> AssetStreamingDiagnostics:
+        return AssetStreamingDiagnostics(
+            staged=self._staged,
+            completed=self._completed,
+            failed=self._failed,
+            cancelled=self._cancelled,
+            evictions=self._evictions,
+            resident_assets=len(self._resident),
+            resident_bytes=self._resident_bytes,
+            peak_resident_assets=self._peak_resident_assets,
+            peak_resident_bytes=self._peak_resident_bytes,
+            hitch_count=self._hitch_count,
+            max_finalize_ms=self._max_finalize_ns / 1_000_000.0,
+            pending=len(self._pending),
+            budget_pressure_events=self._budget_pressure_events,
+            over_budget=self._over_budget(),
+            closed=self._closed,
+        )
+
+    def shutdown(
+        self,
+        *,
+        wait: bool = True,
+        cancel_futures: bool = False,
+        release_resident: bool = False,
+    ) -> None:
+        if self._closed:
+            return
+        if cancel_futures and self._owns_preloader:
+            for future in tuple(self._pending.values()):
+                future.cancel()
+        self._pending.clear()
+        self._pending_pin.clear()
+        if release_resident:
+            for path in tuple(self._resident):
+                self._evict_path(path, force=True)
+        self._closed = True
+        if self._owns_preloader:
+            self.preloader.shutdown(wait=wait, cancel_futures=cancel_futures)
+
+    def __enter__(self) -> AssetStreamingManager:  # noqa: PYI034
+        self._ensure_open()
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.shutdown()
+
+    def _evict_to_budget(self) -> None:
+        was_over_budget = self._over_budget()
+        while self._over_budget():
+            candidate = next(
+                (item for item in self._resident.values() if not item.pinned),
+                None,
+            )
+            if candidate is None:
+                if was_over_budget:
+                    self._budget_pressure_events += 1
+                return
+            self._evict_path(candidate.path)
+
+    def _evict_path(self, asset: str | Path, *, force: bool = False) -> bool:
         path = self.assets.resolve(asset).expanduser().resolve()
         current = self._resident.get(path)
         if current is None or (current.pinned and not force):
@@ -193,49 +330,15 @@ class AssetStreamingManager:
         self._evictions += 1
         return True
 
-    def resident(self) -> tuple[AssetResidency, ...]:
-        return tuple(self._resident.values())
-
-    @property
-    def resident_bytes(self) -> int:
-        return self._resident_bytes
-
-    def diagnostics(self) -> AssetStreamingDiagnostics:
-        return AssetStreamingDiagnostics(
-            staged=self._staged,
-            completed=self._completed,
-            failed=self._failed,
-            evictions=self._evictions,
-            resident_assets=len(self._resident),
-            resident_bytes=self._resident_bytes,
-            peak_resident_bytes=self._peak_resident_bytes,
-            hitch_count=self._hitch_count,
-            max_finalize_ms=self._max_finalize_ns / 1_000_000.0,
-            pending=len(self._pending),
-        )
-
-    def shutdown(self, *, wait: bool = True, cancel_futures: bool = False) -> None:
-        if self._owns_preloader:
-            self.preloader.shutdown(wait=wait, cancel_futures=cancel_futures)
-
-    def __enter__(self) -> AssetStreamingManager:  # noqa: PYI034
-        return self
-
-    def __exit__(self, exc_type, exc, tb) -> None:
-        self.shutdown()
-
-    def _evict_to_budget(self) -> None:
-        while (
+    def _over_budget(self) -> bool:
+        return (
             len(self._resident) > self.budget.max_resident_assets
             or self._resident_bytes > self.budget.max_resident_bytes
-        ):
-            candidate = next(
-                (item for item in self._resident.values() if not item.pinned),
-                None,
-            )
-            if candidate is None:
-                return
-            self.evict(candidate.path)
+        )
+
+    def _ensure_open(self) -> None:
+        if self._closed:
+            raise RuntimeError("asset streaming manager is shut down")
 
     @staticmethod
     def _default_size_estimator(path: Path, _value: object) -> int:
