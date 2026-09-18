@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import math
@@ -188,11 +189,13 @@ class PlayerLocalState:
         object.__setattr__(self, "save", save)
 
     def portable(self) -> dict[str, Any]:
-        return {
-            "client_id": self.client_id,
-            "settings": self.settings,
-            "save": self.save,
-        }
+        return copy.deepcopy(
+            {
+                "client_id": self.client_id,
+                "settings": self.settings,
+                "save": self.save,
+            }
+        )
 
 
 @dataclass(slots=True, frozen=True)
@@ -332,11 +335,11 @@ class ProductionMultiplayerSession:
                 "authoritative player state exceeds the configured byte limit",
             )
         self._authoritative_player_state[client_id] = normalized
-        return dict(normalized)
+        return copy.deepcopy(normalized)
 
     def authoritative_player_state(self, client_id: str) -> dict[str, Any]:
         self.lifecycle.member(client_id)
-        return dict(self._authoritative_player_state.get(client_id, {}))
+        return copy.deepcopy(self._authoritative_player_state.get(client_id, {}))
 
     def status(self) -> dict[str, Any]:
         snapshot = self.lifecycle.snapshot()
@@ -357,7 +360,7 @@ class ProductionMultiplayerSession:
             "replication_clients": list(self.replication.client_ids),
             "compatibility_fingerprint": self.compatibility.fingerprint(),
             "authoritative_player_state": {
-                client_id: dict(self._authoritative_player_state.get(client_id, {}))
+                client_id: copy.deepcopy(self._authoritative_player_state.get(client_id, {}))
                 for client_id in sorted(self._authoritative_player_state)
             },
         }
