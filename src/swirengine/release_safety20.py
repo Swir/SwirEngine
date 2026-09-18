@@ -255,7 +255,7 @@ def verify_export_staging(
         extras = {
             value
             for value in extras
-            if not (value.startswith("native-dist/") or value.startswith("native-build/"))
+            if not value.startswith(("native-dist/", "native-build/"))
         }
     if extras:
         raise ReleaseSafetyError(f"staged export contains unexpected files: {sorted(extras)}")
