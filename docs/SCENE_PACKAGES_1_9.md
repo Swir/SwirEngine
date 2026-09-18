@@ -83,6 +83,11 @@ the scene package registry, rejects dependency cycles/unknown dependencies and r
 Declared scene and prefab files are then added to the export plan even when they live outside a
 profile's broad `include` directories.
 
+Scene opt-in detection is semantic TOML parsing rather than text scanning. Valid TOML forms such as
+`[ scenes ]` therefore still activate the shipping preflight, while the literal text `[scenes]` inside
+comments or multiline strings does not. A malformed legacy manifest that cannot be parsed as TOML
+keeps the established exporter path instead of being reinterpreted as a 1.9 scene project.
+
 A packaging profile is not allowed to exclude a file that is explicitly declared by the scene
 registry. Missing, unreadable, oversized or project-escaping scene-package paths therefore fail the
 export preflight instead of producing a package that is known to be incomplete. Projects without a
@@ -120,21 +125,23 @@ imports.
 - project-relative manifest paths only, with a second resolved-path containment check;
 - deterministic cycle detection and dependency ordering;
 - declared scene/prefab content cannot be silently excluded from an export;
+- semantic TOML scene opt-in detection without formatting-sensitive header scanning;
 - no shell execution, code import or arbitrary class loading from scene JSON;
 - no implicit scene composition or prefab spawning.
 
 ## Verification
 
 ```bash
-pytest -q tests/test_scene_packages_1_9.py tests/test_exporting.py tests/test_serialization.py tests/test_project_manifest_1_9.py
+pytest -q tests/test_scene_packages_1_9.py tests/test_exporting.py tests/test_scene_export_optin_1_9.py tests/test_serialization.py tests/test_project_manifest_1_9.py
 python examples/demo_scene_packages_1_9.py
 python tools/benchmark_scene_packages_1_9.py
-ruff check src/swirengine/scene_packages19.py src/swirengine/exporting.py tests/test_scene_packages_1_9.py tests/test_exporting.py examples/demo_scene_packages_1_9.py tools/benchmark_scene_packages_1_9.py
-python -m compileall -q src/swirengine/scene_packages19.py src/swirengine/exporting.py tests/test_scene_packages_1_9.py tests/test_exporting.py examples/demo_scene_packages_1_9.py tools/benchmark_scene_packages_1_9.py
+ruff check src/swirengine/scene_packages19.py src/swirengine/exporting.py tests/test_scene_packages_1_9.py tests/test_exporting.py tests/test_scene_export_optin_1_9.py examples/demo_scene_packages_1_9.py tools/benchmark_scene_packages_1_9.py
+python -m compileall -q src/swirengine/scene_packages19.py src/swirengine/exporting.py tests/test_scene_packages_1_9.py tests/test_exporting.py tests/test_scene_export_optin_1_9.py examples/demo_scene_packages_1_9.py tools/benchmark_scene_packages_1_9.py
 ```
 
 The benchmark is a host-side deterministic planning regression contract, not an FPS or runtime load
-claim. Milestone 5 remains incomplete until the exact final roadmap-marked head passes its dedicated
-Python 3.10/3.13/3.14 gate plus the repository compatibility/runtime/packaging matrix.
+claim. Milestone 5 is recorded at 5/10 only after its implementation gate passed; PR merge still
+requires the exact final roadmap-marked head to pass the dedicated Python 3.10/3.13/3.14 gate plus
+the repository compatibility/runtime/packaging matrix.
 
 `Release/PyPI: frozen until SwirEngine 2.0`.
