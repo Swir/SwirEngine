@@ -182,10 +182,6 @@ class AssetStreamingManager:
                     cache_hit=False,
                     error=f"{type(exc).__name__}: {exc}",
                 )
-            finalize_ns = perf_counter_ns() - started
-            self._max_finalize_ns = max(self._max_finalize_ns, finalize_ns)
-            if finalize_ns >= int(self.budget.hitch_threshold_ms * 1_000_000):
-                self._hitch_count += 1
             if result.ok:
                 try:
                     size = max(0, int(self._size_estimator(path, result.value)))
@@ -219,6 +215,10 @@ class AssetStreamingManager:
                     self._evict_to_budget()
             elif not cancelled and not exceptional_failure:
                 self._failed += 1
+            finalize_ns = perf_counter_ns() - started
+            self._max_finalize_ns = max(self._max_finalize_ns, finalize_ns)
+            if finalize_ns >= int(self.budget.hitch_threshold_ms * 1_000_000):
+                self._hitch_count += 1
             finalized.append(result)
         return tuple(finalized)
 
