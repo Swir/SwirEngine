@@ -6,11 +6,11 @@ SwirEngine 1.8 is a completed source-only rendering checkpoint. SwirEngine 1.9 t
 runtime systems into a coherent production path for building, validating, packaging and shipping
 complete games while preserving stable 1.x behavior.
 
-**Current verified progress: 4/10 milestones = 40.0%.**
+**Current verified progress: 5/10 milestones = 50.0%.**
 
-<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 1.9 verified roadmap progress: 4 of 10 milestones, 40.0%, in progress" />
+<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 1.9 verified roadmap progress: 5 of 10 milestones, 50.0%, in progress" />
 
-**Verified active scope:** 4/10 milestones = 40.0% — IN PROGRESS.  
+**Verified active scope:** 5/10 milestones = 50.0% — IN PROGRESS.  
 **Release readiness:** frozen; the next public GitHub Release and PyPI publication remains SwirEngine 2.0.
 
 A milestone is checked only after implementation, focused tests, creator documentation, its dedicated
@@ -51,7 +51,7 @@ gate and the repository's required compatibility/regression gates pass on the ex
   - portable user-data location policy by supported desktop platform;
   - failure-safe recovery and representative game integration coverage.
 
-- [ ] **5. Scene, Prefab & Level Package Workflow**
+- [x] **5. Scene, Prefab & Level Package Workflow**
   - explicit boot scene and packaged scene registry;
   - deterministic scene/prefab dependency validation before export;
   - creator-facing level transition/loading contracts;
@@ -206,5 +206,32 @@ hardening, real OpenGL source demos and packaged 3D runtime validation. Python 3
 production game-state tests plus 53 stable save/profile/background-save regressions; Ruff and compile
 passed, the creator demo completed, and the 32-write plus recovery workload finished in 0.0396 seconds.
 The roadmap-marked PR head must re-pass its triggered gates before merge.
+
+## Milestone 5 verification contract
+
+Milestone 5 is complete only when the exact final implementation candidate satisfies all of the following:
+
+1. Scene shipping is opt-in: projects without `[scenes]` keep the established 1.x exporter and manifest behavior.
+2. `[scenes]` declares an explicit boot scene plus a bounded registry of project-contained scene packages.
+3. Scene dependencies are deterministic, cycle-safe and reject unknown/self dependencies before runtime loading.
+4. Scene and prefab paths reject absolute paths, traversal, drive escapes and symlink-resolved project escapes.
+5. `ScenePackageLoader` transitions into the existing runtime `Scene` object without replacing its identity and
+   returns declared `Prefab` values without hidden auto-instantiation.
+6. Full document validation remains explicit through the creator's `SceneSerializer`/codec registry, while
+   generic export preflight performs safe structural/filesystem validation without dynamic imports.
+7. `ProjectExporter` treats declared scene and prefab files as authoritative shipping content, stages them even
+   outside broad include roots, and rejects export profiles that would silently exclude required scene content.
+8. Stable `Scene`, `Prefab`, `SceneSerializer` behavior and legacy projects without `[scenes]` remain unchanged.
+9. The creator demo proves boot/level transition plus explicit prefab instantiation, while the deterministic
+   5,000 × 64-package planning workload remains under the documented regression ceiling without FPS claims.
+10. Focused scene/export/serialization/manifest tests, Ruff, compile and the dedicated Python 3.10/3.13/3.14
+    workflow pass, followed by the repository compatibility/runtime/packaging matrix on the exact head.
+
+Verified implementation head `dc60b13dd1b317149d483a94ec4456ffdb3ac54d` passed the dedicated
+Python 3.10/3.13/3.14 Scene Packages 1.9 gate and every triggered compatibility/regression workflow,
+including CI, Desktop Export, source checkpoints 1.6/1.7/1.8, Game Demos Validation, Demo Game 3D
+Validation, Neon Snake 3D Validation and locked 1.4/1.5 hardening. The final implementation includes
+an exporter compatibility regression proving projects without `[scenes]` stay on the legacy path.
+This roadmap-marked head must re-pass its triggered gates before merge.
 
 `Release/PyPI: frozen until SwirEngine 2.0`.
