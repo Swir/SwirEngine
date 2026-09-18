@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from swirengine.asset_pipeline import AssetPreloader
 from swirengine.asset_streaming import AssetStreamingManager
@@ -50,7 +50,7 @@ def _make_project(root: Path) -> None:
 
 
 def main() -> int:
-    with tempfile.TemporaryDirectory(prefix="swir-content-build-demo-") as directory:
+    with TemporaryDirectory(prefix="swir-content-build-demo-") as directory:
         root = Path(directory)
         _make_project(root)
         project = ProjectManifest.load(root)
