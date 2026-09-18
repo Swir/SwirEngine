@@ -55,4 +55,8 @@ def test_platform_matrix_workflow_covers_every_os_python_cell_and_clean_install(
     assert "verify_clean_wheel_2_0.py" in workflow
     assert "build_vendored_wheel.py" in workflow
     assert "--require-vendored-native" in workflow
-    assert "SWIR_GAME_DEMO_HEADLESS" in workflow
+
+    clean_verifier = (ROOT / "tools" / "verify_clean_wheel_2_0.py").read_text(encoding="utf-8")
+    assert "SWIR_GAME_DEMO_HEADLESS" in clean_verifier
+    assert "examples/2d_game_demo/run_game.py" in clean_verifier
+    assert "examples/3d_game_demo/run_game.py" in clean_verifier
