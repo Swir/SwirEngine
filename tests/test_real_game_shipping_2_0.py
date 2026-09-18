@@ -5,6 +5,11 @@ import subprocess
 import sys
 
 
+def _assert_sha256(value: str) -> None:
+    assert len(value) == 64
+    assert all(character in "0123456789abcdef" for character in value)
+
+
 def test_real_game_shipping_gate_staging_contract():
     result = subprocess.run(
         [sys.executable, "tools/verify_real_game_shipping_2_0.py", "--staging-only"],
@@ -25,4 +30,8 @@ def test_real_game_shipping_gate_staging_contract():
         "missing_entrypoint_rejected": True,
         "missing_scene_rejected": True,
     }
-    assert len(report["production_fingerprint"]) == 64
+    _assert_sha256(report["production_fingerprint"])
+    diagnostics = report["diagnostic_fingerprints"]
+    assert sorted(diagnostics) == ["2d-game", "3d-game", "multiplayer-game"]
+    for fingerprint in diagnostics.values():
+        _assert_sha256(fingerprint)
