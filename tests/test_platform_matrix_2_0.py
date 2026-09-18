@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+
 import tomllib
 
 from tools.verify_platform_matrix_2_0 import (
