@@ -12,6 +12,11 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, ClassVar
 
+try:  # Python 3.11+
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - exercised by the Python 3.10 CI job
+    import tomli as tomllib
+
 
 class ExportTarget(str, Enum):
     """Supported SwirEngine export targets."""
@@ -201,21 +206,21 @@ class ProjectExporter:
     def _scene_package_files(self) -> tuple[Path, ...]:
         """Return validated scene-package files that must ship with a 1.9 project.
 
-        Imports are intentionally local because ``project19`` depends on this module's packaging
-        types. Projects without a manifest or without ``[scenes]`` retain the legacy export path.
+        Scene opt-in detection is performed with the TOML parser rather than a textual header scan,
+        so valid whitespace/dotted-table forms cannot bypass shipping preflight and strings/comments
+        that merely contain ``[scenes]`` cannot accidentally activate it. Malformed legacy manifests
+        remain on the established exporter path.
         """
 
         manifest_path = self.project_root / "swirproject.toml"
         if not manifest_path.is_file():
             return ()
 
-        manifest_text = manifest_path.read_text(encoding="utf-8")
-        has_scene_declaration = any(
-            stripped == "[scenes]" or stripped.startswith("[scenes.registry")
-            for line in manifest_text.splitlines()
-            if (stripped := line.strip()) and not stripped.startswith("#")
-        )
-        if not has_scene_declaration:
+        try:
+            raw = tomllib.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, tomllib.TOMLDecodeError):
+            return ()
+        if not isinstance(raw, dict) or "scenes" not in raw:
             return ()
 
         from .project19 import ProjectManifest
