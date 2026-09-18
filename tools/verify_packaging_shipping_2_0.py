@@ -10,9 +10,9 @@ import tarfile
 import tempfile
 import venv
 import zipfile
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Iterable, Mapping
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_NAME = "swirengine"
