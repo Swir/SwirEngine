@@ -6,6 +6,7 @@ on:
     paths:
       - "ROADMAP_2_0.md"
       - "README.md"
+      - "CHANGELOG.d/2.0-packaging-shipping.md"
       - "assets/readme/progress-*.svg"
       - "pyproject.toml"
       - "src/swirengine/desktop_shipping19.py"
@@ -21,6 +22,7 @@ on:
     paths:
       - "ROADMAP_2_0.md"
       - "README.md"
+      - "CHANGELOG.d/2.0-packaging-shipping.md"
       - "assets/readme/progress-*.svg"
       - "pyproject.toml"
       - "src/swirengine/desktop_shipping19.py"
