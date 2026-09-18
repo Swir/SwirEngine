@@ -4,12 +4,13 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from time import sleep
 
+from swirengine import TileMap2D
 from swirengine.asset_streaming import AssetStreamingBudget, AssetStreamingManager
 from swirengine.assets import AssetManager
 from swirengine.graphics.batching import SpriteBatch, SpriteBatchKey
 from swirengine.graphics.camera import Camera2D
 from swirengine.graphics.instancing import Frustum3D, FrustumPlane
-from swirengine.graphics.primitives import Cube3D, Sprite2D, TileMap2D
+from swirengine.graphics.primitives import Cube3D, Sprite2D
 from swirengine.graphics.renderer2d_power import Renderer2DPowerPass
 from swirengine.math.types import Vec3
 from swirengine.render_resources18 import RenderResourceDescriptor, TransientRenderResourcePool
