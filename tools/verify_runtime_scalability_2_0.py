@@ -121,7 +121,9 @@ def _verify_2d_workload() -> tuple[int, int, int]:
     candidates = tilemap.diagnostics.last_visibility_candidates
     if tilemap.tile_count != 16_384:
         raise RuntimeError("unexpected 2D production workload size")
-    if candidates > 500 or candidates >= tilemap.tile_count // 16:
+    # A 1280x720 viewport over 16px cells covers roughly 80x46 candidates (3,680). Keep the gate
+    # geometry-derived and require at least 75% pruning versus walking all 16,384 cells.
+    if candidates > 4096 or candidates >= tilemap.tile_count // 4:
         raise RuntimeError(
             "2D tilemap visibility regressed to world-scale work: "
             f"tiles={tilemap.tile_count}, candidates={candidates}"
