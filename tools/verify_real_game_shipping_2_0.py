@@ -196,6 +196,17 @@ def verify_failure_paths(repository: Path, workspace: Path) -> dict[str, bool]:
     if not missing_scene_rejected:
         raise RuntimeError("missing declared gameplay scene was accepted by production validation")
 
+    missing_asset_root = workspace / "missing-asset"
+    _prepare_project(repository, missing_asset_root, FIXTURES[0])
+    (missing_asset_root / "assets" / "fixture.txt").unlink()
+    missing_asset_rejected = False
+    try:
+        _validate_project(missing_asset_root)
+    except (FileNotFoundError, OSError, RuntimeError, ValueError):
+        missing_asset_rejected = True
+    if not missing_asset_rejected:
+        raise RuntimeError("missing required content asset was accepted by production validation")
+
     missing_entry_root = workspace / "missing-entrypoint"
     _prepare_project(repository, missing_entry_root, FIXTURES[0])
     (missing_entry_root / "run_game.py").unlink()
@@ -216,6 +227,7 @@ def verify_failure_paths(repository: Path, workspace: Path) -> dict[str, bool]:
 
     return {
         "missing_scene_rejected": True,
+        "missing_asset_rejected": True,
         "missing_entrypoint_rejected": True,
     }
 
