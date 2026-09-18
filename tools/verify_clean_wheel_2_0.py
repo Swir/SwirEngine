@@ -8,6 +8,8 @@ import tempfile
 import venv
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
+
 
 def _venv_python(root: Path) -> Path:
     if platform.system() == "Windows":
@@ -15,8 +17,20 @@ def _venv_python(root: Path) -> Path:
     return root / "bin" / "python"
 
 
-def _run(command: list[str], *, env: dict[str, str] | None = None) -> None:
-    subprocess.run(command, check=True, env=env)
+def _clean_env() -> dict[str, str]:
+    env = dict(os.environ)
+    env.pop("PYTHONPATH", None)
+    env.pop("PYTHONHOME", None)
+    return env
+
+
+def _run(
+    command: list[str],
+    *,
+    env: dict[str, str] | None = None,
+    cwd: Path | None = None,
+) -> None:
+    subprocess.run(command, check=True, env=env, cwd=cwd)
 
 
 def main() -> int:
@@ -55,11 +69,28 @@ def main() -> int:
         if not python.is_file():
             raise RuntimeError(f"clean-environment interpreter was not created: {python}")
 
-        _run([str(python), "-m", "pip", "install", "--disable-pip-version-check", str(wheel)])
+        clean_env = _clean_env()
+        _run(
+            [str(python), "-m", "pip", "install", "--disable-pip-version-check", str(wheel)],
+            env=clean_env,
+            cwd=env_root,
+        )
+
+        import_guard = (
+            "from pathlib import Path; import sys, swirengine; "
+            "package=Path(swirengine.__file__).resolve(); source=Path(sys.argv[1]).resolve(); "
+            "assert source not in package.parents, "
+            "f'clean wheel resolved from source checkout: {package}'; print(package)"
+        )
+        _run(
+            [str(python), "-c", import_guard, str(ROOT)],
+            env=clean_env,
+            cwd=env_root,
+        )
 
         probe = [
             str(python),
-            "tools/verify_platform_matrix_2_0.py",
+            str(ROOT / "tools" / "verify_platform_matrix_2_0.py"),
             "--expected-system",
             args.expected_system,
             "--expected-python",
@@ -67,12 +98,20 @@ def main() -> int:
         ]
         if args.require_vendored_native:
             probe.append("--require-vendored-native")
-        _run(probe)
+        _run(probe, env=clean_env, cwd=env_root)
 
-        runtime_env = dict(os.environ)
+        runtime_env = dict(clean_env)
         runtime_env["SWIR_GAME_DEMO_HEADLESS"] = "1"
-        _run([str(python), "examples/2d_game_demo/run_game.py"], env=runtime_env)
-        _run([str(python), "examples/3d_game_demo/run_game.py"], env=runtime_env)
+        _run(
+            [str(python), str(ROOT / "examples" / "2d_game_demo" / "run_game.py")],
+            env=runtime_env,
+            cwd=env_root,
+        )
+        _run(
+            [str(python), str(ROOT / "examples" / "3d_game_demo" / "run_game.py")],
+            env=runtime_env,
+            cwd=env_root,
+        )
 
     print(
         "SwirEngine 2.0 clean-wheel platform gate OK: "
