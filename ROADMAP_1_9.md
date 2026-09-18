@@ -6,11 +6,11 @@ SwirEngine 1.8 is a completed source-only rendering checkpoint. SwirEngine 1.9 t
 runtime systems into a coherent production path for building, validating, packaging and shipping
 complete games while preserving stable 1.x behavior.
 
-**Current verified progress: 7/10 milestones = 70.0%.**
+**Current verified progress: 8/10 milestones = 80.0%.**
 
-<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 1.9 verified roadmap progress: 7 of 10 milestones, 70.0%, in progress" />
+<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 1.9 verified roadmap progress: 8 of 10 milestones, 80.0%, in progress" />
 
-**Verified active scope:** 7/10 milestones = 70.0% — IN PROGRESS.  
+**Verified active scope:** 8/10 milestones = 80.0% — IN PROGRESS.  
 **Release readiness:** frozen; the next public GitHub Release and PyPI publication remains SwirEngine 2.0.
 
 A milestone is checked only after implementation, focused tests, creator documentation, its dedicated
@@ -69,7 +69,7 @@ gate and the repository's required compatibility/regression gates pass on the ex
   - creator-generated support bundle without secrets or arbitrary user files;
   - failure-injection and corrupted-report hardening coverage.
 
-- [ ] **8. Desktop Shipping Matrix & Reproducible Build Plans**
+- [x] **8. Desktop Shipping Matrix & Reproducible Build Plans**
   - canonical Windows/Linux/macOS build profiles where each platform is actually verified;
   - deterministic staging/build manifests, checksums and artifact inventory;
   - clean-environment install/export/build verification;
@@ -298,5 +298,39 @@ Validation, Neon Snake 3D Validation, Project Production 1.9, GPU Timing Capture
 hardening. Python 3.13 ran 14 focused runtime-diagnostics tests, the creator support-bundle flow, Ruff and
 compile successfully; the 1,000-report workload completed in 0.2926 seconds (3,418.0 reports/s) under
 the documented 8.0-second ceiling. This roadmap-marked head must re-pass its triggered gates before merge.
+
+## Milestone 8 verification contract
+
+Milestone 8 is complete only when the exact final implementation candidate satisfies all of the following:
+
+1. Desktop shipping remains additive over the stable `ProjectExporter`/1.5.0 packaging contract and consumes
+   explicit 1.9 production profiles rather than silently changing legacy export behavior.
+2. A shipping plan accepts Windows, Linux or macOS only when the requested target matches the host platform;
+   unsupported cross-compilation claims fail explicitly before a native build starts.
+3. Source inventories are deterministic and checkout-independent, contain project-relative paths plus SHA-256
+   content hashes, and reject unsafe/traversing/case-colliding inputs before packaging.
+4. Shipping plans and artifact manifests are schema-versioned, bounded and fingerprinted so malformed,
+   oversized or inconsistent metadata cannot be accepted as a valid build record.
+5. Native build output is created outside project source, preserving the established exporter overlap-safety
+   contract while still consuming the verified staged content produced by the existing export pipeline.
+6. Artifact manifests inventory the exact packaged files and symlink targets with content hashes, target and
+   plan identity; verification rejects missing, extra, modified or mismatched artifacts.
+7. A clean wheel install can build and verify a host-native packaged smoke game and the produced executable
+   must actually run and emit the expected runtime marker on every claimed desktop platform.
+8. Dedicated native validation covers Windows, Linux and macOS on matching GitHub-hosted runners while the
+   Python 3.10/3.13/3.14 contract matrix locks planning/export compatibility and no cross-build claim is made.
+9. The deterministic 500-plan Python 3.13 workload remains below the documented 5.0-second ceiling without
+   turning CI timing into an unsupported FPS or end-user build-speed claim.
+10. Focused shipping/export tests, clean-wheel native runtime probes, Ruff, compile and the dedicated matrix
+    pass, followed by the complete repository compatibility/runtime/packaging matrix on the exact head.
+
+Verified implementation head `5da85ae39df0f55c3b1679eabf0cfddc3daef08a` passed the dedicated
+Desktop Shipping 1.9 matrix and every triggered compatibility/regression workflow, including CI,
+Desktop Export, source checkpoints 1.6/1.7/1.8, Game Demos Validation, Demo Game 3D Validation,
+Neon Snake 3D Validation and locked 1.4/1.5 hardening. The dedicated contract matrix passed Python
+3.10, 3.13 and 3.14; Python 3.13 ran 24 shipping/export tests plus 35 locked input/UI/settings tests,
+Ruff and compile successfully, while the 500-plan workload completed in 2.0154 seconds under the
+5.0-second ceiling. Clean-wheel host-native package/manifest/runtime probes passed on Windows, Linux
+and macOS. This roadmap-marked head must re-pass its triggered gates before merge.
 
 `Release/PyPI: frozen until SwirEngine 2.0`.
