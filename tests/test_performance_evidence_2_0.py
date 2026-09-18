@@ -3,15 +3,8 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
-from pathlib import Path
 
-from tools.verify_performance_evidence_2_0 import (
-    CONTRACT_PATH,
-    MAX_ALLOWED_BUDGETS,
-    REFERENCE_CHECK_DATE,
-    ROOT,
-    _load_contract,
-)
+from tools import verify_performance_evidence_2_0 as evidence
 
 
 EXPECTED_WORKLOADS = {
@@ -25,16 +18,16 @@ EXPECTED_WORKLOADS = {
 
 
 def test_performance_evidence_contract_is_bounded_and_reproducible():
-    contract = _load_contract()
+    contract = evidence._load_contract()
     workloads = contract["workloads"]
     assert {item["id"] for item in workloads} == EXPECTED_WORKLOADS
     assert len(workloads) == len(EXPECTED_WORKLOADS)
     for item in workloads:
-        path = ROOT / item["command"]
+        path = evidence.ROOT / item["command"]
         assert path.is_file()
         assert item["expected_marker"]
-        if item["id"] in MAX_ALLOWED_BUDGETS:
-            assert item["budget_seconds"] == MAX_ALLOWED_BUDGETS[item["id"]]
+        if item["id"] in evidence.MAX_ALLOWED_BUDGETS:
+            assert item["budget_seconds"] == evidence.MAX_ALLOWED_BUDGETS[item["id"]]
             assert item["budget_constant"] in {"BUDGET_SECONDS", "MAX_SECONDS"}
         else:
             assert item["budget_seconds"] is None
@@ -42,13 +35,13 @@ def test_performance_evidence_contract_is_bounded_and_reproducible():
 
 
 def test_competitive_reference_policy_does_not_invent_cross_engine_timing():
-    contract = _load_contract()
+    contract = evidence._load_contract()
     policy = contract["measurement_policy"]
     assert policy["cross_engine_runtime_benchmark"] == "not_performed"
     assert "identical" in policy["cross_engine_runtime_reason"].lower()
     references = contract["external_reference_facts"]
     assert {item["project"] for item in references} == {"Arcade", "Panda3D", "Ursina"}
-    assert all(item["checked_date"] == REFERENCE_CHECK_DATE for item in references)
+    assert all(item["checked_date"] == evidence.REFERENCE_CHECK_DATE for item in references)
     assert all(item["runtime_performance_compared"] is False for item in references)
     assert all(item["official_url"].startswith("https://") for item in references)
     assert all(item["distribution_url"].startswith("https://") for item in references)
@@ -64,7 +57,7 @@ def test_validate_only_emits_contextual_json_without_running_benchmarks(tmp_path
             "--output",
             str(output),
         ],
-        cwd=ROOT,
+        cwd=evidence.ROOT,
         text=True,
         capture_output=True,
         check=False,
@@ -80,7 +73,7 @@ def test_validate_only_emits_contextual_json_without_running_benchmarks(tmp_path
 
 
 def test_contract_file_is_normal_json_not_generated_runtime_score():
-    raw = CONTRACT_PATH.read_text(encoding="utf-8")
+    raw = evidence.CONTRACT_PATH.read_text(encoding="utf-8")
     contract = json.loads(raw)
     assert "harness_elapsed_seconds" not in raw
     assert "results" not in contract
