@@ -15,6 +15,8 @@ Milestone 4 treats asset residency and transient renderer resources as owned run
 - peak resident asset count is tracked alongside peak resident bytes;
 - cancelled background operations are separated from loader failures;
 - exceptional custom/shared preloader futures become normal failed streaming results instead of escaping `pump()` and leaving sticky pending records;
+- externally invalidated `AssetManager` cache entries are reconciled on the next `stage()` call, removing stale residency bookkeeping and re-entering the asynchronous load path instead of synchronously decoding on the caller/game thread;
+- creator-provided size-estimator failures are isolated as failed streaming results, their newly loaded cache entry is invalidated, and no untracked resident object is left behind;
 - `release_all()` provides an explicit project/session teardown path while preserving pins unless the caller requests `force=True`;
 - `shutdown(release_resident=True)` can close a session and invalidate all resources owned by its residency set;
 - a closed manager rejects new staging or mutation work rather than accidentally reusing a shut-down worker pool.
@@ -79,7 +81,7 @@ The dedicated `Runtime Scalability 2.0` workflow runs the contract on Python 3.1
 
 Pinned assets can legitimately make residency exceed its configured budget. This is a creator decision, not a reason to evict pinned content behind the application's back. The manager therefore records pressure and stays over-budget until content is unpinned or explicitly released.
 
-Unexpected worker exceptions and cancellations are drained from the pending queue and surfaced in diagnostics. Shutdown is idempotent. Explicit teardown is deterministic and does not require garbage collection to recover asset or transient render residency.
+Unexpected worker exceptions and cancellations are drained from the pending queue and surfaced in diagnostics. A creator size-estimator exception is likewise converted into a normal failed streaming result after invalidating the just-loaded cache entry, so residency accounting and the shared cache cannot silently diverge. If another subsystem invalidates a cached asset that this streamer previously considered resident, a later `stage()` call drops the stale residency record and schedules background loading again instead of performing decode/file work synchronously. Shutdown is idempotent. Explicit teardown is deterministic and does not require garbage collection to recover asset or transient render residency.
 
 ## Compatibility and release policy
 
