@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Sequence
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -51,8 +52,8 @@ def validate_gate_report(report: dict[str, object], *, runtime_required: bool) -
         names.add(name)
 
         exported = fixture.get("exported_files")
-        if not isinstance(exported, list):
-            raise TypeError(f"{name} exported_files must be a list")
+        if not isinstance(exported, Sequence) or isinstance(exported, (str, bytes)):
+            raise TypeError(f"{name} exported_files must be a sequence")
         for value in exported:
             if not isinstance(value, str):
                 raise TypeError(f"{name} exported file names must be strings")
