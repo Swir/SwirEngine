@@ -23,15 +23,24 @@ These directories remain source-only examples. They do not receive independent G
 and creates production metadata around that exact game code. For every fixture it then:
 
 1. creates deterministic title/gameplay scene documents with `SceneSerializer`;
-2. loads and validates the `[scenes]` registry, including the dependency transition path;
-3. loads and validates a `[content.build]` graph with preload/stream classifications;
-4. derives a deterministic `ProjectExporter` plan twice and rejects plan drift;
-5. stages the project for the current host desktop target;
-6. requires the entrypoint, manifest, declared assets and declared scenes to be present in the staged
-   output even when they were not all listed directly in the packaging profile;
-7. requires deterministic SHA-256 entries for the required shipping files;
-8. in runtime mode, launches both the copied source entrypoint and the staged entrypoint and requires
-   successful completion.
+2. creates and reloads shipping-safe project input and settings defaults, including the required
+   semantic UI actions;
+3. persists and reloads a player input override plus accessibility settings inside the profile tree;
+4. performs a real background manual-save write and recovery read through `ProductionGameStateSession`;
+5. loads and validates the `[scenes]` registry, including the dependency transition path;
+6. loads and validates a `[content.build]` graph with preload/stream classifications;
+7. derives a deterministic `ProjectExporter` plan twice and rejects plan drift;
+8. stages the project for the current host desktop target;
+9. requires the entrypoint, manifest, project controls/settings, declared assets and declared scenes to
+   be present in the staged output even when they were not all listed directly in the packaging profile;
+10. requires deterministic SHA-256 entries for the required shipping files and verifies that per-player
+    user data is not copied into project shipping content;
+11. in runtime mode, launches both the copied source entrypoint and the staged entrypoint and requires
+    successful completion.
+
+The user-data round trip is deliberately outside the staged project tree: project defaults ship with
+the game, while player overrides/settings/saves remain profile data. This prevents the production gate
+from accidentally treating private player state as redistributable content.
 
 The verifier deliberately does not invoke PyInstaller. Native desktop executable creation is owned by
 the separate SwirEngine 1.9 desktop-shipping gate, which already validates clean-wheel native builds
@@ -46,15 +55,16 @@ After a development install:
 python tools/verify_real_game_production_1_9.py
 ```
 
-For a fast packaging/content check without launching game entrypoints:
+For a fast packaging/content/state check without launching game entrypoints:
 
 ```bash
 python tools/verify_real_game_production_1_9.py --staging-only
 ```
 
 The command prints JSON containing one report per fixture plus an aggregate fingerprint. A successful
-report has `status: "ok"`. Runtime fields are `true` only when both source and staged entrypoints were
-actually executed; staging-only mode leaves those fields unset rather than claiming runtime coverage.
+report has `status: "ok"`. Each fixture records scene/content/input/settings/game-state fingerprints and
+the staged export-manifest hash. Runtime fields are `true` only when both source and staged entrypoints
+were actually executed; staging-only mode leaves those fields unset rather than claiming runtime coverage.
 
 ## CI contract
 
