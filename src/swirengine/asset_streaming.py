@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from collections.abc import Callable, Iterable
 from concurrent.futures import CancelledError, Future
+from concurrent.futures import wait as wait_futures
 from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter_ns
@@ -297,12 +298,15 @@ class AssetStreamingManager:
                 if future.cancel():
                     self._cancelled += 1
         if self._owns_preloader:
-            # Explicit residency teardown is a complete session boundary: wait for owned workers so
-            # they cannot repopulate AssetManager after we invalidate their pending paths.
             self.preloader.shutdown(
                 wait=wait or release_resident,
                 cancel_futures=cancel_futures,
             )
+        elif release_resident and pending:
+            # We do not own the shared preloader, but an explicit residency release must still wait
+            # for this manager's already-scheduled futures before invalidating their cache entries.
+            # The shared preloader remains open for its owner and other consumers.
+            wait_futures(tuple(future for _path, future in pending))
         if release_resident:
             for path in tuple(self._resident):
                 self._evict_path(path, force=True)
