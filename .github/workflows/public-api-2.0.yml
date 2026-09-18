@@ -48,8 +48,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install verification tools
-        run: python -m pip install --disable-pip-version-check pytest ruff
+      - name: Install engine and verification tools
+        run: python -m pip install --disable-pip-version-check -e . pytest ruff
       - name: Verify public API contract
         run: python tools/verify_2_0_public_api.py
       - name: Test public API and progress contracts
