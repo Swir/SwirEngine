@@ -34,14 +34,23 @@ def test_real_game_production_staging_covers_all_representative_games() -> None:
         assert "run_game.py" in exported
         assert "swirproject.toml" in exported
         assert "assets/fixture.txt" in exported
+        assert "config/controls.json" in exported
+        assert "config/settings.json" in exported
         assert "scenes/title.swirscene" in exported
         assert "scenes/gameplay.swirscene" in exported
+        assert not any(path.startswith("user-data/") for path in exported)
         assert fixture["source_runtime_ok"] is None
         assert fixture["staged_runtime_ok"] is None
-        assert len(fixture["scene_fingerprint"]) == 64
-        assert len(fixture["content_fingerprint"]) == 64
-        assert len(fixture["export_manifest_sha256"]) == 64
-        assert len(fixture["fingerprint"]) == 64
+        for fingerprint_name in (
+            "scene_fingerprint",
+            "content_fingerprint",
+            "input_fingerprint",
+            "settings_fingerprint",
+            "game_state_fingerprint",
+            "export_manifest_sha256",
+            "fingerprint",
+        ):
+            assert len(fixture[fingerprint_name]) == 64
 
     assert "procedural_art.py" in fixtures["2d-game"]["exported_files"]
     assert "procedural_art.py" in fixtures["3d-game"]["exported_files"]
