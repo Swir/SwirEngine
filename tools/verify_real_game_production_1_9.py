@@ -21,9 +21,9 @@ from swirengine.input import InputBinding
 from swirengine.project19 import ProjectManifest
 from swirengine.scene_packages19 import ScenePackageLoader, ScenePackageRegistry
 from swirengine.shipping19 import (
+    REQUIRED_UI_ACTIONS,
     InputOverrideStore,
     ProjectShippingDefaults,
-    REQUIRED_UI_ACTIONS,
 )
 
 
