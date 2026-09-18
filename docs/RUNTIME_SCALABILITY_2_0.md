@@ -16,6 +16,7 @@ Milestone 4 treats asset residency and transient renderer resources as owned run
 - cancelled background operations are separated from loader failures;
 - exceptional custom/shared preloader futures become normal failed streaming results instead of escaping `pump()` and leaving sticky pending records;
 - externally invalidated `AssetManager` cache entries are reconciled on the next `stage()` call, removing stale residency bookkeeping and re-entering the asynchronous load path instead of synchronously decoding on the caller/game thread; an existing pinned residency keeps its pin intent through that asynchronous restage;
+- cache invalidation reports cached entries correctly even when a valid asset loader returns `None`, preventing lifecycle bookkeeping from confusing a cached null-like value with a cache miss;
 - creator-provided size-estimator failures are isolated as failed streaming results, their newly loaded cache entry is invalidated, and no untracked resident object is left behind;
 - finalize hitch diagnostics measure the complete pump-side finalize path, including creator size estimation, residency accounting and budget eviction rather than only `Future.result()` retrieval;
 - `release_all()` provides an explicit project/session teardown path while preserving pins unless the caller requests `force=True`;
@@ -63,6 +64,7 @@ Run the focused contract:
 
 ```bash
 python -m pytest -q \
+  tests/test_assets.py \
   tests/test_asset_streaming.py \
   tests/test_runtime_scalability_2_0.py \
   tests/test_render_resources_1_8.py \
@@ -82,7 +84,7 @@ The dedicated `Runtime Scalability 2.0` workflow runs the contract on Python 3.1
 
 Pinned assets can legitimately make residency exceed its configured budget. This is a creator decision, not a reason to evict pinned content behind the application's back. The manager therefore records pressure and stays over-budget until content is unpinned or explicitly released.
 
-Unexpected worker exceptions and cancellations are drained from the pending queue and surfaced in diagnostics. A creator size-estimator exception is likewise converted into a normal failed streaming result after invalidating the just-loaded cache entry, so residency accounting and the shared cache cannot silently diverge. If another subsystem invalidates a cached asset that this streamer previously considered resident, a later `stage()` call drops the stale residency record and schedules background loading again instead of performing decode/file work synchronously while carrying forward existing pin intent. Finalize timing includes all pump-thread work needed to turn a completed load into stable residency, making hitch diagnostics reflect the work creators actually pay for on that thread. Shutdown is idempotent. Explicit teardown is deterministic and does not require garbage collection to recover asset or transient render residency.
+Unexpected worker exceptions and cancellations are drained from the pending queue and surfaced in diagnostics. A creator size-estimator exception is likewise converted into a normal failed streaming result after invalidating the just-loaded cache entry, so residency accounting and the shared cache cannot silently diverge. `AssetManager.invalidate()` reports cache membership independently of the cached value, so a loader returning `None` still participates in deterministic invalidation. If another subsystem invalidates a cached asset that this streamer previously considered resident, a later `stage()` call drops the stale residency record and schedules background loading again instead of performing decode/file work synchronously while carrying forward existing pin intent. Finalize timing includes all pump-thread work needed to turn a completed load into stable residency, making hitch diagnostics reflect the work creators actually pay for on that thread. Shutdown is idempotent. Explicit teardown is deterministic and does not require garbage collection to recover asset or transient render residency.
 
 ## Compatibility and release policy
 
