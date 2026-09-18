@@ -11,7 +11,6 @@ from swirengine.assets import AssetManager
 from swirengine.content_build19 import ContentBuildGraph
 from swirengine.project19 import ProjectManifest
 
-
 MANIFEST = """
 name = "Content Build Demo"
 mode = "3d"
