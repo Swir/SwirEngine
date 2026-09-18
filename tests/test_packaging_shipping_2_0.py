@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import stat
 import tarfile
 import zipfile
 from pathlib import Path
@@ -14,6 +15,7 @@ from tools.verify_packaging_shipping_2_0 import (
     _inspect_wheel,
     _select_artifacts,
     _validate_member_names,
+    _validate_member_sizes,
 )
 
 
@@ -45,6 +47,8 @@ def test_select_artifacts_rejects_ambiguous_distribution_set(tmp_path):
     [
         ("swirengine-1.5.0/../escape.py",),
         ("/absolute/path.py",),
+        ("C:/absolute/path.py",),
+        (r"D:\\absolute\\path.py",),
         ("swirengine-1.5.0/.git/config",),
         ("swirengine-1.5.0/pkg.py", "SWIRENGINE-1.5.0/PKG.py"),
     ],
@@ -52,6 +56,14 @@ def test_select_artifacts_rejects_ambiguous_distribution_set(tmp_path):
 def test_archive_member_validation_rejects_unsafe_or_ambiguous_paths(members):
     with pytest.raises(PackagingShippingError):
         _validate_member_names(members, label="fixture")
+
+
+def test_archive_size_validation_rejects_oversized_member_or_total():
+    with pytest.raises(PackagingShippingError, match="oversized member"):
+        _validate_member_sizes([64 * 1024 * 1024 + 1], label="fixture")
+
+    with pytest.raises(PackagingShippingError, match="uncompressed size"):
+        _validate_member_sizes([32 * 1024 * 1024] * 9, label="fixture")
 
 
 def test_clean_env_strips_source_path_overrides():
@@ -74,6 +86,23 @@ def test_inspect_wheel_requires_expected_metadata_and_package(tmp_path):
         archive.writestr("swirengine/__init__.py", "__version__ = '1.5.0'\n")
 
     _inspect_wheel(wheel)
+
+
+def test_inspect_wheel_rejects_symlink_members(tmp_path):
+    wheel = tmp_path / "swirengine-1.5.0-py3-none-any.whl"
+    with zipfile.ZipFile(wheel, "w") as archive:
+        archive.writestr(
+            "swirengine-1.5.0.dist-info/METADATA",
+            "Metadata-Version: 2.4\nName: swirengine\nVersion: 1.5.0\n",
+        )
+        archive.writestr("swirengine/__init__.py", "__version__ = '1.5.0'\n")
+        link = zipfile.ZipInfo("swirengine/link")
+        link.create_system = 3
+        link.external_attr = (stat.S_IFLNK | 0o777) << 16
+        archive.writestr(link, "../outside")
+
+    with pytest.raises(PackagingShippingError, match="symlink"):
+        _inspect_wheel(wheel)
 
 
 def test_inspect_sdist_rejects_link_members(tmp_path):
