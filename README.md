@@ -217,9 +217,11 @@ tooling, failure handling and package/export behavior—not feature count alone.
 - Publication is forbidden until the exact final candidate passes the dedicated Milestone 10 release gate.
 
 Historical locked compatibility evidence remains explicit: **SwirEngine 1.4 is released and locked**.
-The published 1.5.0 gate verified **Python 3.10-3.13** cross-platform and Python 3.14 on Windows x86-64,
-and includes **Runtime Diagnostics & Profiling 2.0**. These statements describe published historical
-release evidence and do not pre-approve the still-unverified final SwirEngine 2.0 support matrix.
+The published 1.5.0 gate verified **Python 3.10-3.13** cross-platform and Python 3.14 on Windows x86-64.
+Its locked 1.5 capability evidence includes **Deterministic Simulation & Replay**, **Save & Profile 2.0**,
+**World Streaming 2.0**, **UI Toolkit 2.0** and **Runtime Diagnostics & Profiling 2.0**. These statements
+describe published historical release evidence and do not pre-approve the still-unverified final
+SwirEngine 2.0 support matrix.
 
 See [`docs/API_STABILITY.md`](docs/API_STABILITY.md) and
 [`docs/MIGRATING_TO_2_0.md`](docs/MIGRATING_TO_2_0.md).
