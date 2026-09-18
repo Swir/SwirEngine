@@ -68,5 +68,7 @@ target-version = "py310"
 "src/swirengine/ui15.py" = ["RUF009"]
 # Platform provider capabilities are intentionally runtime-registered duck types.
 "src/swirengine/platform16.py" = ["B009"]
+# Runtime diagnostics accepts ProjectManifest-like adapters and keeps scalar guards explicit.
+"src/swirengine/diagnostics19.py" = ["B009", "SIM101"]
 # GPU timing providers are third-party/backend boundaries; failures are deliberately contained.
 "src/swirengine/render_timing18.py" = ["BLE001"]
