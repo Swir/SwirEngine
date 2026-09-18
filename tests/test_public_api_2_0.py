@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+import swirengine
 from tools.verify_2_0_public_api import (
     PUBLIC_VERSION_FLOOR,
     baseline_ref_available,
@@ -59,10 +60,23 @@ def test_current_root_api_preserves_every_published_baseline_export() -> None:
     assert not [name for name in baseline if name not in current]
 
 
+@REQUIRES_BASELINE
+def test_published_baseline_exports_resolve_from_current_package() -> None:
+    manifest = load_manifest(MANIFEST_PATH)
+    baseline = read_static_all_text(
+        read_baseline_source(manifest, root=ROOT).decode("utf-8"),
+        source="v1.5.0:src/swirengine/__init__.py",
+    )
+
+    missing = [name for name in baseline if not hasattr(swirengine, name)]
+    assert missing == []
+
+
 def test_source_versions_remain_frozen_until_final_2_0_gate() -> None:
     assert PUBLIC_VERSION_FLOOR == "1.5.0"
     assert read_project_version(ROOT / "pyproject.toml") == PUBLIC_VERSION_FLOOR
     assert read_module_version(INIT_PATH) == PUBLIC_VERSION_FLOOR
+    assert swirengine.__version__ == PUBLIC_VERSION_FLOOR
 
 
 @REQUIRES_BASELINE
