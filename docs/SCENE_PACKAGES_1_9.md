@@ -75,6 +75,23 @@ crate.instantiate(scene)
 scene object continue to see the same identity. The declared prefabs are returned as reusable
 `Prefab` values and are only instantiated when game code explicitly requests it.
 
+## Export preflight and shipping closure
+
+`ProjectExporter.plan()` now treats the scene registry as authoritative shipping metadata when a
+project has `[scenes]`. Before any staging directory is created it loads the project manifest, builds
+the scene package registry, rejects dependency cycles/unknown dependencies and runs path diagnostics.
+Declared scene and prefab files are then added to the export plan even when they live outside a
+profile's broad `include` directories.
+
+A packaging profile is not allowed to exclude a file that is explicitly declared by the scene
+registry. Missing, unreadable, oversized or project-escaping scene-package paths therefore fail the
+export preflight instead of producing a package that is known to be incomplete. Projects without a
+manifest, or manifests without `[scenes]`, keep the established 1.x exporter behavior unchanged.
+
+The generic exporter intentionally performs structural/filesystem validation rather than decoding
+scene documents. Full decoding can require game-specific codec registrations and remains an explicit
+creator validation step described below.
+
 ## Validation and custom codecs
 
 `registry.diagnostics()` verifies package paths, missing files, bounded file sizes and symlink
@@ -102,17 +119,18 @@ imports.
 - maximum 16 MiB per validated/loaded scene or prefab document;
 - project-relative manifest paths only, with a second resolved-path containment check;
 - deterministic cycle detection and dependency ordering;
+- declared scene/prefab content cannot be silently excluded from an export;
 - no shell execution, code import or arbitrary class loading from scene JSON;
 - no implicit scene composition or prefab spawning.
 
 ## Verification
 
 ```bash
-pytest -q tests/test_scene_packages_1_9.py tests/test_serialization.py tests/test_project_manifest_1_9.py
+pytest -q tests/test_scene_packages_1_9.py tests/test_exporting.py tests/test_serialization.py tests/test_project_manifest_1_9.py
 python examples/demo_scene_packages_1_9.py
 python tools/benchmark_scene_packages_1_9.py
-ruff check src/swirengine/scene_packages19.py tests/test_scene_packages_1_9.py examples/demo_scene_packages_1_9.py tools/benchmark_scene_packages_1_9.py
-python -m compileall -q src/swirengine/scene_packages19.py tests/test_scene_packages_1_9.py examples/demo_scene_packages_1_9.py tools/benchmark_scene_packages_1_9.py
+ruff check src/swirengine/scene_packages19.py src/swirengine/exporting.py tests/test_scene_packages_1_9.py tests/test_exporting.py examples/demo_scene_packages_1_9.py tools/benchmark_scene_packages_1_9.py
+python -m compileall -q src/swirengine/scene_packages19.py src/swirengine/exporting.py tests/test_scene_packages_1_9.py tests/test_exporting.py examples/demo_scene_packages_1_9.py tools/benchmark_scene_packages_1_9.py
 ```
 
 The benchmark is a host-side deterministic planning regression contract, not an FPS or runtime load
