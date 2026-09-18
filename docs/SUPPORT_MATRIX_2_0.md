@@ -7,7 +7,7 @@ This document defines the candidate support contract for SwirEngine 2.0 Mileston
 SwirEngine 2.0 targets the base package on 64-bit CPython across these desktop operating-system families:
 
 | Operating system | CPython 3.10 | 3.11 | 3.12 | 3.13 | 3.14 | Packaging path |
-|---|---:|---:|---:|---:|---:|---|
+|---|---:|---:|---:|---:|---|
 | Windows | candidate | candidate | candidate | candidate | candidate | standard wheel for 3.10–3.13; dedicated native-bundled x86-64 wheel for 3.14 |
 | Linux | candidate | candidate | candidate | candidate | candidate | standard wheel/sdist dependency resolution |
 | macOS | candidate | candidate | candidate | candidate | candidate | standard wheel/sdist dependency resolution |
@@ -20,11 +20,11 @@ A matrix cell is verified only when the corresponding GitHub-hosted job complete
 
 1. install the development package and required verification tools;
 2. run focused API/project/runtime regression tests;
-3. run a platform probe that verifies the actual OS family, 64-bit interpreter, Python minor version, package metadata and required base runtime dependencies;
+3. run a platform probe that verifies CPython, the actual OS family, 64-bit interpreter, Python minor version, package metadata and required base runtime dependencies;
 4. build the appropriate wheel from that source;
 5. create a clean virtual environment and install that wheel without relying on the editable checkout;
-6. repeat the platform probe from the clean environment;
-7. run the maintained 2D and 3D game fixtures in headless mode from the clean environment;
+6. repeat the platform probe from a temporary working directory with source-path environment overrides removed, and prove `swirengine` resolves outside the checkout;
+7. run the maintained 2D and 3D game fixtures headlessly from that isolated clean-wheel environment;
 8. keep the ordinary repository CI green so Python 3.10–3.13 still receive the full test suite on Windows, Linux and macOS.
 
 The dedicated Milestone 5 workflow deliberately repeats packaging/runtime verification across the matrix instead of treating one Linux wheel build as proof for every operating system.
@@ -70,10 +70,10 @@ python -m pytest -q tests/test_platform_matrix_2_0.py
 The clean-wheel verifier is intended for CI or an explicitly built wheel directory:
 
 ```bash
-python tools/verify_clean_wheel_2_0.py --wheel-dir dist
+python tools/verify_clean_wheel_2_0.py --wheel-dir dist --expected-system Linux --expected-python 3.13
 ```
 
-Both tools report the detected system, machine, pointer width and Python version. They reject 32-bit interpreters, unsupported Python minors, contradictory metadata and missing base runtime dependencies.
+The runtime probe reports the detected Python implementation, system, machine, pointer width and Python version. It rejects non-CPython interpreters, 32-bit interpreters, unsupported Python minors, contradictory metadata and missing base runtime dependencies. The clean-wheel verifier additionally removes `PYTHONPATH`/`PYTHONHOME`, executes from a temporary working directory and rejects an import that resolves from the source checkout.
 
 ## Release policy
 
