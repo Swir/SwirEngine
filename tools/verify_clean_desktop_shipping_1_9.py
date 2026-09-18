@@ -14,8 +14,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from swirengine.desktop_shipping19 import build_desktop_shipping, verify_desktop_shipping
 from swirengine.project19 import ProjectManifest
-from swirengine.shipping19 import build_desktop_shipping, verify_desktop_shipping
 
 root = Path(sys.argv[1]).resolve()
 target = "windows" if sys.platform == "win32" else "macos" if sys.platform == "darwin" else "linux"
