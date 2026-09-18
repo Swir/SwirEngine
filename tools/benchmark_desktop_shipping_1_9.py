@@ -5,8 +5,8 @@ import tempfile
 import time
 from pathlib import Path
 
+from swirengine.desktop_shipping19 import create_desktop_shipping_plan
 from swirengine.project19 import ProjectManifest
-from swirengine.shipping19 import create_desktop_shipping_plan
 
 
 def _fixture(root: Path) -> ProjectManifest:
