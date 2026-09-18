@@ -12,6 +12,11 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, ClassVar
 
+try:  # Python 3.11+
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - exercised by the Python 3.10 CI job
+    import tomli as tomllib
+
 
 class ExportTarget(str, Enum):
     """Supported SwirEngine export targets."""
@@ -198,6 +203,50 @@ class ProjectExporter:
                 return True
         return False
 
+    def _scene_package_files(self) -> tuple[Path, ...]:
+        """Return validated scene-package files that must ship with a 1.9 project.
+
+        Scene opt-in detection is performed with the TOML parser rather than a textual header scan,
+        so valid whitespace/dotted-table forms cannot bypass shipping preflight and strings/comments
+        that merely contain ``[scenes]`` cannot accidentally activate it. Malformed legacy manifests
+        remain on the established exporter path.
+        """
+
+        manifest_path = self.project_root / "swirproject.toml"
+        if not manifest_path.is_file():
+            return ()
+
+        try:
+            raw = tomllib.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, tomllib.TOMLDecodeError):
+            return ()
+        if not isinstance(raw, dict) or "scenes" not in raw:
+            return ()
+
+        from .project19 import ProjectManifest
+        from .scene_packages19 import ScenePackageRegistry
+
+        manifest = ProjectManifest.load(manifest_path)
+        registry = ScenePackageRegistry.load_optional(manifest)
+        if registry is None:
+            return ()
+
+        errors = tuple(item for item in registry.diagnostics() if item.severity == "error")
+        if errors:
+            details = "; ".join(
+                f"{item.code}: {item.message}"
+                + (f" ({item.path})" if item.path is not None else "")
+                for item in errors
+            )
+            raise ValueError(f"scene package export preflight failed: {details}")
+
+        files = {
+            Path(value)
+            for package in registry.packages.values()
+            for value in (package.scene_path, *package.prefab_paths)
+        }
+        return tuple(sorted(files, key=lambda path: path.as_posix().casefold()))
+
     def _collect_files(self, profile: PackagingProfile) -> tuple[Path, ...]:
         entrypoint = self._safe_relative(profile.entrypoint, label="entrypoint")
         candidates: set[Path] = set()
@@ -217,6 +266,9 @@ class ProjectExporter:
                     if child.is_file():
                         candidates.add(child.relative_to(self.project_root))
 
+        scene_package_files = self._scene_package_files()
+        candidates.update(scene_package_files)
+
         if profile.icon:
             icon = self._safe_relative(profile.icon, label="icon path")
             if not (self.project_root / icon).is_file():
@@ -229,6 +281,10 @@ class ProjectExporter:
                 candidates.add(Path(optional))
 
         filtered = [path for path in candidates if not self._is_excluded(path, profile.exclude)]
+        excluded_scene_files = tuple(path for path in scene_package_files if path not in filtered)
+        if excluded_scene_files:
+            values = ", ".join(path.as_posix() for path in excluded_scene_files)
+            raise ValueError(f"packaging profile excludes declared scene package content: {values}")
         return tuple(sorted(filtered, key=lambda path: path.as_posix().casefold()))
 
     @staticmethod

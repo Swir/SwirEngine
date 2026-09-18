@@ -58,6 +58,104 @@ def test_export_plan_is_deterministic_and_desktop_ready(tmp_path: Path) -> None:
     assert "swirengine-build.spec" in plan.native_build_command
 
 
+def test_export_without_scene_registry_preserves_legacy_manifest_behavior(tmp_path: Path) -> None:
+    root = _project(tmp_path / "project")
+    (root / "swirproject.toml").write_text(
+        '[legacy]\nformat = "pre-1.9"\n',
+        encoding="utf-8",
+    )
+
+    plan = ProjectExporter(root).plan(PackagingProfile(include=("assets",)))
+
+    assert Path("swirproject.toml") in plan.files
+    assert Path("assets/sprite.txt") in plan.files
+
+
+def test_export_plan_stages_declared_scene_package_files(tmp_path: Path) -> None:
+    root = _project(tmp_path / "project")
+    levels = root / "levels"
+    levels.mkdir()
+    (levels / "intro.swirscene").write_text("scene", encoding="utf-8")
+    (levels / "crate.swirprefab").write_text("prefab", encoding="utf-8")
+    (root / "swirproject.toml").write_text(
+        """
+name = "Demo"
+
+[scenes]
+boot = "intro"
+
+[scenes.registry.intro]
+path = "levels/intro.swirscene"
+prefabs = ["levels/crate.swirprefab"]
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    plan = ProjectExporter(root).plan(PackagingProfile(include=("assets",)))
+
+    files = {path.as_posix() for path in plan.files}
+    assert "levels/intro.swirscene" in files
+    assert "levels/crate.swirprefab" in files
+
+
+def test_export_rejects_invalid_or_excluded_scene_package_content(tmp_path: Path) -> None:
+    root = _project(tmp_path / "project")
+    (root / "swirproject.toml").write_text(
+        """
+name = "Demo"
+
+[scenes]
+boot = "intro"
+
+[scenes.registry.intro]
+path = "levels/intro.swirscene"
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="scene package export preflight failed"):
+        ProjectExporter(root).plan(PackagingProfile(include=("assets",)))
+
+    levels = root / "levels"
+    levels.mkdir()
+    (levels / "intro.swirscene").write_text("scene", encoding="utf-8")
+    with pytest.raises(ValueError, match="excludes declared scene package content"):
+        ProjectExporter(root).plan(
+            PackagingProfile(include=("assets",), exclude=("levels",))
+        )
+
+
+def test_export_rejects_scene_package_dependency_cycle(tmp_path: Path) -> None:
+    root = _project(tmp_path / "project")
+    levels = root / "levels"
+    levels.mkdir()
+    (levels / "intro.swirscene").write_text("scene", encoding="utf-8")
+    (levels / "arena.swirscene").write_text("scene", encoding="utf-8")
+    (root / "swirproject.toml").write_text(
+        """
+name = "Demo"
+
+[scenes]
+boot = "intro"
+
+[scenes.registry.intro]
+path = "levels/intro.swirscene"
+depends_on = ["arena"]
+
+[scenes.registry.arena]
+path = "levels/arena.swirscene"
+depends_on = ["intro"]
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="dependency cycle"):
+        ProjectExporter(root).plan(PackagingProfile(include=("assets",)))
+
+
 def test_desktop_export_writes_portable_spec_checksums_and_manifest_v2(tmp_path: Path) -> None:
     root = _project(tmp_path / "project")
     profile = PackagingProfile(name="desktop-demo", target=ExportTarget.LINUX)
