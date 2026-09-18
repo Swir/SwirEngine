@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from tools.verify_2_0_release_candidate import audit, legacy_progress_meter_lines, parse_roadmap
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,7 +31,7 @@ def test_roadmap_parser_counts_only_top_level_milestones():
     assert state.completed == 2
     assert state.remaining == 1
     assert state.total == 3
-    assert state.percent == 200 / 3
+    assert state.percent == pytest.approx(200 / 3)
 
 
 def test_legacy_progress_meter_detection_blocks_character_bars_only():
