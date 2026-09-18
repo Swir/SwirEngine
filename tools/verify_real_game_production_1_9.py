@@ -16,8 +16,15 @@ from tempfile import TemporaryDirectory
 from swirengine import Rectangle2D, Scene, SceneSerializer
 from swirengine.content_build19 import ContentBuildGraph
 from swirengine.exporting import ExportTarget, PackagingProfile, ProjectExporter
+from swirengine.game_state19 import ProductionGameStateSession, SaveProductionPolicy
+from swirengine.input import InputBinding
 from swirengine.project19 import ProjectManifest
 from swirengine.scene_packages19 import ScenePackageLoader, ScenePackageRegistry
+from swirengine.shipping19 import (
+    InputOverrideStore,
+    ProjectShippingDefaults,
+    REQUIRED_UI_ACTIONS,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +44,9 @@ class FixtureReport:
     exported_files: tuple[str, ...]
     scene_fingerprint: str
     content_fingerprint: str
+    input_fingerprint: str
+    settings_fingerprint: str
+    game_state_fingerprint: str
     export_manifest_sha256: str
     source_runtime_ok: bool | None
     staged_runtime_ok: bool | None
@@ -89,7 +99,7 @@ def _fingerprint(payload: object) -> str:
 
 
 def _manifest_text(spec: FixtureSpec) -> str:
-    include = ["assets", "scenes", *spec.files]
+    include = ["assets", "config", "scenes", *spec.files]
     include_toml = ", ".join(json.dumps(value) for value in include)
     environment = ""
     if spec.headless:
@@ -160,9 +170,20 @@ def _prepare_project(repository: Path, destination: Path, spec: FixtureSpec) -> 
     serializer.dump_scene(gameplay, destination / "scenes" / "gameplay.swirscene")
     (destination / "swirproject.toml").write_text(_manifest_text(spec), encoding="utf-8")
 
+    defaults = ProjectShippingDefaults.load(destination)
+    defaults.write_templates()
 
-def _validate_project(project_root: Path) -> tuple[ScenePackageRegistry, ContentBuildGraph]:
+
+def _validate_project(
+    project_root: Path,
+) -> tuple[ProjectManifest, ScenePackageRegistry, ContentBuildGraph, ProjectShippingDefaults]:
     manifest = ProjectManifest.load(project_root)
+
+    defaults = ProjectShippingDefaults.load(project_root)
+    defaults.actions.require_actions(REQUIRED_UI_ACTIONS)
+    if defaults.input_source is None or defaults.settings_source is None:
+        raise RuntimeError("real-game fixture did not materialize shipping input/settings defaults")
+
     registry = ScenePackageRegistry.load_optional(manifest)
     if registry is None:
         raise RuntimeError("real-game fixture did not activate [scenes]")
@@ -185,7 +206,84 @@ def _validate_project(project_root: Path) -> tuple[ScenePackageRegistry, Content
     plan = graph.plan(["scene:gameplay"])
     if plan.ordered_nodes != ("asset:fixture", "scene:title", "scene:gameplay"):
         raise RuntimeError(f"unexpected content dependency order: {plan.ordered_nodes!r}")
-    return registry, graph
+    return manifest, registry, graph, defaults
+
+
+def _validate_player_state(
+    manifest: ProjectManifest,
+    defaults: ProjectShippingDefaults,
+    user_data_root: Path,
+    spec: FixtureSpec,
+) -> tuple[str, str, str]:
+    policy = SaveProductionPolicy(
+        autosave_keep=2,
+        autosave_interval_seconds=0.0,
+        max_manual_slots=2,
+        max_workers=1,
+    )
+    with ProductionGameStateSession.for_project(
+        manifest,
+        user_data_root=user_data_root,
+        policy=policy,
+    ) as session:
+        input_store = InputOverrideStore(
+            defaults.actions,
+            session.profile_directory / "config" / "input-overrides.json",
+        )
+        player_actions = defaults.actions.replace_action(
+            "pause",
+            (
+                InputBinding("key", "p"),
+                InputBinding("gamepad_button", "START"),
+            ),
+        )
+        input_store.save(player_actions)
+        loaded_actions = input_store.load()
+        if loaded_actions.fingerprint != player_actions.fingerprint:
+            raise RuntimeError("shipping input override round-trip changed the action map")
+
+        player_settings = defaults.settings.with_accessibility(
+            reduced_motion=True,
+            subtitles=False,
+        )
+        settings_store = session.settings_store(defaults.settings)
+        settings_store.save(player_settings)
+        loaded_settings = settings_store.load()
+        if loaded_settings.fingerprint != player_settings.fingerprint:
+            raise RuntimeError("shipping settings round-trip changed the player settings")
+
+        snapshot = {
+            "fixture": spec.name,
+            "mode": spec.mode,
+            "scene": "gameplay",
+            "checkpoint": 1,
+        }
+        request_id = session.submit_manual(
+            "production-gate",
+            snapshot,
+            metadata={"source": "real-game-production-gate"},
+        )
+        outcomes = session.run_until_idle(timeout=5.0)
+        if len(outcomes) != 1 or outcomes[0].request_id != request_id or not outcomes[0].successful:
+            raise RuntimeError("production save pipeline did not complete the fixture snapshot")
+        loaded_save = session.load("production-gate")
+        if dict(loaded_save.data) != snapshot:
+            raise RuntimeError("production save round-trip changed the fixture snapshot")
+        if loaded_save.metadata.get("source") != "real-game-production-gate":
+            raise RuntimeError("production save round-trip lost fixture metadata")
+
+        state_payload = {
+            "input_fingerprint": loaded_actions.fingerprint,
+            "settings_fingerprint": loaded_settings.fingerprint,
+            "save": dict(loaded_save.data),
+            "save_kind": loaded_save.metadata.get("save_kind"),
+            "save_source": loaded_save.metadata.get("source"),
+        }
+        return (
+            loaded_actions.fingerprint,
+            loaded_settings.fingerprint,
+            _fingerprint(state_payload),
+        )
 
 
 def _run_entrypoint(root: Path, spec: FixtureSpec) -> subprocess.CompletedProcess[str]:
@@ -223,15 +321,22 @@ def _verify_fixture(
 ) -> FixtureReport:
     project_root = workspace / spec.name
     export_root = workspace / f"{spec.name}-staged"
+    user_data_root = workspace / "user-data" / spec.name
     _prepare_project(repository, project_root, spec)
-    registry, graph = _validate_project(project_root)
+    manifest, registry, graph, defaults = _validate_project(project_root)
+    input_fingerprint, settings_fingerprint, game_state_fingerprint = _validate_player_state(
+        manifest,
+        defaults,
+        user_data_root,
+        spec,
+    )
 
     helper_files = tuple(value for value in spec.files if value != "run_game.py")
     profile = PackagingProfile(
         name=f"real-game-{spec.name}",
         target=_host_target(),
         entrypoint="run_game.py",
-        include=("assets", *helper_files),
+        include=("assets", "config", *helper_files),
         console=True,
     )
     exporter = ProjectExporter(project_root)
@@ -245,6 +350,8 @@ def _verify_fixture(
         "run_game.py",
         "swirproject.toml",
         "assets/fixture.txt",
+        "config/controls.json",
+        "config/settings.json",
         "scenes/title.swirscene",
         "scenes/gameplay.swirscene",
         *helper_files,
@@ -253,6 +360,8 @@ def _verify_fixture(
     missing = sorted(expected - exported)
     if missing:
         raise RuntimeError(f"staged {spec.name} fixture is missing required files: {missing}")
+    if any(path.startswith("user-data/") for path in exported):
+        raise RuntimeError("player user-data must never be staged as project shipping content")
 
     manifest_data = json.loads(result.manifest.read_text(encoding="utf-8"))
     manifest_hashes = manifest_data.get("sha256")
@@ -280,6 +389,9 @@ def _verify_fixture(
         "exported_files": exported_files,
         "scene_fingerprint": registry.fingerprint,
         "content_fingerprint": graph.fingerprint,
+        "input_fingerprint": input_fingerprint,
+        "settings_fingerprint": settings_fingerprint,
+        "game_state_fingerprint": game_state_fingerprint,
         "export_manifest_sha256": _sha256(result.manifest),
         "source_runtime_ok": source_ok,
         "staged_runtime_ok": staged_ok,
