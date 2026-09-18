@@ -1,0 +1,122 @@
+from __future__ import annotations
+
+import io
+import tarfile
+import zipfile
+from pathlib import Path
+
+import pytest
+
+from tools.verify_packaging_shipping_2_0 import (
+    PackagingShippingError,
+    _clean_env,
+    _inspect_sdist,
+    _inspect_wheel,
+    _select_artifacts,
+    _validate_member_names,
+)
+
+
+def test_select_artifacts_requires_one_wheel_and_one_sdist(tmp_path):
+    wheel = tmp_path / "swirengine-1.5.0-py3-none-any.whl"
+    sdist = tmp_path / "swirengine-1.5.0.tar.gz"
+    wheel.write_bytes(b"wheel")
+    sdist.write_bytes(b"sdist")
+
+    artifacts = _select_artifacts(tmp_path)
+
+    assert artifacts.wheel == wheel
+    assert artifacts.sdist == sdist
+    assert len(artifacts.wheel_sha256) == 64
+    assert len(artifacts.sdist_sha256) == 64
+
+
+def test_select_artifacts_rejects_ambiguous_distribution_set(tmp_path):
+    (tmp_path / "swirengine-1.5.0-py3-none-any.whl").write_bytes(b"a")
+    (tmp_path / "swirengine-1.5.0-extra-py3-none-any.whl").write_bytes(b"b")
+    (tmp_path / "swirengine-1.5.0.tar.gz").write_bytes(b"c")
+
+    with pytest.raises(PackagingShippingError, match="exactly one"):
+        _select_artifacts(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "members",
+    [
+        ("swirengine-1.5.0/../escape.py",),
+        ("/absolute/path.py",),
+        ("swirengine-1.5.0/.git/config",),
+        ("swirengine-1.5.0/pkg.py", "SWIRENGINE-1.5.0/PKG.py"),
+    ],
+)
+def test_archive_member_validation_rejects_unsafe_or_ambiguous_paths(members):
+    with pytest.raises(PackagingShippingError):
+        _validate_member_names(members, label="fixture")
+
+
+def test_clean_env_strips_source_path_overrides():
+    env = _clean_env({"PYTHONPATH": "repo", "PYTHONHOME": "python", "PATH": "bin"})
+
+    assert "PYTHONPATH" not in env
+    assert "PYTHONHOME" not in env
+    assert env["PYTHONNOUSERSITE"] == "1"
+    assert env["PYTHONDONTWRITEBYTECODE"] == "1"
+    assert env["PATH"] == "bin"
+
+
+def test_inspect_wheel_requires_expected_metadata_and_package(tmp_path):
+    wheel = tmp_path / "swirengine-1.5.0-py3-none-any.whl"
+    with zipfile.ZipFile(wheel, "w") as archive:
+        archive.writestr(
+            "swirengine-1.5.0.dist-info/METADATA",
+            "Metadata-Version: 2.4\nName: swirengine\nVersion: 1.5.0\n",
+        )
+        archive.writestr("swirengine/__init__.py", "__version__ = '1.5.0'\n")
+
+    _inspect_wheel(wheel)
+
+
+def test_inspect_sdist_rejects_link_members(tmp_path):
+    sdist = tmp_path / "swirengine-1.5.0.tar.gz"
+    with tarfile.open(sdist, "w:gz") as archive:
+        metadata = b"Metadata-Version: 2.4\nName: swirengine\nVersion: 1.5.0\n"
+        info = tarfile.TarInfo("swirengine-1.5.0/PKG-INFO")
+        info.size = len(metadata)
+        archive.addfile(info, io.BytesIO(metadata))
+
+        package = b"__version__ = '1.5.0'\n"
+        info = tarfile.TarInfo("swirengine-1.5.0/src/swirengine/__init__.py")
+        info.size = len(package)
+        archive.addfile(info, io.BytesIO(package))
+
+        link = tarfile.TarInfo("swirengine-1.5.0/link")
+        link.type = tarfile.SYMTYPE
+        link.linkname = "../../outside"
+        archive.addfile(link)
+
+    with pytest.raises(PackagingShippingError, match="link/device"):
+        _inspect_sdist(sdist)
+
+
+def test_inspect_sdist_accepts_safe_expected_layout(tmp_path):
+    sdist = tmp_path / "swirengine-1.5.0.tar.gz"
+    with tarfile.open(sdist, "w:gz") as archive:
+        entries = {
+            "swirengine-1.5.0/PKG-INFO": (
+                b"Metadata-Version: 2.4\nName: swirengine\nVersion: 1.5.0\n"
+            ),
+            "swirengine-1.5.0/src/swirengine/__init__.py": b"__version__ = '1.5.0'\n",
+        }
+        for name, payload in entries.items():
+            info = tarfile.TarInfo(name)
+            info.size = len(payload)
+            archive.addfile(info, io.BytesIO(payload))
+
+    _inspect_sdist(sdist)
+
+
+def test_milestone_7_remains_unchecked_until_exact_head_gate():
+    roadmap = Path("ROADMAP_2_0.md").read_text(encoding="utf-8")
+
+    assert "**Current verified progress: 6/10 milestones = 60.0%.**" in roadmap
+    assert "- [ ] **7. Packaging, Clean Install & Native Desktop Shipping**" in roadmap
