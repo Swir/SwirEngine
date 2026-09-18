@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Verify SwirEngine 1.9 source games through a production-style staging workflow."""
 
 from __future__ import annotations
@@ -258,7 +257,7 @@ def _verify_fixture(
     manifest_data = json.loads(result.manifest.read_text(encoding="utf-8"))
     manifest_hashes = manifest_data.get("sha256")
     if not isinstance(manifest_hashes, dict):
-        raise RuntimeError("export manifest does not contain a sha256 map")
+        raise TypeError("export manifest does not contain a sha256 map")
     missing_hashes = sorted(expected - set(manifest_hashes))
     if missing_hashes:
         raise RuntimeError(f"export manifest is missing required checksums: {missing_hashes}")
