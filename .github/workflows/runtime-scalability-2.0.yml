@@ -7,11 +7,17 @@ on:
       - "src/swirengine/asset_streaming.py"
       - "src/swirengine/render_resources18.py"
       - "src/swirengine/resource_budget17.py"
+      - "src/swirengine/scene_visibility.py"
+      - "src/swirengine/scene_acceleration.py"
+      - "src/swirengine/graphics/renderer2d_power.py"
       - "tests/test_asset_streaming.py"
       - "tests/test_runtime_scalability_2_0.py"
       - "tests/test_render_resources_1_8.py"
       - "tests/test_render_resources_hardening_1_8.py"
       - "tests/test_resource_budget_1_7.py"
+      - "tests/test_renderer2d_power.py"
+      - "tests/test_scene_visibility_1_4.py"
+      - "tests/test_scene_acceleration_1_4.py"
       - "tools/verify_runtime_scalability_2_0.py"
       - "docs/RUNTIME_SCALABILITY_2_0.md"
       - ".github/workflows/runtime-scalability-2.0.yml"
@@ -20,11 +26,17 @@ on:
       - "src/swirengine/asset_streaming.py"
       - "src/swirengine/render_resources18.py"
       - "src/swirengine/resource_budget17.py"
+      - "src/swirengine/scene_visibility.py"
+      - "src/swirengine/scene_acceleration.py"
+      - "src/swirengine/graphics/renderer2d_power.py"
       - "tests/test_asset_streaming.py"
       - "tests/test_runtime_scalability_2_0.py"
       - "tests/test_render_resources_1_8.py"
       - "tests/test_render_resources_hardening_1_8.py"
       - "tests/test_resource_budget_1_7.py"
+      - "tests/test_renderer2d_power.py"
+      - "tests/test_scene_visibility_1_4.py"
+      - "tests/test_scene_acceleration_1_4.py"
       - "tools/verify_runtime_scalability_2_0.py"
       - "docs/RUNTIME_SCALABILITY_2_0.md"
       - ".github/workflows/runtime-scalability-2.0.yml"
@@ -53,7 +65,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libx11-dev libgl-dev libegl-dev
       - name: Install engine and development tools
         run: python -m pip install --disable-pip-version-check -e ".[dev]"
-      - name: Run focused resource lifecycle regression suite
+      - name: Run focused runtime scalability regression suite
         run: >-
           python -m pytest -q
           tests/test_asset_streaming.py
@@ -61,7 +73,10 @@ jobs:
           tests/test_render_resources_1_8.py
           tests/test_render_resources_hardening_1_8.py
           tests/test_resource_budget_1_7.py
-      - name: Run deterministic production workload
+          tests/test_renderer2d_power.py
+          tests/test_scene_visibility_1_4.py
+          tests/test_scene_acceleration_1_4.py
+      - name: Run deterministic production-sized workloads
         run: python tools/verify_runtime_scalability_2_0.py
       - name: Strict Ruff gate
         run: >-
