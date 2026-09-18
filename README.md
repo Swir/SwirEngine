@@ -26,12 +26,12 @@
 
 ## 📊 Project status
 
-<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 1.9 verified roadmap progress: 9 of 10 milestones, 90.0%, in progress" />
+<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 1.9 verified roadmap progress: 10 of 10 milestones, 100.0%, complete" />
 
 **Active source scope:** SwirEngine 1.9 — Production Workflow & Game Shipping  
-**Verified source progress:** **9/10 milestones = 90.0% — IN PROGRESS**  
+**Verified source progress:** **10/10 milestones = 100.0% — COMPLETE**  
 **Latest public stable release:** **SwirEngine 1.5.0**  
-**Release readiness:** intermediate 1.6–1.9 development is source-only.
+**Release readiness:** intermediate 1.6–1.9 development remains source-only; 2.0 readiness is tracked separately and is not implied by the 1.9 completion percentage.
 
 `Release/PyPI: frozen until SwirEngine 2.0`
 
@@ -40,14 +40,16 @@ systems, real rendering validation, deterministic tooling and a practical path f
 to a shipped desktop game. The public package remains the verified 1.5.0 stable baseline while the
 repository continues additive source development toward 2.0.
 
-SwirEngine 1.6, 1.7 and 1.8 are completed source-only checkpoints. The active 1.9 roadmap has now
-verified the end-to-end 2D, 3D and multiplayer real-game production gate; the remaining milestone is
-the final 1.9 source checkpoint and measured 2.0 readiness audit.
+SwirEngine 1.6, 1.7, 1.8 and 1.9 are completed source-only checkpoints. The 1.9 line closes the
+project-production path with representative 2D, 3D and multiplayer workflows, a cross-platform desktop
+shipping matrix, clean package validation and an evidence-based 2.0 readiness audit. The dedicated 2.0
+roadmap and release gate remain separate work and must define their own measured scope before any 2.0
+completion percentage is shown.
 
 **SwirEngine 1.5.0** remains the released and locked public compatibility baseline. Its locked contract
 includes **Deterministic Simulation & Replay**, **Save & Profile 2.0**, **World Streaming 2.0**,
 **UI Toolkit 2.0** and **Runtime Diagnostics & Profiling 2.0**. `ROADMAP_1_5.md` remains
-**10/10 = 100.0%**; that historical completion is separate from the active 1.9 source progress above.
+**10/10 = 100.0%**; that historical completion is separate from the completed 1.9 source checkpoint above.
 
 ## ✨ Highlights
 
@@ -186,13 +188,18 @@ contain generated report metadata only. The workflow never sweeps arbitrary user
 process environment into a support bundle automatically.
 
 Milestone 8 adds deterministic host-native desktop shipping plans and artifact manifests. Clean-wheel
-validation now proves actual packaged smoke-game build, inventory, verification and runtime execution on
+validation proves actual packaged smoke-game build, inventory, verification and runtime execution on
 Windows, Linux and macOS while unsupported desktop cross-compilation remains an explicit error.
 
 Milestone 9 closes the representative real-game production path. The maintained 2D and 3D games plus a
 deterministic multiplayer fixture are copied into isolated project manifests, exercise shipping input,
 settings and save/profile state, validate scene/content graphs, stage deterministic export inventories and
 run both source and staged entrypoints. Player-specific data stays outside redistributable project content.
+
+Milestone 10 closes the source-only 1.9 checkpoint with Python 3.10/3.13/3.14 contract validation,
+Windows/Linux/macOS host-native shipping checks, clean wheel/sdist metadata validation, locked 1.4–1.8
+compatibility contracts and an evidence-based 2.0 readiness audit. This completion does not authorize a
+1.9 release and does not assign a 2.0 completion percentage.
 
 See:
 - [`docs/PROJECT_PRODUCTION_1_9.md`](docs/PROJECT_PRODUCTION_1_9.md)
@@ -204,6 +211,7 @@ See:
 - [`docs/RUNTIME_DIAGNOSTICS_1_9.md`](docs/RUNTIME_DIAGNOSTICS_1_9.md)
 - [`docs/desktop-shipping-1.9.md`](docs/desktop-shipping-1.9.md)
 - [`docs/REAL_GAME_PRODUCTION_1_9.md`](docs/REAL_GAME_PRODUCTION_1_9.md)
+- [`docs/SWIRENGINE_2_0_READINESS_AUDIT.md`](docs/SWIRENGINE_2_0_READINESS_AUDIT.md)
 - [`ROADMAP_1_9.md`](ROADMAP_1_9.md)
 
 ## 🎮 Validation games and examples
@@ -245,7 +253,7 @@ The SVG layer does not replace roadmap math or release gates.
 ## 🔒 API and release policy
 
 - `v1.4.0` and `v1.5.0` are published stable historical releases.
-- The public stable package stays at **1.5.0** while 1.6–1.9 are developed as source-only checkpoints.
+- The public stable package stays at **1.5.0** while 1.6–1.9 remain source-only checkpoints.
 - Stable 1.x behavior is preserved; later source systems are additive or opt-in where required.
 - The 2D, 3D and multiplayer demo projects remain source-only integration fixtures.
 - No 1.6, 1.7, 1.8 or 1.9 GitHub Release, release tag or PyPI publication is permitted.
@@ -265,7 +273,7 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
 - SwirEngine 1.6 — [`ROADMAP_1_6.md`](ROADMAP_1_6.md) — **10/10 = 100.0%**, source-only checkpoint
 - SwirEngine 1.7 — [`ROADMAP_1_7.md`](ROADMAP_1_7.md) — **10/10 = 100.0%**, source-only checkpoint
 - SwirEngine 1.8 — [`ROADMAP_1_8.md`](ROADMAP_1_8.md) — **10/10 = 100.0%**, source-only checkpoint
-- **SwirEngine 1.9 — [`ROADMAP_1_9.md`](ROADMAP_1_9.md) — 9/10 = 90.0%, active source roadmap**
+- **SwirEngine 1.9 — [`ROADMAP_1_9.md`](ROADMAP_1_9.md) — 10/10 = 100.0%, completed source-only checkpoint**
 
 ## ⚠️ Current limitations
 
@@ -275,6 +283,7 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
 - Desktop cross-compilation is not claimed; native builds belong on the matching host platform.
 - Later source systems are not treated as public stable API until the 2.0 release process says so.
 - Performance timings in CI are workload regression contracts, not unmeasured FPS claims.
+- SwirEngine 2.0 readiness remains N/A until a dedicated 2.0 roadmap defines the measured denominator and final release gate.
 
 ## 🔗 Links
 
@@ -295,3 +304,13 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
 MIT
 
 <img width="100%" src="https://raw.githubusercontent.com/Swir/Swir/main/assets/power-divider-v4.svg" alt="SWIR electric divider" />
+
+<div align="center">
+
+### `BUILD • TEST • RELEASE • EVOLVE`
+
+⭐ **If this project is useful, consider leaving a star.**
+
+[**← SWIR profile**](https://github.com/Swir) · [**All projects →**](https://github.com/Swir?tab=repositories)
+
+</div>
