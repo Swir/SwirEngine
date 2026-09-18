@@ -7,7 +7,7 @@ from time import sleep
 
 import pytest
 
-from swirengine.asset_pipeline import AssetLoadResult
+from swirengine.asset_pipeline import AssetLoadResult, AssetPreloader
 from swirengine.asset_streaming import AssetStreamingBudget, AssetStreamingManager
 from swirengine.assets import AssetManager
 from swirengine.render_resources18 import RenderResourceDescriptor, TransientRenderResourcePool
@@ -170,6 +170,47 @@ def test_owned_pending_worker_cannot_repopulate_cache_after_release_shutdown(tmp
     assert streamer.closed
     assert streamer.diagnostics().pending == 0
     assert not assets.cached("slow.txt")
+
+
+def test_shared_preloader_release_waits_for_owned_requests_without_closing_shared_pool(tmp_path):
+    started = Event()
+    release = Event()
+    assets = AssetManager(tmp_path)
+    (tmp_path / "slow.txt").write_text("slow", encoding="utf-8")
+    (tmp_path / "next.txt").write_text("next", encoding="utf-8")
+
+    def loader(path: Path) -> str:
+        if path.name == "slow.txt":
+            started.set()
+            if not release.wait(timeout=2.0):
+                raise TimeoutError("test loader was never released")
+        return path.read_text(encoding="utf-8")
+
+    assets.register_loader("txt", loader)
+    shared = AssetPreloader(assets, max_workers=1)
+    streamer = AssetStreamingManager(assets, preloader=shared)
+    try:
+        streamer.stage("slow.txt")
+        assert started.wait(timeout=1.0)
+        shutdown = Thread(
+            target=lambda: streamer.shutdown(wait=False, release_resident=True),
+            daemon=True,
+        )
+        shutdown.start()
+        sleep(0.02)
+        assert shutdown.is_alive()
+        release.set()
+        shutdown.join(timeout=2.0)
+
+        assert not shutdown.is_alive()
+        assert streamer.closed
+        assert not assets.cached("slow.txt")
+        next_result = shared.load_async("next.txt").result(timeout=1.0)
+        assert next_result.ok
+        assert next_result.value == "next"
+    finally:
+        release.set()
+        shared.shutdown()
 
 
 def test_streaming_residency_stays_bounded_under_repeated_workload(tmp_path):
