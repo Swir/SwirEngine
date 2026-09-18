@@ -145,7 +145,7 @@ A project may use either system independently or use both. The exporter unions b
 
 ## Creator demo
 
-Run `examples/demo_content_build_1_9.py` from a project that declares content-build nodes. The demo prints dependency order and then uses the stable preloader/streaming APIs for the applicable plan groups.
+Run `examples/demo_content_build_1_9.py` directly from the repository. It creates a temporary self-contained project, prints the dependency/runtime admission plan, and exercises the stable preload and streaming APIs without requiring creator files in the working directory.
 
 ## Verification target
 
