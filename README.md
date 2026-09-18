@@ -26,10 +26,10 @@
 
 ## 📊 Project status
 
-<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 1.9 verified roadmap progress: 3 of 10 milestones, 30.0%, in progress" />
+<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 1.9 verified roadmap progress: 4 of 10 milestones, 40.0%, in progress" />
 
 **Active source scope:** SwirEngine 1.9 — Production Workflow & Game Shipping  
-**Verified source progress:** **3/10 milestones = 30.0% — IN PROGRESS**  
+**Verified source progress:** **4/10 milestones = 40.0% — IN PROGRESS**  
 **Latest public stable release:** **SwirEngine 1.5.0**  
 **Release readiness:** intermediate 1.6–1.9 development is source-only.
 
@@ -166,10 +166,16 @@ keyboard/gamepad menu focus, bounded player rebinding, display/accessibility set
 player settings persistence. The source example exercises a title → settings → gameplay flow without
 requiring a rendering window.
 
+Milestone 4 integrates save/profile/config systems into the production lifecycle with bounded manual
+slots, rotating autosaves, background snapshot validation, recovery/migration diagnostics and a
+portable Windows/macOS/Linux user-data policy. Shipping settings share the same per-profile user-data
+tree, so a real game can persist controls, display/accessibility preferences and game state coherently.
+
 See:
 - [`docs/PROJECT_PRODUCTION_1_9.md`](docs/PROJECT_PRODUCTION_1_9.md)
 - [`docs/RUN_SESSIONS_1_9.md`](docs/RUN_SESSIONS_1_9.md)
 - [`docs/INPUT_UI_SETTINGS_1_9.md`](docs/INPUT_UI_SETTINGS_1_9.md)
+- [`docs/GAME_STATE_PRODUCTION_1_9.md`](docs/GAME_STATE_PRODUCTION_1_9.md)
 - [`ROADMAP_1_9.md`](ROADMAP_1_9.md)
 
 ## 🎮 Validation games and examples
@@ -230,7 +236,7 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
 - SwirEngine 1.6 — [`ROADMAP_1_6.md`](ROADMAP_1_6.md) — **10/10 = 100.0%**, source-only checkpoint
 - SwirEngine 1.7 — [`ROADMAP_1_7.md`](ROADMAP_1_7.md) — **10/10 = 100.0%**, source-only checkpoint
 - SwirEngine 1.8 — [`ROADMAP_1_8.md`](ROADMAP_1_8.md) — **10/10 = 100.0%**, source-only checkpoint
-- **SwirEngine 1.9 — [`ROADMAP_1_9.md`](ROADMAP_1_9.md) — 3/10 = 30.0%, active source roadmap**
+- **SwirEngine 1.9 — [`ROADMAP_1_9.md`](ROADMAP_1_9.md) — 4/10 = 40.0%, active source roadmap**
 
 ## ⚠️ Current limitations
 

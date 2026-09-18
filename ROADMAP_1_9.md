@@ -6,11 +6,11 @@ SwirEngine 1.8 is a completed source-only rendering checkpoint. SwirEngine 1.9 t
 runtime systems into a coherent production path for building, validating, packaging and shipping
 complete games while preserving stable 1.x behavior.
 
-**Current verified progress: 3/10 milestones = 30.0%.**
+**Current verified progress: 4/10 milestones = 40.0%.**
 
-<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 1.9 verified roadmap progress: 3 of 10 milestones, 30.0%, in progress" />
+<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 1.9 verified roadmap progress: 4 of 10 milestones, 40.0%, in progress" />
 
-**Verified active scope:** 3/10 milestones = 30.0% — IN PROGRESS.  
+**Verified active scope:** 4/10 milestones = 40.0% — IN PROGRESS.  
 **Release readiness:** frozen; the next public GitHub Release and PyPI publication remains SwirEngine 2.0.
 
 A milestone is checked only after implementation, focused tests, creator documentation, its dedicated
@@ -45,7 +45,7 @@ gate and the repository's required compatibility/regression gates pass on the ex
   - settings persistence and resolution/display configuration bridge;
   - source examples covering a complete title/menu/settings/gameplay flow.
 
-- [ ] **4. Save, Profile & Game-State Production Integration**
+- [x] **4. Save, Profile & Game-State Production Integration**
   - project lifecycle integration for save/profile/config systems;
   - bounded autosave/manual-save orchestration and migration diagnostics;
   - portable user-data location policy by supported desktop platform;
@@ -174,5 +174,37 @@ and compile successfully; the 5,000-cycle parse/fingerprint workload completed i
 the documented 5.0-second ceiling. A missing `libx11-dev` prerequisite for CPython 3.14 source builds
 was diagnosed and fixed in the dedicated workflow before this verification passed. The roadmap-marked
 PR head must re-pass its triggered gates before merge.
+
+## Milestone 4 verification contract
+
+Milestone 4 is complete only when the exact final implementation candidate satisfies all of the following:
+
+1. `ProductionGameStateSession` remains additive over the stable save/profile and background-save systems and
+   does not change the published 1.5.0 API contract.
+2. Manual slots use validated bounded identifiers, reserve the autosave namespace and enforce a hard creator
+   slot budget before background work is accepted.
+3. Autosaves use deterministic rotating slots, monotonic generations, an interval gate and at most one active
+   autosave request per production session.
+4. Save snapshots are validated and size-bounded on the owner thread before background I/O begins; rejected
+   snapshots never enter the background scheduler.
+5. Completed background-save records are released after delivery so long-running play sessions do not retain
+   one scheduler/request record per completed manual save or autosave.
+6. User-data roots follow explicit Windows/macOS/Linux desktop policy and settings persist inside the same
+   profile tree without claiming unsupported platforms.
+7. Recovery reads can fall back through the stable primary/backup contract and migration counts are exposed in
+   production diagnostics without hiding failures.
+8. Existing Save/Profile 2.0 and Background Save 1.7 behavior remains unchanged and passes regression coverage.
+9. The creator demo proves manual save, autosave, settings/profile co-location and load/recovery flow, while the
+   deterministic workload completes verified writes plus a recovery read under the documented regression gate.
+10. Focused tests, stable save/profile regressions, Ruff, compile and the dedicated Python 3.10/3.13/3.14
+    workflow pass, followed by the repository compatibility/runtime/packaging matrix on the exact head.
+
+Verified implementation head `0cdf57a11a5d3c6df9fc5f5285ae14ea96a04a02` passed the dedicated
+Python 3.10/3.13/3.14 Game State Production gate and all triggered compatibility/regression workflows,
+including CI, Desktop Export, source checkpoints 1.6/1.7/1.8, game-demo validation, locked 1.4/1.5
+hardening, real OpenGL source demos and packaged 3D runtime validation. Python 3.13 ran 7 focused
+production game-state tests plus 53 stable save/profile/background-save regressions; Ruff and compile
+passed, the creator demo completed, and the 32-write plus recovery workload finished in 0.0396 seconds.
+The roadmap-marked PR head must re-pass its triggered gates before merge.
 
 `Release/PyPI: frozen until SwirEngine 2.0`.
