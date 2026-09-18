@@ -1,0 +1,28 @@
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+
+
+def test_real_game_shipping_gate_staging_contract():
+    result = subprocess.run(
+        [sys.executable, "tools/verify_real_game_shipping_2_0.py", "--staging-only"],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    report = json.loads(result.stdout)
+    assert report["status"] == "ok"
+    assert report["scope"] == "SwirEngine 2.0 Representative Real-Game Shipping Gate"
+    assert report["fixture_count"] == 3
+    assert report["fixture_names"] == ["2d-game", "3d-game", "multiplayer-game"]
+    assert report["runtime_validation"] is False
+    assert report["player_data_boundary"] == "external-to-shipping-content"
+    assert report["failure_paths"] == {
+        "missing_entrypoint_rejected": True,
+        "missing_scene_rejected": True,
+    }
+    assert len(report["production_fingerprint"]) == 64
