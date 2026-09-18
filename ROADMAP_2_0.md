@@ -2,9 +2,9 @@
 
 # SwirEngine 2.0 Roadmap — Release-Quality Python-First Game Production
 
-<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.0 verified roadmap progress: 1 of 10 milestones, 10.0%, in progress" />
+<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.0 verified roadmap progress: 2 of 10 milestones, 20.0%, in progress" />
 
-**Current verified progress: 1/10 milestones = 10.0%.**
+**Current verified progress: 2/10 milestones = 20.0%.**
 
 `Release/PyPI: frozen until SwirEngine 2.0`
 
@@ -36,7 +36,7 @@ retroactively published.
   - keep package/module version metadata frozen at 1.5.0 until the final 2.0 release gate;
   - require future breaking changes to update migration evidence, tests and release notes together.
 
-- [ ] **2. Creator Workflow & Integrated Tooling**
+- [x] **2. Creator Workflow & Integrated Tooling**
   - make project creation, validation, run sessions, scene/prefab editing, settings, save data and export coherent;
   - remove avoidable manual file surgery from representative projects;
   - add actionable diagnostics for malformed projects, missing assets and invalid shipping configuration;
@@ -119,6 +119,35 @@ representative real-game production gates also passed on that implementation hea
 attempt of the unchanged 1.5 save/profile workload exceeded its 5.0 s budget during runner contention;
 a retry passed without changing production code, the benchmark or its threshold. Milestone 1 is therefore
 verified at **1/10 = 10.0%**. Release readiness remains a separate final gate.
+
+## Milestone 2 verification contract
+
+Milestone 2 is complete only when the exact implementation head proves all of the following:
+
+1. New 2D and 3D projects expose one coherent creator layout and editable shipping defaults without manual setup.
+2. `swirengine workflow` validates the manifest, deterministic run plan, scene packages, content graph, shipping defaults, creator directories and save/profile policy through one creator-facing command.
+3. `--prepare` is additive and idempotent: it creates only missing creator directories/defaults and never overwrites existing project configuration.
+4. Human diagnostics include actionable next steps for malformed projects, missing entrypoints/assets and invalid scene/content declarations.
+5. `--json` returns deterministic machine-readable workflow evidence suitable for CI and higher-level tooling.
+6. Equivalent checkouts produce the same workflow fingerprint; absolute checkout and player-data paths are not encoded into portable evidence.
+7. Inspection does not execute the game, export a package or create player save/profile data.
+8. Maintained 2D and 3D real-game fixtures pass the integrated workflow with scene packages, content graphs and editable defaults present.
+9. The dedicated workflow passes on Python 3.10, 3.13 and 3.14 with focused tests, Ruff and bytecode compilation.
+10. Full repository CI, historical compatibility/source checkpoints, desktop export and representative demo/runtime gates remain green.
+
+## Milestone 2 verified evidence
+
+Implementation head `79a1a8302a96cb82f49b2b5f368618397b2f5724` passed every triggered workflow before this closeout
+was marked. The dedicated Creator Workflow 2.0 gate passed on Python 3.10, 3.13 and 3.14, including focused
+creator tests, maintained 2D/3D fixture verification, strict Ruff and bytecode compilation. The exact head
+also passed full repository CI, where Python 3.13 completed **1532 tests with 4 skipped**, plus locked
+1.4/1.5 hardening, source checkpoints 1.6–1.9, project-production regression checks, game demos, Neon Snake
+3D, desktop export and the clean-wheel/native runtime checks exercised by the locked 1.5/1.9 gates.
+
+The integrated workflow is additive over existing project/run/editor/scene/content/settings/save/export
+contracts and the public package/module version remains 1.5.0. Milestone 2 is therefore verified at
+**2/10 = 20.0%**. Release readiness remains separate; this closeout head must re-pass its triggered matrix
+before merge.
 
 ## Historical handoff
 

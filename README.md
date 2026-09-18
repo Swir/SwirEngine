@@ -26,10 +26,10 @@
 
 ## 📊 Project status
 
-<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.0 verified roadmap progress: 1 of 10 milestones, 10.0%, in progress" />
+<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.0 verified roadmap progress: 2 of 10 milestones, 20.0%, in progress" />
 
 **Active source scope:** SwirEngine 2.0 — Release-Quality Python-First Game Production  
-**Verified source progress:** **1/10 milestones = 10.0% — IN PROGRESS**  
+**Verified source progress:** **2/10 milestones = 20.0% — IN PROGRESS**  
 **Latest public stable release:** **SwirEngine 1.5.0**  
 **Release readiness:** **not beta-ready and not release-ready**; roadmap progress and release readiness are separate gates.
 
@@ -40,9 +40,9 @@ real rendering validation, deterministic tooling, multiplayer foundations, produ
 diagnostics, export staging and host-native desktop shipping. The repository completed source-only
 checkpoints 1.6–1.9 without publishing them; 2.0 is now the active measured development scope.
 
-The verified first 2.0 milestone locks the published **1.5.0** compatibility floor with a machine-readable
-API fingerprint, migration ledger and cross-version regression gate. Creator-workflow integration is the
-next active milestone.
+The first two verified 2.0 milestones lock the published **1.5.0** compatibility floor and integrate
+project creation, validation, run planning, scene/content checks, editable shipping defaults and player-data
+policy through one creator-facing workflow. Multiplayer and dedicated-server production is the next active milestone.
 
 ## ✨ Highlights
 
@@ -57,7 +57,7 @@ next active milestone.
 | UI + input | Retained UI, focus/navigation, keyboard/mouse/gamepad input and production rebinding/settings foundations. |
 | Saves + profiles | Save/profile APIs plus source-development autosave, recovery and production user-data integration. |
 | Networking | TCP/gameplay APIs plus source-only replication/session foundations used by the multiplayer integration fixture. |
-| Creator workflow | Project manifests, validation, run sessions, editor tooling, export staging and desktop build plans. |
+| Creator workflow | `swirengine workflow` composes project/run/scene/content/settings/save-policy checks, safe preparation, export-profile validation and actionable diagnostics. |
 | Diagnostics | Profiling, runtime diagnostics, bounded crash/support reporting and deterministic build identity. |
 | Compatibility | Published 1.5.0 root API is the explicit 2.0 migration floor; source-only checkpoints were not public releases. |
 
@@ -143,19 +143,32 @@ The active roadmap is [`ROADMAP_2_0.md`](ROADMAP_2_0.md). Its ten release-qualit
 9. export/build integrity, diagnostics and release safety;
 10. the final 2.0 release gate and public PyPI verification.
 
-Milestone 1 now locks compatibility to the actual published `v1.5.0` root API rather than a hand-written
-subset. Re-run the contract locally with:
+Milestone 1 locks compatibility to the actual published `v1.5.0` root API rather than a hand-written
+subset. Milestone 2 adds one integrated creator inspection/preparation path over the existing project,
+run-session, scene/prefab, content-build, input/settings and save/profile policies. New projects receive
+editable controls/settings defaults automatically, while existing projects can be prepared without
+overwriting user files.
 
 ```bash
 git fetch --tags
 python tools/verify_2_0_public_api.py
-pytest -q tests/test_public_api_2_0.py
+swirengine new MyGame --mode 3d
+swirengine workflow MyGame --profile windows
+swirengine workflow MyGame --json
+swirengine run MyGame --dry-run
+```
+
+For an older source project missing creator directories or editable defaults:
+
+```bash
+swirengine workflow . --prepare
 ```
 
 See:
 - [`docs/MIGRATING_TO_2_0.md`](docs/MIGRATING_TO_2_0.md)
 - [`docs/public_api_2_0.json`](docs/public_api_2_0.json)
 - [`docs/API_STABILITY.md`](docs/API_STABILITY.md)
+- [`docs/CREATOR_WORKFLOW_2_0.md`](docs/CREATOR_WORKFLOW_2_0.md)
 - [`docs/SWIRENGINE_2_0_READINESS_AUDIT.md`](docs/SWIRENGINE_2_0_READINESS_AUDIT.md)
 - [`ROADMAP_2_0.md`](ROADMAP_2_0.md)
 
@@ -181,6 +194,7 @@ python -m pip install -e ".[dev]"
 pytest
 ruff check src tests examples demo_projects tools
 python -m compileall -q src tests examples demo_projects tools
+python tools/verify_creator_workflow_2_0.py
 ```
 
 Progress assets are generated from the authoritative **2.0** roadmap:
@@ -241,7 +255,7 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md) and
 | 1.7 | [`ROADMAP_1_7.md`](ROADMAP_1_7.md) | 10/10 = 100.0%, source-only checkpoint |
 | 1.8 | [`ROADMAP_1_8.md`](ROADMAP_1_8.md) | 10/10 = 100.0%, source-only checkpoint |
 | 1.9 | [`ROADMAP_1_9.md`](ROADMAP_1_9.md) | 10/10 = 100.0%, source-only checkpoint |
-| **2.0** | **[`ROADMAP_2_0.md`](ROADMAP_2_0.md)** | **1/10 = 10.0%, active development** |
+| **2.0** | **[`ROADMAP_2_0.md`](ROADMAP_2_0.md)** | **2/10 = 20.0%, active development** |
 
 ## ⚠️ Current limitations
 
@@ -251,7 +265,7 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md) and
 - Desktop build plans are host-native; unsupported cross-compilation is intentionally rejected.
 - Dedicated-server and multiplayer production behavior still requires the 2.0 production gate.
 - Competitive/performance claims must wait for reproducible 2.0 evidence.
-- Creator/editor workflow still has dedicated 2.0 integration work ahead.
+- Visual editor ergonomics remain an area for later creator-tooling hardening even though the integrated Milestone 2 workflow is verified.
 
 ## 🔎 Search Keywords
 
