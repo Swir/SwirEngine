@@ -278,6 +278,39 @@ def test_size_estimator_failure_is_isolated_and_invalidates_untracked_cache(tmp_
         streamer.shutdown(release_resident=True)
 
 
+def test_finalize_hitch_diagnostics_include_residency_work(monkeypatch, tmp_path):
+    assets = _assets(tmp_path, 1)
+    estimator_called = False
+
+    def estimator(_path: Path, _value: object) -> int:
+        nonlocal estimator_called
+        estimator_called = True
+        return 1
+
+    def clock() -> int:
+        return 10_000_000 if estimator_called else 0
+
+    streamer = AssetStreamingManager(
+        assets,
+        size_estimator=estimator,
+        budget=AssetStreamingBudget(hitch_threshold_ms=5.0),
+    )
+    try:
+        future = streamer.stage("asset-0.txt")
+        assert future.result(timeout=1.0).ok
+        monkeypatch.setattr("swirengine.asset_streaming.perf_counter_ns", clock)
+
+        results = streamer.pump()
+        diag = streamer.diagnostics()
+        assert len(results) == 1
+        assert results[0].ok
+        assert estimator_called
+        assert diag.hitch_count == 1
+        assert diag.max_finalize_ms == pytest.approx(10.0)
+    finally:
+        streamer.shutdown(release_resident=True)
+
+
 def test_streaming_residency_stays_bounded_under_repeated_workload(tmp_path):
     assets = _assets(tmp_path, 6)
     sizes = {f"asset-{index}.txt": 8 for index in range(6)}
