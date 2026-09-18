@@ -5,7 +5,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-from tools.verify_performance_evidence_2_0 import CONTRACT_PATH, ROOT, _load_contract
+from tools.verify_performance_evidence_2_0 import (
+    CONTRACT_PATH,
+    MAX_ALLOWED_BUDGETS,
+    REFERENCE_CHECK_DATE,
+    ROOT,
+    _load_contract,
+)
 
 
 EXPECTED_WORKLOADS = {
@@ -26,10 +32,13 @@ def test_performance_evidence_contract_is_bounded_and_reproducible():
     for item in workloads:
         path = ROOT / item["command"]
         assert path.is_file()
-        source = path.read_text(encoding="utf-8")
         assert item["expected_marker"]
-        if item["id"] != "runtime-scalability":
-            assert "BUDGET_SECONDS" in source or "MAX_SECONDS" in source
+        if item["id"] in MAX_ALLOWED_BUDGETS:
+            assert item["budget_seconds"] == MAX_ALLOWED_BUDGETS[item["id"]]
+            assert item["budget_constant"] in {"BUDGET_SECONDS", "MAX_SECONDS"}
+        else:
+            assert item["budget_seconds"] is None
+            assert item["budget_constant"] is None
 
 
 def test_competitive_reference_policy_does_not_invent_cross_engine_timing():
@@ -39,6 +48,7 @@ def test_competitive_reference_policy_does_not_invent_cross_engine_timing():
     assert "identical" in policy["cross_engine_runtime_reason"].lower()
     references = contract["external_reference_facts"]
     assert {item["project"] for item in references} == {"Arcade", "Panda3D", "Ursina"}
+    assert all(item["checked_date"] == REFERENCE_CHECK_DATE for item in references)
     assert all(item["runtime_performance_compared"] is False for item in references)
     assert all(item["official_url"].startswith("https://") for item in references)
     assert all(item["distribution_url"].startswith("https://") for item in references)
