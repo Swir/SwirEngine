@@ -16,7 +16,13 @@ from .server16 import (
     ServerComponent,
     ServerTick,
 )
-from .session16 import SessionJoinResult, SessionLifecycle, SessionMember, SessionPhase, SessionSnapshot
+from .session16 import (
+    SessionJoinResult,
+    SessionLifecycle,
+    SessionMember,
+    SessionPhase,
+    SessionSnapshot,
+)
 
 SnapshotFactory = Callable[[ServerTick], WorldSnapshot]
 
