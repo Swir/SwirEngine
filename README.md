@@ -26,10 +26,10 @@
 
 ## 📊 Project status
 
-<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.0 verified roadmap progress: 5 of 10 milestones, 50.0%, in progress" />
+<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.0 verified roadmap progress: 6 of 10 milestones, 60.0%, in progress" />
 
 **Active source scope:** SwirEngine 2.0 — Release-Quality Python-First Game Production  
-**Verified source progress:** **5/10 milestones = 50.0% — IN PROGRESS**  
+**Verified source progress:** **6/10 milestones = 60.0% — IN PROGRESS**  
 **Latest public stable release:** **SwirEngine 1.5.0**  
 **Release readiness:** **not beta-ready and not release-ready**; roadmap progress and release readiness are separate gates.
 
@@ -40,10 +40,12 @@ real rendering validation, deterministic tooling, multiplayer foundations, produ
 diagnostics, export staging and host-native desktop shipping. The repository completed source-only
 checkpoints 1.6–1.9 without publishing them; 2.0 is now the active measured development scope.
 
-The first five verified 2.0 milestones lock the published **1.5.0** compatibility floor, integrate project
+The first six verified 2.0 milestones lock the published **1.5.0** compatibility floor, integrate project
 creation/validation/run/shipping preparation, add a production-facing multiplayer contract, harden runtime
-scalability/resource lifecycle behavior and establish the verified base-engine Python/platform matrix.
-The representative real-game shipping gate is the next active milestone.
+scalability/resource lifecycle behavior, establish the verified base-engine Python/platform matrix and
+prove representative 2D, 3D and multiplayer projects through production input/UI, settings, save/profile,
+scene/content, diagnostics, deterministic export staging and source/staged runtime paths. Packaging and
+clean-install/native-desktop shipping is the next active milestone.
 
 ## ✨ Highlights
 
@@ -157,12 +159,16 @@ hardens streaming/cache lifecycle semantics, explicit resource teardown and pres
 locking representative 16,384-tile, 4,096-sprite and 4,096-object scene workloads to bounded/reuse/pruning
 invariants instead of unsupported shared-runner FPS claims. Milestone 5 verifies all 15 Windows/Linux/macOS
 × CPython 3.10–3.14 base-engine cells through platform probes, wheel construction, isolated clean installs
-and maintained headless 2D/3D runtime fixtures.
+and maintained headless 2D/3D runtime fixtures. Milestone 6 drives maintained 2D, 3D and multiplayer
+projects through the same production creator/shipping contracts, including real focus/navigation/activation,
+player-local data isolation, privacy-safe diagnostic evidence, deterministic export staging, source/staged
+runtime entrypoints and deliberate missing-scene/asset/entrypoint failure probes.
 
 ```bash
 git fetch --tags
 python tools/verify_2_0_public_api.py
 python tools/verify_platform_matrix_2_0.py
+python tools/verify_real_game_shipping_2_0.py
 swirengine new MyGame --mode 3d
 swirengine workflow MyGame --profile windows
 swirengine workflow MyGame --json
@@ -183,6 +189,7 @@ See:
 - [`docs/MULTIPLAYER_PRODUCTION_2_0.md`](docs/MULTIPLAYER_PRODUCTION_2_0.md)
 - [`docs/RUNTIME_SCALABILITY_2_0.md`](docs/RUNTIME_SCALABILITY_2_0.md)
 - [`docs/SUPPORT_MATRIX_2_0.md`](docs/SUPPORT_MATRIX_2_0.md)
+- [`docs/REAL_GAME_SHIPPING_2_0.md`](docs/REAL_GAME_SHIPPING_2_0.md)
 - [`docs/SWIRENGINE_2_0_READINESS_AUDIT.md`](docs/SWIRENGINE_2_0_READINESS_AUDIT.md)
 - [`ROADMAP_2_0.md`](ROADMAP_2_0.md)
 
@@ -198,8 +205,10 @@ Representative projects are source-only engine integration fixtures and do **not
 - **Neon Cube Hunt 3D** — OpenGL + packaged-runtime regression arena
 - **Neon Snake 3D** — complete 3D regression project
 
-The 2.0 real-game gate will drive representative games through the creator workflow, source runtime,
-staged export and shipping validation instead of treating isolated subsystem demos as sufficient proof.
+The verified 2.0 real-game shipping gate drives the maintained 2D, 3D and multiplayer fixtures through
+creator preparation, source runtime, deterministic staged export, staged runtime, settings/save boundaries,
+scene/content integrity, real UI focus/navigation/activation and privacy-safe runtime diagnostics. Fixture
+failures are treated as engine integration failures rather than demo-only issues.
 
 ## 🧪 Development and verification
 
@@ -214,6 +223,8 @@ python examples/multiplayer_game_demo/run_game.py
 python tools/verify_runtime_scalability_2_0.py
 python tools/verify_platform_matrix_2_0.py
 python -m pytest -q tests/test_platform_matrix_2_0.py
+python tools/verify_real_game_shipping_2_0.py
+python -m pytest -q tests/test_real_game_shipping_2_0.py
 ```
 
 Progress assets are generated from the authoritative **2.0** roadmap:
@@ -275,7 +286,7 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md),
 | 1.7 | [`ROADMAP_1_7.md`](ROADMAP_1_7.md) | 10/10 = 100.0%, source-only checkpoint |
 | 1.8 | [`ROADMAP_1_8.md`](ROADMAP_1_8.md) | 10/10 = 100.0%, source-only checkpoint |
 | 1.9 | [`ROADMAP_1_9.md`](ROADMAP_1_9.md) | 10/10 = 100.0%, source-only checkpoint |
-| **2.0** | **[`ROADMAP_2_0.md`](ROADMAP_2_0.md)** | **5/10 = 50.0%, active development** |
+| **2.0** | **[`ROADMAP_2_0.md`](ROADMAP_2_0.md)** | **6/10 = 60.0%, active development** |
 
 ## ⚠️ Current limitations
 

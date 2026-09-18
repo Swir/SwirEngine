@@ -2,9 +2,9 @@
 
 # SwirEngine 2.0 Roadmap — Release-Quality Python-First Game Production
 
-<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.0 verified roadmap progress: 5 of 10 milestones, 50.0%, in progress" />
+<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.0 verified roadmap progress: 6 of 10 milestones, 60.0%, in progress" />
 
-**Current verified progress: 5/10 milestones = 50.0%.**
+**Current verified progress: 6/10 milestones = 60.0%.**
 
 `Release/PyPI: frozen until SwirEngine 2.0`
 
@@ -60,7 +60,7 @@ retroactively published.
   - document unsupported combinations and architecture constraints precisely;
   - remove stale support claims from docs and metadata.
 
-- [ ] **6. Representative Real-Game Shipping Gate**
+- [x] **6. Representative Real-Game Shipping Gate**
   - drive polished 2D, 3D and multiplayer fixtures through input/UI, settings, save/profile, scenes, assets, diagnostics and export;
   - run source and staged/shipped entrypoints, including failure-path checks;
   - verify game-local and player-local data boundaries;
@@ -237,6 +237,35 @@ covered only on the 64-bit hosted runner architectures used by the gate; 32-bit 
 CPython and unverified CPU architectures remain outside the claim, and optional extras require separate
 evidence. Milestone 5 is therefore verified at **5/10 = 50.0%**. Release readiness remains separate; this
 closeout head must re-pass its triggered matrix before merge.
+
+## Milestone 6 verification contract
+
+Milestone 6 is complete only when the exact implementation head proves all of the following:
+
+1. Maintained 2D, 3D and multiplayer fixtures are prepared as isolated production projects through the existing creator workflow rather than a parallel demo-only path.
+2. Every fixture validates version-controlled semantic input actions, shipping settings/defaults, save/profile policy, scene packages and content build graphs before staging.
+3. Representative UI behavior uses real `UIButton`/`UIFocusManager` focus, navigation and activation together with player input overrides instead of metadata-only assertions.
+4. Every fixture runs its source entrypoint and the staged/exported entrypoint successfully from isolated working directories.
+5. Player-local settings/save/profile data remain outside the redistributable project tree while version-controlled defaults remain under project `config/`.
+6. Runtime diagnostics are captured through the bounded privacy-safe diagnostics contract, redact secret/path-bearing data, survive JSON roundtrip and produce deterministic SHA-256 evidence.
+7. Scene/content/input/settings/game-state/diagnostics/export/fixture fingerprints are validated as SHA-256 evidence and remain portable across isolated roots.
+8. Failure probes reject a missing declared gameplay scene, a missing required asset and a missing project entrypoint before a successful shipping result can be reported.
+9. The dedicated Real-Game Shipping 2.0 workflow passes on Python 3.10, 3.13 and 3.14 with focused fixture/failure/UI/diagnostic tests, Ruff and bytecode compilation.
+10. Full repository CI, locked 1.4/1.5 hardening, source checkpoints 1.6–1.9 and Desktop Export pass on the exact implementation head.
+
+## Milestone 6 verified evidence
+
+Implementation head `64e00a542d5d942f1be8afdd397dbbbdaf3f3243` passed every triggered workflow before this closeout
+was marked. The dedicated Real-Game Shipping 2.0 workflow passed on Python 3.10, 3.13 and 3.14, exercising
+the maintained 2D, 3D and multiplayer fixtures through isolated project preparation, semantic input/UI,
+settings and save/profile boundaries, scene/content validation, privacy-safe runtime diagnostics, deterministic
+export staging, source/staged runtime entrypoints and deliberate failure probes.
+
+The same exact implementation head also passed full repository CI, locked 1.4/1.5 hardening, source
+checkpoints 1.6–1.9 and Desktop Export. The gate reuses production systems rather than adding demo-only
+shipping shortcuts, keeps player-local data outside redistributable content and preserves the public package
+version at 1.5.0. Milestone 6 is therefore verified at **6/10 = 60.0%**. Release readiness remains separate;
+this closeout head must re-pass its triggered matrix before merge.
 
 ## Historical handoff
 
