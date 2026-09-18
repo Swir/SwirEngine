@@ -70,3 +70,5 @@ target-version = "py310"
 "src/swirengine/platform16.py" = ["B009"]
 # GPU timing providers are third-party/backend boundaries; failures are deliberately contained.
 "src/swirengine/render_timing18.py" = ["BLE001"]
+# Keep the 1.9 production session's concrete class annotation compatible with the 3.10 source surface.
+"src/swirengine/game_state19.py" = ["PYI034"]
