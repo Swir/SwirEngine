@@ -19,7 +19,7 @@ Milestone 4 treats asset residency and transient renderer resources as owned run
 - `shutdown(release_resident=True)` can close a session and invalidate all resources owned by its residency set;
 - a closed manager rejects new staging or mutation work rather than accidentally reusing a shut-down worker pool.
 
-For stable 1.x compatibility, ordinary `shutdown()` still preserves resident `AssetManager` cache entries unless explicit release is requested. An externally supplied `AssetPreloader` remains externally owned: shutdown detaches this manager's pending records but does not shut down the shared preloader.
+For stable 1.x compatibility, ordinary `shutdown()` still preserves resident `AssetManager` cache entries unless explicit release is requested. An externally supplied `AssetPreloader` remains externally owned: shutdown never closes that shared pool. When explicit residency release is requested, the manager waits only for futures it already scheduled, invalidates their cache entries after completion, and then returns while the shared preloader remains usable by its owner and other consumers.
 
 ### Transient renderer resources
 
