@@ -21,7 +21,7 @@ The 2.0 gate builds on the already verified 1.9 real-game production path and re
 - required scene and generated project configuration in the staged package;
 - source and staged entrypoint execution when runtime validation is enabled;
 - game/player configuration and saves in an external user-data root rather than redistributed project content;
-- deterministic rejection of missing declared scenes and missing project entrypoints before a successful shipping result can be claimed.
+- deterministic rejection of missing declared scenes, required assets and project entrypoints before a successful shipping result can be claimed.
 
 The gate intentionally reuses the existing project manifest, UI/input, scene package, content graph, shipping defaults, save/profile, diagnostics and export systems instead of creating parallel demo-only abstractions.
 
@@ -47,12 +47,13 @@ Version-controlled defaults under `config/` remain project content because they 
 
 ## Failure paths
 
-Milestone 6 must prove that representative projects fail safely when required shipping content is broken. The verifier currently locks two foundational cases:
+Milestone 6 must prove that representative projects fail safely when required shipping content is broken. The verifier locks three foundational cases:
 
 1. a declared gameplay scene is removed after project preparation;
-2. the project entrypoint is removed before export.
+2. a required content-graph asset is removed before validation;
+3. the project entrypoint is removed before export.
 
-Both cases must fail deterministically before a successful package/runtime claim is produced. Additional failure-path coverage can be added when it exercises a real production risk rather than duplicating parser unit tests.
+All cases must fail deterministically before a successful package/runtime claim is produced. Additional failure-path coverage can be added when it exercises a real production risk rather than duplicating parser unit tests.
 
 ## Verification
 
