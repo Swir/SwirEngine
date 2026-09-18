@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -55,7 +56,7 @@ def _portable(value: Any) -> Any:
     if value is None or isinstance(value, (bool, str, int)):
         return value
     if isinstance(value, float):
-        if not (-float("inf") < value < float("inf")):
+        if not math.isfinite(value):
             raise ValueError("multiplayer state floats must be finite")
         return value
     if isinstance(value, (list, tuple)):
@@ -78,6 +79,23 @@ def _canonical_bytes(value: Mapping[str, Any]) -> bytes:
         ensure_ascii=False,
         allow_nan=False,
     ).encode("utf-8")
+
+
+def _local_only_paths(value: Any, *, prefix: str = "") -> tuple[str, ...]:
+    matches: list[str] = []
+    if isinstance(value, Mapping):
+        for key, item in value.items():
+            if not isinstance(key, str):
+                continue
+            path = f"{prefix}.{key}" if prefix else key
+            if key.casefold() in _LOCAL_ONLY_FIELDS:
+                matches.append(path)
+            matches.extend(_local_only_paths(item, prefix=path))
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            path = f"{prefix}[{index}]" if prefix else f"[{index}]"
+            matches.extend(_local_only_paths(item, prefix=path))
+    return tuple(matches)
 
 
 @dataclass(slots=True, frozen=True)
@@ -230,7 +248,7 @@ class ProductionMultiplayerSession:
         result = self.lifecycle.join(client_id)
         try:
             self.replication.register_client(result.member.client_id, view)
-        except Exception:
+        except (TypeError, ValueError):
             self.lifecycle.leave(result.member.client_id)
             raise
         self._authoritative_player_state[result.member.client_id] = {}
@@ -295,7 +313,7 @@ class ProductionMultiplayerSession:
         normalized = _portable(state)
         if not isinstance(normalized, dict):
             raise TypeError("authoritative player state must be a mapping")
-        forbidden = sorted(key for key in normalized if key.casefold() in _LOCAL_ONLY_FIELDS)
+        forbidden = sorted(_local_only_paths(normalized))
         if forbidden:
             raise MultiplayerContractError(
                 "player_local_state_forbidden",
