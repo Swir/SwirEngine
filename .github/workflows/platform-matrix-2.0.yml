@@ -29,6 +29,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: platform-matrix-2.0-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   platform-matrix:
     name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
