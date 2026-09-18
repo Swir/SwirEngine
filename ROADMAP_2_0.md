@@ -2,9 +2,9 @@
 
 # SwirEngine 2.0 Roadmap — Release-Quality Python-First Game Production
 
-<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.0 verified roadmap progress: 3 of 10 milestones, 30.0%, in progress" />
+<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.0 verified roadmap progress: 4 of 10 milestones, 40.0%, in progress" />
 
-**Current verified progress: 3/10 milestones = 30.0%.**
+**Current verified progress: 4/10 milestones = 40.0%.**
 
 `Release/PyPI: frozen until SwirEngine 2.0`
 
@@ -48,7 +48,7 @@ retroactively published.
   - separate authoritative server state from player-local settings/save data;
   - exercise the contract with the multiplayer fixture and failure-path tests.
 
-- [ ] **4. Renderer, Runtime Scalability & Resource Lifecycle**
+- [x] **4. Renderer, Runtime Scalability & Resource Lifecycle**
   - audit scene/render workload scaling, streaming, asset lifetime, memory/resource release and diagnostics;
   - fix high-impact stalls, leaks or unbounded caches found by reproducible workloads;
   - validate 2D and 3D runtime paths under representative production-sized workloads;
@@ -177,6 +177,35 @@ The new production layer is additive over the established session, replication, 
 APIs; the public package/module version remains 1.5.0 and the fixture opens no public sockets. Milestone 3 is
 therefore verified at **3/10 = 30.0%**. Release readiness remains separate; this closeout head must re-pass
 its triggered matrix before merge.
+
+## Milestone 4 verification contract
+
+Milestone 4 is complete only when the exact implementation head proves all of the following:
+
+1. Asset streaming residency remains explicitly bounded by byte and asset-count budgets when unpinned eviction is possible.
+2. Pinned over-budget pressure is surfaced in diagnostics instead of silently evicting protected resources.
+3. Streaming teardown drains or detaches owned pending work deterministically and can release all session-owned residency without worker repopulation races.
+4. Externally supplied preloaders remain externally owned and usable after a streaming session shuts down.
+5. External cache invalidation reconciles stale residency and re-enters background loading without synchronous decode/file work on the caller thread.
+6. Null-like cached values and creator size-estimator failures participate in deterministic invalidation/accounting instead of leaving hidden residency divergence.
+7. Transient render resources reuse exact descriptors under explicit bounds and return owned residency to zero on close.
+8. Representative 2D workloads retain viewport-local tile visibility and stable 4,096-sprite CPU staging without reallocations.
+9. A 4,096-object sparse 3D scene workload retains BVH pruning with fewer than 128 object tests and more than 96% object-test reduction.
+10. The dedicated Python 3.10/3.13/3.14 workflow plus full repository compatibility, checkpoint, demo and export gates pass on the exact implementation head.
+
+## Milestone 4 verified evidence
+
+Hardened implementation head `7c690970d614d26af07458eecaf9c425ad65e1ab` passed every triggered workflow before this closeout
+was marked. The dedicated Runtime Scalability 2.0 workflow passed on Python 3.10, 3.13 and 3.14, including
+focused asset-streaming, resource-pool, renderer, visibility and acceleration regressions, deterministic
+production-sized workload verification, strict Ruff and bytecode compilation. The same exact head also
+passed full repository CI, Asset Pipeline 2.0/1.4, Large World 1.3, locked 1.4/1.5 hardening, source
+checkpoints 1.6–1.9, Game Demos, Demo Game 3D, Neon Snake 3D, Content Build 1.9 and Desktop Export.
+
+The runtime hardening remains additive over stable 1.x behavior: ordinary shutdown preserves cache residency
+unless explicit release is requested, shared preloaders stay externally owned, and no benchmark is converted
+into an unsupported FPS claim. Milestone 4 is therefore verified at **4/10 = 40.0%**. Release readiness
+remains separate; this closeout head must re-pass its triggered matrix before merge.
 
 ## Historical handoff
 
