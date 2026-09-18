@@ -243,7 +243,8 @@ class AssetManager:
         self._aliases.clear()
 
     def _invalidate_path(self, path: Path) -> bool:
-        existed = self._cache.pop(path, None) is not None
+        existed = path in self._cache
+        self._cache.pop(path, None)
         for callback in tuple(self._invalidators):
             callback(path)
         return existed

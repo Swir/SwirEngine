@@ -1,0 +1,371 @@
+from __future__ import annotations
+
+from concurrent.futures import Future
+from pathlib import Path
+from threading import Event, Thread, current_thread
+from time import sleep
+
+import pytest
+
+from swirengine.asset_pipeline import AssetLoadResult, AssetPreloader
+from swirengine.asset_streaming import AssetStreamingBudget, AssetStreamingManager
+from swirengine.assets import AssetManager
+from swirengine.render_resources18 import RenderResourceDescriptor, TransientRenderResourcePool
+
+
+class _FuturePreloader:
+    def __init__(self, future: Future[AssetLoadResult]) -> None:
+        self.future = future
+
+    def load_async(self, _asset, *, cache=True):
+        del cache
+        return self.future
+
+
+def _assets(tmp_path: Path, count: int = 6) -> AssetManager:
+    manager = AssetManager(tmp_path)
+    manager.register_loader("txt", lambda path: path.read_text(encoding="utf-8"))
+    for index in range(count):
+        (tmp_path / f"asset-{index}.txt").write_text("x" * (index + 1), encoding="utf-8")
+    return manager
+
+
+def _drain(streamer: AssetStreamingManager) -> None:
+    for _ in range(100):
+        streamer.pump(max_completions=32)
+        if streamer.diagnostics().pending == 0:
+            return
+        sleep(0.005)
+    raise AssertionError("streaming queue did not drain")
+
+
+def test_exceptional_future_is_drained_and_reported_without_sticky_pending(tmp_path):
+    assets = _assets(tmp_path, 1)
+    failed: Future[AssetLoadResult] = Future()
+    failed.set_exception(RuntimeError("decode worker crashed"))
+    streamer = AssetStreamingManager(assets, preloader=_FuturePreloader(failed))
+
+    streamer.stage("asset-0.txt")
+    results = streamer.pump()
+    diag = streamer.diagnostics()
+
+    assert len(results) == 1
+    assert not results[0].ok
+    assert "decode worker crashed" in (results[0].error or "")
+    assert diag.failed == 1
+    assert diag.cancelled == 0
+    assert diag.pending == 0
+    assert diag.resident_assets == 0
+
+
+def test_cancelled_future_is_drained_separately_from_failures(tmp_path):
+    assets = _assets(tmp_path, 1)
+    cancelled: Future[AssetLoadResult] = Future()
+    assert cancelled.cancel()
+    streamer = AssetStreamingManager(assets, preloader=_FuturePreloader(cancelled))
+
+    streamer.stage("asset-0.txt")
+    results = streamer.pump()
+    diag = streamer.diagnostics()
+
+    assert len(results) == 1
+    assert not results[0].ok
+    assert diag.cancelled == 1
+    assert diag.failed == 0
+    assert diag.pending == 0
+
+
+def test_pinned_budget_pressure_is_visible_and_recovers_after_unpin(tmp_path):
+    assets = _assets(tmp_path, 2)
+    budget = AssetStreamingBudget(max_resident_bytes=1024, max_resident_assets=1)
+    streamer = AssetStreamingManager(assets, budget=budget)
+    try:
+        streamer.stage("asset-0.txt", pin=True)
+        streamer.stage("asset-1.txt", pin=True)
+        _drain(streamer)
+        pressured = streamer.diagnostics()
+        assert pressured.over_budget
+        assert pressured.resident_assets == 2
+        assert pressured.budget_pressure_events >= 1
+        assert pressured.peak_resident_assets == 2
+
+        assert streamer.unpin("asset-0.txt")
+        recovered = streamer.diagnostics()
+        assert not recovered.over_budget
+        assert recovered.resident_assets == 1
+        assert recovered.resident_bytes <= budget.max_resident_bytes
+    finally:
+        streamer.shutdown(release_resident=True)
+
+
+def test_release_all_preserves_pins_unless_forced_and_invalidates_cache(tmp_path):
+    assets = _assets(tmp_path, 2)
+    streamer = AssetStreamingManager(assets)
+    try:
+        streamer.stage("asset-0.txt", pin=True)
+        streamer.stage("asset-1.txt")
+        _drain(streamer)
+        assert assets.cached("asset-0.txt")
+        assert assets.cached("asset-1.txt")
+
+        assert streamer.release_all() == 1
+        assert assets.cached("asset-0.txt")
+        assert not assets.cached("asset-1.txt")
+        assert streamer.release_all(force=True) == 1
+        assert not assets.cached("asset-0.txt")
+        assert streamer.diagnostics().resident_bytes == 0
+    finally:
+        streamer.shutdown()
+
+
+def test_shutdown_can_release_session_residency_and_reject_new_work(tmp_path):
+    assets = _assets(tmp_path, 2)
+    streamer = AssetStreamingManager(assets)
+    streamer.stage_many(["asset-0.txt", "asset-1.txt"])
+    _drain(streamer)
+
+    streamer.shutdown(release_resident=True)
+    diag = streamer.diagnostics()
+
+    assert streamer.closed
+    assert diag.closed
+    assert diag.pending == 0
+    assert diag.resident_assets == 0
+    assert diag.resident_bytes == 0
+    assert not assets.cached("asset-0.txt")
+    with pytest.raises(RuntimeError, match="shut down"):
+        streamer.stage("asset-0.txt")
+    streamer.shutdown(release_resident=True)
+
+
+def test_owned_pending_worker_cannot_repopulate_cache_after_release_shutdown(tmp_path):
+    started = Event()
+    release = Event()
+    assets = AssetManager(tmp_path)
+    source = tmp_path / "slow.txt"
+    source.write_text("payload", encoding="utf-8")
+
+    def slow_loader(path: Path) -> str:
+        started.set()
+        if not release.wait(timeout=2.0):
+            raise TimeoutError("test loader was never released")
+        return path.read_text(encoding="utf-8")
+
+    assets.register_loader("txt", slow_loader)
+    streamer = AssetStreamingManager(assets)
+    streamer.stage("slow.txt")
+    assert started.wait(timeout=1.0)
+
+    shutdown = Thread(
+        target=lambda: streamer.shutdown(wait=False, release_resident=True),
+        daemon=True,
+    )
+    shutdown.start()
+    sleep(0.02)
+    assert shutdown.is_alive()
+    release.set()
+    shutdown.join(timeout=2.0)
+
+    assert not shutdown.is_alive()
+    assert streamer.closed
+    assert streamer.diagnostics().pending == 0
+    assert not assets.cached("slow.txt")
+
+
+def test_shared_preloader_release_waits_for_owned_requests_without_closing_shared_pool(tmp_path):
+    started = Event()
+    release = Event()
+    assets = AssetManager(tmp_path)
+    (tmp_path / "slow.txt").write_text("slow", encoding="utf-8")
+    (tmp_path / "next.txt").write_text("next", encoding="utf-8")
+
+    def loader(path: Path) -> str:
+        if path.name == "slow.txt":
+            started.set()
+            if not release.wait(timeout=2.0):
+                raise TimeoutError("test loader was never released")
+        return path.read_text(encoding="utf-8")
+
+    assets.register_loader("txt", loader)
+    shared = AssetPreloader(assets, max_workers=1)
+    streamer = AssetStreamingManager(assets, preloader=shared)
+    try:
+        streamer.stage("slow.txt")
+        assert started.wait(timeout=1.0)
+        shutdown = Thread(
+            target=lambda: streamer.shutdown(wait=False, release_resident=True),
+            daemon=True,
+        )
+        shutdown.start()
+        sleep(0.02)
+        assert shutdown.is_alive()
+        release.set()
+        shutdown.join(timeout=2.0)
+
+        assert not shutdown.is_alive()
+        assert streamer.closed
+        assert not assets.cached("slow.txt")
+        next_result = shared.load_async("next.txt").result(timeout=1.0)
+        assert next_result.ok
+        assert next_result.value == "next"
+    finally:
+        release.set()
+        shared.shutdown()
+
+
+def test_external_cache_invalidation_reconciles_residency_and_restages_in_background(tmp_path):
+    assets = AssetManager(tmp_path)
+    source = tmp_path / "asset.txt"
+    source.write_text("payload", encoding="utf-8")
+    loader_threads: list[str] = []
+
+    def loader(path: Path) -> str:
+        loader_threads.append(current_thread().name)
+        return path.read_text(encoding="utf-8")
+
+    assets.register_loader("txt", loader)
+    streamer = AssetStreamingManager(assets)
+    try:
+        streamer.stage("asset.txt", pin=True)
+        _drain(streamer)
+        assert streamer.diagnostics().resident_assets == 1
+        assert streamer.resident()[0].pinned
+        assert assets.invalidate("asset.txt")
+        assert not assets.cached("asset.txt")
+
+        streamer.stage("asset.txt")
+        restaged = streamer.diagnostics()
+        assert restaged.pending == 1
+        assert restaged.resident_assets == 0
+        assert restaged.resident_bytes == 0
+        _drain(streamer)
+
+        final = streamer.diagnostics()
+        assert final.completed == 2
+        assert final.resident_assets == 1
+        assert streamer.resident()[0].pinned
+        assert assets.cached("asset.txt")
+        assert len(loader_threads) == 2
+        assert all(name.startswith("swir-assets") for name in loader_threads)
+    finally:
+        streamer.shutdown(release_resident=True)
+
+
+def test_size_estimator_failure_is_isolated_and_invalidates_untracked_cache(tmp_path):
+    assets = _assets(tmp_path, 1)
+
+    def broken_estimator(_path: Path, _value: object) -> int:
+        raise RuntimeError("estimator failed")
+
+    streamer = AssetStreamingManager(assets, size_estimator=broken_estimator)
+    try:
+        future = streamer.stage("asset-0.txt")
+        successful_load = future.result(timeout=1.0)
+        assert successful_load.ok
+        assert assets.cached("asset-0.txt")
+
+        results = streamer.pump()
+        diag = streamer.diagnostics()
+        assert len(results) == 1
+        assert not results[0].ok
+        assert "SizeEstimatorError" in (results[0].error or "")
+        assert "estimator failed" in (results[0].error or "")
+        assert diag.failed == 1
+        assert diag.completed == 0
+        assert diag.pending == 0
+        assert diag.resident_assets == 0
+        assert diag.resident_bytes == 0
+        assert not assets.cached("asset-0.txt")
+    finally:
+        streamer.shutdown(release_resident=True)
+
+
+def test_finalize_hitch_diagnostics_include_residency_work(monkeypatch, tmp_path):
+    assets = _assets(tmp_path, 1)
+    estimator_called = False
+
+    def estimator(_path: Path, _value: object) -> int:
+        nonlocal estimator_called
+        estimator_called = True
+        return 1
+
+    def clock() -> int:
+        return 10_000_000 if estimator_called else 0
+
+    streamer = AssetStreamingManager(
+        assets,
+        size_estimator=estimator,
+        budget=AssetStreamingBudget(hitch_threshold_ms=5.0),
+    )
+    try:
+        future = streamer.stage("asset-0.txt")
+        assert future.result(timeout=1.0).ok
+        monkeypatch.setattr("swirengine.asset_streaming.perf_counter_ns", clock)
+
+        results = streamer.pump()
+        diag = streamer.diagnostics()
+        assert len(results) == 1
+        assert results[0].ok
+        assert estimator_called
+        assert diag.hitch_count == 1
+        assert diag.max_finalize_ms == pytest.approx(10.0)
+    finally:
+        streamer.shutdown(release_resident=True)
+
+
+def test_streaming_residency_stays_bounded_under_repeated_workload(tmp_path):
+    assets = _assets(tmp_path, 6)
+    sizes = {f"asset-{index}.txt": 8 for index in range(6)}
+    budget = AssetStreamingBudget(max_resident_bytes=24, max_resident_assets=3)
+    streamer = AssetStreamingManager(
+        assets,
+        budget=budget,
+        size_estimator=lambda path, _value: sizes[path.name],
+    )
+    try:
+        for _ in range(8):
+            for index in range(6):
+                streamer.stage(f"asset-{index}.txt")
+                _drain(streamer)
+                diag = streamer.diagnostics()
+                assert diag.resident_assets <= 3
+                assert diag.resident_bytes <= 24
+                assert not diag.over_budget
+        final = streamer.diagnostics()
+        assert final.completed >= 6
+        assert final.peak_resident_assets <= 4
+        assert final.peak_resident_bytes <= 32
+    finally:
+        streamer.shutdown(release_resident=True)
+
+
+def test_transient_render_pool_reuses_resources_and_closes_to_zero_residency():
+    created: list[dict[str, int]] = []
+    destroyed: list[dict[str, int]] = []
+
+    def create(_descriptor):
+        resource = {"id": len(created) + 1}
+        created.append(resource)
+        return resource
+
+    def destroy(resource):
+        destroyed.append(resource)
+
+    pool = TransientRenderResourcePool(max_resources=4, max_bytes=4096, create=create, destroy=destroy)
+    descriptor = RenderResourceDescriptor("texture", "rgba8", 16, 16, size_bytes=1024)
+
+    for _ in range(200):
+        lease = pool.acquire(descriptor)
+        pool.release(lease.handle)
+
+    before_close = pool.diagnostics()
+    assert before_close.creates == 1
+    assert before_close.reuses == 199
+    assert before_close.resident_resources == 1
+    assert before_close.peak_resident_resources == 1
+
+    pool.close()
+    after_close = pool.diagnostics()
+    assert after_close.resident_resources == 0
+    assert after_close.resident_bytes == 0
+    assert len(destroyed) == 1

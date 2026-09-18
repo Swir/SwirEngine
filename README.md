@@ -26,10 +26,10 @@
 
 ## 📊 Project status
 
-<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.0 verified roadmap progress: 3 of 10 milestones, 30.0%, in progress" />
+<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.0 verified roadmap progress: 4 of 10 milestones, 40.0%, in progress" />
 
 **Active source scope:** SwirEngine 2.0 — Release-Quality Python-First Game Production  
-**Verified source progress:** **3/10 milestones = 30.0% — IN PROGRESS**  
+**Verified source progress:** **4/10 milestones = 40.0% — IN PROGRESS**  
 **Latest public stable release:** **SwirEngine 1.5.0**  
 **Release readiness:** **not beta-ready and not release-ready**; roadmap progress and release readiness are separate gates.
 
@@ -40,10 +40,11 @@ real rendering validation, deterministic tooling, multiplayer foundations, produ
 diagnostics, export staging and host-native desktop shipping. The repository completed source-only
 checkpoints 1.6–1.9 without publishing them; 2.0 is now the active measured development scope.
 
-The first three verified 2.0 milestones lock the published **1.5.0** compatibility floor, integrate
-project creation/validation/run/shipping preparation, and add a production-facing multiplayer contract
-with compatibility-pinned joins, reconnect resynchronization, authoritative/local state separation and a
-headless dedicated-server adapter. Renderer/runtime scalability and resource lifecycle are the next active milestone.
+The first four verified 2.0 milestones lock the published **1.5.0** compatibility floor, integrate
+project creation/validation/run/shipping preparation, add a production-facing multiplayer contract, and
+harden runtime scalability/resource lifecycle behavior with bounded streaming, deterministic teardown,
+transient-resource reuse and reproducible 2D/3D scale checks. The final Python/platform support matrix is
+the next active milestone.
 
 ## ✨ Highlights
 
@@ -51,7 +52,7 @@ headless dedicated-server adapter. Renderer/runtime scalability and resource lif
 |---|---|
 | Unified 2D + 3D | Sprite/tilemap workflows and OpenGL-backed 3D scenes under one Python-first runtime. |
 | Scenes + content | Scenes, prefabs, serialization, production scene packages, content build graphs and streaming foundations. |
-| Rendering | Materials, lighting, shadows, post-processing, instancing, culling, terrain/LOD and the completed source-only 1.8 render delivery checkpoint. |
+| Rendering | Materials, lighting, shadows, post-processing, instancing, culling, terrain/LOD, bounded transient-resource reuse and production-sized 2D/3D scalability checks. |
 | Animation | Tween/timeline/state machines, animation graphs, skeletal animation and GPU skinning paths. |
 | Physics + navigation | 2D/3D collision and rigid-body systems, character controllers, navigation and local-avoidance foundations. |
 | Audio | Runtime audio engine, buses/groups, spatial behavior and source-development mixer/runtime work. |
@@ -59,7 +60,7 @@ headless dedicated-server adapter. Renderer/runtime scalability and resource lif
 | Saves + profiles | Save/profile APIs plus source-development autosave, recovery and production user-data integration. |
 | Networking | TCP/gameplay APIs plus source-only production session/replication contracts, compatibility fingerprints, reconnect resynchronization and a headless dedicated-server adapter used by the multiplayer fixture. |
 | Creator workflow | `swirengine workflow` composes project/run/scene/content/settings/save-policy checks, safe preparation, export-profile validation and actionable diagnostics. |
-| Diagnostics | Profiling, runtime diagnostics, bounded crash/support reporting and deterministic build identity. |
+| Diagnostics | Profiling, runtime diagnostics, bounded crash/support reporting, streaming pressure/lifecycle diagnostics and deterministic build identity. |
 | Compatibility | Published 1.5.0 root API is the explicit 2.0 migration floor; source-only checkpoints were not public releases. |
 
 ## 📦 Install
@@ -150,7 +151,10 @@ run-session, scene/prefab, content-build, input/settings and save/profile polici
 editable controls/settings defaults automatically, while existing projects can be prepared without
 overwriting user files. Milestone 3 adds deterministic client/server compatibility checks, a production
 session facade, reconnect token rotation with forced full resynchronization, explicit authoritative versus
-player-local state boundaries and a validated fixed-tick headless dedicated-server path.
+player-local state boundaries and a validated fixed-tick headless dedicated-server path. Milestone 4
+hardens streaming/cache lifecycle semantics, explicit resource teardown and pressure diagnostics while
+locking representative 16,384-tile, 4,096-sprite and 4,096-object scene workloads to bounded/reuse/pruning
+invariants instead of unsupported shared-runner FPS claims.
 
 ```bash
 git fetch --tags
@@ -173,6 +177,7 @@ See:
 - [`docs/API_STABILITY.md`](docs/API_STABILITY.md)
 - [`docs/CREATOR_WORKFLOW_2_0.md`](docs/CREATOR_WORKFLOW_2_0.md)
 - [`docs/MULTIPLAYER_PRODUCTION_2_0.md`](docs/MULTIPLAYER_PRODUCTION_2_0.md)
+- [`docs/RUNTIME_SCALABILITY_2_0.md`](docs/RUNTIME_SCALABILITY_2_0.md)
 - [`docs/SWIRENGINE_2_0_READINESS_AUDIT.md`](docs/SWIRENGINE_2_0_READINESS_AUDIT.md)
 - [`ROADMAP_2_0.md`](ROADMAP_2_0.md)
 
@@ -201,6 +206,7 @@ python -m compileall -q src tests examples demo_projects tools
 python tools/verify_creator_workflow_2_0.py
 pytest -q tests/test_multiplayer_2_0.py
 python examples/multiplayer_game_demo/run_game.py
+python tools/verify_runtime_scalability_2_0.py
 ```
 
 Progress assets are generated from the authoritative **2.0** roadmap:
@@ -261,7 +267,7 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md) and
 | 1.7 | [`ROADMAP_1_7.md`](ROADMAP_1_7.md) | 10/10 = 100.0%, source-only checkpoint |
 | 1.8 | [`ROADMAP_1_8.md`](ROADMAP_1_8.md) | 10/10 = 100.0%, source-only checkpoint |
 | 1.9 | [`ROADMAP_1_9.md`](ROADMAP_1_9.md) | 10/10 = 100.0%, source-only checkpoint |
-| **2.0** | **[`ROADMAP_2_0.md`](ROADMAP_2_0.md)** | **3/10 = 30.0%, active development** |
+| **2.0** | **[`ROADMAP_2_0.md`](ROADMAP_2_0.md)** | **4/10 = 40.0%, active development** |
 
 ## ⚠️ Current limitations
 
