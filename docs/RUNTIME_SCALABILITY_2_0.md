@@ -4,7 +4,7 @@ This document records the production contract being validated for SwirEngine 2.0
 
 ## Goals
 
-Milestone 4 treats asset residency and transient renderer resources as owned runtime lifecycles rather than unbounded caches. The contract focuses on bounded production behavior that can be exercised without claiming hardware-specific FPS improvements.
+Milestone 4 treats asset residency and transient renderer resources as owned runtime lifecycles rather than unbounded caches. The contract also locks representative 2D and 3D scale invariants that can be reproduced deterministically without turning shared-runner wall-clock timings into marketing claims.
 
 ### Asset streaming
 
@@ -30,6 +30,26 @@ SwirEngine already has the bounded `TransientRenderResourcePool` from the 1.8 re
 - stale handles and capacity failures remain diagnosed;
 - `close()` destroys owned backend resources and returns residency to zero.
 
+### Representative 2D scale
+
+The deterministic workload exercises two existing production paths rather than creating a synthetic renderer benchmark:
+
+- a **128 × 128 tilemap (16,384 cells)** must keep viewport visibility work local instead of walking the whole world; the verifier rejects candidate counts above 500 or one-sixteenth of the map;
+- a stable **4,096-sprite batch** is staged repeatedly after preallocation and must not trigger CPU staging-buffer reallocations.
+
+These are algorithmic/work-allocation contracts. They do not claim a specific FPS because CI runner speed is not stable evidence for end-user hardware performance.
+
+### Representative 3D scale
+
+The 3D workload inserts **4,096 sparse scene objects** into the existing `SceneVisibilityIndex3D` BVH and queries a small frustum. The contract requires:
+
+- the full inventory to remain represented correctly;
+- exactly the local visible object for the fixed fixture;
+- fewer than 128 leaf/object candidates for the query;
+- more than 96% object-test reduction relative to walking the whole source set.
+
+This locks scene-query scalability while keeping the existing lower-level visibility/index APIs available to advanced users.
+
 ### Existing budget broker
 
 The 1.7 `ResourceBudgetBroker` remains the lower-level admission/eviction coordinator for subsystems that need shared memory/count/work-unit limits. Milestone 4 keeps this lower-level control available while strengthening the creator-facing streaming lifecycle.
@@ -44,11 +64,14 @@ python -m pytest -q \
   tests/test_runtime_scalability_2_0.py \
   tests/test_render_resources_1_8.py \
   tests/test_render_resources_hardening_1_8.py \
-  tests/test_resource_budget_1_7.py
+  tests/test_resource_budget_1_7.py \
+  tests/test_renderer2d_power.py \
+  tests/test_scene_visibility_1_4.py \
+  tests/test_scene_acceleration_1_4.py
 python tools/verify_runtime_scalability_2_0.py
 ```
 
-The deterministic verifier repeatedly cycles a bounded asset set through streaming residency and performs 5,000 transient render-resource acquire/release operations. It validates bounded counts, balanced teardown and reuse invariants. It intentionally does **not** turn wall-clock timing from a shared CI runner into an FPS or performance marketing claim.
+The deterministic verifier repeatedly cycles a bounded asset set through streaming residency, performs 5,000 transient render-resource acquire/release operations, validates a 16,384-cell 2D tilemap plus a 4,096-sprite staging workload, and queries a 4,096-object sparse 3D BVH. It validates bounded counts, balanced teardown, reuse and pruning invariants. It intentionally does **not** turn wall-clock timing from a shared CI runner into an FPS or performance marketing claim.
 
 The dedicated `Runtime Scalability 2.0` workflow runs the contract on Python 3.10, 3.13 and 3.14. Full repository compatibility workflows remain required before the roadmap checkbox can move from 3/10 to 4/10.
 
