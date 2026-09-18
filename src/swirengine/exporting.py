@@ -90,7 +90,10 @@ class PackagingProfile:
             target=ExportTarget(str(data.get("target", ExportTarget.WINDOWS.value))),
             entrypoint=str(data.get("entrypoint", "main.py")),
             app_name=(None if data.get("app_name") is None else str(data["app_name"])),
-            include=tuple(str(value) for value in data.get("include", ("assets", "scenes", "scripts"))),
+            include=tuple(
+                str(value)
+                for value in data.get("include", ("assets", "scenes", "scripts"))
+            ),
             exclude=tuple(
                 str(value)
                 for value in data.get(
@@ -109,7 +112,9 @@ class PackagingProfile:
             icon=None if data.get("icon") is None else str(data["icon"]),
             onefile=bool(data.get("onefile", False)),
             console=bool(data.get("console", True)),
-            metadata={str(key): str(value) for key, value in dict(data.get("metadata", {})).items()},
+            metadata={
+                str(key): str(value) for key, value in dict(data.get("metadata", {})).items()
+            },
         )
 
     def save(self, path: str | Path) -> Path:
@@ -247,6 +252,40 @@ class ProjectExporter:
         }
         return tuple(sorted(files, key=lambda path: path.as_posix().casefold()))
 
+    def _content_build_files(self) -> tuple[Path, ...]:
+        """Return validated production content graph files that must ship with the project.
+
+        Like the scene package path, this is semantic opt-in. Old or malformed pre-1.9 project files
+        do not suddenly enter a stricter code path unless a valid ``[content.build]`` table exists.
+        Once opted in, missing/generated outputs and symlink escapes fail the export before staging.
+        """
+
+        manifest_path = self.project_root / "swirproject.toml"
+        if not manifest_path.is_file():
+            return ()
+        try:
+            raw = tomllib.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, tomllib.TOMLDecodeError):
+            return ()
+        if not isinstance(raw, dict):
+            return ()
+        content = raw.get("content")
+        if not isinstance(content, dict) or "build" not in content:
+            return ()
+
+        from .content_build19 import ContentBuildError, ContentBuildGraph
+        from .project19 import ProjectManifest
+
+        manifest = ProjectManifest.load(manifest_path)
+        graph = ContentBuildGraph.load_optional(manifest)
+        if graph is None:
+            return ()
+        try:
+            paths = graph.shipping_paths()
+        except ContentBuildError as exc:
+            raise ValueError(f"content build export preflight failed: {exc}") from exc
+        return tuple(Path(value) for value in paths)
+
     def _collect_files(self, profile: PackagingProfile) -> tuple[Path, ...]:
         entrypoint = self._safe_relative(profile.entrypoint, label="entrypoint")
         candidates: set[Path] = set()
@@ -267,7 +306,9 @@ class ProjectExporter:
                         candidates.add(child.relative_to(self.project_root))
 
         scene_package_files = self._scene_package_files()
+        content_build_files = self._content_build_files()
         candidates.update(scene_package_files)
+        candidates.update(content_build_files)
 
         if profile.icon:
             icon = self._safe_relative(profile.icon, label="icon path")
@@ -285,6 +326,10 @@ class ProjectExporter:
         if excluded_scene_files:
             values = ", ".join(path.as_posix() for path in excluded_scene_files)
             raise ValueError(f"packaging profile excludes declared scene package content: {values}")
+        excluded_build_files = tuple(path for path in content_build_files if path not in filtered)
+        if excluded_build_files:
+            values = ", ".join(path.as_posix() for path in excluded_build_files)
+            raise ValueError(f"packaging profile excludes declared content build files: {values}")
         return tuple(sorted(filtered, key=lambda path: path.as_posix().casefold()))
 
     @staticmethod
@@ -339,13 +384,15 @@ class ProjectExporter:
             return common + (
                 "exe = EXE(\n"
                 "    pyz, a.scripts, a.binaries, a.datas, [],\n"
-                f"    name={profile.effective_app_name!r}, console={profile.console!r}, icon={icon_expr},\n"
+                f"    name={profile.effective_app_name!r}, console={profile.console!r}, "
+                f"icon={icon_expr},\n"
                 ")\n"
             )
         return common + (
             "exe = EXE(\n"
             "    pyz, a.scripts, [], exclude_binaries=True,\n"
-            f"    name={profile.effective_app_name!r}, console={profile.console!r}, icon={icon_expr},\n"
+            f"    name={profile.effective_app_name!r}, console={profile.console!r}, "
+            f"icon={icon_expr},\n"
             ")\n"
             "coll = COLLECT(\n"
             "    exe, a.binaries, a.datas,\n"
@@ -369,7 +416,9 @@ class ProjectExporter:
         destination = (
             Path(output_dir).expanduser().resolve()
             if output_dir is not None
-            else self.project_root / "dist" / f"{profile.effective_app_name}-{profile.target.value}"
+            else self.project_root
+            / "dist"
+            / f"{profile.effective_app_name}-{profile.target.value}"
         )
         return ExportPlan(
             project_root=self.project_root,
