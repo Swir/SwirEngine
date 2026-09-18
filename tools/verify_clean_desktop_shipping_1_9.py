@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import argparse
 import os
+from pathlib import Path
 import subprocess
 import tempfile
 import venv
-from pathlib import Path
 
 
 _PROBE = r'''
@@ -37,7 +37,7 @@ manifest_text = (
 )
 (root / "swirproject.toml").write_text(manifest_text, encoding="utf-8")
 manifest = ProjectManifest.load(root)
-result = build_desktop_shipping(manifest, "native", root / "ship")
+result = build_desktop_shipping(manifest, "native", root.parent / "ship")
 verify_desktop_shipping(result.manifest_path, plan_path=result.plan_path)
 print(result.plan.fingerprint)
 print(result.manifest.fingerprint)
@@ -111,7 +111,7 @@ def main() -> int:
                 + (probe.stderr[-4000:] or probe.stdout[-4000:])
             )
 
-        executable = project / "ship" / "native-dist" / (
+        executable = root / "ship" / "native-dist" / (
             "CleanShip.exe" if os.name == "nt" else "CleanShip"
         )
         if not executable.is_file():
