@@ -1,0 +1,116 @@
+name: Real-Game Production 1.9
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "examples/2d_game_demo/**"
+      - "examples/3d_game_demo/**"
+      - "examples/multiplayer_game_demo/**"
+      - "tools/verify_real_game_production_1_9.py"
+      - "tests/test_real_game_production_1_9.py"
+      - "src/swirengine/project19.py"
+      - "src/swirengine/scene_packages19.py"
+      - "src/swirengine/content_build19.py"
+      - "src/swirengine/exporting.py"
+      - "src/swirengine/game_state19.py"
+      - "src/swirengine/input19.py"
+      - "src/swirengine/ui19.py"
+      - "src/swirengine/settings19.py"
+      - "src/swirengine/multiplayer_showcase16.py"
+      - "ROADMAP_1_9.md"
+      - "assets/readme/progress-*.svg"
+      - ".github/workflows/real-game-production-1-9.yml"
+  pull_request:
+    paths:
+      - "examples/2d_game_demo/**"
+      - "examples/3d_game_demo/**"
+      - "examples/multiplayer_game_demo/**"
+      - "tools/verify_real_game_production_1_9.py"
+      - "tests/test_real_game_production_1_9.py"
+      - "src/swirengine/project19.py"
+      - "src/swirengine/scene_packages19.py"
+      - "src/swirengine/content_build19.py"
+      - "src/swirengine/exporting.py"
+      - "src/swirengine/game_state19.py"
+      - "src/swirengine/input19.py"
+      - "src/swirengine/ui19.py"
+      - "src/swirengine/settings19.py"
+      - "src/swirengine/multiplayer_showcase16.py"
+      - "ROADMAP_1_9.md"
+      - "assets/readme/progress-*.svg"
+      - ".github/workflows/real-game-production-1-9.yml"
+
+jobs:
+  contract:
+    name: Production contract / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install --upgrade pip
+      - name: Install Python 3.14 native renderer build headers
+        if: matrix.python-version == '3.14'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libgl-dev libegl-dev
+      - run: python -m pip install -e ".[dev]"
+      - name: Focused production regression suite
+        run: >-
+          pytest -q
+          tests/test_real_game_production_1_9.py
+          tests/test_project_manifest_1_9.py
+          tests/test_run_session_1_9.py
+          tests/test_input_ui_settings_1_9.py
+          tests/test_game_state_production_1_9.py
+          tests/test_scene_packages_1_9.py
+          tests/test_scene_export_optin_1_9.py
+          tests/test_content_build_1_9.py
+          tests/test_content_build_export_1_9.py
+          tests/test_shipping_1_9.py
+          tests/test_multiplayer_showcase_soak_1_6.py
+          tests/test_prediction_reconciliation_1_6.py
+          tests/test_progress_svg.py
+      - name: Run source-to-staged real-game gate
+        env:
+          PYGAME_HIDE_SUPPORT_PROMPT: "1"
+        run: python tools/verify_real_game_production_1_9.py
+      - name: Lint production gate sources
+        run: >-
+          ruff check
+          tools/verify_real_game_production_1_9.py
+          tests/test_real_game_production_1_9.py
+          examples/multiplayer_game_demo
+      - name: Compile production gate sources
+        run: >-
+          python -m compileall -q
+          tools/verify_real_game_production_1_9.py
+          tests/test_real_game_production_1_9.py
+          examples/multiplayer_game_demo
+      - name: Verify deterministic progress SVGs
+        run: python tools/generate_progress_svg.py --check
+
+  cross-platform-staging:
+    name: Staged games / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Validate deterministic production staging
+        env:
+          PYGAME_HIDE_SUPPORT_PROMPT: "1"
+        run: python tools/verify_real_game_production_1_9.py --staging-only
