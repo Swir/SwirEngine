@@ -17,7 +17,10 @@ def test_python_metadata_matches_candidate_2_0_range():
     classifiers = set(project["classifiers"])
     for minor in range(10, 15):
         assert f"Programming Language :: Python :: 3.{minor}" in classifiers
-    assert project["urls"]["Roadmap"].endswith("/ROADMAP_2_0.md")
+    assert project["version"] == "1.5.0"
+    assert project["urls"]["Roadmap"].endswith("/ROADMAP_1_5.md")
+    active_roadmap = (ROOT / "ROADMAP_2_0.md").read_text(encoding="utf-8")
+    assert "# SwirEngine 2.0 Roadmap" in active_roadmap
 
 
 def test_matrix_probe_scope_is_explicit_and_64_bit_only():
