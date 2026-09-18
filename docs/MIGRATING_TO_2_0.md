@@ -16,9 +16,9 @@ According to the established API stability policy, every name exported through t
 
 ## Current migration ledger
 
-**No mandatory user-code migration has been identified at the start of the 2.0 roadmap.** The current source `src/swirengine/__init__.py` is byte-identical to the published `v1.5.0` root module at Milestone 1 kickoff, and the tagged root export set is therefore preserved in full.
+**No mandatory user-code migration has been identified at the start of the 2.0 roadmap.** At Milestone 1 kickoff, the current root export set preserves all 271 exports fingerprinted from the published `v1.5.0` root module, with no additional root exports reported by the verifier.
 
-This statement is deliberately narrow: it does not claim that every source-only 1.6–1.9 API is permanently stable, nor does it imply that 2.0 is beta-ready or release-ready.
+This statement is deliberately narrow: it does not claim byte-for-byte identity outside the measured public-root contract, it does not claim that every source-only 1.6–1.9 API is permanently stable, and it does not imply that 2.0 is beta-ready or release-ready.
 
 ## Rule for future breaking changes
 
