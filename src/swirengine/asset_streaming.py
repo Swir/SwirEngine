@@ -104,21 +104,25 @@ class AssetStreamingManager:
         self._ensure_open()
         path = self.assets.require(asset).expanduser().resolve()
         if path in self._resident:
-            self.touch(path)
-            if pin and not self._resident[path].pinned:
-                current = self._resident[path]
-                self._resident[path] = AssetResidency(path, current.size_bytes, True)
-            completed: Future[AssetLoadResult] = Future()
-            completed.set_result(
-                AssetLoadResult(
-                    asset=str(asset),
-                    path=path,
-                    value=self.assets.load(path),
-                    duration_ns=0,
-                    cache_hit=True,
+            if not self.assets.cached(path):
+                stale = self._resident.pop(path)
+                self._resident_bytes -= stale.size_bytes
+            else:
+                self.touch(path)
+                if pin and not self._resident[path].pinned:
+                    current = self._resident[path]
+                    self._resident[path] = AssetResidency(path, current.size_bytes, True)
+                completed: Future[AssetLoadResult] = Future()
+                completed.set_result(
+                    AssetLoadResult(
+                        asset=str(asset),
+                        path=path,
+                        value=self.assets.load(path),
+                        duration_ns=0,
+                        cache_hit=True,
+                    )
                 )
-            )
-            return completed
+                return completed
         existing = self._pending.get(path)
         if existing is not None:
             self._pending_pin[path] = self._pending_pin[path] or bool(pin)
@@ -183,23 +187,36 @@ class AssetStreamingManager:
             if finalize_ns >= int(self.budget.hitch_threshold_ms * 1_000_000):
                 self._hitch_count += 1
             if result.ok:
-                size = max(0, int(self._size_estimator(path, result.value)))
-                previous = self._resident.get(path)
-                if previous is not None:
-                    self._resident_bytes -= previous.size_bytes
-                self._resident[path] = AssetResidency(path, size, pin)
-                self._resident_bytes += size
-                self._resident.move_to_end(path)
-                self._completed += 1
-                self._peak_resident_assets = max(
-                    self._peak_resident_assets,
-                    len(self._resident),
-                )
-                self._peak_resident_bytes = max(
-                    self._peak_resident_bytes,
-                    self._resident_bytes,
-                )
-                self._evict_to_budget()
+                try:
+                    size = max(0, int(self._size_estimator(path, result.value)))
+                except Exception as exc:  # noqa: BLE001 - creator estimators may raise anything.
+                    self.assets.invalidate(path)
+                    self._failed += 1
+                    result = AssetLoadResult(
+                        asset=result.asset,
+                        path=path,
+                        value=None,
+                        duration_ns=result.duration_ns,
+                        cache_hit=result.cache_hit,
+                        error=f"SizeEstimatorError: {type(exc).__name__}: {exc}",
+                    )
+                else:
+                    previous = self._resident.get(path)
+                    if previous is not None:
+                        self._resident_bytes -= previous.size_bytes
+                    self._resident[path] = AssetResidency(path, size, pin)
+                    self._resident_bytes += size
+                    self._resident.move_to_end(path)
+                    self._completed += 1
+                    self._peak_resident_assets = max(
+                        self._peak_resident_assets,
+                        len(self._resident),
+                    )
+                    self._peak_resident_bytes = max(
+                        self._peak_resident_bytes,
+                        self._resident_bytes,
+                    )
+                    self._evict_to_budget()
             elif not cancelled and not exceptional_failure:
                 self._failed += 1
             finalized.append(result)
