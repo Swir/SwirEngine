@@ -67,6 +67,17 @@ def _git(*args: str, root: Path = ROOT) -> bytes:
     return completed.stdout
 
 
+def baseline_ref_available(root: Path = ROOT, ref: str = "v1.5.0") -> bool:
+    completed = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"],
+        cwd=root,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    return completed.returncode == 0
+
+
 def read_baseline_source(manifest: dict[str, object], *, root: Path = ROOT) -> bytes:
     ref = manifest.get("baseline_ref")
     path = manifest.get("baseline_path")
@@ -118,6 +129,12 @@ def verify(root: Path = ROOT) -> list[str]:
     roadmap_path = root / "ROADMAP_2_0.md"
 
     manifest = load_manifest(manifest_path)
+    ref = manifest.get("baseline_ref")
+    if not isinstance(ref, str) or not baseline_ref_available(root, ref):
+        raise ValueError(
+            f"published baseline ref {ref!r} is unavailable; run this contract from a full checkout with tags"
+        )
+
     baseline_bytes = read_baseline_source(manifest, root=root)
     expected_blob = manifest.get("baseline_init_blob_sha")
     actual_blob = git_blob_sha(baseline_bytes)
@@ -125,7 +142,10 @@ def verify(root: Path = ROOT) -> list[str]:
         raise ValueError(f"published baseline blob mismatch: expected {expected_blob}, found {actual_blob}")
 
     baseline_text = baseline_bytes.decode("utf-8")
-    baseline_exports = read_static_all_text(baseline_text, source=f"{manifest['baseline_ref']}:{manifest['baseline_path']}")
+    baseline_exports = read_static_all_text(
+        baseline_text,
+        source=f"{manifest['baseline_ref']}:{manifest['baseline_path']}",
+    )
     if len(baseline_exports) != manifest["baseline_root_export_count"]:
         raise ValueError("published baseline export count disagrees with manifest")
     if export_digest(baseline_exports) != manifest["baseline_root_exports_sha256"]:
