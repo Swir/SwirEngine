@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
 from tempfile import TemporaryDirectory
+from pathlib import Path
 
 from swirengine import Prefab, Rectangle2D, Scene, SceneSerializer
 from swirengine.project19 import ProjectManifest
