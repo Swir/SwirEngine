@@ -2,608 +2,908 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import re
-import sys
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
+import uuid
+from collections.abc import Callable, Iterable, Mapping
+from dataclasses import dataclass, replace
+from pathlib import Path, PureWindowsPath
+from types import MappingProxyType
 from typing import Any
 
-from .exporting import ExportTarget, NativeBuildResult, ProjectExporter
-from .project19 import ProjectManifest
+from .input import (
+    InputActions,
+    InputBinding,
+    normalize_gamepad_axis,
+    normalize_gamepad_button,
+)
+from .ui_navigation import UIFocusManager
 
-_PLAN_FORMAT = "swirengine.desktop-shipping-plan"
-_MANIFEST_FORMAT = "swirengine.desktop-shipping-manifest"
+_ACTION_RE = re.compile(r"^[a-z][a-z0-9_.-]{0,63}$")
+_INPUT_FORMAT = "swirengine-input-profile"
+_INPUT_OVERRIDE_FORMAT = "swirengine-input-overrides"
+_SETTINGS_FORMAT = "swirengine-game-settings"
 _FORMAT_VERSION = 1
-_MAX_INVENTORY_ENTRIES = 20_000
-_MAX_TOTAL_BYTES = 16 * 1024 * 1024 * 1024
-_MAX_JSON_BYTES = 8 * 1024 * 1024
-_MAX_PATH_LENGTH = 512
-_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
-_DRIVE_RE = re.compile(r"^[A-Za-z]:")
+_MAX_ACTIONS = 128
+_MAX_BINDINGS_PER_ACTION = 8
+_MAX_CONFIG_BYTES = 256 * 1024
+
+REQUIRED_UI_ACTIONS = (
+    "ui_up",
+    "ui_down",
+    "ui_left",
+    "ui_right",
+    "ui_accept",
+    "ui_back",
+)
 
 
-class DesktopShippingError(ValueError):
-    """Raised when a desktop shipping plan or artifact inventory is unsafe or invalid."""
+class ShippingContractError(ValueError):
+    """Raised when production input/settings data is malformed or unsafe."""
 
 
-def canonical_desktop_target(platform: str | None = None) -> ExportTarget:
-    """Return the desktop target native to ``platform``.
-
-    SwirEngine does not use this helper to imply cross-compilation support: native builds are
-    permitted only when the selected target matches this result.
-    """
-
-    value = sys.platform if platform is None else str(platform)
-    if value == "win32":
-        return ExportTarget.WINDOWS
-    if value.startswith("linux"):
-        return ExportTarget.LINUX
-    if value == "darwin":
-        return ExportTarget.MACOS
-    raise DesktopShippingError(f"unsupported desktop build host: {value}")
+@dataclass(slots=True, frozen=True)
+class BindingConflict:
+    control: str
+    actions: tuple[str, ...]
 
 
-def _safe_relative(value: str | Path, *, label: str) -> str:
-    raw = str(value).replace("\\", "/").strip()
-    if not raw or "\x00" in raw or len(raw) > _MAX_PATH_LENGTH:
-        raise DesktopShippingError(
-            f"{label} is empty, contains NUL, or exceeds {_MAX_PATH_LENGTH} characters"
+def _portable_json_bytes(value: Mapping[str, Any]) -> bytes:
+    return json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+        allow_nan=False,
+    ).encode("utf-8")
+
+
+def _fingerprint(value: Mapping[str, Any]) -> str:
+    return hashlib.sha256(_portable_json_bytes(value)).hexdigest()
+
+
+def _atomic_write(path: Path, payload: Mapping[str, Any]) -> Path:
+    encoded = json.dumps(
+        payload,
+        sort_keys=True,
+        indent=2,
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8") + b"\n"
+    if len(encoded) > _MAX_CONFIG_BYTES:
+        raise ShippingContractError(
+            f"production configuration payload exceeds {_MAX_CONFIG_BYTES} bytes"
         )
-    if raw.startswith("/") or raw.startswith("//") or _DRIVE_RE.match(raw):
-        raise DesktopShippingError(f"{label} must be project-relative: {value}")
-    path = PurePosixPath(raw)
-    if any(part in {"", ".", ".."} for part in path.parts):
-        raise DesktopShippingError(
-            f"{label} must not contain traversal or empty path segments: {value}"
-        )
-    return path.as_posix()
-
-
-def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
-def _portable_json(value: Mapping[str, object], *, indent: int | None = None) -> str:
-    try:
-        return json.dumps(
-            value,
-            sort_keys=True,
-            ensure_ascii=False,
-            allow_nan=False,
-            separators=(",", ":") if indent is None else None,
-            indent=indent,
-        )
-    except (TypeError, ValueError) as exc:
-        raise DesktopShippingError(f"desktop shipping payload is not portable JSON: {exc}") from exc
-
-
-def _fingerprint(value: Mapping[str, object]) -> str:
-    return hashlib.sha256(_portable_json(value).encode("utf-8")).hexdigest()
-
-
-def _atomic_write(path: Path, payload: bytes) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
     try:
         with temporary.open("wb") as stream:
-            stream.write(payload)
+            stream.write(encoded)
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(temporary, path)
     finally:
-        try:
+        if temporary.exists():
             temporary.unlink()
-        except FileNotFoundError:
-            pass
     return path
 
 
-@dataclass(frozen=True, slots=True)
-class ShippingInventoryEntry:
-    path: str
-    kind: str
-    size: int
-    sha256: str
-    link_target: str = ""
-
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "path", _safe_relative(self.path, label="inventory path"))
-        if self.kind not in {"file", "symlink"}:
-            raise DesktopShippingError("inventory kind must be 'file' or 'symlink'")
-        if isinstance(self.size, bool) or not isinstance(self.size, int) or self.size < 0:
-            raise DesktopShippingError("inventory size must be a non-negative integer")
-        if not _SHA256_RE.fullmatch(self.sha256):
-            raise DesktopShippingError("inventory sha256 must be a lowercase 64-character digest")
-        target = str(self.link_target)
-        if self.kind == "file" and target:
-            raise DesktopShippingError("regular-file inventory entries cannot declare link_target")
-        if self.kind == "symlink":
-            if not target or "\x00" in target or len(target) > _MAX_PATH_LENGTH:
-                raise DesktopShippingError(
-                    "symlink inventory entries require a bounded link_target"
-                )
-        object.__setattr__(self, "link_target", target)
-
-    def portable(self) -> dict[str, object]:
-        payload: dict[str, object] = {
-            "path": self.path,
-            "kind": self.kind,
-            "size": self.size,
-            "sha256": self.sha256,
-        }
-        if self.kind == "symlink":
-            payload["link_target"] = self.link_target
-        return payload
-
-    @classmethod
-    def from_dict(cls, data: Mapping[str, object]) -> ShippingInventoryEntry:
-        try:
-            size = data["size"]
-            if isinstance(size, bool) or not isinstance(size, int):
-                raise TypeError("inventory size is not an integer")
-            return cls(
-                path=str(data["path"]),
-                kind=str(data["kind"]),
-                size=size,
-                sha256=str(data["sha256"]),
-                link_target=str(data.get("link_target", "")),
-            )
-        except (KeyError, TypeError, ValueError) as exc:
-            raise DesktopShippingError("invalid desktop shipping inventory entry") from exc
-
-
-def _validate_inventory(
-    entries: Sequence[ShippingInventoryEntry],
-) -> tuple[ShippingInventoryEntry, ...]:
-    values = tuple(entries)
-    if len(values) > _MAX_INVENTORY_ENTRIES:
-        raise DesktopShippingError(
-            f"desktop shipping inventory exceeds {_MAX_INVENTORY_ENTRIES} entries"
-        )
-    if not all(isinstance(entry, ShippingInventoryEntry) for entry in values):
-        raise DesktopShippingError("desktop shipping inventory contains an invalid entry")
-    keys = [entry.path.casefold() for entry in values]
-    if len(keys) != len(set(keys)):
-        raise DesktopShippingError(
-            "desktop shipping inventory contains case-folded path collisions"
-        )
-    if sum(entry.size for entry in values) > _MAX_TOTAL_BYTES:
-        raise DesktopShippingError(f"desktop shipping inventory exceeds {_MAX_TOTAL_BYTES} bytes")
-    return tuple(sorted(values, key=lambda entry: entry.path.casefold()))
-
-
-def _contained(path: Path, root: Path, *, label: str) -> None:
-    try:
-        path.resolve().relative_to(root.resolve())
-    except (OSError, RuntimeError, ValueError) as exc:
-        raise DesktopShippingError(f"{label} resolves outside its allowed root: {path}") from exc
-
-
-def _source_inventory(root: Path, files: Sequence[Path]) -> tuple[ShippingInventoryEntry, ...]:
-    entries: list[ShippingInventoryEntry] = []
-    root = root.resolve()
-    for relative in files:
-        portable = _safe_relative(relative, label="source file")
-        source = root / PurePosixPath(portable)
-        _contained(source, root, label="source file")
-        if source.is_symlink():
-            raise DesktopShippingError(
-                f"source shipping inventory does not accept symlinked files: {portable}"
-            )
-        if not source.is_file():
-            raise DesktopShippingError(
-                f"source shipping file is missing or not regular: {portable}"
-            )
-        entries.append(
-            ShippingInventoryEntry(
-                path=portable,
-                kind="file",
-                size=source.stat().st_size,
-                sha256=_sha256(source),
-            )
-        )
-    return _validate_inventory(entries)
-
-
-def _artifact_inventory(root: Path) -> tuple[ShippingInventoryEntry, ...]:
-    root = root.resolve()
-    if not root.is_dir():
-        raise DesktopShippingError(f"native artifact root does not exist: {root}")
-    entries: list[ShippingInventoryEntry] = []
-    for path in sorted(root.rglob("*"), key=lambda item: item.as_posix().casefold()):
-        relative = path.relative_to(root).as_posix()
-        if path.is_symlink():
-            try:
-                target = os.readlink(path)
-            except OSError as exc:
-                raise DesktopShippingError(f"cannot read artifact symlink: {relative}") from exc
-            _contained(path, root, label="artifact symlink")
-            encoded = target.encode("utf-8", errors="strict")
-            entries.append(
-                ShippingInventoryEntry(
-                    path=relative,
-                    kind="symlink",
-                    size=len(encoded),
-                    sha256=hashlib.sha256(encoded).hexdigest(),
-                    link_target=target,
-                )
-            )
-            continue
-        if path.is_dir():
-            continue
-        if not path.is_file():
-            raise DesktopShippingError(f"unsupported special artifact entry: {relative}")
-        _contained(path, root, label="artifact")
-        entries.append(
-            ShippingInventoryEntry(
-                path=relative,
-                kind="file",
-                size=path.stat().st_size,
-                sha256=_sha256(path),
-            )
-        )
-        if len(entries) > _MAX_INVENTORY_ENTRIES:
-            raise DesktopShippingError(
-                f"desktop shipping inventory exceeds {_MAX_INVENTORY_ENTRIES} entries"
-            )
-    return _validate_inventory(entries)
-
-
-@dataclass(frozen=True, slots=True)
-class DesktopShippingPlan:
-    project_name: str
-    project_fingerprint: str
-    profile_name: str
-    target: ExportTarget
-    app_name: str
-    entrypoint: str
-    onefile: bool
-    console: bool
-    source_inventory: tuple[ShippingInventoryEntry, ...]
-    format_version: int = _FORMAT_VERSION
-
-    def __post_init__(self) -> None:
-        if self.format_version != _FORMAT_VERSION:
-            raise DesktopShippingError("unsupported desktop shipping plan format version")
-        if not self.target.desktop:
-            raise DesktopShippingError("desktop shipping plans require a desktop export target")
-        for label, value, maximum in (
-            ("project_name", self.project_name, 128),
-            ("project_fingerprint", self.project_fingerprint, 128),
-            ("profile_name", self.profile_name, 64),
-            ("app_name", self.app_name, 128),
-        ):
-            text = str(value).strip()
-            if not text or "\x00" in text or len(text) > maximum:
-                raise DesktopShippingError(
-                    f"{label} must be non-empty and at most {maximum} characters"
-                )
-            object.__setattr__(self, label, text)
-        object.__setattr__(
-            self,
-            "entrypoint",
-            _safe_relative(self.entrypoint, label="shipping entrypoint"),
-        )
-        object.__setattr__(self, "source_inventory", _validate_inventory(self.source_inventory))
-
-    @property
-    def required_host(self) -> str:
-        return {
-            ExportTarget.WINDOWS: "windows",
-            ExportTarget.LINUX: "linux",
-            ExportTarget.MACOS: "macos",
-        }[self.target]
-
-    def portable(self) -> dict[str, object]:
-        return {
-            "format": _PLAN_FORMAT,
-            "format_version": self.format_version,
-            "project": {
-                "name": self.project_name,
-                "fingerprint": self.project_fingerprint,
-            },
-            "profile": {
-                "name": self.profile_name,
-                "target": self.target.value,
-                "app_name": self.app_name,
-                "entrypoint": self.entrypoint,
-                "onefile": self.onefile,
-                "console": self.console,
-            },
-            "required_host": self.required_host,
-            "source_inventory": [entry.portable() for entry in self.source_inventory],
-        }
-
-    @property
-    def fingerprint(self) -> str:
-        return _fingerprint(self.portable())
-
-    def to_json(self, *, indent: int | None = 2) -> str:
-        return _portable_json(self.portable(), indent=indent)
-
-    def write(self, path: str | Path) -> Path:
-        return _atomic_write(Path(path), (self.to_json(indent=2) + "\n").encode("utf-8"))
-
-    @classmethod
-    def from_dict(cls, data: Mapping[str, object]) -> DesktopShippingPlan:
-        if data.get("format") != _PLAN_FORMAT or data.get("format_version") != _FORMAT_VERSION:
-            raise DesktopShippingError("unsupported desktop shipping plan format")
-        project = data.get("project")
-        profile = data.get("profile")
-        inventory = data.get("source_inventory")
-        if not isinstance(project, Mapping) or not isinstance(profile, Mapping):
-            raise DesktopShippingError(
-                "desktop shipping plan project/profile sections are malformed"
-            )
-        if not isinstance(inventory, list):
-            raise DesktopShippingError("desktop shipping plan source_inventory must be a list")
-        entries: list[ShippingInventoryEntry] = []
-        for item in inventory:
-            if not isinstance(item, Mapping):
-                raise DesktopShippingError(
-                    "desktop shipping source inventory entry must be an object"
-                )
-            entries.append(ShippingInventoryEntry.from_dict(item))
-        try:
-            onefile = profile["onefile"]
-            console = profile["console"]
-            if not isinstance(onefile, bool) or not isinstance(console, bool):
-                raise TypeError("shipping profile booleans are malformed")
-            target = ExportTarget(str(profile["target"]))
-            plan = cls(
-                project_name=str(project["name"]),
-                project_fingerprint=str(project["fingerprint"]),
-                profile_name=str(profile["name"]),
-                target=target,
-                app_name=str(profile["app_name"]),
-                entrypoint=str(profile["entrypoint"]),
-                onefile=onefile,
-                console=console,
-                source_inventory=tuple(entries),
-            )
-        except (KeyError, TypeError, ValueError) as exc:
-            raise DesktopShippingError(
-                "desktop shipping plan is missing required fields"
-            ) from exc
-        if data.get("required_host") != plan.required_host:
-            raise DesktopShippingError(
-                "desktop shipping plan required_host is inconsistent with target"
-            )
-        return plan
-
-    @classmethod
-    def load(cls, path: str | Path) -> DesktopShippingPlan:
-        return cls.from_dict(_load_json_object(Path(path), label="desktop shipping plan"))
-
-
-@dataclass(frozen=True, slots=True)
-class DesktopShippingManifest:
-    plan_fingerprint: str
-    target: ExportTarget
-    host: str
-    python: str
-    artifact_root: str
-    artifacts: tuple[ShippingInventoryEntry, ...]
-    format_version: int = _FORMAT_VERSION
-
-    def __post_init__(self) -> None:
-        if self.format_version != _FORMAT_VERSION:
-            raise DesktopShippingError("unsupported desktop shipping manifest format version")
-        if not self.target.desktop:
-            raise DesktopShippingError("desktop shipping manifest target must be desktop")
-        if not _SHA256_RE.fullmatch(self.plan_fingerprint):
-            raise DesktopShippingError("shipping plan fingerprint must be a SHA-256 digest")
-        expected_host = {
-            ExportTarget.WINDOWS: "windows",
-            ExportTarget.LINUX: "linux",
-            ExportTarget.MACOS: "macos",
-        }[self.target]
-        if self.host != expected_host:
-            raise DesktopShippingError(
-                "shipping manifest host must match target; cross-build claims are rejected"
-            )
-        if not re.fullmatch(r"\d+\.\d+", self.python):
-            raise DesktopShippingError("shipping manifest python field must be major.minor")
-        object.__setattr__(
-            self,
-            "artifact_root",
-            _safe_relative(self.artifact_root, label="artifact_root"),
-        )
-        object.__setattr__(self, "artifacts", _validate_inventory(self.artifacts))
-
-    def portable(self) -> dict[str, object]:
-        return {
-            "format": _MANIFEST_FORMAT,
-            "format_version": self.format_version,
-            "plan_fingerprint": self.plan_fingerprint,
-            "target": self.target.value,
-            "host": self.host,
-            "python": self.python,
-            "artifact_root": self.artifact_root,
-            "artifacts": [entry.portable() for entry in self.artifacts],
-        }
-
-    @property
-    def fingerprint(self) -> str:
-        return _fingerprint(self.portable())
-
-    def to_json(self, *, indent: int | None = 2) -> str:
-        return _portable_json(self.portable(), indent=indent)
-
-    def write(self, path: str | Path) -> Path:
-        return _atomic_write(Path(path), (self.to_json(indent=2) + "\n").encode("utf-8"))
-
-    @classmethod
-    def from_dict(cls, data: Mapping[str, object]) -> DesktopShippingManifest:
-        if data.get("format") != _MANIFEST_FORMAT or data.get("format_version") != _FORMAT_VERSION:
-            raise DesktopShippingError("unsupported desktop shipping manifest format")
-        raw_artifacts = data.get("artifacts")
-        if not isinstance(raw_artifacts, list):
-            raise DesktopShippingError("desktop shipping manifest artifacts must be a list")
-        artifacts: list[ShippingInventoryEntry] = []
-        for item in raw_artifacts:
-            if not isinstance(item, Mapping):
-                raise DesktopShippingError(
-                    "desktop shipping artifact inventory entry must be an object"
-                )
-            artifacts.append(ShippingInventoryEntry.from_dict(item))
-        try:
-            return cls(
-                plan_fingerprint=str(data["plan_fingerprint"]),
-                target=ExportTarget(str(data["target"])),
-                host=str(data["host"]),
-                python=str(data["python"]),
-                artifact_root=str(data["artifact_root"]),
-                artifacts=tuple(artifacts),
-            )
-        except (KeyError, ValueError) as exc:
-            raise DesktopShippingError(
-                "desktop shipping manifest is missing required fields"
-            ) from exc
-
-    @classmethod
-    def load(cls, path: str | Path) -> DesktopShippingManifest:
-        return cls.from_dict(_load_json_object(Path(path), label="desktop shipping manifest"))
-
-
-@dataclass(frozen=True, slots=True)
-class DesktopShippingResult:
-    plan: DesktopShippingPlan
-    build: NativeBuildResult
-    plan_path: Path
-    manifest: DesktopShippingManifest
-    manifest_path: Path
-
-
-def _load_json_object(path: Path, *, label: str) -> Mapping[str, object]:
+def _read_json_object(path: Path, *, label: str) -> dict[str, Any]:
     try:
         raw = path.read_bytes()
     except OSError as exc:
-        raise DesktopShippingError(f"cannot read {label}: {path}") from exc
-    if len(raw) > _MAX_JSON_BYTES:
-        raise DesktopShippingError(f"{label} exceeds {_MAX_JSON_BYTES} bytes")
+        raise ShippingContractError(f"cannot read {label}: {path}") from exc
+    if len(raw) > _MAX_CONFIG_BYTES:
+        raise ShippingContractError(f"{label} exceeds {_MAX_CONFIG_BYTES} bytes")
     try:
-        data = json.loads(raw.decode("utf-8"))
+        value = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise DesktopShippingError(f"{label} is not valid UTF-8 JSON") from exc
-    if not isinstance(data, Mapping):
-        raise DesktopShippingError(f"{label} root must be a JSON object")
-    return data
+        raise ShippingContractError(f"invalid {label} JSON: {path}") from exc
+    if not isinstance(value, dict):
+        raise ShippingContractError(f"{label} root must be a JSON object")
+    return value
 
 
-def create_desktop_shipping_plan(
-    manifest: ProjectManifest,
-    profile_name: str,
-) -> DesktopShippingPlan:
-    """Create a checkout-independent source/build contract without executing build tools."""
-
-    if not isinstance(manifest, ProjectManifest):
-        raise TypeError("create_desktop_shipping_plan requires a ProjectManifest")
-    profile = manifest.packaging_profile(profile_name)
-    if not profile.target.desktop:
-        raise DesktopShippingError(
-            f"profile {profile_name!r} targets {profile.target.value}; "
-            "desktop shipping requires windows/linux/macos"
+def _action_name(value: str) -> str:
+    name = str(value).strip().lower()
+    if not _ACTION_RE.fullmatch(name):
+        raise ShippingContractError(
+            "action names must start with a letter and use 1-64 lowercase "
+            "letters, digits, '.', '_' or '-'"
         )
-    export_plan = ProjectExporter(manifest.root).plan(profile)
-    inventory = _source_inventory(manifest.root, export_plan.files)
-    return DesktopShippingPlan(
-        project_name=manifest.name,
-        project_fingerprint=manifest.fingerprint,
-        profile_name=profile.name,
-        target=profile.target,
-        app_name=profile.effective_app_name,
-        entrypoint=profile.entrypoint,
-        onefile=profile.onefile,
-        console=profile.console,
-        source_inventory=inventory,
-    )
+    return name
 
 
-def build_desktop_shipping(
-    manifest: ProjectManifest,
-    profile_name: str,
-    output_dir: str | Path | None = None,
-    *,
-    clean: bool = True,
-    runner: Any = None,
-) -> DesktopShippingResult:
-    """Execute a host-native build, then emit a checked source plan and artifact manifest."""
+def _normalize_binding(binding: InputBinding) -> InputBinding:
+    gamepad_id = int(binding.gamepad_id)
+    if not 0 <= gamepad_id <= 15:
+        raise ShippingContractError("gamepad_id must be between 0 and 15")
+    scale = float(binding.scale)
+    if not math.isfinite(scale) or abs(scale) > 8.0:
+        raise ShippingContractError("binding scale must be finite and between -8.0 and 8.0")
+    threshold = float(binding.threshold)
+    if not math.isfinite(threshold) or not 0.0 <= threshold <= 1.0:
+        raise ShippingContractError("binding threshold must be between 0.0 and 1.0")
 
-    plan = create_desktop_shipping_plan(manifest, profile_name)
-    native_target = canonical_desktop_target()
-    if plan.target != native_target:
-        raise DesktopShippingError(
-            f"{plan.target.value} shipping must run on a matching {plan.required_host} host; "
-            f"current native target is {native_target.value}"
+    if binding.kind == "key":
+        control = str(binding.control).strip().lower()
+        if not control or len(control) > 64:
+            raise ShippingContractError("key controls must contain 1-64 characters")
+        return InputBinding(
+            "key",
+            control,
+            gamepad_id=gamepad_id,
+            direction=int(binding.direction),
+            threshold=threshold,
+            scale=scale,
         )
-    profile = manifest.packaging_profile(profile_name)
-    exporter = ProjectExporter(manifest.root)
-    kwargs: dict[str, object] = {"clean": clean}
-    if runner is not None:
-        kwargs["runner"] = runner
-    build = exporter.build_native(profile, output_dir, **kwargs)
-    artifact_root = build.export.output_dir / "native-dist"
-    artifacts = _artifact_inventory(artifact_root)
-    if not artifacts:
-        raise DesktopShippingError("native desktop build produced an empty artifact inventory")
-    manifest_value = DesktopShippingManifest(
-        plan_fingerprint=plan.fingerprint,
-        target=plan.target,
-        host=plan.required_host,
-        python=f"{sys.version_info.major}.{sys.version_info.minor}",
-        artifact_root="native-dist",
-        artifacts=artifacts,
-    )
-    plan_path = plan.write(build.export.output_dir / "swir-shipping-plan.json")
-    manifest_path = manifest_value.write(
-        build.export.output_dir / "swir-shipping-manifest.json"
-    )
-    verify_desktop_shipping(manifest_path, plan_path=plan_path)
-    return DesktopShippingResult(
-        plan=plan,
-        build=build,
-        plan_path=plan_path,
-        manifest=manifest_value,
-        manifest_path=manifest_path,
-    )
+    if binding.kind == "mouse_button":
+        try:
+            control = int(binding.control)
+        except (TypeError, ValueError) as exc:
+            raise ShippingContractError("mouse button controls must be integers") from exc
+        if not 0 <= control <= 31:
+            raise ShippingContractError("mouse button controls must be between 0 and 31")
+        return InputBinding(
+            "mouse_button",
+            control,
+            gamepad_id=gamepad_id,
+            direction=int(binding.direction),
+            threshold=threshold,
+            scale=scale,
+        )
+    if binding.kind == "gamepad_button":
+        try:
+            control = normalize_gamepad_button(str(binding.control))
+        except ValueError as exc:
+            raise ShippingContractError(str(exc)) from exc
+        return InputBinding(
+            "gamepad_button",
+            control,
+            gamepad_id=gamepad_id,
+            direction=int(binding.direction),
+            threshold=threshold,
+            scale=scale,
+        )
+    if binding.kind == "gamepad_axis":
+        try:
+            control = normalize_gamepad_axis(str(binding.control))
+        except ValueError as exc:
+            raise ShippingContractError(str(exc)) from exc
+        return InputBinding(
+            "gamepad_axis",
+            control,
+            gamepad_id=gamepad_id,
+            direction=int(binding.direction),
+            threshold=threshold,
+            scale=scale,
+        )
+    raise ShippingContractError(f"unsupported input binding kind: {binding.kind!r}")
 
 
-def verify_desktop_shipping(
-    manifest_path: str | Path,
-    *,
-    plan_path: str | Path | None = None,
-) -> DesktopShippingManifest:
-    """Verify manifest structure and every current native artifact byte/link target."""
+def _binding_identity(binding: InputBinding) -> str:
+    value = _normalize_binding(binding)
+    if value.kind in {"gamepad_button", "gamepad_axis"}:
+        return (
+            f"{value.kind}:{value.gamepad_id}:{value.control}:"
+            f"{value.direction if value.kind == 'gamepad_axis' else 0}"
+        )
+    return f"{value.kind}:{value.control}"
 
-    manifest_file = Path(manifest_path).resolve()
-    manifest = DesktopShippingManifest.load(manifest_file)
-    if plan_path is not None:
-        plan = DesktopShippingPlan.load(plan_path)
-        if plan.fingerprint != manifest.plan_fingerprint:
-            raise DesktopShippingError(
-                "shipping manifest plan fingerprint does not match shipping plan"
+
+@dataclass(slots=True, frozen=True)
+class ProductionActionMap:
+    """Validated project-level semantic action map suitable for shipping.
+
+    The map is deliberately separate from live input state. Creators keep one version-controlled
+    project default and may layer user overrides on top without mutating the project files.
+    """
+
+    bindings_by_action: Mapping[str, tuple[InputBinding, ...]]
+
+    def __post_init__(self) -> None:
+        if len(self.bindings_by_action) > _MAX_ACTIONS:
+            raise ShippingContractError(f"action map supports at most {_MAX_ACTIONS} actions")
+        normalized: dict[str, tuple[InputBinding, ...]] = {}
+        for raw_name, raw_bindings in self.bindings_by_action.items():
+            name = _action_name(raw_name)
+            bindings = tuple(_normalize_binding(binding) for binding in raw_bindings)
+            if len(bindings) > _MAX_BINDINGS_PER_ACTION:
+                raise ShippingContractError(
+                    f"{name!r} supports at most {_MAX_BINDINGS_PER_ACTION} bindings"
+                )
+            deduplicated: list[InputBinding] = []
+            for binding in bindings:
+                if binding not in deduplicated:
+                    deduplicated.append(binding)
+            normalized[name] = tuple(deduplicated)
+        object.__setattr__(
+            self,
+            "bindings_by_action",
+            MappingProxyType(dict(sorted(normalized.items()))),
+        )
+
+    @classmethod
+    def standard(cls) -> ProductionActionMap:
+        return cls(
+            {
+                "ui_up": (
+                    InputBinding("key", "up"),
+                    InputBinding("key", "w"),
+                    InputBinding("gamepad_button", "DPAD_UP"),
+                    InputBinding("gamepad_axis", "LEFT_Y", direction=-1, threshold=0.55),
+                ),
+                "ui_down": (
+                    InputBinding("key", "down"),
+                    InputBinding("key", "s"),
+                    InputBinding("gamepad_button", "DPAD_DOWN"),
+                    InputBinding("gamepad_axis", "LEFT_Y", direction=1, threshold=0.55),
+                ),
+                "ui_left": (
+                    InputBinding("key", "left"),
+                    InputBinding("key", "a"),
+                    InputBinding("gamepad_button", "DPAD_LEFT"),
+                    InputBinding("gamepad_axis", "LEFT_X", direction=-1, threshold=0.55),
+                ),
+                "ui_right": (
+                    InputBinding("key", "right"),
+                    InputBinding("key", "d"),
+                    InputBinding("gamepad_button", "DPAD_RIGHT"),
+                    InputBinding("gamepad_axis", "LEFT_X", direction=1, threshold=0.55),
+                ),
+                "ui_accept": (
+                    InputBinding("key", "enter"),
+                    InputBinding("key", "space"),
+                    InputBinding("gamepad_button", "A"),
+                ),
+                "ui_back": (
+                    InputBinding("key", "escape"),
+                    InputBinding("gamepad_button", "B"),
+                ),
+                "pause": (
+                    InputBinding("key", "escape"),
+                    InputBinding("gamepad_button", "START"),
+                ),
+            }
+        )
+
+    @classmethod
+    def from_dict(
+        cls,
+        data: Mapping[str, Any],
+        *,
+        require_ui_navigation: bool = True,
+    ) -> ProductionActionMap:
+        if data.get("format") != _INPUT_FORMAT:
+            raise ShippingContractError("unsupported production input profile format")
+        if data.get("version") != _FORMAT_VERSION:
+            raise ShippingContractError("unsupported production input profile version")
+        actions = data.get("actions")
+        if not isinstance(actions, dict):
+            raise ShippingContractError("production input profile requires an 'actions' object")
+        if len(actions) > _MAX_ACTIONS:
+            raise ShippingContractError(f"action map supports at most {_MAX_ACTIONS} actions")
+        parsed: dict[str, tuple[InputBinding, ...]] = {}
+        for raw_name, raw_bindings in actions.items():
+            name = _action_name(str(raw_name))
+            if not isinstance(raw_bindings, list):
+                raise ShippingContractError(f"bindings for {name!r} must be a list")
+            if len(raw_bindings) > _MAX_BINDINGS_PER_ACTION:
+                raise ShippingContractError(
+                    f"{name!r} supports at most {_MAX_BINDINGS_PER_ACTION} bindings"
+                )
+            bindings: list[InputBinding] = []
+            for item in raw_bindings:
+                if not isinstance(item, dict):
+                    raise ShippingContractError(f"bindings for {name!r} must be objects")
+                try:
+                    binding = InputBinding.from_dict(item)
+                except (KeyError, TypeError, ValueError) as exc:
+                    raise ShippingContractError(f"invalid binding for {name!r}: {exc}") from exc
+                bindings.append(_normalize_binding(binding))
+            parsed[name] = tuple(bindings)
+        profile = cls(parsed)
+        if require_ui_navigation:
+            profile.require_actions(REQUIRED_UI_ACTIONS)
+        return profile
+
+    @classmethod
+    def load(
+        cls,
+        path: str | Path,
+        *,
+        require_ui_navigation: bool = True,
+    ) -> ProductionActionMap:
+        payload = _read_json_object(Path(path), label="production input profile")
+        return cls.from_dict(payload, require_ui_navigation=require_ui_navigation)
+
+    def save(self, path: str | Path) -> Path:
+        return _atomic_write(Path(path), self.to_dict())
+
+    def actions(self) -> tuple[str, ...]:
+        return tuple(self.bindings_by_action)
+
+    def bindings(self, action: str) -> tuple[InputBinding, ...]:
+        return self.bindings_by_action.get(_action_name(action), ())
+
+    def require_actions(self, actions: Iterable[str]) -> None:
+        missing = [
+            name
+            for name in (_action_name(action) for action in actions)
+            if not self.bindings_by_action.get(name)
+        ]
+        if missing:
+            raise ShippingContractError(
+                "required shipping actions have no bindings: " + ", ".join(sorted(missing))
             )
-        if plan.target != manifest.target:
-            raise DesktopShippingError("shipping manifest target does not match shipping plan")
-    artifact_root = manifest_file.parent / PurePosixPath(manifest.artifact_root)
-    _contained(artifact_root, manifest_file.parent.resolve(), label="artifact root")
-    actual = _artifact_inventory(artifact_root)
-    expected = {entry.path: entry for entry in manifest.artifacts}
-    current = {entry.path: entry for entry in actual}
-    if expected.keys() != current.keys():
-        missing = sorted(expected.keys() - current.keys())
-        unexpected = sorted(current.keys() - expected.keys())
-        raise DesktopShippingError(
-            f"artifact inventory paths changed; missing={missing[:8]}, unexpected={unexpected[:8]}"
+
+    def replace_action(
+        self,
+        action: str,
+        bindings: Iterable[InputBinding],
+        *,
+        require_ui_navigation: bool = True,
+    ) -> ProductionActionMap:
+        name = _action_name(action)
+        data = dict(self.bindings_by_action)
+        data[name] = tuple(bindings)
+        result = ProductionActionMap(data)
+        if require_ui_navigation:
+            result.require_actions(REQUIRED_UI_ACTIONS)
+        return result
+
+    def install(self, input_manager: Any) -> InputActions:
+        actions = InputActions(input_manager)
+        for name, bindings in self.bindings_by_action.items():
+            actions.bind_many(name, bindings, replace=True)
+        return actions
+
+    def conflicts(self) -> tuple[BindingConflict, ...]:
+        owners: dict[str, set[str]] = {}
+        for action, bindings in self.bindings_by_action.items():
+            for binding in bindings:
+                owners.setdefault(_binding_identity(binding), set()).add(action)
+        return tuple(
+            BindingConflict(control, tuple(sorted(actions)))
+            for control, actions in sorted(owners.items())
+            if len(actions) > 1
         )
-    for path in sorted(expected, key=str.casefold):
-        if expected[path] != current[path]:
-            raise DesktopShippingError(f"artifact inventory mismatch: {path}")
-    return manifest
+
+    @property
+    def fingerprint(self) -> str:
+        return _fingerprint(self.to_dict())
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "format": _INPUT_FORMAT,
+            "version": _FORMAT_VERSION,
+            "actions": {
+                name: [
+                    {
+                        "kind": binding.kind,
+                        "control": binding.control,
+                        "gamepad_id": binding.gamepad_id,
+                        "direction": binding.direction,
+                        "threshold": binding.threshold,
+                        "scale": binding.scale,
+                    }
+                    for binding in bindings
+                ]
+                for name, bindings in self.bindings_by_action.items()
+            },
+        }
+
+
+class InputOverrideStore:
+    """Persist only user-modified actions so newer project defaults can still flow through."""
+
+    def __init__(self, defaults: ProductionActionMap, path: str | Path) -> None:
+        defaults.require_actions(REQUIRED_UI_ACTIONS)
+        self.defaults = defaults
+        self.path = Path(path)
+
+    def load(self) -> ProductionActionMap:
+        if not self.path.exists():
+            return self.defaults
+        payload = _read_json_object(self.path, label="input override profile")
+        if payload.get("format") != _INPUT_OVERRIDE_FORMAT:
+            raise ShippingContractError("unsupported input override format")
+        if payload.get("version") != _FORMAT_VERSION:
+            raise ShippingContractError("unsupported input override version")
+        actions = payload.get("actions")
+        if not isinstance(actions, dict):
+            raise ShippingContractError("input override profile requires an 'actions' object")
+        if len(actions) > _MAX_ACTIONS:
+            raise ShippingContractError(f"input overrides support at most {_MAX_ACTIONS} actions")
+        current = self.defaults
+        for name, raw_bindings in sorted(actions.items()):
+            if not isinstance(raw_bindings, list):
+                raise ShippingContractError(f"bindings for {name!r} must be a list")
+            parsed: list[InputBinding] = []
+            for item in raw_bindings:
+                if not isinstance(item, dict):
+                    raise ShippingContractError(f"bindings for {name!r} must be objects")
+                try:
+                    parsed.append(_normalize_binding(InputBinding.from_dict(item)))
+                except (KeyError, TypeError, ValueError) as exc:
+                    raise ShippingContractError(f"invalid override binding for {name!r}") from exc
+            current = current.replace_action(name, parsed, require_ui_navigation=False)
+        current.require_actions(REQUIRED_UI_ACTIONS)
+        return current
+
+    def save(self, current: ProductionActionMap) -> Path:
+        current.require_actions(REQUIRED_UI_ACTIONS)
+        changed: dict[str, list[dict[str, Any]]] = {}
+        names = sorted(set(self.defaults.actions()) | set(current.actions()))
+        for name in names:
+            defaults = self.defaults.bindings(name)
+            bindings = current.bindings(name)
+            if bindings == defaults:
+                continue
+            changed[name] = [
+                {
+                    "kind": binding.kind,
+                    "control": binding.control,
+                    "gamepad_id": binding.gamepad_id,
+                    "direction": binding.direction,
+                    "threshold": binding.threshold,
+                    "scale": binding.scale,
+                }
+                for binding in bindings
+            ]
+        payload = {
+            "format": _INPUT_OVERRIDE_FORMAT,
+            "version": _FORMAT_VERSION,
+            "actions": changed,
+        }
+        return _atomic_write(self.path, payload)
+
+    def reset(self) -> None:
+        try:
+            self.path.unlink()
+        except FileNotFoundError:
+            pass
+
+
+@dataclass(slots=True, frozen=True)
+class DisplaySettings:
+    width: int = 1280
+    height: int = 720
+    fullscreen: bool = False
+    borderless: bool = False
+    vsync: bool = True
+    max_fps: int = 0
+    ui_scale: float = 1.0
+
+    def __post_init__(self) -> None:
+        if not 320 <= int(self.width) <= 16384:
+            raise ShippingContractError("display width must be between 320 and 16384")
+        if not 240 <= int(self.height) <= 8640:
+            raise ShippingContractError("display height must be between 240 and 8640")
+        if bool(self.borderless) and not bool(self.fullscreen):
+            raise ShippingContractError("borderless display mode requires fullscreen=true")
+        if not 0 <= int(self.max_fps) <= 1000:
+            raise ShippingContractError("max_fps must be between 0 and 1000")
+        if not math.isfinite(float(self.ui_scale)) or not 0.5 <= float(self.ui_scale) <= 3.0:
+            raise ShippingContractError("ui_scale must be between 0.5 and 3.0")
+
+    @classmethod
+    def from_dict(
+        cls,
+        value: Mapping[str, Any],
+        *,
+        fallback: DisplaySettings | None = None,
+    ) -> DisplaySettings:
+        base = fallback or cls()
+        allowed = {
+            "width",
+            "height",
+            "fullscreen",
+            "borderless",
+            "vsync",
+            "max_fps",
+            "ui_scale",
+        }
+        unknown = sorted(set(value) - allowed)
+        if unknown:
+            raise ShippingContractError("unknown display settings: " + ", ".join(unknown))
+        return cls(
+            width=_strict_int(value.get("width", base.width), "display.width"),
+            height=_strict_int(value.get("height", base.height), "display.height"),
+            fullscreen=_strict_bool(
+                value.get("fullscreen", base.fullscreen), "display.fullscreen"
+            ),
+            borderless=_strict_bool(
+                value.get("borderless", base.borderless), "display.borderless"
+            ),
+            vsync=_strict_bool(value.get("vsync", base.vsync), "display.vsync"),
+            max_fps=_strict_int(value.get("max_fps", base.max_fps), "display.max_fps"),
+            ui_scale=_strict_float(value.get("ui_scale", base.ui_scale), "display.ui_scale"),
+        )
+
+
+@dataclass(slots=True, frozen=True)
+class AccessibilitySettings:
+    text_scale: float = 1.0
+    reduced_motion: bool = False
+    high_contrast: bool = False
+    subtitles: bool = True
+    hold_to_confirm: bool = False
+
+    def __post_init__(self) -> None:
+        if not math.isfinite(float(self.text_scale)) or not 0.75 <= float(self.text_scale) <= 2.5:
+            raise ShippingContractError("text_scale must be between 0.75 and 2.5")
+
+    @classmethod
+    def from_dict(
+        cls,
+        value: Mapping[str, Any],
+        *,
+        fallback: AccessibilitySettings | None = None,
+    ) -> AccessibilitySettings:
+        base = fallback or cls()
+        allowed = {
+            "text_scale",
+            "reduced_motion",
+            "high_contrast",
+            "subtitles",
+            "hold_to_confirm",
+        }
+        unknown = sorted(set(value) - allowed)
+        if unknown:
+            raise ShippingContractError("unknown accessibility settings: " + ", ".join(unknown))
+        return cls(
+            text_scale=_strict_float(
+                value.get("text_scale", base.text_scale), "accessibility.text_scale"
+            ),
+            reduced_motion=_strict_bool(
+                value.get("reduced_motion", base.reduced_motion),
+                "accessibility.reduced_motion",
+            ),
+            high_contrast=_strict_bool(
+                value.get("high_contrast", base.high_contrast),
+                "accessibility.high_contrast",
+            ),
+            subtitles=_strict_bool(
+                value.get("subtitles", base.subtitles), "accessibility.subtitles"
+            ),
+            hold_to_confirm=_strict_bool(
+                value.get("hold_to_confirm", base.hold_to_confirm),
+                "accessibility.hold_to_confirm",
+            ),
+        )
+
+
+@dataclass(slots=True, frozen=True)
+class GameSettings:
+    display: DisplaySettings = DisplaySettings()
+    accessibility: AccessibilitySettings = AccessibilitySettings()
+
+    @classmethod
+    def from_dict(
+        cls,
+        data: Mapping[str, Any],
+        *,
+        fallback: GameSettings | None = None,
+        require_envelope: bool = True,
+    ) -> GameSettings:
+        base = fallback or cls()
+        if require_envelope:
+            if data.get("format") != _SETTINGS_FORMAT:
+                raise ShippingContractError("unsupported game settings format")
+            if data.get("version") != _FORMAT_VERSION:
+                raise ShippingContractError("unsupported game settings version")
+        allowed = {"format", "version", "display", "accessibility"}
+        unknown = sorted(set(data) - allowed)
+        if unknown:
+            raise ShippingContractError("unknown game settings sections: " + ", ".join(unknown))
+        display = data.get("display", {})
+        accessibility = data.get("accessibility", {})
+        if not isinstance(display, dict):
+            raise ShippingContractError("display settings must be an object")
+        if not isinstance(accessibility, dict):
+            raise ShippingContractError("accessibility settings must be an object")
+        return cls(
+            display=DisplaySettings.from_dict(display, fallback=base.display),
+            accessibility=AccessibilitySettings.from_dict(
+                accessibility,
+                fallback=base.accessibility,
+            ),
+        )
+
+    def with_display(self, **changes: Any) -> GameSettings:
+        return replace(self, display=replace(self.display, **changes))
+
+    def with_accessibility(self, **changes: Any) -> GameSettings:
+        return replace(self, accessibility=replace(self.accessibility, **changes))
+
+    @property
+    def fingerprint(self) -> str:
+        return _fingerprint(self.to_dict())
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "format": _SETTINGS_FORMAT,
+            "version": _FORMAT_VERSION,
+            "display": {
+                "width": self.display.width,
+                "height": self.display.height,
+                "fullscreen": self.display.fullscreen,
+                "borderless": self.display.borderless,
+                "vsync": self.display.vsync,
+                "max_fps": self.display.max_fps,
+                "ui_scale": self.display.ui_scale,
+            },
+            "accessibility": {
+                "text_scale": self.accessibility.text_scale,
+                "reduced_motion": self.accessibility.reduced_motion,
+                "high_contrast": self.accessibility.high_contrast,
+                "subtitles": self.accessibility.subtitles,
+                "hold_to_confirm": self.accessibility.hold_to_confirm,
+            },
+        }
+
+
+class SettingsStore:
+    """Atomic, validated game settings persistence with project defaults as fallback."""
+
+    def __init__(self, defaults: GameSettings, path: str | Path) -> None:
+        self.defaults = defaults
+        self.path = Path(path)
+
+    def load(self) -> GameSettings:
+        if not self.path.exists():
+            return self.defaults
+        payload = _read_json_object(self.path, label="game settings")
+        return GameSettings.from_dict(payload, fallback=self.defaults)
+
+    def save(self, settings: GameSettings) -> Path:
+        return _atomic_write(self.path, settings.to_dict())
+
+    def reset(self) -> None:
+        try:
+            self.path.unlink()
+        except FileNotFoundError:
+            pass
+
+
+@dataclass(slots=True, frozen=True)
+class ProjectShippingDefaults:
+    root: Path
+    actions: ProductionActionMap
+    settings: GameSettings
+    input_source: Path | None
+    settings_source: Path | None
+
+    @classmethod
+    def load(
+        cls,
+        project_root: str | Path,
+        *,
+        input_path: str = "config/controls.json",
+        settings_path: str = "config/settings.json",
+    ) -> ProjectShippingDefaults:
+        root = Path(project_root).expanduser().resolve()
+        input_source = _project_file(root, input_path)
+        settings_source = _project_file(root, settings_path)
+        actions = (
+            ProductionActionMap.load(input_source)
+            if input_source.is_file()
+            else ProductionActionMap.standard()
+        )
+        if settings_source.is_file():
+            settings_payload = _read_json_object(settings_source, label="project settings defaults")
+            settings = GameSettings.from_dict(settings_payload)
+        else:
+            settings = GameSettings()
+        return cls(
+            root=root,
+            actions=actions,
+            settings=settings,
+            input_source=input_source if input_source.is_file() else None,
+            settings_source=settings_source if settings_source.is_file() else None,
+        )
+
+    def write_templates(
+        self,
+        *,
+        input_path: str = "config/controls.json",
+        settings_path: str = "config/settings.json",
+        overwrite: bool = False,
+    ) -> tuple[Path, Path]:
+        input_target = _project_file(self.root, input_path)
+        settings_target = _project_file(self.root, settings_path)
+        for target in (input_target, settings_target):
+            if target.exists() and not overwrite:
+                raise FileExistsError(target)
+        self.actions.save(input_target)
+        _atomic_write(settings_target, self.settings.to_dict())
+        return input_target, settings_target
+
+    @property
+    def fingerprint(self) -> str:
+        return _fingerprint(
+            {
+                "actions": self.actions.to_dict(),
+                "settings": self.settings.to_dict(),
+            }
+        )
+
+
+@dataclass(slots=True, frozen=True)
+class DisplayApplyResult:
+    applied: tuple[str, ...]
+    unsupported: tuple[str, ...]
+
+
+def apply_display_settings(
+    previous: DisplaySettings | None,
+    current: DisplaySettings,
+    *,
+    resize: Callable[[int, int], None] | None = None,
+    fullscreen: Callable[[bool, bool], None] | None = None,
+    vsync: Callable[[bool], None] | None = None,
+    frame_limit: Callable[[int], None] | None = None,
+    ui_scale: Callable[[float], None] | None = None,
+) -> DisplayApplyResult:
+    """Apply changed display values through creator/backend callbacks.
+
+    Missing callbacks are reported rather than guessed, keeping the contract portable across
+    render/window backends. ``previous=None`` applies every value for initial startup.
+    """
+
+    changed = {
+        "resolution": previous is None
+        or (previous.width, previous.height) != (current.width, current.height),
+        "fullscreen": previous is None
+        or (previous.fullscreen, previous.borderless)
+        != (current.fullscreen, current.borderless),
+        "vsync": previous is None or previous.vsync != current.vsync,
+        "max_fps": previous is None or previous.max_fps != current.max_fps,
+        "ui_scale": previous is None or previous.ui_scale != current.ui_scale,
+    }
+    callbacks: dict[str, tuple[Callable[..., None] | None, tuple[Any, ...]]] = {
+        "resolution": (resize, (current.width, current.height)),
+        "fullscreen": (fullscreen, (current.fullscreen, current.borderless)),
+        "vsync": (vsync, (current.vsync,)),
+        "max_fps": (frame_limit, (current.max_fps,)),
+        "ui_scale": (ui_scale, (current.ui_scale,)),
+    }
+    applied: list[str] = []
+    unsupported: list[str] = []
+    for name in ("resolution", "fullscreen", "vsync", "max_fps", "ui_scale"):
+        if not changed[name]:
+            continue
+        callback, arguments = callbacks[name]
+        if callback is None:
+            unsupported.append(name)
+            continue
+        callback(*arguments)
+        applied.append(name)
+    return DisplayApplyResult(tuple(applied), tuple(unsupported))
+
+
+@dataclass(slots=True, frozen=True)
+class NavigationUpdate:
+    focused: Any | None
+    moved: int = 0
+    activated: bool = False
+    back: bool = False
+
+
+class FocusActionRouter:
+    """Drive ``UIFocusManager`` from semantic actions, including analog bindings.
+
+    The router edge-detects action *state* rather than relying on digital key events, allowing
+    keyboard, d-pad and stick bindings to share the same shipping menu contract.
+    """
+
+    def __init__(
+        self,
+        focus: UIFocusManager,
+        actions: InputActions,
+        *,
+        on_back: Callable[[], None] | None = None,
+    ) -> None:
+        self.focus = focus
+        self.actions = actions
+        self.on_back = on_back
+        self._held: set[str] = set()
+
+    def _pressed(self, name: str) -> bool:
+        down = bool(self.actions.down(name))
+        was_down = name in self._held
+        if down:
+            self._held.add(name)
+        else:
+            self._held.discard(name)
+        return down and not was_down
+
+    def update(self) -> NavigationUpdate:
+        down = self._pressed("ui_down")
+        right = self._pressed("ui_right")
+        up = self._pressed("ui_up")
+        left = self._pressed("ui_left")
+        accept = self._pressed("ui_accept")
+        back = self._pressed("ui_back")
+        forward = down or right
+        backward = up or left
+
+        moved = 0
+        if forward:
+            self.focus.move(1)
+            moved = 1
+        elif backward:
+            self.focus.move(-1)
+            moved = -1
+
+        activated = bool(self.focus.activate()) if accept else False
+        if back and self.on_back is not None:
+            self.on_back()
+        return NavigationUpdate(
+            focused=self.focus.focused,
+            moved=moved,
+            activated=activated,
+            back=back,
+        )
+
+
+def _project_file(root: Path, relative: str) -> Path:
+    value = str(relative).replace("\\", "/")
+    candidate = Path(value)
+    windows_candidate = PureWindowsPath(value)
+    if (
+        candidate.is_absolute()
+        or windows_candidate.is_absolute()
+        or windows_candidate.drive
+        or not value
+        or "\x00" in value
+    ):
+        raise ShippingContractError("project configuration path must be relative and non-empty")
+    root_resolved = root.resolve()
+    resolved = (root_resolved / candidate).resolve(strict=False)
+    try:
+        resolved.relative_to(root_resolved)
+    except ValueError as exc:
+        raise ShippingContractError("project configuration path escapes the project root") from exc
+    return resolved
+
+
+def _strict_bool(value: Any, label: str) -> bool:
+    if not isinstance(value, bool):
+        raise ShippingContractError(f"{label} must be a boolean")
+    return value
+
+
+def _strict_int(value: Any, label: str) -> int:
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise ShippingContractError(f"{label} must be an integer")
+    return value
+
+
+def _strict_float(value: Any, label: str) -> float:
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        raise ShippingContractError(f"{label} must be a number")
+    result = float(value)
+    if not math.isfinite(result):
+        raise ShippingContractError(f"{label} must be finite")
+    return result
+
+
+__all__ = [
+    "REQUIRED_UI_ACTIONS",
+    "AccessibilitySettings",
+    "BindingConflict",
+    "DisplayApplyResult",
+    "DisplaySettings",
+    "FocusActionRouter",
+    "GameSettings",
+    "InputOverrideStore",
+    "NavigationUpdate",
+    "ProductionActionMap",
+    "ProjectShippingDefaults",
+    "SettingsStore",
+    "ShippingContractError",
+    "apply_display_settings",
+]
