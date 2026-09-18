@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "contract": "SwirEngine 2.0 public root compatibility floor",
+  "baseline_release": "1.5.0",
+  "baseline_ref": "v1.5.0",
+  "module": "swirengine",
+  "documented_root_exports": [
+    "__version__",
+    "run",
+    "GameEngine",
+    "GameLogic",
+    "GameObject",
+    "ECSWorld",
+    "EntityHandle",
+    "System",
+    "Transform2D",
+    "Transform3D",
+    "Velocity2D",
+    "Velocity3D",
+    "Lifetime",
+    "ECSStats",
+    "Time"
+  ],
+  "stable_behavior_exports": [
+    "run",
+    "GameEngine",
+    "GameLogic",
+    "GameObject",
+    "ECSWorld",
+    "EntityHandle",
+    "Transform2D",
+    "Transform3D",
+    "Velocity2D",
+    "Velocity3D",
+    "Lifetime",
+    "ECSStats"
+  ],
+  "compatibility_exports": [
+    "__version__",
+    "System",
+    "Time"
+  ],
+  "policy": "All documented 1.5.0 root exports remain importable through the 2.0 release candidate unless a deliberate breaking migration is documented, tested and recorded before release."
+}

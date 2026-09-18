@@ -1,0 +1,58 @@
+name: Public API 2.0
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ROADMAP_2_0.md"
+      - "docs/API_STABILITY.md"
+      - "docs/MIGRATING_TO_2_0.md"
+      - "docs/public_api_2_0.json"
+      - "src/swirengine/__init__.py"
+      - "tools/verify_2_0_public_api.py"
+      - "tests/test_public_api_2_0.py"
+      - "tools/generate_progress_svg.py"
+      - "tests/test_progress_svg.py"
+      - "assets/readme/progress-*.svg"
+      - ".github/workflows/public-api-2.0.yml"
+  pull_request:
+    paths:
+      - "ROADMAP_2_0.md"
+      - "docs/API_STABILITY.md"
+      - "docs/MIGRATING_TO_2_0.md"
+      - "docs/public_api_2_0.json"
+      - "src/swirengine/__init__.py"
+      - "tools/verify_2_0_public_api.py"
+      - "tests/test_public_api_2_0.py"
+      - "tools/generate_progress_svg.py"
+      - "tests/test_progress_svg.py"
+      - "assets/readme/progress-*.svg"
+      - ".github/workflows/public-api-2.0.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-api-contract:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install verification tools
+        run: python -m pip install --disable-pip-version-check pytest ruff
+      - name: Verify public API contract
+        run: python tools/verify_2_0_public_api.py
+      - name: Test public API and progress contracts
+        run: python -m pytest -q tests/test_public_api_2_0.py tests/test_progress_svg.py
+      - name: Lint 2.0 contract files
+        run: python -m ruff check tools/verify_2_0_public_api.py tests/test_public_api_2_0.py tools/generate_progress_svg.py tests/test_progress_svg.py
+      - name: Compile verification files
+        run: python -m compileall -q tools/verify_2_0_public_api.py tests/test_public_api_2_0.py tools/generate_progress_svg.py tests/test_progress_svg.py
