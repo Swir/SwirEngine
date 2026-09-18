@@ -12,6 +12,7 @@ from pathlib import Path
 SUPPORTED_SYSTEMS = frozenset({"Linux", "Windows", "Darwin"})
 SUPPORTED_PYTHONS = frozenset({"3.10", "3.11", "3.12", "3.13", "3.14"})
 BASE_RUNTIME_MODULES = ("numpy", "moderngl", "glfw", "PIL", "typing_extensions")
+_SYSTEM_ALIASES = {"macOS": "Darwin"}
 
 
 def _requires_python() -> frozenset[str]:
@@ -37,6 +38,9 @@ def verify(
     machine = platform.machine() or "unknown"
     python_minor = f"{sys.version_info.major}.{sys.version_info.minor}"
     pointer_bits = struct.calcsize("P") * 8
+    normalized_expected_system = (
+        None if expected_system is None else _SYSTEM_ALIASES.get(expected_system, expected_system)
+    )
 
     if system not in SUPPORTED_SYSTEMS:
         raise RuntimeError(f"unsupported operating-system family for 2.0 matrix: {system}")
@@ -44,8 +48,8 @@ def verify(
         raise RuntimeError(f"unsupported CPython minor for 2.0 matrix: {python_minor}")
     if pointer_bits != 64:
         raise RuntimeError(f"2.0 matrix requires a 64-bit interpreter, found {pointer_bits}-bit")
-    if expected_system is not None and system != expected_system:
-        raise RuntimeError(f"expected system {expected_system}, found {system}")
+    if normalized_expected_system is not None and system != normalized_expected_system:
+        raise RuntimeError(f"expected system {normalized_expected_system}, found {system}")
     if expected_python is not None and python_minor != expected_python:
         raise RuntimeError(f"expected Python {expected_python}, found {python_minor}")
 
@@ -91,7 +95,10 @@ def verify(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Verify the SwirEngine 2.0 OS/Python runtime cell")
-    parser.add_argument("--expected-system", choices=sorted(SUPPORTED_SYSTEMS))
+    parser.add_argument(
+        "--expected-system",
+        choices=sorted(SUPPORTED_SYSTEMS | frozenset(_SYSTEM_ALIASES)),
+    )
     parser.add_argument("--expected-python", choices=sorted(SUPPORTED_PYTHONS))
     parser.add_argument("--require-vendored-native", action="store_true")
     args = parser.parse_args()
