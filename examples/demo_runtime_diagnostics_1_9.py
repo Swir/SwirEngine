@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import runpy
 import zipfile
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -21,17 +22,13 @@ def _create_project(root: Path) -> ProjectManifest:
     (root / "scripts").mkdir()
     (root / "main.py").write_text("print('demo')\n", encoding="utf-8")
     (root / "swirproject.toml").write_text(
-        '\n'.join(
-            (
-                'name = "Diagnostics Demo"',
-                'mode = "2d"',
-                'entrypoint = "main.py"',
-                '',
-                '[content]',
-                'include = ["scripts"]',
-            )
-        )
-        + "\n",
+        """name = "Diagnostics Demo"
+mode = "2d"
+entrypoint = "main.py"
+
+[content]
+include = ["scripts"]
+""",
         encoding="utf-8",
     )
     return ProjectManifest.load(root)
@@ -40,8 +37,7 @@ def _create_project(root: Path) -> ProjectManifest:
 def _fault(root: Path) -> None:
     source = root / "scripts" / "gameplay.py"
     source.write_text("raise RuntimeError('simulated gameplay failure')\n", encoding="utf-8")
-    namespace: dict[str, object] = {}
-    exec(compile(source.read_text(encoding="utf-8"), str(source), "exec"), namespace, namespace)
+    runpy.run_path(str(source))
 
 
 def main() -> int:
