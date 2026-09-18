@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 try:
     import tomllib
 except ModuleNotFoundError:  # Python 3.10 compatibility
     import tomli as tomllib
 
+import tools.verify_platform_matrix_2_0 as platform_probe
 from tools.verify_platform_matrix_2_0 import (
     _WINDOWS_X64_MACHINES,
     SUPPORTED_PYTHONS,
@@ -36,10 +39,17 @@ def test_matrix_probe_scope_is_explicit_and_64_bit_only():
     assert SUPPORTED_PYTHONS == {"3.10", "3.11", "3.12", "3.13", "3.14"}
     assert _WINDOWS_X64_MACHINES == {"AMD64", "x86_64"}
     source = (ROOT / "tools" / "verify_platform_matrix_2_0.py").read_text(encoding="utf-8")
+    assert 'python_implementation != "CPython"' in source
     assert "pointer_bits != 64" in source
     assert 'system != "Windows"' in source
     assert 'python_minor != "3.14"' in source
     assert "require_vendored_native" in source
+
+
+def test_matrix_probe_rejects_unclaimed_python_implementations(monkeypatch):
+    monkeypatch.setattr(platform_probe.platform, "python_implementation", lambda: "PyPy")
+    with pytest.raises(RuntimeError, match="CPython only"):
+        platform_probe.verify()
 
 
 def test_support_document_separates_os_python_from_architecture_and_shipping():
