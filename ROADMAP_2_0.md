@@ -2,9 +2,9 @@
 
 # SwirEngine 2.0 Roadmap — Release-Quality Python-First Game Production
 
-<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.0 verified roadmap progress: 4 of 10 milestones, 40.0%, in progress" />
+<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.0 verified roadmap progress: 5 of 10 milestones, 50.0%, in progress" />
 
-**Current verified progress: 4/10 milestones = 40.0%.**
+**Current verified progress: 5/10 milestones = 50.0%.**
 
 `Release/PyPI: frozen until SwirEngine 2.0`
 
@@ -54,7 +54,7 @@ retroactively published.
   - validate 2D and 3D runtime paths under representative production-sized workloads;
   - preserve lower-level control without making the high-level creator API harder to use.
 
-- [ ] **5. Final Python & Platform Support Matrix**
+- [x] **5. Final Python & Platform Support Matrix**
   - define the exact Python/OS matrix that 2.0 will publicly claim;
   - run supported combinations through unit, runtime, packaging and platform-specific probes;
   - document unsupported combinations and architecture constraints precisely;
@@ -206,6 +206,37 @@ The runtime hardening remains additive over stable 1.x behavior: ordinary shutdo
 unless explicit release is requested, shared preloaders stay externally owned, and no benchmark is converted
 into an unsupported FPS claim. Milestone 4 is therefore verified at **4/10 = 40.0%**. Release readiness
 remains separate; this closeout head must re-pass its triggered matrix before merge.
+
+## Milestone 5 verification contract
+
+Milestone 5 is complete only when the exact implementation head proves all of the following:
+
+1. The candidate base-engine support matrix is explicit and limited to 64-bit CPython 3.10–3.14 on verified hosted Windows, Linux and macOS runners.
+2. All 15 OS/Python cells run focused compatibility tests and a platform probe that validates CPython, OS family, Python minor, pointer width and base runtime dependencies.
+3. Every matrix cell builds a wheel from the exact candidate source and installs it into a clean virtual environment.
+4. Clean-wheel verification removes source-path environment overrides, runs from a temporary working directory and proves `swirengine` imports outside the development checkout.
+5. Every clean-wheel cell runs maintained headless 2D and 3D fixtures from the installed artifact rather than the editable source tree.
+6. Windows x86-64 CPython 3.14 uses the dedicated native-bundled ModernGL/glcontext wheel path and verifies that the vendored renderer modules are imported from the installed package.
+7. Linux/macOS CPython 3.14 pass through normal dependency resolution; unsupported combinations are removed rather than bypassed.
+8. Documentation explicitly excludes unverified 32-bit, PyPy, free-threaded Python and unverified architecture claims, and keeps optional extras separate from the base-engine matrix.
+9. Published 1.5.0 package metadata stays frozen, including its historical project URLs, until the final verified 2.0 release step.
+10. Platform Matrix 2.0 plus full repository CI, locked 1.4/1.5 hardening, source checkpoints 1.6–1.9 and Desktop Export pass on the exact implementation head.
+
+## Milestone 5 verified evidence
+
+Implementation head `d312225a9540e4ced797c0aca7d95aeea370a404` passed every triggered workflow before this closeout
+was marked. The dedicated Platform Matrix 2.0 run completed all **15/15** Windows/Linux/macOS × CPython
+3.10–3.14 cells successfully. Each cell passed focused compatibility/matrix tests, source-platform probing,
+wheel construction, isolated clean-wheel installation, headless 2D/3D runtime verification, strict Ruff and
+bytecode compilation. The Windows CPython 3.14 cell additionally built and validated the dedicated
+`cp314-cp314-win_amd64` SwirEngine wheel with bundled renderer-native modules.
+
+The same exact implementation head also passed full repository CI, locked 1.4/1.5 hardening, source
+checkpoints 1.6–1.9 and Desktop Export. The verified claim remains intentionally narrow: the base engine is
+covered only on the 64-bit hosted runner architectures used by the gate; 32-bit Python, PyPy, free-threaded
+CPython and unverified CPU architectures remain outside the claim, and optional extras require separate
+evidence. Milestone 5 is therefore verified at **5/10 = 50.0%**. Release readiness remains separate; this
+closeout head must re-pass its triggered matrix before merge.
 
 ## Historical handoff
 
