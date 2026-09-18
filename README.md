@@ -26,10 +26,10 @@
 
 ## 📊 Project status
 
-<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.0 verified roadmap progress: 0 of 10 milestones, 0.0%, in progress" />
+<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.0 verified roadmap progress: 1 of 10 milestones, 10.0%, in progress" />
 
 **Active source scope:** SwirEngine 2.0 — Release-Quality Python-First Game Production  
-**Verified source progress:** **0/10 milestones = 0.0% — IN PROGRESS**  
+**Verified source progress:** **1/10 milestones = 10.0% — IN PROGRESS**  
 **Latest public stable release:** **SwirEngine 1.5.0**  
 **Release readiness:** **not beta-ready and not release-ready**; roadmap progress and release readiness are separate gates.
 
@@ -40,8 +40,9 @@ real rendering validation, deterministic tooling, multiplayer foundations, produ
 diagnostics, export staging and host-native desktop shipping. The repository completed source-only
 checkpoints 1.6–1.9 without publishing them; 2.0 is now the active measured development scope.
 
-The 2.0 roadmap begins from the published **1.5.0** compatibility floor. The first milestone establishes
-a machine-verifiable migration contract before later 2.0 work is allowed to change the public surface.
+The verified first 2.0 milestone locks the published **1.5.0** compatibility floor with a machine-readable
+API fingerprint, migration ledger and cross-version regression gate. Creator-workflow integration is the
+next active milestone.
 
 ## ✨ Highlights
 
@@ -142,8 +143,8 @@ The active roadmap is [`ROADMAP_2_0.md`](ROADMAP_2_0.md). Its ten release-qualit
 9. export/build integrity, diagnostics and release safety;
 10. the final 2.0 release gate and public PyPI verification.
 
-Milestone 1 is deliberately compatibility-first. The contract is anchored to the actual published
-`v1.5.0` root API rather than a hand-written subset:
+Milestone 1 now locks compatibility to the actual published `v1.5.0` root API rather than a hand-written
+subset. Re-run the contract locally with:
 
 ```bash
 git fetch --tags
@@ -240,7 +241,7 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md) and
 | 1.7 | [`ROADMAP_1_7.md`](ROADMAP_1_7.md) | 10/10 = 100.0%, source-only checkpoint |
 | 1.8 | [`ROADMAP_1_8.md`](ROADMAP_1_8.md) | 10/10 = 100.0%, source-only checkpoint |
 | 1.9 | [`ROADMAP_1_9.md`](ROADMAP_1_9.md) | 10/10 = 100.0%, source-only checkpoint |
-| **2.0** | **[`ROADMAP_2_0.md`](ROADMAP_2_0.md)** | **0/10 = 0.0%, active development** |
+| **2.0** | **[`ROADMAP_2_0.md`](ROADMAP_2_0.md)** | **1/10 = 10.0%, active development** |
 
 ## ⚠️ Current limitations
 

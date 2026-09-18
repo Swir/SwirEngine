@@ -2,9 +2,9 @@
 
 # SwirEngine 2.0 Roadmap — Release-Quality Python-First Game Production
 
-<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.0 verified roadmap progress: 0 of 10 milestones, 0.0%, in progress" />
+<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.0 verified roadmap progress: 1 of 10 milestones, 10.0%, in progress" />
 
-**Current verified progress: 0/10 milestones = 0.0%.**
+**Current verified progress: 1/10 milestones = 10.0%.**
 
 `Release/PyPI: frozen until SwirEngine 2.0`
 
@@ -29,7 +29,7 @@ retroactively published.
 
 ## Milestones
 
-- [ ] **1. Public API & Migration Contract**
+- [x] **1. Public API & Migration Contract**
   - freeze a machine-verifiable compatibility floor from the actual published `v1.5.0` root API;
   - document the 1.5.0 → 2.0 migration policy and migration ledger;
   - prove every published 1.5.0 root export remains present while allowing additive 2.0 exports;
@@ -106,7 +106,19 @@ Milestone 1 may be checked only after the exact final implementation head proves
 9. Progress assets are regenerated from this active roadmap and legacy ASCII/Unicode progress meters stay blocked.
 10. Focused tests, Ruff, compile and the repository compatibility/regression workflows pass on the exact final head.
 
-Until all ten checks pass on the exact candidate, Milestone 1 remains unchecked and this roadmap remains 0/10.
+## Milestone 1 verified evidence
+
+Implementation head `967f3d3e08ee67e0bf5701ca3a685a4d251dfa1b` passed the complete triggered matrix before this
+closeout was marked. The dedicated Public API 2.0 workflow passed Python 3.10, 3.13 and 3.14 with the
+published `v1.5.0` tag available from a full checkout. The contract verified the tagged root-module blob,
+271 published root exports, their deterministic digest, preserved current imports, frozen 1.5.0 package
+metadata, the migration ledger, API stability policy, generated SVG checks, Ruff and bytecode compilation.
+
+Repository-wide CI, locked 1.4/1.5 hardening, source checkpoints 1.6–1.9, desktop export/shipping and the
+representative real-game production gates also passed on that implementation head. The first hosted-runner
+attempt of the unchanged 1.5 save/profile workload exceeded its 5.0 s budget during runner contention;
+a retry passed without changing production code, the benchmark or its threshold. Milestone 1 is therefore
+verified at **1/10 = 10.0%**. Release readiness remains a separate final gate.
 
 ## Historical handoff
 
