@@ -8,9 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from swirengine.exporting import ExportTarget
-from swirengine.project19 import ProjectManifest
-from swirengine.shipping19 import (
+from swirengine.desktop_shipping19 import (
     DesktopShippingError,
     DesktopShippingManifest,
     DesktopShippingPlan,
@@ -20,6 +18,8 @@ from swirengine.shipping19 import (
     create_desktop_shipping_plan,
     verify_desktop_shipping,
 )
+from swirengine.exporting import ExportTarget
+from swirengine.project19 import ProjectManifest
 
 
 def _project(root: Path, *, target: str = "linux") -> ProjectManifest:
@@ -141,7 +141,7 @@ def test_plan_rejects_symlinked_source_escape(tmp_path: Path) -> None:
 def test_build_rejects_cross_host_before_runner(tmp_path: Path, monkeypatch) -> None:
     manifest = _project(tmp_path / "project", target="windows")
     monkeypatch.setattr(
-        "swirengine.shipping19.canonical_desktop_target",
+        "swirengine.desktop_shipping19.canonical_desktop_target",
         lambda platform=None: ExportTarget.LINUX,
     )
 
