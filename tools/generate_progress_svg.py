@@ -9,13 +9,14 @@ from dataclasses import dataclass
 from html import escape
 from pathlib import Path
 
-ROADMAP_PATH = Path("ROADMAP_1_9.md")
+ROADMAP_PATH = Path("ROADMAP_2_0.md")
 CARD_PATH = Path("assets/readme/progress-card.svg")
 MINI_PATH = Path("assets/readme/progress-mini.svg")
 TEMPLATE_PATH = Path("assets/readme/progress-template.svg")
 
 PROJECT_NAME = "SwirEngine"
-MEASURED_SCOPE = "SwirEngine 1.9 — Production Workflow & Game Shipping"
+MILESTONE_LABEL = "2.0"
+MEASURED_SCOPE = "SwirEngine 2.0 — Release-Quality Python-First Game Production"
 RELEASE_STATUS = "Release/PyPI frozen until SwirEngine 2.0"
 
 MILESTONE_RE = re.compile(r"^- \[(?P<state>[ xX])\] \*\*(?P<number>\d+)\.", re.MULTILINE)
@@ -202,7 +203,7 @@ def render_mini(data: ProgressData) -> str:
     <style>text {{ font-family: "Segoe UI", Arial, sans-serif; }}</style>
   </defs>
   <rect x="1" y="1" width="898" height="70" rx="14" fill="#02050A" stroke="#0088FF" stroke-opacity="0.42"/>
-  <text x="24" y="29" fill="#F4FAFF" font-size="18" font-weight="700">{escape(PROJECT_NAME)} · 1.9</text>
+  <text x="24" y="29" fill="#F4FAFF" font-size="18" font-weight="700">{escape(PROJECT_NAME)} · {escape(MILESTONE_LABEL)}</text>
   <text x="870" y="29" text-anchor="end" fill="#62E5FF" font-size="18" font-weight="700">{escape(data.display_percentage)} · {escape(data.counter)}</text>
   <text x="24" y="55" fill="#8DA8B8" font-size="12">{escape(data.status)}</text>
   <rect x="170" y="43" width="700" height="10" rx="5" fill="#07111C" stroke="#0088FF" stroke-opacity="0.38"/>
@@ -289,7 +290,7 @@ def main(argv: list[str] | None = None) -> int:
         "--roadmap",
         type=Path,
         default=ROADMAP_PATH,
-        help="authoritative roadmap path (default: ROADMAP_1_9.md)",
+        help="authoritative roadmap path (default: ROADMAP_2_0.md)",
     )
     args = parser.parse_args(argv)
     return generate(check=args.check, roadmap_path=args.roadmap)

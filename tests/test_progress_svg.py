@@ -19,6 +19,7 @@ from tools.generate_progress_svg import (
 )
 
 README_PATH = ROADMAP_PATH.with_name("README.md")
+HISTORICAL_1_9_PATH = ROADMAP_PATH.with_name("ROADMAP_1_9.md")
 LEGACY_PROGRESS_RE = re.compile(
     r"(?:[█▓▒░]{2,}|\[(?=[^\]\n]*[#=█▓▒░])(?:[#=█▓▒░ .-]){6,}\])"
 )
@@ -36,6 +37,7 @@ def _gradient_fill_width(svg: str) -> float | None:
 def test_authoritative_roadmap_math_matches_committed_assets() -> None:
     data = parse_progress(ROADMAP_PATH.read_text(encoding="utf-8"))
 
+    assert ROADMAP_PATH.name == "ROADMAP_2_0.md"
     assert data.total > 0
     assert 0 <= data.completed <= data.total
     assert data.percentage == pytest.approx(data.completed / data.total * 100.0)
@@ -48,9 +50,12 @@ def test_authoritative_roadmap_math_matches_committed_assets() -> None:
 def test_maintained_progress_surfaces_are_svg_only_and_nonduplicated() -> None:
     readme = README_PATH.read_text(encoding="utf-8")
     roadmap = ROADMAP_PATH.read_text(encoding="utf-8")
+    historical = HISTORICAL_1_9_PATH.read_text(encoding="utf-8")
 
     assert "<!-- SWIR-README-STANDARD:v2 -->" in readme
-    for path, text in ((README_PATH, readme), (ROADMAP_PATH, roadmap)):
+    assert "<!-- SWIR-PROGRESS-SVG-PRO:v1 -->" in roadmap
+
+    for path, text in ((README_PATH, readme), (ROADMAP_PATH, roadmap), (HISTORICAL_1_9_PATH, historical)):
         assert not LEGACY_PROGRESS_RE.search(text), f"legacy progress meter found in {path}"
         assert "progress-template.svg" not in text
 
@@ -58,6 +63,7 @@ def test_maintained_progress_surfaces_are_svg_only_and_nonduplicated() -> None:
     assert "assets/readme/progress-mini.svg" not in readme
     assert roadmap.count("assets/readme/progress-mini.svg") == 1
     assert "assets/readme/progress-card.svg" not in roadmap
+    assert "assets/readme/progress-mini.svg" not in historical
 
 
 @pytest.mark.parametrize(
