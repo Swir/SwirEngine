@@ -13,6 +13,7 @@ SUPPORTED_SYSTEMS = frozenset({"Linux", "Windows", "Darwin"})
 SUPPORTED_PYTHONS = frozenset({"3.10", "3.11", "3.12", "3.13", "3.14"})
 BASE_RUNTIME_MODULES = ("numpy", "moderngl", "glfw", "PIL", "typing_extensions")
 _SYSTEM_ALIASES = {"macOS": "Darwin"}
+_WINDOWS_X64_MACHINES = frozenset({"AMD64", "x86_64"})
 
 
 def _requires_python() -> frozenset[str]:
@@ -52,6 +53,13 @@ def verify(
         raise RuntimeError(f"expected system {normalized_expected_system}, found {system}")
     if expected_python is not None and python_minor != expected_python:
         raise RuntimeError(f"expected Python {expected_python}, found {python_minor}")
+    if require_vendored_native and (
+        system != "Windows" or python_minor != "3.14" or machine not in _WINDOWS_X64_MACHINES
+    ):
+        raise RuntimeError(
+            "vendored native renderer verification is restricted to "
+            "Windows x86-64 on CPython 3.14"
+        )
 
     package_version = version("swirengine")
     if package_version != "1.5.0":
