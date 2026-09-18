@@ -1,72 +1,62 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
-
-import pytest
 
 from tools.verify_2_0_public_api import (
     PUBLIC_VERSION_FLOOR,
+    export_digest,
+    git_blob_sha,
     load_manifest,
+    read_baseline_source,
+    read_module_version,
     read_project_version,
     read_static_all,
+    read_static_all_text,
     verify,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = ROOT / "docs" / "public_api_2_0.json"
-EXPECTED_1_5_ROOT_EXPORTS = [
-    "__version__",
-    "run",
-    "GameEngine",
-    "GameLogic",
-    "GameObject",
-    "ECSWorld",
-    "EntityHandle",
-    "System",
-    "Transform2D",
-    "Transform3D",
-    "Velocity2D",
-    "Velocity3D",
-    "Lifetime",
-    "ECSStats",
-    "Time",
-]
+INIT_PATH = ROOT / "src" / "swirengine" / "__init__.py"
 
 
-def test_contract_matches_published_1_5_root_api_floor() -> None:
+def test_contract_is_anchored_to_published_1_5_tag() -> None:
     manifest = load_manifest(MANIFEST_PATH)
+    baseline_bytes = read_baseline_source(manifest, root=ROOT)
+    baseline_exports = read_static_all_text(
+        baseline_bytes.decode("utf-8"),
+        source=f"{manifest['baseline_ref']}:{manifest['baseline_path']}",
+    )
+
     assert manifest["baseline_release"] == "1.5.0"
     assert manifest["baseline_ref"] == "v1.5.0"
-    assert manifest["documented_root_exports"] == EXPECTED_1_5_ROOT_EXPORTS
-    assert read_static_all(ROOT / "src" / "swirengine" / "__init__.py") == EXPECTED_1_5_ROOT_EXPORTS
+    assert manifest["baseline_init_blob_sha"] == "91827f52808f49182ef4b84477ff0fed182889bd"
+    assert git_blob_sha(baseline_bytes) == manifest["baseline_init_blob_sha"]
+    assert len(baseline_exports) == manifest["baseline_root_export_count"] == 271
+    assert export_digest(baseline_exports) == manifest["baseline_root_exports_sha256"]
 
 
-def test_source_version_remains_frozen_until_final_2_0_gate() -> None:
+def test_current_root_api_preserves_every_published_baseline_export() -> None:
+    manifest = load_manifest(MANIFEST_PATH)
+    baseline = read_static_all_text(
+        read_baseline_source(manifest, root=ROOT).decode("utf-8"),
+        source="v1.5.0:src/swirengine/__init__.py",
+    )
+    current = read_static_all(INIT_PATH)
+
+    assert not [name for name in baseline if name not in current]
+
+
+def test_source_versions_remain_frozen_until_final_2_0_gate() -> None:
     assert PUBLIC_VERSION_FLOOR == "1.5.0"
     assert read_project_version(ROOT / "pyproject.toml") == PUBLIC_VERSION_FLOOR
+    assert read_module_version(INIT_PATH) == PUBLIC_VERSION_FLOOR
 
 
 def test_verifier_reports_complete_m1_evidence() -> None:
     evidence = verify(ROOT)
     assert "baseline=1.5.0" in evidence
-    assert "root-exports=15" in evidence
+    assert "baseline-root-exports=271" in evidence
+    assert "additive-root-exports=0" in evidence
     assert "project-version=1.5.0" in evidence
     assert "migration-ledger=present" in evidence
-
-
-def test_contract_rejects_duplicate_documented_exports(tmp_path: Path) -> None:
-    data = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
-    data["documented_root_exports"].append(data["documented_root_exports"][0])
-    contract = tmp_path / "contract.json"
-    contract.write_text(json.dumps(data), encoding="utf-8")
-
-    with pytest.raises(ValueError, match="duplicates"):
-        load_manifest(contract)
-
-
-def test_contract_classifies_each_export_once() -> None:
-    manifest = load_manifest(MANIFEST_PATH)
-    classified = [*manifest["stable_behavior_exports"], *manifest["compatibility_exports"]]
-    assert sorted(classified) == sorted(EXPECTED_1_5_ROOT_EXPORTS)
-    assert len(classified) == len(set(classified))

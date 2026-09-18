@@ -3,42 +3,11 @@
   "contract": "SwirEngine 2.0 public root compatibility floor",
   "baseline_release": "1.5.0",
   "baseline_ref": "v1.5.0",
+  "baseline_path": "src/swirengine/__init__.py",
+  "baseline_init_blob_sha": "91827f52808f49182ef4b84477ff0fed182889bd",
+  "baseline_root_export_count": 271,
+  "baseline_root_exports_sha256": "6c7c02ed1b120ac2d93598f522638b6673df141042c81141b13b1a70dea1d7cc",
   "module": "swirengine",
-  "documented_root_exports": [
-    "__version__",
-    "run",
-    "GameEngine",
-    "GameLogic",
-    "GameObject",
-    "ECSWorld",
-    "EntityHandle",
-    "System",
-    "Transform2D",
-    "Transform3D",
-    "Velocity2D",
-    "Velocity3D",
-    "Lifetime",
-    "ECSStats",
-    "Time"
-  ],
-  "stable_behavior_exports": [
-    "run",
-    "GameEngine",
-    "GameLogic",
-    "GameObject",
-    "ECSWorld",
-    "EntityHandle",
-    "Transform2D",
-    "Transform3D",
-    "Velocity2D",
-    "Velocity3D",
-    "Lifetime",
-    "ECSStats"
-  ],
-  "compatibility_exports": [
-    "__version__",
-    "System",
-    "Time"
-  ],
-  "policy": "All documented 1.5.0 root exports remain importable through the 2.0 release candidate unless a deliberate breaking migration is documented, tested and recorded before release."
+  "version_attribute": "__version__",
+  "policy": "Every root export published in SwirEngine 1.5.0 remains importable through the 2.0 release candidate unless a deliberate breaking migration is documented, tested and recorded before release. Additive 2.0 root exports are allowed without rewriting the historical baseline."
 }
