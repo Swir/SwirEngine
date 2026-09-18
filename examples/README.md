@@ -19,14 +19,14 @@ python demo_projects/neon_cube_hunt_3d/run_game.py
 The dedicated demo workflow also boots it under Xvfb/Mesa for multiple real OpenGL frames and
 publishes source plus Windows/Linux/macOS one-file builds as a GitHub Release.
 
-## Post-1.4 source game showcases
+## Source game showcases and production fixtures
 
-After the SwirEngine 1.4.0 engine release, two repository-only game examples were added to make the
-2D/3D authoring range obvious from source. They are **not separate products and do not receive their
-own GitHub Releases**. The showcase-quality pass intentionally uses SwirEngine runtime systems for
-core gameplay instead of reimplementing a mini engine inside each example. Both examples also
-generate their own original visual/audio assets from source at runtime, so they remain easy to
-inspect and redistribute without depending on a third-party game asset pack.
+After the SwirEngine 1.4.0 engine release, repository-only game examples were added to make the
+2D/3D/multiplayer authoring range obvious from source. They are **not separate products and do not
+receive their own GitHub Releases**. The showcase-quality pass intentionally uses SwirEngine runtime
+systems for core gameplay instead of reimplementing a mini engine inside each example. The 2D and
+3D examples generate their own original visual/audio assets from source at runtime, so they remain
+easy to inspect and redistribute without depending on a third-party game asset pack.
 
 ### SwirEngine 2D Game Demo
 
@@ -54,8 +54,25 @@ surfaces, composite robot enemies, chase/attack combat, health/ammo pickups, a m
 first-person weapon with muzzle light, optional generated sound cues, an extraction objective,
 HUD/crosshair, Renderer 2.0, HDR tone mapping, SSAO, bloom and colored dynamic lighting.
 
-Both examples expose deterministic headless probes and are also booted through the real OpenGL 3.3
-renderer by the dedicated game-demo validation workflow.
+Both rendered examples expose deterministic headless probes and are also booted through the real
+OpenGL 3.3 renderer by the dedicated game-demo validation workflow.
+
+### SwirEngine Multiplayer Game Demo
+
+```bash
+python examples/multiplayer_game_demo/run_game.py
+```
+
+`multiplayer_game_demo` is the deterministic source-only networking fixture. It drives four clients
+and 32 replicated entities through the established replication, prediction/reconciliation, session,
+transport/QoS and network-profiler path while injecting seeded packet loss, duplication, reordering,
+latency and jitter. It is intentionally headless and offline so the same hostile-network workload can
+be reproduced in CI without public sockets or an external service.
+
+The SwirEngine 1.9 real-game production gate copies these exact 2D, 3D and multiplayer sources into
+temporary projects, validates scene/content declarations, stages them with `ProjectExporter` and
+runs the staged entrypoints. This makes the examples integration fixtures for creator workflows and
+shipping regressions rather than disconnected demonstrations.
 
 ## Asset-free sample games
 
