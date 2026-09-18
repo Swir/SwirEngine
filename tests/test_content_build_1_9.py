@@ -120,6 +120,29 @@ def test_graph_fingerprint_is_checkout_independent(tmp_path: Path) -> None:
     assert left_graph.plan().fingerprint == right_graph.plan().fingerprint
 
 
+def test_target_order_is_canonical(tmp_path: Path) -> None:
+    block = """
+[[content.build.nodes]]
+name = "a"
+path = "assets/a.bin"
+[[content.build.nodes]]
+name = "b"
+path = "assets/b.bin"
+"""
+    root, manifest = _project(tmp_path, block)
+    (root / "assets" / "a.bin").write_bytes(b"a")
+    (root / "assets" / "b.bin").write_bytes(b"b")
+    graph = ContentBuildGraph.load_optional(manifest)
+    assert graph is not None
+
+    left = graph.plan(["b", "a"])
+    right = graph.plan(["a", "b"])
+
+    assert left.targets == ("a", "b")
+    assert left.ordered_nodes == ("a", "b")
+    assert left.fingerprint == right.fingerprint
+
+
 def test_explicit_load_policy_overrides_kind_default(tmp_path: Path) -> None:
     block = """
 [[content.build.nodes]]
@@ -184,7 +207,19 @@ name = "b"
 path = "assets/shared.bin"
 """
     _, manifest = _project(tmp_path / "paths", duplicate_path)
-    with pytest.raises(ContentBuildError, match="declared by both"):
+    with pytest.raises(ContentBuildError, match="path collision"):
+        ContentBuildGraph.load_optional(manifest)
+
+    case_collision = """
+[[content.build.nodes]]
+name = "a"
+path = "assets/Shared.bin"
+[[content.build.nodes]]
+name = "b"
+path = "assets/shared.bin"
+"""
+    _, manifest = _project(tmp_path / "case", case_collision)
+    with pytest.raises(ContentBuildError, match="path collision"):
         ContentBuildGraph.load_optional(manifest)
 
     duplicate_dependency = """
@@ -228,6 +263,27 @@ def test_diagnostics_and_shipping_preflight_report_missing_content(tmp_path: Pat
     assert {item.code for item in diagnostics} == {"content-build-missing"}
     with pytest.raises(ContentBuildError, match="content build preflight failed"):
         graph.shipping_paths()
+
+
+def test_diagnostics_are_bounded_for_large_broken_projects(tmp_path: Path) -> None:
+    nodes = []
+    for index in range(80):
+        nodes.extend(
+            [
+                "[[content.build.nodes]]",
+                f'name = "missing:{index:03d}"',
+                f'path = "assets/missing-{index:03d}.bin"',
+            ]
+        )
+    _, manifest = _project(tmp_path, "\n".join(nodes))
+    graph = ContentBuildGraph.load_optional(manifest)
+    assert graph is not None
+
+    diagnostics = graph.diagnostics()
+
+    assert len(diagnostics) == 64
+    assert diagnostics[-1].code == "content-build-diagnostics-truncated"
+    assert sum(item.severity == "error" for item in diagnostics) == 63
 
 
 def test_shipping_paths_are_dependency_ordered_and_require_real_files(tmp_path: Path) -> None:
@@ -277,6 +333,29 @@ def test_plan_rejects_empty_duplicate_and_unknown_targets(tmp_path: Path) -> Non
         graph.plan(["missing"])
 
 
+def test_maximum_depth_chain_does_not_depend_on_python_recursion_limit(tmp_path: Path) -> None:
+    nodes = []
+    for index in range(1024):
+        nodes.extend(
+            [
+                "[[content.build.nodes]]",
+                f'name = "n{index:04d}"',
+                f'path = "assets/n{index:04d}.bin"',
+            ]
+        )
+        if index:
+            nodes.append(f'depends_on = ["n{index - 1:04d}"]')
+    _, manifest = _project(tmp_path, "\n".join(nodes))
+    graph = ContentBuildGraph.load_optional(manifest)
+    assert graph is not None
+
+    plan = graph.plan(["n1023"])
+
+    assert len(plan.ordered_nodes) == 1024
+    assert plan.ordered_nodes[0] == "n0000"
+    assert plan.ordered_nodes[-1] == "n1023"
+
+
 def test_runtime_plan_bridges_existing_preloader_and_streaming_manager(tmp_path: Path) -> None:
     block = """
 [[content.build.nodes]]
@@ -316,11 +395,14 @@ depends_on = ["asset:boot"]
 
 
 def test_symlink_escape_is_reported_by_filesystem_preflight(tmp_path: Path) -> None:
-    root, manifest = _project(tmp_path / "project", """
+    root, manifest = _project(
+        tmp_path / "project",
+        """
 [[content.build.nodes]]
 name = "escape"
 path = "assets/link.bin"
-""")
+""",
+    )
     outside = tmp_path / "outside.bin"
     outside.write_bytes(b"outside")
     link = root / "assets" / "link.bin"
