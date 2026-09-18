@@ -23,7 +23,10 @@ MANIFEST_PATH = ROOT / "docs" / "public_api_2_0.json"
 INIT_PATH = ROOT / "src" / "swirengine" / "__init__.py"
 REQUIRES_BASELINE = pytest.mark.skipif(
     not baseline_ref_available(ROOT),
-    reason="published v1.5.0 tag is not present in this shallow checkout; dedicated Public API 2.0 CI fetches full history",
+    reason=(
+        "published v1.5.0 tag is not present in this shallow checkout; "
+        "dedicated Public API 2.0 CI fetches full history"
+    ),
 )
 
 
