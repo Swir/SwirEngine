@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import argparse
 import os
+from pathlib import Path
 import subprocess
 import tempfile
 import venv
-from pathlib import Path
 
 
 _PROBE = r'''
