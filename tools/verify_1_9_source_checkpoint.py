@@ -31,9 +31,8 @@ VERSION_RE = re.compile(r'^version\s*=\s*"([^"]+)"\s*$', re.MULTILINE)
 
 REQUIRED_19_FILES = (
     "src/swirengine/project19.py",
-    "src/swirengine/input19.py",
-    "src/swirengine/ui19.py",
-    "src/swirengine/settings19.py",
+    "src/swirengine/shipping19.py",
+    "src/swirengine/ui_navigation.py",
     "src/swirengine/game_state19.py",
     "src/swirengine/scene_packages19.py",
     "src/swirengine/content_build19.py",
