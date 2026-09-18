@@ -19,7 +19,7 @@ from tools.verify_platform_matrix_2_0 import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_python_metadata_matches_candidate_2_0_range():
+def test_python_metadata_matches_candidate_2_0_range_and_release_phase():
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     assert {item.strip() for item in project["requires-python"].split(",")} == {
         ">=3.10",
@@ -28,10 +28,16 @@ def test_python_metadata_matches_candidate_2_0_range():
     classifiers = set(project["classifiers"])
     for minor in range(10, 15):
         assert f"Programming Language :: Python :: 3.{minor}" in classifiers
-    assert project["version"] == "1.5.0"
-    assert project["urls"]["Roadmap"].endswith("/ROADMAP_1_5.md")
+
     active_roadmap = (ROOT / "ROADMAP_2_0.md").read_text(encoding="utf-8")
     assert "# SwirEngine 2.0 Roadmap" in active_roadmap
+    final_complete = "- [x] **10. SwirEngine 2.0 Final Release Gate & Public Verification**" in active_roadmap
+    if final_complete:
+        assert project["version"] == "2.0.0"
+        assert project["urls"]["Roadmap"].endswith("/ROADMAP_2_0.md")
+    else:
+        assert project["version"] == "1.5.0"
+        assert project["urls"]["Roadmap"].endswith("/ROADMAP_1_5.md")
 
 
 def test_matrix_probe_scope_is_explicit_and_64_bit_only():
@@ -44,6 +50,7 @@ def test_matrix_probe_scope_is_explicit_and_64_bit_only():
     assert 'system != "Windows"' in source
     assert 'python_minor != "3.14"' in source
     assert "require_vendored_native" in source
+    assert "_candidate_version" in source
 
 
 def test_matrix_probe_rejects_unclaimed_python_implementations(monkeypatch):
