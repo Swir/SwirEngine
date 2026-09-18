@@ -14,6 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ROADMAP = ROOT / "ROADMAP_1_9.md"
+ACTIVE_20_ROADMAP = ROOT / "ROADMAP_2_0.md"
 README = ROOT / "README.md"
 PYPROJECT = ROOT / "pyproject.toml"
 WORKFLOWS = ROOT / ".github" / "workflows"
@@ -201,10 +202,21 @@ def _verify_visual_contract() -> None:
         raise CheckpointError("ROADMAP_1_9.md must retain the SVG progress standard marker")
     if readme.count("assets/readme/progress-card.svg") != 1:
         raise CheckpointError("README.md must embed exactly one authoritative progress card")
-    if roadmap.count("assets/readme/progress-mini.svg") != 1:
-        raise CheckpointError("ROADMAP_1_9.md must embed exactly one authoritative progress mini")
     if "progress-template.svg" in readme or "progress-template.svg" in roadmap:
         raise CheckpointError("progress-template.svg is a template and must never be embedded as real data")
+
+    if ACTIVE_20_ROADMAP.is_file():
+        active = _text(ACTIVE_20_ROADMAP)
+        if not active.startswith("<!-- SWIR-PROGRESS-SVG-PRO:v1 -->"):
+            raise CheckpointError("ROADMAP_2_0.md must retain the SVG progress standard marker")
+        if active.count("assets/readme/progress-mini.svg") != 1:
+            raise CheckpointError("ROADMAP_2_0.md must embed exactly one authoritative progress mini")
+        if "assets/readme/progress-mini.svg" in roadmap:
+            raise CheckpointError("historical ROADMAP_1_9.md must not reuse the active progress mini")
+        if "progress-template.svg" in active:
+            raise CheckpointError("progress-template.svg is a template and must never be embedded as real data")
+    elif roadmap.count("assets/readme/progress-mini.svg") != 1:
+        raise CheckpointError("ROADMAP_1_9.md must embed exactly one authoritative progress mini")
 
 
 def _verify_readiness_audit() -> None:
@@ -309,7 +321,7 @@ def main() -> int:
         f"mode={mode} roadmap={state.completed}/{state.total} "
         f"progress={state.declared_percent:.1f}% public-version={STABLE_PUBLIC_VERSION}"
     )
-    print("2.0-readiness: N/A until the dedicated 2.0 roadmap and final gate exist")
+    print("2.0-readiness: N/A until the dedicated 2.0 final gate succeeds")
     print("Release/PyPI: frozen until SwirEngine 2.0")
     return 0
 
