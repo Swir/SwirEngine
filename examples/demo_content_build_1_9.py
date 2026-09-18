@@ -5,9 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from swirengine.assets import AssetManager
 from swirengine.asset_pipeline import AssetPreloader
 from swirengine.asset_streaming import AssetStreamingManager
-from swirengine.assets import AssetManager
 from swirengine.content_build19 import ContentBuildGraph
 from swirengine.project19 import ProjectManifest
 
