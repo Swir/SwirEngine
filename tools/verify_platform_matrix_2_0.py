@@ -37,12 +37,18 @@ def verify(
 ) -> dict[str, object]:
     system = platform.system()
     machine = platform.machine() or "unknown"
+    python_implementation = platform.python_implementation()
     python_minor = f"{sys.version_info.major}.{sys.version_info.minor}"
     pointer_bits = struct.calcsize("P") * 8
     normalized_expected_system = (
         None if expected_system is None else _SYSTEM_ALIASES.get(expected_system, expected_system)
     )
 
+    if python_implementation != "CPython":
+        raise RuntimeError(
+            "SwirEngine 2.0 support matrix currently verifies CPython only, "
+            f"found {python_implementation}"
+        )
     if system not in SUPPORTED_SYSTEMS:
         raise RuntimeError(f"unsupported operating-system family for 2.0 matrix: {system}")
     if python_minor not in SUPPORTED_PYTHONS:
@@ -91,6 +97,7 @@ def verify(
         "system": system,
         "machine": machine,
         "pointer_bits": pointer_bits,
+        "python_implementation": python_implementation,
         "python": python_minor,
         "package_version": package_version,
         "requires_python": sorted(requires_python),
