@@ -7,7 +7,6 @@ from swirengine import Prefab, Rectangle2D, Scene, SceneSerializer
 from swirengine.project19 import ProjectManifest
 from swirengine.scene_packages19 import ScenePackageLoader, ScenePackageRegistry
 
-
 MANIFEST = """
 name = "Scene Package Demo"
 mode = "2d"
