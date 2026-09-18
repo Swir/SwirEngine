@@ -5,6 +5,7 @@ import hashlib
 import os
 import platform
 import shutil
+import stat
 import subprocess
 import tarfile
 import tempfile
@@ -12,12 +13,14 @@ import venv
 import zipfile
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_NAME = "swirengine"
 EXPECTED_VERSION = "1.5.0"
 _MAX_MEMBERS = 50_000
+_MAX_MEMBER_BYTES = 64 * 1024 * 1024
+_MAX_TOTAL_UNCOMPRESSED_BYTES = 256 * 1024 * 1024
 _FORBIDDEN_PARTS = {".git", ".venv", "__pycache__"}
 
 
@@ -72,6 +75,8 @@ def _validate_member_names(names: Iterable[str], *, label: str) -> tuple[str, ..
         value = raw.replace("\\", "/")
         if not value or "\x00" in value or value.startswith("/"):
             raise PackagingShippingError(f"{label} contains an unsafe member path: {raw!r}")
+        if PureWindowsPath(value).drive:
+            raise PackagingShippingError(f"{label} contains a drive-qualified member path: {raw!r}")
         path = PurePosixPath(value)
         if any(part in {"", ".", ".."} for part in path.parts):
             raise PackagingShippingError(f"{label} contains path traversal: {raw!r}")
@@ -85,6 +90,21 @@ def _validate_member_names(names: Iterable[str], *, label: str) -> tuple[str, ..
         seen.add(key)
         normalized.append(value)
     return tuple(normalized)
+
+
+def _validate_member_sizes(sizes: Iterable[int], *, label: str) -> None:
+    total = 0
+    for raw_size in sizes:
+        size = int(raw_size)
+        if size < 0 or size > _MAX_MEMBER_BYTES:
+            raise PackagingShippingError(
+                f"{label} contains an invalid or oversized member size: {size} bytes"
+            )
+        total += size
+        if total > _MAX_TOTAL_UNCOMPRESSED_BYTES:
+            raise PackagingShippingError(
+                f"{label} uncompressed size exceeds {_MAX_TOTAL_UNCOMPRESSED_BYTES} bytes"
+            )
 
 
 def _require_metadata(payload: str, *, label: str) -> None:
@@ -103,7 +123,15 @@ def _require_metadata(payload: str, *, label: str) -> None:
 
 def _inspect_wheel(path: Path) -> None:
     with zipfile.ZipFile(path) as archive:
-        names = _validate_member_names(archive.namelist(), label="wheel")
+        infos = archive.infolist()
+        names = _validate_member_names((info.filename for info in infos), label="wheel")
+        _validate_member_sizes((info.file_size for info in infos), label="wheel")
+        for info in infos:
+            mode = (info.external_attr >> 16) & 0xFFFF
+            if stat.S_ISLNK(mode):
+                raise PackagingShippingError(
+                    f"wheel contains unsupported symlink member: {info.filename!r}"
+                )
         metadata_names = [name for name in names if name.endswith(".dist-info/METADATA")]
         if len(metadata_names) != 1:
             raise PackagingShippingError(
@@ -111,7 +139,7 @@ def _inspect_wheel(path: Path) -> None:
             )
         payload = archive.read(metadata_names[0]).decode("utf-8")
         _require_metadata(payload, label="wheel")
-        if not any(name.endswith("swirengine/__init__.py") for name in names):
+        if "swirengine/__init__.py" not in names:
             raise PackagingShippingError("wheel does not contain swirengine/__init__.py")
 
 
@@ -119,6 +147,7 @@ def _inspect_sdist(path: Path) -> None:
     with tarfile.open(path, mode="r:gz") as archive:
         members = archive.getmembers()
         names = _validate_member_names((member.name for member in members), label="sdist")
+        _validate_member_sizes((member.size for member in members), label="sdist")
         for member in members:
             if member.issym() or member.islnk() or member.isdev() or member.isfifo():
                 raise PackagingShippingError(
