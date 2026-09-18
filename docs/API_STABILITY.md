@@ -14,7 +14,7 @@ The 2.0 line starts from the published `v1.5.0` root API rather than inventing a
 
 Every root export recorded in that manifest must remain importable through the 2.0 release candidate unless a deliberate breaking migration is documented, justified and covered by tests. Stable behavior guarantees remain those already established by the version in which an API became stable; recording a name for import compatibility does not silently promote an experimental behavior to stable.
 
-A deliberate 2.0 breaking change must update the manifest, migration ledger, relevant stability classification, tests and changelog/release-note source together. Internal refactors are not sufficient justification for silently removing a compatibility-floor export.
+The published 1.5.0 baseline fingerprint is historical evidence and must not be rewritten to hide a removal. A deliberate 2.0 breaking change must update the migration ledger, relevant stability classification, migration/regression tests and changelog/release-note source together. `public_api_2_0.json` changes are allowed only when the recorded baseline evidence itself is proven incorrect. Internal refactors are not sufficient justification for silently removing a compatibility-floor export.
 
 ## Stable subsystems
 
