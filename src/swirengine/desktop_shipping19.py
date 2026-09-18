@@ -51,7 +51,7 @@ def _safe_relative(value: str | Path, *, label: str) -> str:
         raise DesktopShippingError(
             f"{label} is empty, contains NUL, or exceeds {_MAX_PATH_LENGTH} characters"
         )
-    if raw.startswith("/") or raw.startswith("//") or _DRIVE_RE.match(raw):
+    if raw.startswith("/") or _DRIVE_RE.match(raw):
         raise DesktopShippingError(f"{label} must be project-relative: {value}")
     path = PurePosixPath(raw)
     if any(part in {"", ".", ".."} for part in path.parts):
@@ -123,11 +123,10 @@ class ShippingInventoryEntry:
         target = str(self.link_target)
         if self.kind == "file" and target:
             raise DesktopShippingError("regular-file inventory entries cannot declare link_target")
-        if self.kind == "symlink":
-            if not target or "\x00" in target or len(target) > _MAX_PATH_LENGTH:
-                raise DesktopShippingError(
-                    "symlink inventory entries require a bounded link_target"
-                )
+        if self.kind == "symlink" and (
+            not target or "\x00" in target or len(target) > _MAX_PATH_LENGTH
+        ):
+            raise DesktopShippingError("symlink inventory entries require a bounded link_target")
         object.__setattr__(self, "link_target", target)
 
     def portable(self) -> dict[str, object]:
