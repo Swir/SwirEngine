@@ -107,6 +107,7 @@ class AssetStreamingManager:
             if not self.assets.cached(path):
                 stale = self._resident.pop(path)
                 self._resident_bytes -= stale.size_bytes
+                pin = bool(pin or stale.pinned)
             else:
                 self.touch(path)
                 if pin and not self._resident[path].pinned:
