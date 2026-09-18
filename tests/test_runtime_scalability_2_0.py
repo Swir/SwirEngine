@@ -175,11 +175,11 @@ def test_transient_render_pool_reuses_resources_and_closes_to_zero_residency():
         destroyed.append(resource)
 
     pool = TransientRenderResourcePool(max_resources=4, max_bytes=4096, create=create, destroy=destroy)
-    descriptor = RenderResourceDescriptor("rgba8", 16, 16)
+    descriptor = RenderResourceDescriptor("texture", "rgba8", 16, 16, size_bytes=1024)
 
     for _ in range(200):
         lease = pool.acquire(descriptor)
-        lease.release()
+        pool.release(lease.handle)
 
     before_close = pool.diagnostics()
     assert before_close.creates == 1
