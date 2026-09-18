@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import runpy
 import zipfile
 from pathlib import Path
 
@@ -9,7 +10,6 @@ import pytest
 from swirengine.diagnostics19 import (
     RuntimeCrashReport,
     RuntimeDiagnosticsError,
-    RuntimeIdentity,
     RuntimeLogBuffer,
     SupportBundleBuilder,
     capture_exception,
@@ -23,17 +23,13 @@ from swirengine.project19 import ProjectManifest
 def _manifest(tmp_path: Path) -> ProjectManifest:
     (tmp_path / "main.py").write_text("print('ok')\n", encoding="utf-8")
     (tmp_path / "swirproject.toml").write_text(
-        '\n'.join(
-            (
-                'name = "Diagnostic Game"',
-                'mode = "2d"',
-                'entrypoint = "main.py"',
-                '',
-                '[content]',
-                'include = []',
-            )
-        )
-        + "\n",
+        """name = "Diagnostic Game"
+mode = "2d"
+entrypoint = "main.py"
+
+[content]
+include = []
+""",
         encoding="utf-8",
     )
     return ProjectManifest.load(tmp_path)
@@ -43,9 +39,7 @@ def _raise_from_project(project_root: Path) -> None:
     script = project_root / "scripts" / "fault.py"
     script.parent.mkdir(parents=True, exist_ok=True)
     script.write_text("raise RuntimeError('boom')\n", encoding="utf-8")
-    namespace: dict[str, object] = {}
-    code = compile(script.read_text(encoding="utf-8"), str(script), "exec")
-    exec(code, namespace, namespace)
+    runpy.run_path(str(script))
 
 
 def _report(tmp_path: Path) -> RuntimeCrashReport:
