@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "scope": "SwirEngine 2.0 Milestone 8 — Performance Evidence & Competitive Quality Audit",
+  "measurement_policy": {
+    "runtime_samples_per_ci_run": 1,
+    "threshold_policy": "Each workload keeps its existing in-repository regression budget and deterministic correctness invariants; the Milestone 8 harness records context and observations without weakening those thresholds.",
+    "cross_engine_runtime_benchmark": "not_performed",
+    "cross_engine_runtime_reason": "No identical workload, rendering backend, asset set and packaging/runtime harness is currently maintained across the referenced engines, so cross-engine FPS or elapsed-time rankings would not be technically comparable.",
+    "marketing_policy": "No superiority, FPS, latency or memory claim may be published from shared CI wall-clock observations alone."
+  },
+  "workloads": [
+    {
+      "id": "frame-budget",
+      "category": "runtime scheduling",
+      "command": "tools/benchmark_frame_budget_1_7.py",
+      "threshold_source": "BUDGET_SECONDS = 5.0 plus exact drain-call/item invariants",
+      "expected_marker": "frame_budget_1_7:"
+    },
+    {
+      "id": "editor-productivity",
+      "category": "creator authoring",
+      "command": "tools/benchmark_editor_productivity_1_5.py",
+      "threshold_source": "BUDGET_SECONDS = 5.0 plus applied-prefab-state invariant",
+      "expected_marker": "editor-productivity workload:"
+    },
+    {
+      "id": "multiplayer-replication",
+      "category": "multiplayer replication",
+      "command": "tools/benchmark_multiplayer_replication_1_6.py",
+      "threshold_source": "MAX_SECONDS = 6.0 plus exact full/delta/fallback invariants",
+      "expected_marker": "replication16 benchmark:"
+    },
+    {
+      "id": "render-resource-reuse",
+      "category": "renderer resource lifecycle",
+      "command": "tools/benchmark_render_resources_1_8.py",
+      "threshold_source": "BUDGET_SECONDS = 5.0 plus exact allocation/reuse/leak invariants",
+      "expected_marker": "render-resources-1.8 workload:"
+    },
+    {
+      "id": "world-streaming",
+      "category": "large-world streaming",
+      "command": "tools/benchmark_world_streaming_2_1_5.py",
+      "threshold_source": "BUDGET_SECONDS = 3.0 plus fixed local-window invariant",
+      "expected_marker": "registered cells"
+    },
+    {
+      "id": "runtime-scalability",
+      "category": "2D/3D production scalability",
+      "command": "tools/verify_runtime_scalability_2_0.py",
+      "threshold_source": "bounded residency/reuse plus 2D candidate and 3D BVH pruning thresholds",
+      "expected_marker": "SwirEngine 2.0 runtime scalability OK:"
+    }
+  ],
+  "creator_workflow": {
+    "swirengine": {
+      "create": "swirengine new MyGame --mode 3d",
+      "inspect_prepare": "swirengine workflow MyGame --prepare --profile windows",
+      "machine_readable_check": "swirengine workflow MyGame --json",
+      "run_plan": "swirengine run MyGame --dry-run",
+      "shipping_evidence": "tools/verify_packaging_shipping_2_0.py",
+      "evidence_scope": "Commands are repository-owned and verified by Milestones 2, 6 and 7; this is workflow evidence, not a speed ranking."
+    }
+  },
+  "external_reference_facts": [
+    {
+      "project": "Arcade",
+      "official_url": "https://api.arcade.academy/en/development/get_started/install.html",
+      "distribution_url": "https://api.arcade.academy/en/latest/tutorials/bundling_with_pyinstaller/index.html",
+      "verified_fact": "Official documentation describes pip installation and a PyInstaller tutorial that bundles a simple game into a one-file executable.",
+      "runtime_performance_compared": false
+    },
+    {
+      "project": "Panda3D",
+      "official_url": "https://docs.panda3d.org/1.10/python/distribution/index",
+      "distribution_url": "https://docs.panda3d.org/1.10/python/distribution/building-binaries",
+      "verified_fact": "Official documentation describes setuptools build_apps/bdist_apps tooling for self-contained application builds and distribution packages, including Windows, Linux and macOS targets.",
+      "runtime_performance_compared": false
+    },
+    {
+      "project": "Ursina",
+      "official_url": "https://www.ursinaengine.org/installation.html",
+      "distribution_url": "https://www.ursinaengine.org/building.html",
+      "verified_fact": "Official documentation describes pip installation and ursina.build for producing a distributable build directory, with Nuitka and auto-py-to-exe alternatives also documented.",
+      "runtime_performance_compared": false
+    }
+  ]
+}
