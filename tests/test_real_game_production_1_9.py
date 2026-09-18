@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import json
-import subprocess
-import sys
+from json import loads
 from pathlib import Path
+from subprocess import run
+from sys import executable
 
 
 REPOSITORY = Path(__file__).resolve().parents[1]
@@ -11,8 +11,8 @@ VERIFIER = REPOSITORY / "tools" / "verify_real_game_production_1_9.py"
 
 
 def test_real_game_production_staging_covers_all_representative_games() -> None:
-    result = subprocess.run(
-        [sys.executable, str(VERIFIER), "--staging-only"],
+    result = run(
+        [executable, str(VERIFIER), "--staging-only"],
         cwd=REPOSITORY,
         capture_output=True,
         text=True,
@@ -20,7 +20,7 @@ def test_real_game_production_staging_covers_all_representative_games() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stderr
-    report = json.loads(result.stdout)
+    report = loads(result.stdout)
 
     assert report["status"] == "ok"
     assert report["scope"] == "SwirEngine 1.9 Real-Game Production Gate"
