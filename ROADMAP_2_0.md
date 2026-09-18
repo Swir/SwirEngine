@@ -2,9 +2,9 @@
 
 # SwirEngine 2.0 Roadmap — Release-Quality Python-First Game Production
 
-<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.0 verified roadmap progress: 8 of 10 milestones, 80.0%, in progress" />
+<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.0 verified roadmap progress: 9 of 10 milestones, 90.0%, in progress" />
 
-**Current verified progress: 8/10 milestones = 80.0%.**
+**Current verified progress: 9/10 milestones = 90.0%.**
 
 `Release/PyPI: frozen until SwirEngine 2.0`
 
@@ -78,7 +78,7 @@ retroactively published.
   - compare creator productivity and shipping workflows where objective reproduction is possible;
   - fix material regressions before release rather than hiding them behind documentation.
 
-- [ ] **9. Export/Build Integrity, Diagnostics & Release Safety**
+- [x] **9. Export/Build Integrity, Diagnostics & Release Safety**
   - harden content completeness, build identity, crash/support diagnostics and failure reporting;
   - verify required scene/asset/generated content cannot be silently omitted from a successful build;
   - audit privacy/safety boundaries for logs and support bundles;
@@ -324,6 +324,34 @@ Desktop Export. The competitive quality audit cites dated official documentation
 Ursina while limiting claims to reproducible workflow facts; it makes no cross-engine FPS/latency/memory or
 superiority claim. Milestone 8 is therefore verified at **8/10 = 80.0%**. Release readiness remains separate;
 this closeout head must re-pass its triggered matrix before merge.
+
+## Milestone 9 verification contract
+
+Milestone 9 is complete only when the exact implementation head proves all of the following:
+
+1. Strict staged-export verification checks the canonical `swir-export.json` inventory and SHA-256 map without executing the game or build tool.
+2. Missing, tampered, unexpected, symlinked, unsafe, duplicate or case-colliding staged paths fail deterministically instead of being accepted as successful output.
+3. Generated native build inputs participate in a deterministic build identity together with target, entrypoint, application identity, packaging metadata and declared staged content.
+4. `swir-build-integrity.json` records a reproducible integrity seal and re-verification rejects stale or tampered staged bytes.
+5. Post-build verification permits only explicitly recognized native build outputs while keeping the declared staged-content boundary strict.
+6. Support-bundle audit accepts only generated `bundle.json` and `report.json`, enforces bounded payloads, safe ZIP paths and exact report hash/fingerprint integrity.
+7. Privacy declarations keep automatic environment, argv, arbitrary user-file and traceback-source capture disabled; secret-like data and absolute trace paths remain redacted/sanitized.
+8. Support evidence can be bound to an expected verified build identity without automatically collecting private process state or user files.
+9. The dedicated Release Safety 2.0 workflow passes on Python 3.10, 3.13 and 3.14 with focused regressions, deterministic failure injection, Ruff and bytecode compilation.
+10. Full repository CI, locked 1.4/1.5 hardening, source checkpoints 1.6–1.9, representative game validations and Desktop Export pass on the exact implementation head.
+
+## Milestone 9 verified evidence
+
+Hardened implementation head `70788364ba14ca69a6658d11596bdc7ea0797eb5` passed every triggered
+workflow before this closeout was marked. Release Safety 2.0 passed its Python 3.10, 3.13 and 3.14 jobs,
+including staged-export integrity, deterministic build identity/seal verification, privacy-safe support-bundle
+auditing, deliberate tamper/injection rejection, strict Ruff and bytecode compilation.
+
+The same exact head passed full repository CI, locked 1.4/1.5 hardening, source checkpoints 1.6–1.9,
+Game Demos, Demo Game 3D, Neon Snake 3D and Desktop Export. The integrity seal is evidence rather than a
+publisher code-signature claim, and support-bundle validation preserves the existing opt-in privacy model.
+Milestone 9 is therefore verified at **9/10 = 90.0%**. Release readiness remains separate; this closeout
+head must re-pass its triggered matrix before merge.
 
 ## Historical handoff
 
