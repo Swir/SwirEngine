@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import os
 import platform
+import re
 import shutil
 import stat
 import subprocess
@@ -15,9 +16,13 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10
+    import tomli as tomllib
+
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_NAME = "swirengine"
-EXPECTED_VERSION = "1.5.0"
 _MAX_MEMBERS = 50_000
 _MAX_MEMBER_BYTES = 64 * 1024 * 1024
 _MAX_TOTAL_UNCOMPRESSED_BYTES = 256 * 1024 * 1024
@@ -34,6 +39,38 @@ class ArtifactSet:
     sdist: Path
     wheel_sha256: str
     sdist_sha256: str
+
+
+def _candidate_version(root: Path = ROOT) -> str:
+    project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    project_version = str(project["version"])
+    roadmap = (root / "ROADMAP_2_0.md").read_text(encoding="utf-8")
+    final_checked = bool(
+        re.search(
+            r"^- \[x\] \*\*10\. SwirEngine 2\.0 Final Release Gate & Public Verification\*\*",
+            roadmap,
+            flags=re.MULTILINE | re.IGNORECASE,
+        )
+    )
+    final_open = bool(
+        re.search(
+            r"^- \[ \] \*\*10\. SwirEngine 2\.0 Final Release Gate & Public Verification\*\*",
+            roadmap,
+            flags=re.MULTILINE,
+        )
+    )
+    if final_checked == final_open:
+        raise PackagingShippingError("Milestone 10 must appear exactly once as checked or unchecked")
+    expected = "2.0.0" if final_checked else "1.5.0"
+    if project_version != expected:
+        raise PackagingShippingError(
+            "project version disagrees with Milestone 10 release phase: "
+            f"expected {expected}, found {project_version}"
+        )
+    return expected
+
+
+EXPECTED_VERSION = _candidate_version()
 
 
 def _sha256(path: Path) -> str:
@@ -331,7 +368,7 @@ def main() -> int:
 
     print(
         "SwirEngine 2.0 packaging artifact gate OK: "
-        f"system={expected_system}, python={current_python}, "
+        f"version={EXPECTED_VERSION}, system={expected_system}, python={current_python}, "
         f"wheel={artifacts.wheel.name}:{artifacts.wheel_sha256}, "
         f"sdist={artifacts.sdist.name}:{artifacts.sdist_sha256}"
     )
