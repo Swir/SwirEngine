@@ -126,6 +126,48 @@ def test_player_local_state_is_explicitly_separate_from_authoritative_state():
     assert "inventory[1].profile" in str(nested.value)
 
 
+def test_authoritative_state_results_are_defensive_snapshots():
+    session = ProductionMultiplayerSession(
+        "match-01",
+        "host",
+        _contract(),
+        token_factory=_tokens(),
+    )
+    original = {
+        "inventory": [{"ammo": 5, "mods": ["scope"]}],
+        "stats": {"score": 10},
+    }
+
+    returned = session.set_authoritative_player_state("host", original)
+    original["inventory"][0]["ammo"] = 77
+    returned["inventory"][0]["mods"].append("silencer")
+
+    readback = session.authoritative_player_state("host")
+    readback["stats"]["score"] = 999
+    status = session.status()
+    status["authoritative_player_state"]["host"]["inventory"][0]["ammo"] = -1
+
+    assert session.authoritative_player_state("host") == {
+        "inventory": [{"ammo": 5, "mods": ["scope"]}],
+        "stats": {"score": 10},
+    }
+
+
+def test_player_local_portable_state_is_a_defensive_snapshot():
+    local = PlayerLocalState(
+        "host",
+        settings={"audio": {"volume": 0.5}},
+        save={"inventory": ["key"]},
+    )
+
+    portable = local.portable()
+    portable["settings"]["audio"]["volume"] = 1.0
+    portable["save"]["inventory"].append("coin")
+
+    assert local.settings == {"audio": {"volume": 0.5}}
+    assert local.save == {"inventory": ["key"]}
+
+
 def test_authoritative_state_is_bounded():
     session = ProductionMultiplayerSession(
         "match-01",
