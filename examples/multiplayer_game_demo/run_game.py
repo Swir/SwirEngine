@@ -37,10 +37,10 @@ def run_fixture() -> dict[str, object]:
             ),
         )
     )
-    final_ticks = tuple(report.final_client_ticks)
+    final_ticks = dict(sorted(report.final_client_ticks.items()))
     if len(final_ticks) != report.clients:
         raise RuntimeError("multiplayer fixture lost a client timeline")
-    if not final_ticks or min(final_ticks) <= 0:
+    if not final_ticks or min(final_ticks.values()) <= 0:
         raise RuntimeError("multiplayer fixture did not advance all client timelines")
     if report.applied_updates <= 0:
         raise RuntimeError("multiplayer fixture did not apply replicated updates")
@@ -54,7 +54,7 @@ def run_fixture() -> dict[str, object]:
         "stale_updates": report.stale_updates,
         "resynchronizations": report.resynchronizations,
         "prediction_corrections": report.prediction_corrections,
-        "final_client_ticks": list(final_ticks),
+        "final_client_ticks": final_ticks,
         "profiler": report.profiler_diagnostics,
         "links": report.link_diagnostics,
     }
