@@ -1,0 +1,51 @@
+name: Multiplayer Production 2.0
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/swirengine/multiplayer20.py"
+      - "tests/test_multiplayer_2_0.py"
+      - "examples/multiplayer_game_demo/**"
+      - "docs/MULTIPLAYER_PRODUCTION_2_0.md"
+      - ".github/workflows/multiplayer-production-2.0.yml"
+  pull_request:
+    paths:
+      - "src/swirengine/multiplayer20.py"
+      - "tests/test_multiplayer_2_0.py"
+      - "examples/multiplayer_game_demo/**"
+      - "docs/MULTIPLAYER_PRODUCTION_2_0.md"
+      - ".github/workflows/multiplayer-production-2.0.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  multiplayer-production:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install CPython 3.14 native build prerequisites
+        if: matrix.python-version == '3.14'
+        run: sudo apt-get update && sudo apt-get install -y libx11-dev libgl-dev libegl-dev
+      - name: Install engine and development tools
+        run: python -m pip install --disable-pip-version-check -e ".[dev]"
+      - name: Run focused multiplayer production tests
+        run: python -m pytest -q tests/test_multiplayer_2_0.py tests/test_multiplayer16.py tests/test_session16.py tests/test_server16.py
+      - name: Run representative multiplayer fixture
+        run: python examples/multiplayer_game_demo/run_game.py
+      - name: Strict Ruff gate
+        run: python -m ruff check src/swirengine/multiplayer20.py tests/test_multiplayer_2_0.py examples/multiplayer_game_demo/run_game.py
+      - name: Compile multiplayer production surfaces
+        run: python -m compileall -q src/swirengine/multiplayer20.py tests/test_multiplayer_2_0.py examples/multiplayer_game_demo/run_game.py
