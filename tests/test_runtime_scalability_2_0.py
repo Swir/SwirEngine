@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from concurrent.futures import Future
 from pathlib import Path
-from threading import Event, Thread
+from threading import Event, Thread, current_thread
 from time import sleep
 
 import pytest
@@ -211,6 +211,71 @@ def test_shared_preloader_release_waits_for_owned_requests_without_closing_share
     finally:
         release.set()
         shared.shutdown()
+
+
+def test_external_cache_invalidation_reconciles_residency_and_restages_in_background(tmp_path):
+    assets = AssetManager(tmp_path)
+    source = tmp_path / "asset.txt"
+    source.write_text("payload", encoding="utf-8")
+    loader_threads: list[str] = []
+
+    def loader(path: Path) -> str:
+        loader_threads.append(current_thread().name)
+        return path.read_text(encoding="utf-8")
+
+    assets.register_loader("txt", loader)
+    streamer = AssetStreamingManager(assets)
+    try:
+        streamer.stage("asset.txt")
+        _drain(streamer)
+        assert streamer.diagnostics().resident_assets == 1
+        assert assets.invalidate("asset.txt")
+        assert not assets.cached("asset.txt")
+
+        streamer.stage("asset.txt")
+        restaged = streamer.diagnostics()
+        assert restaged.pending == 1
+        assert restaged.resident_assets == 0
+        assert restaged.resident_bytes == 0
+        _drain(streamer)
+
+        final = streamer.diagnostics()
+        assert final.completed == 2
+        assert final.resident_assets == 1
+        assert assets.cached("asset.txt")
+        assert len(loader_threads) == 2
+        assert all(name.startswith("swir-assets") for name in loader_threads)
+    finally:
+        streamer.shutdown(release_resident=True)
+
+
+def test_size_estimator_failure_is_isolated_and_invalidates_untracked_cache(tmp_path):
+    assets = _assets(tmp_path, 1)
+
+    def broken_estimator(_path: Path, _value: object) -> int:
+        raise RuntimeError("estimator failed")
+
+    streamer = AssetStreamingManager(assets, size_estimator=broken_estimator)
+    try:
+        future = streamer.stage("asset-0.txt")
+        successful_load = future.result(timeout=1.0)
+        assert successful_load.ok
+        assert assets.cached("asset-0.txt")
+
+        results = streamer.pump()
+        diag = streamer.diagnostics()
+        assert len(results) == 1
+        assert not results[0].ok
+        assert "SizeEstimatorError" in (results[0].error or "")
+        assert "estimator failed" in (results[0].error or "")
+        assert diag.failed == 1
+        assert diag.completed == 0
+        assert diag.pending == 0
+        assert diag.resident_assets == 0
+        assert diag.resident_bytes == 0
+        assert not assets.cached("asset-0.txt")
+    finally:
+        streamer.shutdown(release_resident=True)
 
 
 def test_streaming_residency_stays_bounded_under_repeated_workload(tmp_path):
