@@ -2,19 +2,73 @@
 
 This is intentionally a deterministic, headless-friendly gameplay/networking fixture rather than
 an online service. It exercises the production replication/prediction stack under repeatable hostile
-network conditions so CI can detect regressions without opening sockets or depending on the public
-internet.
+network conditions and the 2.0 session/reconnect contract so CI can detect regressions without opening
+sockets or depending on the public internet.
 """
 
 from __future__ import annotations
 
 import json
 
+from swirengine.multiplayer14 import WorldSnapshot
+from swirengine.multiplayer20 import (
+    MultiplayerCompatibility,
+    PlayerLocalState,
+    ProductionMultiplayerSession,
+)
 from swirengine.multiplayer_showcase16 import (
     MultiplayerSoakConfig,
     NetworkImpairmentProfile,
     run_multiplayer_soak,
 )
+
+
+def _production_contract_probe() -> dict[str, object]:
+    compatibility = MultiplayerCompatibility(
+        project_id="multiplayer-game-demo",
+        protocol_version="2.0",
+        build_id="source-fixture",
+        replication_schema="demo-player-v1",
+        content_fingerprint="fixture-content-v1",
+    )
+    tokens = iter(("host-token-0001", "client-token-0001", "client-token-0002"))
+    session = ProductionMultiplayerSession(
+        "fixture-session",
+        "host",
+        compatibility,
+        token_factory=lambda: next(tokens),
+    )
+    joined = session.join("client", compatibility)
+    local = PlayerLocalState(
+        "client",
+        settings={"volume": 0.8, "ui_scale": 1.0},
+        save={"checkpoint": "local-only"},
+    )
+    session.set_authoritative_player_state("host", {"score": 10})
+    session.set_authoritative_player_state("client", {"score": 20})
+    session.set_ready("host")
+    session.set_ready("client")
+    session.start_match("host")
+    session.publish_authoritative(WorldSnapshot(1, 1 / 30, ()))
+    session.disconnect("client")
+    resumed = session.resume(joined.resume_token, compatibility)
+    if resumed.resynchronization is None or resumed.resynchronization.mode != "snapshot":
+        raise RuntimeError("production reconnect did not force a full replication resynchronization")
+    status = session.status()
+    if "local-only" in repr(status) or "volume" in repr(status):
+        raise RuntimeError("player-local settings/save leaked into authoritative session state")
+
+    return {
+        "compatibility_fingerprint": compatibility.fingerprint(),
+        "phase": status["phase"],
+        "members": len(status["members"]),
+        "resync_tick": resumed.resynchronization.tick,
+        "local_state_client": local.client_id,
+        "authoritative_scores": {
+            client_id: state["score"]
+            for client_id, state in status["authoritative_player_state"].items()
+        },
+    }
 
 
 def run_fixture() -> dict[str, object]:
@@ -57,6 +111,7 @@ def run_fixture() -> dict[str, object]:
         "final_client_ticks": final_ticks,
         "profiler": report.profiler_diagnostics,
         "links": report.link_diagnostics,
+        "production_contract": _production_contract_probe(),
     }
 
 
