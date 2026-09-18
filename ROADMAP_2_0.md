@@ -83,7 +83,7 @@ Source-only 1.6–1.9 checkpoints remain historical engineering evidence and are
   - audit privacy/safety boundaries for logs and support bundles;
   - re-run locked historical compatibility/source-checkpoint contracts needed to protect the candidate.
 
-- [x] **10. SwirEngine 2.0 Final Release Candidate Gate**
+- [x] **10. SwirEngine 2.0 Final Release Gate & Public Verification**
   - complete compatibility/migration validation, supported CI/runtime matrix and documentation accuracy audit;
   - pass clean wheel/sdist install, representative real-game workflows, performance regressions and export/build validation;
   - arm package/module metadata at 2.0.0 only after the 9/10 preflight head is fully green;
