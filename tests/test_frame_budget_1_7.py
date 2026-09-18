@@ -298,6 +298,8 @@ def test_validation_rejects_malformed_budgets() -> None:
         )
     with pytest.raises(TypeError, match="priority"):
         controller.register("bad-priority", lambda limit: 0, priority=True)
+    with pytest.raises(TypeError, match="enabled"):
+        controller.register("bad-enabled", lambda limit: 0, enabled=1)  # type: ignore[arg-type]
 
     controller.register("valid", lambda limit: 0)
     with pytest.raises(TypeError, match="enabled"):
