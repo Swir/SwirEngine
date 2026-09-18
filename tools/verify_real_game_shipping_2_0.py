@@ -16,7 +16,15 @@ from verify_real_game_production_1_9 import (
     run_production_gate,
 )
 
+from swirengine import __version__
+from swirengine.diagnostics19 import (
+    RuntimeCrashReport,
+    RuntimeLogBuffer,
+    capture_exception,
+    identity_from_project,
+)
 from swirengine.exporting import PackagingProfile, ProjectExporter
+from swirengine.project19 import ProjectManifest
 
 _EXPECTED_FIXTURES = {"2d-game", "3d-game", "multiplayer-game"}
 _FORBIDDEN_SHIPPING_PARTS = {
@@ -25,6 +33,7 @@ _FORBIDDEN_SHIPPING_PARTS = {
     "saves",
     "input-overrides.json",
 }
+_DIAGNOSTIC_SECRET = "fixture-secret-do-not-export"
 
 
 def _is_sha256(value: object) -> bool:
@@ -85,6 +94,65 @@ def validate_gate_report(report: dict[str, object], *, runtime_required: bool) -
         raise RuntimeError("aggregate production fingerprint is invalid")
 
 
+def verify_runtime_diagnostics(repository: Path, workspace: Path) -> dict[str, str]:
+    """Exercise bounded privacy-safe diagnostics for every representative project."""
+
+    evidence: dict[str, str] = {}
+    for fixture in FIXTURES:
+        project_root = workspace / fixture.name
+        _prepare_project(repository, project_root, fixture)
+        manifest = ProjectManifest.load(project_root / "swirproject.toml")
+        identity = identity_from_project(
+            manifest,
+            engine_version=__version__,
+            build_id="real-game-shipping-2.0",
+            profile="shipping-gate",
+        )
+        logs = RuntimeLogBuffer(capacity=8)
+        logs.record(
+            "info",
+            "representative game diagnostic probe",
+            fixture=fixture.name,
+            token=_DIAGNOSTIC_SECRET,
+        )
+        try:
+            raise RuntimeError(
+                f"diagnostic probe for {project_root} token={_DIAGNOSTIC_SECRET}"
+            )
+        except RuntimeError as exc:
+            report = capture_exception(
+                exc,
+                identity=identity,
+                logs=logs,
+                diagnostics={
+                    "fixture": fixture.name,
+                    "project_root": str(project_root),
+                    "token": _DIAGNOSTIC_SECRET,
+                },
+                performance={"frame_ms": 16.0, "draw_calls": 1},
+                project_root=project_root,
+            )
+
+        encoded = report.to_json(indent=None)
+        if _DIAGNOSTIC_SECRET in encoded:
+            raise RuntimeError(f"{fixture.name} diagnostics leaked a secret value")
+        if str(project_root) in encoded:
+            raise RuntimeError(f"{fixture.name} diagnostics leaked the project root")
+        decoded = json.loads(encoded)
+        if not isinstance(decoded, dict):
+            raise RuntimeError(f"{fixture.name} diagnostics did not produce an object report")
+        roundtrip = RuntimeCrashReport.from_dict(decoded)
+        if roundtrip.fingerprint != report.fingerprint:
+            raise RuntimeError(f"{fixture.name} diagnostics fingerprint changed after roundtrip")
+        if not _is_sha256(report.fingerprint):
+            raise RuntimeError(f"{fixture.name} diagnostics fingerprint is invalid")
+        evidence[fixture.name] = report.fingerprint
+
+    if set(evidence) != _EXPECTED_FIXTURES:
+        raise RuntimeError("runtime diagnostics did not cover every representative fixture")
+    return dict(sorted(evidence.items()))
+
+
 def verify_failure_paths(repository: Path, workspace: Path) -> dict[str, bool]:
     """Prove malformed shipping content fails before a successful package can be claimed."""
 
@@ -132,6 +200,7 @@ def run_shipping_gate(
     repository = repository.resolve()
     production = run_production_gate(repository, workspace / "production", run_runtime=run_runtime)
     validate_gate_report(production, runtime_required=run_runtime)
+    diagnostics = verify_runtime_diagnostics(repository, workspace / "diagnostics")
     failures = verify_failure_paths(repository, workspace / "failure-paths")
     return {
         "status": "ok",
@@ -140,6 +209,7 @@ def run_shipping_gate(
         "fixture_count": 3,
         "fixture_names": sorted(_EXPECTED_FIXTURES),
         "production_fingerprint": production["fingerprint"],
+        "diagnostic_fingerprints": diagnostics,
         "failure_paths": failures,
         "player_data_boundary": "external-to-shipping-content",
     }
