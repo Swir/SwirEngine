@@ -9,7 +9,7 @@
 ![CI](https://img.shields.io/github/actions/workflow/status/Swir/SwirEngine/ci.yml?branch=main&style=for-the-badge&label=CI&color=02050A&logo=githubactions&logoColor=62E5FF)
 [![PyPI](https://img.shields.io/pypi/v/swirengine?style=for-the-badge&color=02050A&logo=pypi&logoColor=62E5FF)](https://pypi.org/project/swirengine/)
 ![Python](https://img.shields.io/badge/Python-3.10--3.14%2064--bit%20CPython%20source%20matrix-02050A?style=for-the-badge&logo=python&logoColor=62E5FF)
-![Status](https://img.shields.io/badge/STATUS-1.5.0%20STABLE-02050A?style=for-the-badge&logoColor=62E5FF)
+![Status](https://img.shields.io/badge/STATUS-2.0.0%20RELEASE%20PREP-02050A?style=for-the-badge&logoColor=62E5FF)
 ![Source](https://img.shields.io/badge/SOURCE%20ROADMAP-2.0-02050A?style=for-the-badge&logoColor=62E5FF)
 ![License](https://img.shields.io/badge/LICENSE-MIT-02050A?style=for-the-badge&logo=opensourceinitiative&logoColor=62E5FF)
 
@@ -26,27 +26,27 @@
 
 ## 📊 Project status
 
-<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.0 verified roadmap progress: 9 of 10 milestones, 90.0%, in progress" />
+<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.0 verified roadmap progress: 10 of 10 milestones, 100.0%, complete source scope" />
 
 **Active source scope:** SwirEngine 2.0 — Release-Quality Python-First Game Production  
-**Verified source progress:** **9/10 milestones = 90.0% — IN PROGRESS**  
+**Verified source progress:** **10/10 milestones = 100.0% — RELEASE PREP**  
 **Latest public stable release:** **SwirEngine 1.5.0**  
-**Release readiness:** **not beta-ready and not release-ready**; roadmap progress and release readiness are separate gates.
+**Release readiness:** **2.0.0 finalization candidate**; public release still requires exact-head green CI, merge, immutable tag publication and fresh public-PyPI verification.
 
 `Release/PyPI: frozen until SwirEngine 2.0`
 
 SwirEngine is a Python-first 2D/3D game engine focused on complete creator workflows: runtime systems,
 real rendering validation, deterministic tooling, multiplayer foundations, production project manifests,
 diagnostics, export staging and host-native desktop shipping. The repository completed source-only
-checkpoints 1.6–1.9 without publishing them; 2.0 is now the active measured development scope.
+checkpoints 1.6–1.9 without publishing them; the 2.0 source roadmap is now candidate-complete.
 
-The first nine verified 2.0 milestones lock the published **1.5.0** compatibility floor, integrate project
+All ten 2.0 source milestones lock the published **1.5.0** compatibility floor, integrate project
 creation/validation/run/shipping preparation, add a production-facing multiplayer contract, harden runtime
 scalability/resource lifecycle behavior, establish the verified base-engine Python/platform matrix, prove
 representative 2D/3D/multiplayer production workflows, verify exact-source wheel/sdist clean installs plus
 host-native packaged-game execution on Windows/Linux/macOS, establish reproducible performance evidence,
-and add deterministic staged-export/build identity plus privacy-safe support-bundle verification. The final
-2.0 release gate and public-install verification remain outstanding.
+add deterministic staged-export/build identity plus privacy-safe support-bundle verification, and arm the
+guarded 2.0.0 release candidate. This does **not** claim that 2.0.0 is already published.
 
 ## ✨ Highlights
 
@@ -73,8 +73,8 @@ The latest **public stable package is 1.5.0**.
 
 Published 1.5.0 validation covers **Python 3.10-3.13** on Windows, Linux and macOS, plus
 **Python 3.14 on Windows x86-64** through the documented native-wheel path. Separately, the current
-source-development 2.0 base-engine matrix is verified on 64-bit CPython **3.10–3.14** across the hosted
-Windows, Linux and macOS runner families. That source evidence is not a published 2.0 package claim.
+2.0.0 release-candidate source matrix is verified on 64-bit CPython **3.10–3.14** across the hosted
+Windows, Linux and macOS runner families. That source evidence is not yet a public 2.0 package claim.
 See [`docs/SUPPORT_MATRIX_2_0.md`](docs/SUPPORT_MATRIX_2_0.md) for architecture boundaries and non-claims.
 
 ```bash
@@ -87,7 +87,7 @@ Optional audio support:
 python -m pip install -U "swirengine[audio]==1.5.0"
 ```
 
-Current source development:
+Current source release candidate:
 
 ```bash
 git clone https://github.com/Swir/SwirEngine.git
@@ -96,7 +96,8 @@ git fetch --tags
 python -m pip install -e ".[dev]"
 ```
 
-> `pyproject.toml` intentionally remains at 1.5.0 until the verified final SwirEngine 2.0 release gate.
+> `pyproject.toml` and `swirengine.__version__` are armed at **2.0.0** only for the guarded finalization candidate.
+> The latest public package remains 1.5.0 until the immutable `v2.0.0` release workflow and public-install verification succeed.
 > No 1.6, 1.7, 1.8 or 1.9 package/tag/release is created.
 
 ## 🚀 Quick Start
@@ -149,7 +150,7 @@ The active roadmap is [`ROADMAP_2_0.md`](ROADMAP_2_0.md). Its ten release-qualit
 7. packaging, clean installs and native desktop shipping;
 8. reproducible performance/competitive evidence;
 9. export/build integrity, diagnostics and release safety;
-10. the final 2.0 release gate and public PyPI verification.
+10. the final 2.0 release-candidate gate followed by guarded public verification.
 
 Milestone 1 locks compatibility to the actual published `v1.5.0` root API rather than a hand-written
 subset. Milestone 2 adds one integrated creator inspection/preparation path over the existing project,
@@ -175,9 +176,13 @@ workflow audit for Arcade, Panda3D and Ursina without publishing technically inv
 latency, memory or superiority rankings. Milestone 9 verifies staged export bytes against the canonical
 inventory/checksums, seals a deterministic build identity including generated native build inputs and audits
 opt-in support bundles for bounded content, integrity, redaction, safe paths and expected build identity.
+Milestone 10 validates the guarded release workflows and only arms 2.0.0 metadata after the 9/10 exact-head
+preflight is green; the resulting 10/10 candidate must re-pass the complete exact-head matrix before merge,
+tagging or publication.
 
 ```bash
 git fetch --tags
+python tools/verify_2_0_release_candidate.py --require-final
 python tools/verify_2_0_public_api.py
 python tools/verify_platform_matrix_2_0.py
 python tools/verify_real_game_shipping_2_0.py
@@ -207,6 +212,7 @@ See:
 - [`docs/PACKAGING_SHIPPING_2_0.md`](docs/PACKAGING_SHIPPING_2_0.md)
 - [`docs/PERFORMANCE_EVIDENCE_2_0.md`](docs/PERFORMANCE_EVIDENCE_2_0.md)
 - [`docs/RELEASE_SAFETY_2_0.md`](docs/RELEASE_SAFETY_2_0.md)
+- [`docs/RELEASE_GATE_2_0.md`](docs/RELEASE_GATE_2_0.md)
 - [`docs/SWIRENGINE_2_0_READINESS_AUDIT.md`](docs/SWIRENGINE_2_0_READINESS_AUDIT.md)
 - [`ROADMAP_2_0.md`](ROADMAP_2_0.md)
 
@@ -234,6 +240,7 @@ python -m pip install -e ".[dev]"
 pytest
 ruff check src tests examples demo_projects tools
 python -m compileall -q src tests examples demo_projects tools
+python tools/verify_2_0_release_candidate.py --require-final
 python tools/verify_creator_workflow_2_0.py
 pytest -q tests/test_multiplayer_2_0.py
 python examples/multiplayer_game_demo/run_game.py
@@ -281,7 +288,8 @@ tooling, failure handling and package/export behavior—not feature count alone.
 - The published 1.5.0 `swirengine.__all__` surface is the starting compatibility floor for 2.0.
 - Deliberate 2.0 breaking changes require a documented migration, tests and explicit engineering justification.
 - The next GitHub Release, release tag and PyPI publication must be **SwirEngine 2.0**.
-- Publication is forbidden until the exact final candidate passes the dedicated Milestone 10 release gate.
+- Publication is forbidden until the exact 2.0.0 finalization candidate passes the dedicated Milestone 10 release gate.
+- A 10/10 source roadmap does not itself prove that the public `v2.0.0` tag, GitHub Release or PyPI artifact exists.
 
 Historical locked compatibility evidence remains explicit: **SwirEngine 1.4 is released and locked**.
 The published 1.5.0 gate verified **Python 3.10-3.13** cross-platform and **Python 3.14 on Windows x86-64**.
@@ -308,12 +316,12 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md),
 | 1.7 | [`ROADMAP_1_7.md`](ROADMAP_1_7.md) | 10/10 = 100.0%, source-only checkpoint |
 | 1.8 | [`ROADMAP_1_8.md`](ROADMAP_1_8.md) | 10/10 = 100.0%, source-only checkpoint |
 | 1.9 | [`ROADMAP_1_9.md`](ROADMAP_1_9.md) | 10/10 = 100.0%, source-only checkpoint |
-| **2.0** | **[`ROADMAP_2_0.md`](ROADMAP_2_0.md)** | **9/10 = 90.0%, active development** |
+| **2.0** | **[`ROADMAP_2_0.md`](ROADMAP_2_0.md)** | **10/10 = 100.0%, release prep** |
 
 ## ⚠️ Current limitations
 
-- The PyPI package is still 1.5.0; source-only 1.6–2.0 development is not published.
-- SwirEngine 2.0 currently has no beta-ready or release-ready claim.
+- The public PyPI package is still 1.5.0; the 2.0.0 source candidate is not a public release until the guarded publication workflow succeeds.
+- SwirEngine 2.0.0 is in release prep; exact-head finalization CI, immutable tag publication and fresh public-install verification remain mandatory.
 - The verified 2.0 base-engine matrix covers only the 64-bit hosted runner architectures exercised by CI; 32-bit Python, PyPy, free-threaded CPython and unverified architectures are not claimed.
 - Optional extras such as audio are not automatically covered by the base-engine support claim without their own evidence.
 - Desktop build plans are host-native; unsupported cross-compilation is intentionally rejected.
