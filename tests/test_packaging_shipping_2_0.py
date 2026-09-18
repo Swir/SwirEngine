@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from tools.verify_packaging_shipping_2_0 import (
+    EXPECTED_VERSION,
     PackagingShippingError,
     _clean_env,
     _inspect_sdist,
@@ -20,8 +21,8 @@ from tools.verify_packaging_shipping_2_0 import (
 
 
 def test_select_artifacts_requires_one_wheel_and_one_sdist(tmp_path):
-    wheel = tmp_path / "swirengine-1.5.0-py3-none-any.whl"
-    sdist = tmp_path / "swirengine-1.5.0.tar.gz"
+    wheel = tmp_path / f"swirengine-{EXPECTED_VERSION}-py3-none-any.whl"
+    sdist = tmp_path / f"swirengine-{EXPECTED_VERSION}.tar.gz"
     wheel.write_bytes(b"wheel")
     sdist.write_bytes(b"sdist")
 
@@ -34,9 +35,9 @@ def test_select_artifacts_requires_one_wheel_and_one_sdist(tmp_path):
 
 
 def test_select_artifacts_rejects_ambiguous_distribution_set(tmp_path):
-    (tmp_path / "swirengine-1.5.0-py3-none-any.whl").write_bytes(b"a")
-    (tmp_path / "swirengine-1.5.0-extra-py3-none-any.whl").write_bytes(b"b")
-    (tmp_path / "swirengine-1.5.0.tar.gz").write_bytes(b"c")
+    (tmp_path / f"swirengine-{EXPECTED_VERSION}-py3-none-any.whl").write_bytes(b"a")
+    (tmp_path / f"swirengine-{EXPECTED_VERSION}-extra-py3-none-any.whl").write_bytes(b"b")
+    (tmp_path / f"swirengine-{EXPECTED_VERSION}.tar.gz").write_bytes(b"c")
 
     with pytest.raises(PackagingShippingError, match="exactly one"):
         _select_artifacts(tmp_path)
@@ -77,25 +78,29 @@ def test_clean_env_strips_source_path_overrides():
 
 
 def test_inspect_wheel_requires_expected_metadata_and_package(tmp_path):
-    wheel = tmp_path / "swirengine-1.5.0-py3-none-any.whl"
+    wheel = tmp_path / f"swirengine-{EXPECTED_VERSION}-py3-none-any.whl"
     with zipfile.ZipFile(wheel, "w") as archive:
         archive.writestr(
-            "swirengine-1.5.0.dist-info/METADATA",
-            "Metadata-Version: 2.4\nName: swirengine\nVersion: 1.5.0\n",
+            f"swirengine-{EXPECTED_VERSION}.dist-info/METADATA",
+            f"Metadata-Version: 2.4\nName: swirengine\nVersion: {EXPECTED_VERSION}\n",
         )
-        archive.writestr("swirengine/__init__.py", "__version__ = '1.5.0'\n")
+        archive.writestr(
+            "swirengine/__init__.py", f"__version__ = '{EXPECTED_VERSION}'\n"
+        )
 
     _inspect_wheel(wheel)
 
 
 def test_inspect_wheel_rejects_symlink_members(tmp_path):
-    wheel = tmp_path / "swirengine-1.5.0-py3-none-any.whl"
+    wheel = tmp_path / f"swirengine-{EXPECTED_VERSION}-py3-none-any.whl"
     with zipfile.ZipFile(wheel, "w") as archive:
         archive.writestr(
-            "swirengine-1.5.0.dist-info/METADATA",
-            "Metadata-Version: 2.4\nName: swirengine\nVersion: 1.5.0\n",
+            f"swirengine-{EXPECTED_VERSION}.dist-info/METADATA",
+            f"Metadata-Version: 2.4\nName: swirengine\nVersion: {EXPECTED_VERSION}\n",
         )
-        archive.writestr("swirengine/__init__.py", "__version__ = '1.5.0'\n")
+        archive.writestr(
+            "swirengine/__init__.py", f"__version__ = '{EXPECTED_VERSION}'\n"
+        )
         link = zipfile.ZipInfo("swirengine/link")
         link.create_system = 3
         link.external_attr = (stat.S_IFLNK | 0o777) << 16
@@ -106,19 +111,23 @@ def test_inspect_wheel_rejects_symlink_members(tmp_path):
 
 
 def test_inspect_sdist_rejects_link_members(tmp_path):
-    sdist = tmp_path / "swirengine-1.5.0.tar.gz"
+    sdist = tmp_path / f"swirengine-{EXPECTED_VERSION}.tar.gz"
     with tarfile.open(sdist, "w:gz") as archive:
-        metadata = b"Metadata-Version: 2.4\nName: swirengine\nVersion: 1.5.0\n"
-        info = tarfile.TarInfo("swirengine-1.5.0/PKG-INFO")
+        metadata = (
+            f"Metadata-Version: 2.4\nName: swirengine\nVersion: {EXPECTED_VERSION}\n".encode()
+        )
+        info = tarfile.TarInfo(f"swirengine-{EXPECTED_VERSION}/PKG-INFO")
         info.size = len(metadata)
         archive.addfile(info, io.BytesIO(metadata))
 
-        package = b"__version__ = '1.5.0'\n"
-        info = tarfile.TarInfo("swirengine-1.5.0/src/swirengine/__init__.py")
+        package = f"__version__ = '{EXPECTED_VERSION}'\n".encode()
+        info = tarfile.TarInfo(
+            f"swirengine-{EXPECTED_VERSION}/src/swirengine/__init__.py"
+        )
         info.size = len(package)
         archive.addfile(info, io.BytesIO(package))
 
-        link = tarfile.TarInfo("swirengine-1.5.0/link")
+        link = tarfile.TarInfo(f"swirengine-{EXPECTED_VERSION}/link")
         link.type = tarfile.SYMTYPE
         link.linkname = "../../outside"
         archive.addfile(link)
@@ -128,13 +137,15 @@ def test_inspect_sdist_rejects_link_members(tmp_path):
 
 
 def test_inspect_sdist_accepts_safe_expected_layout(tmp_path):
-    sdist = tmp_path / "swirengine-1.5.0.tar.gz"
+    sdist = tmp_path / f"swirengine-{EXPECTED_VERSION}.tar.gz"
     with tarfile.open(sdist, "w:gz") as archive:
         entries = {
-            "swirengine-1.5.0/PKG-INFO": (
-                b"Metadata-Version: 2.4\nName: swirengine\nVersion: 1.5.0\n"
+            f"swirengine-{EXPECTED_VERSION}/PKG-INFO": (
+                f"Metadata-Version: 2.4\nName: swirengine\nVersion: {EXPECTED_VERSION}\n".encode()
             ),
-            "swirengine-1.5.0/src/swirengine/__init__.py": b"__version__ = '1.5.0'\n",
+            f"swirengine-{EXPECTED_VERSION}/src/swirengine/__init__.py": (
+                f"__version__ = '{EXPECTED_VERSION}'\n".encode()
+            ),
         }
         for name, payload in entries.items():
             info = tarfile.TarInfo(name)
