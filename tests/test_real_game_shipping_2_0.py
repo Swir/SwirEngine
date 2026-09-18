@@ -30,6 +30,11 @@ def test_real_game_shipping_gate_staging_contract():
         "missing_entrypoint_rejected": True,
         "missing_scene_rejected": True,
     }
+    assert report["ui_navigation"] == {
+        "2d-game": True,
+        "3d-game": True,
+        "multiplayer-game": True,
+    }
     _assert_sha256(report["production_fingerprint"])
     diagnostics = report["diagnostic_fingerprints"]
     assert sorted(diagnostics) == ["2d-game", "3d-game", "multiplayer-game"]
