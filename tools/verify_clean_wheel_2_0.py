@@ -21,7 +21,10 @@ def _run(command: list[str], *, env: dict[str, str] | None = None) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Install a SwirEngine wheel into a clean venv and run 2.0 platform/runtime probes"
+        description=(
+            "Install a SwirEngine wheel into a clean venv and run "
+            "2.0 platform/runtime probes"
+        )
     )
     parser.add_argument(
         "--expected-system",
