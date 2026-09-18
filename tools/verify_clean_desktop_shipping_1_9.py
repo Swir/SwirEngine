@@ -7,7 +7,6 @@ import tempfile
 import venv
 from pathlib import Path
 
-
 _PROBE = r'''
 from __future__ import annotations
 
