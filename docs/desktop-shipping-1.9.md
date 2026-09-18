@@ -43,8 +43,8 @@ Only the profile matching the native build host should be executed.
 ## Deterministic shipping plan
 
 ```python
+from swirengine.desktop_shipping19 import create_desktop_shipping_plan
 from swirengine.project19 import ProjectManifest
-from swirengine.shipping19 import create_desktop_shipping_plan
 
 project = ProjectManifest.load(".")
 plan = create_desktop_shipping_plan(project, "linux")
@@ -56,11 +56,13 @@ The plan contains the project fingerprint, selected packaging contract, required
 
 Source paths are bounded and validated. Case-folded path collisions are rejected, as are source symlinks that escape the project root. The shipping layer does not weaken the scene/content-build preflight performed by `ProjectExporter`.
 
+The module is deliberately named `desktop_shipping19`: the existing `shipping19` module remains the established SwirEngine 1.9 input/UI/settings shipping contract and is not repurposed by this milestone.
+
 ## Host-native build and artifact manifest
 
 ```python
+from swirengine.desktop_shipping19 import build_desktop_shipping
 from swirengine.project19 import ProjectManifest
-from swirengine.shipping19 import build_desktop_shipping
 
 project = ProjectManifest.load(".")
 result = build_desktop_shipping(project, "linux")
@@ -80,7 +82,7 @@ Regular files are recorded with size and SHA-256. Safe in-tree symlinks are repr
 ## Verify an existing artifact tree
 
 ```python
-from swirengine.shipping19 import verify_desktop_shipping
+from swirengine.desktop_shipping19 import verify_desktop_shipping
 
 verify_desktop_shipping(
     "dist/MyGame-linux/swir-shipping-manifest.json",
@@ -104,6 +106,7 @@ This distinction is intentional and prevents misleading reproducibility or cross
 - Windows / Python 3.13;
 - macOS / Python 3.13;
 - focused shipping and exporter regressions;
+- locked `shipping19` input/UI/settings regressions so this desktop layer cannot replace that contract;
 - Ruff and compile checks;
 - the deterministic planning workload;
 - clean wheel installation into a newly created virtual environment;
