@@ -6,11 +6,11 @@ SwirEngine 1.8 is a completed source-only rendering checkpoint. SwirEngine 1.9 t
 runtime systems into a coherent production path for building, validating, packaging and shipping
 complete games while preserving stable 1.x behavior.
 
-**Current verified progress: 9/10 milestones = 90.0%.**
+**Current verified progress: 10/10 milestones = 100.0%.**
 
-<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 1.9 verified roadmap progress: 9 of 10 milestones, 90.0%, in progress" />
+<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 1.9 verified roadmap progress: 10 of 10 milestones, 100.0%, complete" />
 
-**Verified active scope:** 9/10 milestones = 90.0% — IN PROGRESS.  
+**Verified active scope:** 10/10 milestones = 100.0% — COMPLETE.  
 **Release readiness:** frozen; the next public GitHub Release and PyPI publication remains SwirEngine 2.0.
 
 A milestone is checked only after implementation, focused tests, creator documentation, its dedicated
@@ -81,7 +81,7 @@ gate and the repository's required compatibility/regression gates pass on the ex
   - multiplayer integration fixture with packaging/runtime validation;
   - end-to-end menu/settings/save/input/assets/scenes/export regression coverage.
 
-- [ ] **10. 1.9 Source Checkpoint & 2.0 Readiness Audit**
+- [x] **10. 1.9 Source Checkpoint & 2.0 Readiness Audit**
   - full supported CI/runtime/packaging matrix plus locked 1.4–1.8 contracts;
   - clean source/package install and representative game shipping validation;
   - 2.0 gap audit based on measured real-game blockers rather than feature counting;
