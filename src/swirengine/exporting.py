@@ -209,6 +209,15 @@ class ProjectExporter:
         if not manifest_path.is_file():
             return ()
 
+        manifest_text = manifest_path.read_text(encoding="utf-8")
+        has_scene_declaration = any(
+            stripped == "[scenes]" or stripped.startswith("[scenes.registry")
+            for line in manifest_text.splitlines()
+            if (stripped := line.strip()) and not stripped.startswith("#")
+        )
+        if not has_scene_declaration:
+            return ()
+
         from .project19 import ProjectManifest
         from .scene_packages19 import ScenePackageRegistry
 
