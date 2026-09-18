@@ -165,6 +165,7 @@ Representative projects are source-only engine integration fixtures and do **not
 - **SwirEngine 2D Game Demo** — [`examples/2d_game_demo/`](examples/2d_game_demo/)
 - **SwirEngine 3D Game Demo** — [`examples/3d_game_demo/`](examples/3d_game_demo/)
 - **SwirEngine Multiplayer Game Demo** — [`examples/multiplayer_game_demo/`](examples/multiplayer_game_demo/)
+- **Neon Frontier 1.3** — locked historical compatibility fixture
 - **Neon Frontier 1.4** — locked compatibility/showcase fixture
 - **Neon Cube Hunt 3D** — OpenGL + packaged-runtime regression arena
 - **Neon Snake 3D** — complete 3D regression project
@@ -214,6 +215,11 @@ tooling, failure handling and package/export behavior—not feature count alone.
 - Deliberate 2.0 breaking changes require a documented migration, tests and explicit engineering justification.
 - The next GitHub Release, release tag and PyPI publication must be **SwirEngine 2.0**.
 - Publication is forbidden until the exact final candidate passes the dedicated Milestone 10 release gate.
+
+Historical locked compatibility evidence remains explicit: **SwirEngine 1.4 is released and locked**.
+The published 1.5.0 gate verified **Python 3.10-3.13** cross-platform and **Python 3.14 on Windows**
+x86-64, and includes **Runtime Diagnostics & Profiling 2.0**. These statements describe published
+historical release evidence and do not pre-approve the still-unverified final SwirEngine 2.0 support matrix.
 
 See [`docs/API_STABILITY.md`](docs/API_STABILITY.md) and
 [`docs/MIGRATING_TO_2_0.md`](docs/MIGRATING_TO_2_0.md).
