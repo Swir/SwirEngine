@@ -147,6 +147,6 @@ def test_inspect_sdist_accepts_safe_expected_layout(tmp_path):
 def test_milestone_7_closeout_is_tied_to_verified_implementation_head():
     roadmap = Path("ROADMAP_2_0.md").read_text(encoding="utf-8")
 
-    assert "**Current verified progress: 7/10 milestones = 70.0%.**" in roadmap
     assert "- [x] **7. Packaging, Clean Install & Native Desktop Shipping**" in roadmap
     assert "`03aaef751260fc9de0c1a031f1f93b29fdd2c10c` passed every triggered" in roadmap
+    assert "Milestone 7 is therefore verified at **7/10 = 70.0%**." in roadmap

@@ -26,10 +26,10 @@
 
 ## 📊 Project status
 
-<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.0 verified roadmap progress: 7 of 10 milestones, 70.0%, in progress" />
+<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.0 verified roadmap progress: 8 of 10 milestones, 80.0%, in progress" />
 
 **Active source scope:** SwirEngine 2.0 — Release-Quality Python-First Game Production  
-**Verified source progress:** **7/10 milestones = 70.0% — IN PROGRESS**  
+**Verified source progress:** **8/10 milestones = 80.0% — IN PROGRESS**  
 **Latest public stable release:** **SwirEngine 1.5.0**  
 **Release readiness:** **not beta-ready and not release-ready**; roadmap progress and release readiness are separate gates.
 
@@ -40,12 +40,13 @@ real rendering validation, deterministic tooling, multiplayer foundations, produ
 diagnostics, export staging and host-native desktop shipping. The repository completed source-only
 checkpoints 1.6–1.9 without publishing them; 2.0 is now the active measured development scope.
 
-The first seven verified 2.0 milestones lock the published **1.5.0** compatibility floor, integrate project
+The first eight verified 2.0 milestones lock the published **1.5.0** compatibility floor, integrate project
 creation/validation/run/shipping preparation, add a production-facing multiplayer contract, harden runtime
 scalability/resource lifecycle behavior, establish the verified base-engine Python/platform matrix, prove
-representative 2D/3D/multiplayer production workflows and verify exact-source wheel/sdist clean installs plus
-host-native packaged-game execution on Windows, Linux and macOS. Reproducible performance evidence and the
-competitive quality audit are the next active milestone.
+representative 2D/3D/multiplayer production workflows, verify exact-source wheel/sdist clean installs plus
+host-native packaged-game execution on Windows/Linux/macOS, and establish reproducible performance evidence
+with explicit limits against unsupported cross-engine rankings. Export/build integrity, diagnostics and
+release safety are the next active milestone.
 
 ## ✨ Highlights
 
@@ -62,6 +63,7 @@ competitive quality audit are the next active milestone.
 | Networking | TCP/gameplay APIs plus source-only production session/replication contracts, compatibility fingerprints, reconnect resynchronization and a headless dedicated-server adapter used by the multiplayer fixture. |
 | Creator workflow | `swirengine workflow` composes project/run/scene/content/settings/save-policy checks, safe preparation, export-profile validation and actionable diagnostics. |
 | Packaging | Exact-source wheel/sdist inspection, isolated clean installs, installed-artifact 2D/3D/multiplayer fixture execution and host-native desktop package runtime verification. |
+| Performance evidence | Locked deterministic runtime/creator/network/render/world workloads with contextual CI evidence; shared-runner timings are regression signals, not unsupported FPS claims. |
 | Diagnostics | Profiling, runtime diagnostics, bounded crash/support reporting, streaming pressure/lifecycle diagnostics and deterministic build identity. |
 | Compatibility | Published 1.5.0 root API is the explicit 2.0 migration floor; current source base-engine matrix is verified on 64-bit CPython 3.10–3.14 across hosted Windows, Linux and macOS runners. |
 
@@ -167,12 +169,17 @@ runtime entrypoints and deliberate missing-scene/asset/entrypoint failure probes
 exact candidate source as wheel and sdist, performs bounded archive safety/inventory validation, installs
 each artifact into isolated environments, runs the maintained fixtures from those installs and then builds,
 validates and executes host-native desktop packages on Windows, Linux and macOS from the clean wheel.
+Milestone 8 locks six existing deterministic performance/scalability workloads to their source thresholds,
+captures exact commit/Python/platform runner context in ephemeral CI evidence and performs an official-doc
+workflow audit for Arcade, Panda3D and Ursina without publishing technically invalid cross-engine FPS,
+latency, memory or superiority rankings.
 
 ```bash
 git fetch --tags
 python tools/verify_2_0_public_api.py
 python tools/verify_platform_matrix_2_0.py
 python tools/verify_real_game_shipping_2_0.py
+python tools/verify_performance_evidence_2_0.py --validate-only
 swirengine new MyGame --mode 3d
 swirengine workflow MyGame --profile windows
 swirengine workflow MyGame --json
@@ -195,6 +202,7 @@ See:
 - [`docs/SUPPORT_MATRIX_2_0.md`](docs/SUPPORT_MATRIX_2_0.md)
 - [`docs/REAL_GAME_SHIPPING_2_0.md`](docs/REAL_GAME_SHIPPING_2_0.md)
 - [`docs/PACKAGING_SHIPPING_2_0.md`](docs/PACKAGING_SHIPPING_2_0.md)
+- [`docs/PERFORMANCE_EVIDENCE_2_0.md`](docs/PERFORMANCE_EVIDENCE_2_0.md)
 - [`docs/SWIRENGINE_2_0_READINESS_AUDIT.md`](docs/SWIRENGINE_2_0_READINESS_AUDIT.md)
 - [`ROADMAP_2_0.md`](ROADMAP_2_0.md)
 
@@ -231,6 +239,8 @@ python -m pytest -q tests/test_platform_matrix_2_0.py
 python tools/verify_real_game_shipping_2_0.py
 python -m pytest -q tests/test_real_game_shipping_2_0.py
 python -m pytest -q tests/test_packaging_shipping_2_0.py
+python tools/verify_performance_evidence_2_0.py --output build/performance-evidence.json
+python -m pytest -q tests/test_performance_evidence_2_0.py
 ```
 
 Progress assets are generated from the authoritative **2.0** roadmap:
@@ -292,7 +302,7 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md),
 | 1.7 | [`ROADMAP_1_7.md`](ROADMAP_1_7.md) | 10/10 = 100.0%, source-only checkpoint |
 | 1.8 | [`ROADMAP_1_8.md`](ROADMAP_1_8.md) | 10/10 = 100.0%, source-only checkpoint |
 | 1.9 | [`ROADMAP_1_9.md`](ROADMAP_1_9.md) | 10/10 = 100.0%, source-only checkpoint |
-| **2.0** | **[`ROADMAP_2_0.md`](ROADMAP_2_0.md)** | **7/10 = 70.0%, active development** |
+| **2.0** | **[`ROADMAP_2_0.md`](ROADMAP_2_0.md)** | **8/10 = 80.0%, active development** |
 
 ## ⚠️ Current limitations
 
@@ -302,7 +312,7 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md),
 - Optional extras such as audio are not automatically covered by the base-engine support claim without their own evidence.
 - Desktop build plans are host-native; unsupported cross-compilation is intentionally rejected.
 - The dedicated-server contract is headless and deterministic but does not claim public matchmaking, hosting infrastructure or universal transport support.
-- Competitive/performance claims must wait for reproducible 2.0 evidence.
+- Cross-engine FPS, latency and memory rankings remain intentionally unclaimed without an identical maintained comparison harness.
 - Visual editor ergonomics remain an area for later creator-tooling hardening even though the integrated Milestone 2 workflow is verified.
 
 ## 🔎 Search Keywords
