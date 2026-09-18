@@ -42,7 +42,13 @@ jobs:
       - name: Install engine and development tools
         run: python -m pip install --disable-pip-version-check -e ".[dev]"
       - name: Run focused multiplayer production tests
-        run: python -m pytest -q tests/test_multiplayer_2_0.py tests/test_multiplayer16.py tests/test_session16.py tests/test_server16.py
+        run: >-
+          python -m pytest -q
+          tests/test_multiplayer_2_0.py
+          tests/test_multiplayer_replication_1_6.py
+          tests/test_prediction_reconciliation_1_6.py
+          tests/test_session_lifecycle_1_6.py
+          tests/test_dedicated_server_1_6.py
       - name: Run representative multiplayer fixture
         run: python examples/multiplayer_game_demo/run_game.py
       - name: Strict Ruff gate
