@@ -12,7 +12,6 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any
 
 _REPORT_FORMAT = "swirengine.runtime-report"
 _BUNDLE_FORMAT = "swirengine.support-bundle"
