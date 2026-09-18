@@ -107,9 +107,10 @@ def validate_gate_report(report: dict[str, object], *, runtime_required: bool) -
 def verify_runtime_diagnostics(repository: Path, workspace: Path) -> dict[str, str]:
     """Exercise bounded privacy-safe diagnostics for every representative project."""
 
+    workspace = workspace.expanduser().resolve()
     evidence: dict[str, str] = {}
     for fixture in FIXTURES:
-        project_root = workspace / fixture.name
+        project_root = (workspace / fixture.name).resolve()
         _prepare_project(repository, project_root, fixture)
         manifest = ProjectManifest.load(project_root / "swirproject.toml")
         identity = identity_from_project(
@@ -241,7 +242,8 @@ def run_shipping_gate(
     *,
     run_runtime: bool = True,
 ) -> dict[str, object]:
-    repository = repository.resolve()
+    repository = repository.expanduser().resolve()
+    workspace = workspace.expanduser().resolve()
     production = run_production_gate(repository, workspace / "production", run_runtime=run_runtime)
     validate_gate_report(production, runtime_required=run_runtime)
     diagnostics = verify_runtime_diagnostics(repository, workspace / "diagnostics")
