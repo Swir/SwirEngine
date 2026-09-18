@@ -10,6 +10,7 @@ on:
       - "src/swirengine/exporting.py"
       - "tests/test_scene_packages_1_9.py"
       - "tests/test_exporting.py"
+      - "tests/test_scene_export_optin_1_9.py"
       - "tests/test_serialization.py"
       - "tests/test_project_manifest_1_9.py"
       - "examples/demo_scene_packages_1_9.py"
@@ -26,6 +27,7 @@ on:
       - "src/swirengine/exporting.py"
       - "tests/test_scene_packages_1_9.py"
       - "tests/test_exporting.py"
+      - "tests/test_scene_export_optin_1_9.py"
       - "tests/test_serialization.py"
       - "tests/test_project_manifest_1_9.py"
       - "examples/demo_scene_packages_1_9.py"
@@ -70,7 +72,7 @@ jobs:
         run: python -m pip install -e ".[dev]"
 
       - name: Focused scene package tests
-        run: pytest -q tests/test_scene_packages_1_9.py tests/test_exporting.py
+        run: pytest -q tests/test_scene_packages_1_9.py tests/test_exporting.py tests/test_scene_export_optin_1_9.py
 
       - name: Stable scene and project regressions
         run: pytest -q tests/test_serialization.py tests/test_project_manifest_1_9.py
@@ -89,6 +91,7 @@ jobs:
             src/swirengine/exporting.py \
             tests/test_scene_packages_1_9.py \
             tests/test_exporting.py \
+            tests/test_scene_export_optin_1_9.py \
             examples/demo_scene_packages_1_9.py \
             tools/benchmark_scene_packages_1_9.py
 
@@ -98,5 +101,6 @@ jobs:
             src/swirengine/exporting.py \
             tests/test_scene_packages_1_9.py \
             tests/test_exporting.py \
+            tests/test_scene_export_optin_1_9.py \
             examples/demo_scene_packages_1_9.py \
             tools/benchmark_scene_packages_1_9.py
