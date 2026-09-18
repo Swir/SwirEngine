@@ -16,7 +16,8 @@ class _FuturePreloader:
     def __init__(self, future: Future[AssetLoadResult]) -> None:
         self.future = future
 
-    def load_async(self, asset, *, cache=True):
+    def load_async(self, _asset, *, cache=True):
+        del cache
         return self.future
 
 
@@ -143,7 +144,7 @@ def test_streaming_residency_stays_bounded_under_repeated_workload(tmp_path):
     streamer = AssetStreamingManager(
         assets,
         budget=budget,
-        size_estimator=lambda path, value: sizes[path.name],
+        size_estimator=lambda path, _value: sizes[path.name],
     )
     try:
         for _ in range(8):
@@ -166,7 +167,7 @@ def test_transient_render_pool_reuses_resources_and_closes_to_zero_residency():
     created: list[dict[str, int]] = []
     destroyed: list[dict[str, int]] = []
 
-    def create(descriptor):
+    def create(_descriptor):
         resource = {"id": len(created) + 1}
         created.append(resource)
         return resource
