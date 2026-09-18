@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import heapq
 import json
 import re
 from collections.abc import Iterable, Mapping
@@ -25,6 +26,7 @@ if TYPE_CHECKING:
 
 _MAX_NODES = 1024
 _MAX_DEPENDENCIES = 128
+_MAX_DIAGNOSTICS = 64
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,95}$")
 _EnumT = TypeVar("_EnumT", bound=Enum)
 
@@ -134,6 +136,14 @@ class ContentBuildGraph:
         self.manifest = manifest
         self.nodes = MappingProxyType(dict(nodes))
         self._validate_graph()
+        self._fingerprint = _fingerprint(
+            {
+                "nodes": {
+                    name: node.to_dict()
+                    for name, node in sorted(self.nodes.items(), key=lambda item: item[0])
+                }
+            }
+        )
 
     @classmethod
     def load_optional(cls, manifest: ProjectManifest) -> ContentBuildGraph | None:
@@ -198,13 +208,7 @@ class ContentBuildGraph:
 
     @property
     def fingerprint(self) -> str:
-        payload = {
-            "nodes": {
-                name: node.to_dict()
-                for name, node in sorted(self.nodes.items(), key=lambda item: item[0])
-            }
-        }
-        return _fingerprint(payload)
+        return self._fingerprint
 
     def node(self, name: str) -> ContentBuildNode:
         normalized = _identifier(name, "content build node")
@@ -227,32 +231,43 @@ class ContentBuildGraph:
 
     def diagnostics(self) -> tuple[ProjectDiagnostic, ...]:
         diagnostics: list[ProjectDiagnostic] = []
+        truncated = False
         for node in self.nodes.values():
+            issue: ProjectDiagnostic | None = None
             try:
                 path = self.resolve_path(node.path)
             except ContentBuildError as exc:
-                diagnostics.append(
-                    ProjectDiagnostic("error", "content-build-path-escape", str(exc), node.path)
+                issue = ProjectDiagnostic(
+                    "error", "content-build-path-escape", str(exc), node.path
                 )
-                continue
-            if not path.exists():
-                diagnostics.append(
-                    ProjectDiagnostic(
+            else:
+                if not path.exists():
+                    issue = ProjectDiagnostic(
                         "error",
                         "content-build-missing",
                         f"content node {node.name!r} does not exist",
                         node.path,
                     )
-                )
-            elif not path.is_file():
-                diagnostics.append(
-                    ProjectDiagnostic(
+                elif not path.is_file():
+                    issue = ProjectDiagnostic(
                         "error",
                         "content-build-not-file",
                         f"content node {node.name!r} is not a regular file",
                         node.path,
                     )
+            if issue is not None:
+                if len(diagnostics) >= _MAX_DIAGNOSTICS - 1:
+                    truncated = True
+                    break
+                diagnostics.append(issue)
+        if truncated:
+            diagnostics.append(
+                ProjectDiagnostic(
+                    "warning",
+                    "content-build-diagnostics-truncated",
+                    f"content diagnostics are capped at {_MAX_DIAGNOSTICS} entries",
                 )
+            )
         return tuple(diagnostics)
 
     def shipping_paths(self) -> tuple[str, ...]:
@@ -268,33 +283,30 @@ class ContentBuildGraph:
         return self.plan().all_paths
 
     def plan(self, targets: Iterable[str] | None = None) -> ContentBuildPlan:
-        requested = (
-            tuple(sorted(self.nodes))
-            if targets is None
-            else tuple(_identifier(name, "content build target") for name in targets)
-        )
+        if targets is None:
+            requested = tuple(sorted(self.nodes))
+        else:
+            submitted = tuple(_identifier(name, "content build target") for name in targets)
+            if not submitted:
+                raise ContentBuildError("content build plan requires at least one target")
+            if len(submitted) != len(set(submitted)):
+                raise ContentBuildError("content build targets must be unique")
+            requested = tuple(sorted(submitted))
         if not requested:
             raise ContentBuildError("content build plan requires at least one target")
-        if len(requested) != len(set(requested)):
-            raise ContentBuildError("content build targets must be unique")
         for target in requested:
             if target not in self.nodes:
                 self.node(target)  # raises an actionable error with available values
 
-        ordered: list[str] = []
-        visited: set[str] = set()
-
-        def visit(name: str) -> None:
-            if name in visited:
-                return
-            node = self.nodes[name]
-            for dependency in node.depends_on:
-                visit(dependency)
-            visited.add(name)
-            ordered.append(name)
-
-        for target in requested:
-            visit(target)
+        selected: set[str] = set()
+        pending = list(requested)
+        while pending:
+            name = pending.pop()
+            if name in selected:
+                continue
+            selected.add(name)
+            pending.extend(self.nodes[name].depends_on)
+        ordered = self._topological_order(selected)
 
         ordered_paths: list[str] = []
         warmup: list[str] = []
@@ -313,10 +325,9 @@ class ContentBuildGraph:
             if node.kind is ContentBuildKind.GENERATED:
                 generated.append(node.path)
 
-        target_tuple = tuple(requested)
         payload = {
             "graph": self.fingerprint,
-            "targets": target_tuple,
+            "targets": requested,
             "ordered_nodes": ordered,
             "ordered_paths": ordered_paths,
             "warmup_paths": warmup,
@@ -325,8 +336,8 @@ class ContentBuildGraph:
             "generated_paths": generated,
         }
         return ContentBuildPlan(
-            targets=target_tuple,
-            ordered_nodes=tuple(ordered),
+            targets=requested,
+            ordered_nodes=ordered,
             ordered_paths=tuple(ordered_paths),
             warmup_paths=tuple(warmup),
             preload_paths=tuple(preload),
@@ -335,17 +346,51 @@ class ContentBuildGraph:
             fingerprint=_fingerprint(payload),
         )
 
+    def _topological_order(self, selected: set[str]) -> tuple[str, ...]:
+        indegree = {
+            name: sum(dependency in selected for dependency in self.nodes[name].depends_on)
+            for name in selected
+        }
+        dependents: dict[str, list[str]] = {name: [] for name in selected}
+        for name in selected:
+            for dependency in self.nodes[name].depends_on:
+                if dependency in selected:
+                    dependents[dependency].append(name)
+        for values in dependents.values():
+            values.sort()
+
+        ready = [name for name, count in indegree.items() if count == 0]
+        heapq.heapify(ready)
+        ordered: list[str] = []
+        while ready:
+            name = heapq.heappop(ready)
+            ordered.append(name)
+            for dependent in dependents[name]:
+                indegree[dependent] -= 1
+                if indegree[dependent] == 0:
+                    heapq.heappush(ready, dependent)
+        if len(ordered) != len(selected):
+            unresolved = sorted(selected.difference(ordered))
+            preview = ", ".join(unresolved[:8])
+            if len(unresolved) > 8:
+                preview += ", ..."
+            raise ContentBuildError(f"content build dependency cycle involving: {preview}")
+        return tuple(ordered)
+
     def _validate_graph(self) -> None:
-        seen_paths: dict[str, str] = {}
+        seen_paths: dict[str, tuple[str, str]] = {}
         for name, node in self.nodes.items():
             if name != node.name:
                 raise ContentBuildError("content build node mapping key must match node.name")
-            owner = seen_paths.get(node.path)
+            path_key = node.path.casefold()
+            owner = seen_paths.get(path_key)
             if owner is not None:
+                owner_name, owner_path = owner
                 raise ContentBuildError(
-                    f"content path {node.path!r} is declared by both {owner!r} and {name!r}"
+                    f"content path collision between {owner_name!r} ({owner_path}) and "
+                    f"{name!r} ({node.path})"
                 )
-            seen_paths[node.path] = name
+            seen_paths[path_key] = (name, node.path)
             if len(node.depends_on) > _MAX_DEPENDENCIES:
                 raise ContentBuildError(
                     f"content build node {name!r} may depend on at most {_MAX_DEPENDENCIES} nodes"
@@ -357,29 +402,7 @@ class ContentBuildGraph:
                     raise ContentBuildError(
                         f"content build node {name!r} depends on unknown node {dependency!r}"
                     )
-
-        states: dict[str, int] = {}
-        stack: list[str] = []
-
-        def visit(name: str) -> None:
-            state = states.get(name, 0)
-            if state == 2:
-                return
-            if state == 1:
-                index = stack.index(name) if name in stack else 0
-                cycle = stack[index:] + [name]
-                raise ContentBuildError(
-                    "content build dependency cycle: " + " -> ".join(cycle)
-                )
-            states[name] = 1
-            stack.append(name)
-            for dependency in self.nodes[name].depends_on:
-                visit(dependency)
-            stack.pop()
-            states[name] = 2
-
-        for name in sorted(self.nodes):
-            visit(name)
+        self._topological_order(set(self.nodes))
 
 
 def _default_load(kind: ContentBuildKind) -> ContentLoadPolicy:
