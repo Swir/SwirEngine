@@ -148,6 +148,10 @@ class CreatorProjectWorkflow:
     def prepare(self) -> tuple[Path, ...]:
         """Create missing creator directories/defaults without overwriting user files."""
 
+        # Validate the project before any mutation so a typo/wrong working directory cannot
+        # litter an unrelated directory with creator folders or configuration templates.
+        ProjectManifest.load(self.root)
+
         created: list[Path] = []
         for directory in (
             self.layout.scenes_dir,
