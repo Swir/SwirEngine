@@ -27,7 +27,7 @@ def run_gate(repository: Path = REPOSITORY) -> dict[str, object]:
             if spec.name not in {"2d-game", "3d-game"}:
                 continue
             project = workspace / spec.name
-            real_game._prepare_project(repository, project, spec)  # noqa: SLF001
+            real_game._prepare_project(repository, project, spec)
             workflow = CreatorProjectWorkflow(project)
             workflow.prepare()
             report = workflow.inspect(
