@@ -183,7 +183,7 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
         "pytest",
         "ruff check",
         "compileall",
-        "ubuntu-latest",
+        "ubuntu-24.04",
         "windows-latest",
         "macos-latest",
         '"3.10"',
