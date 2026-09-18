@@ -27,6 +27,7 @@ def test_real_game_shipping_gate_staging_contract():
     assert report["runtime_validation"] is False
     assert report["player_data_boundary"] == "external-to-shipping-content"
     assert report["failure_paths"] == {
+        "missing_asset_rejected": True,
         "missing_entrypoint_rejected": True,
         "missing_scene_rejected": True,
     }
