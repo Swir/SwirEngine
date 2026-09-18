@@ -8,9 +8,11 @@ from dataclasses import replace
 from pathlib import Path
 
 from . import __version__
+from .creator_workflow20 import CreatorProjectWorkflow
 from .exporting import ExportTarget, NativeBuildError, PackagingProfile, ProjectExporter
 from .project19 import ProjectManifest, ProjectManifestError
 from .run_sessions19 import RunSessionError, create_run_plan, execute_run_plan
+from .shipping19 import ProjectShippingDefaults, ShippingContractError
 
 TEMPLATE_2D = '''from swirengine import Color, Game, Rectangle2D
 
@@ -54,7 +56,7 @@ def _toml_string(value: str) -> str:
 def new_project(name: str, mode: str) -> Path:
     root = Path(name).resolve()
     root.mkdir(parents=True, exist_ok=False)
-    for sub in ("assets", "scenes", "scripts"):
+    for sub in ("assets", "scenes", "prefabs", "scripts", "settings"):
         (root / sub).mkdir()
     template = TEMPLATE_3D if mode == "3d" else TEMPLATE_2D
     (root / "main.py").write_text(template.format(name=name), encoding="utf-8")
@@ -68,7 +70,7 @@ def new_project(name: str, mode: str) -> Path:
                 'entrypoint = "main.py"',
                 "",
                 "[content]",
-                'include = ["assets", "scenes", "scripts"]',
+                'include = ["assets", "scenes", "prefabs", "scripts", "config"]',
                 "",
                 "[run]",
                 'entrypoint = "main.py"',
@@ -98,6 +100,7 @@ def new_project(name: str, mode: str) -> Path:
         ),
         encoding="utf-8",
     )
+    ProjectShippingDefaults.load(root).write_templates()
     (root / ".gitignore").write_text("__pycache__/\n.venv/\nbuild/\ndist/\n", encoding="utf-8")
     return root
 
@@ -147,6 +150,31 @@ def _add_run_parser(subparsers) -> None:
         "game_args",
         nargs="*",
         help="plain positional arguments forwarded to the game entrypoint",
+    )
+
+
+def _add_workflow_parser(subparsers) -> None:
+    workflow = subparsers.add_parser(
+        "workflow",
+        help="inspect the integrated creator/run/settings/scenes/content/export project contract",
+    )
+    workflow.add_argument("project", nargs="?", default=".")
+    workflow.add_argument("--profile", help="validate one packaging profile")
+    workflow.add_argument(
+        "--prepare",
+        action="store_true",
+        help="create missing creator directories and editable input/settings defaults",
+    )
+    workflow.add_argument(
+        "--json",
+        dest="json_output",
+        action="store_true",
+        help="emit a machine-readable project workflow report",
+    )
+    workflow.add_argument(
+        "--skip-document-validation",
+        action="store_true",
+        help="skip decoding declared scene/prefab documents while keeping path/graph checks",
     )
 
 
@@ -233,6 +261,51 @@ def _run_doctor(project: str | Path, profile_name: str | None) -> int:
     return 2 if failed else 0
 
 
+def _run_workflow(args) -> int:
+    workflow = CreatorProjectWorkflow(args.project)
+    if args.prepare:
+        try:
+            workflow.prepare()
+        except (OSError, ValueError, ShippingContractError) as exc:
+            print(f"Workflow preparation failed: {exc}", file=sys.stderr)
+            return 2
+
+    report = workflow.inspect(
+        profile_name=args.profile,
+        validate_documents=not args.skip_document_validation,
+    )
+    if args.json_output:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+        return 0 if report.ready else 2
+
+    mode = report.mode or "unknown"
+    status = "READY" if report.ready else "BLOCKED"
+    print(f"Creator workflow: {report.name} ({mode}) -> {status}")
+    print(f"Workflow fingerprint: {report.fingerprint}")
+    print(f"Profiles: {', '.join(report.profiles) if report.profiles else '<none>'}")
+    if report.selected_profile:
+        print(f"Selected profile: {report.selected_profile}")
+    print(f"Scene packages: {report.scene_packages}")
+    print(f"Content build nodes: {report.content_nodes}")
+    print(
+        "Editable defaults: "
+        f"input={'yes' if report.input_defaults_present else 'fallback'}, "
+        f"settings={'yes' if report.settings_defaults_present else 'fallback'}"
+    )
+    if report.user_data_platform and report.user_data_source:
+        print(f"Save/profile policy: {report.user_data_platform} via {report.user_data_source}")
+    if not report.diagnostics:
+        print("Creator workflow OK")
+    for diagnostic in report.diagnostics:
+        _print_diagnostic(
+            diagnostic,
+            stream=sys.stderr if diagnostic.severity == "error" else None,
+        )
+        if diagnostic.action:
+            print(f"  Action: {diagnostic.action}")
+    return 0 if report.ready else 2
+
+
 def _run_project(args) -> int:
     try:
         manifest = ProjectManifest.load(args.project)
@@ -293,6 +366,7 @@ def main(argv=None) -> int:
     doctor = sub.add_parser("doctor")
     doctor.add_argument("project", nargs="?", default=".")
     doctor.add_argument("--profile")
+    _add_workflow_parser(sub)
     _add_run_parser(sub)
     _add_export_parser(sub)
     parse_argv, separator_args = _split_run_forwarded_args(argv)
@@ -314,6 +388,8 @@ def main(argv=None) -> int:
         return 0
     if args.command == "doctor":
         return _run_doctor(args.project, args.profile)
+    if args.command == "workflow":
+        return _run_workflow(args)
     if args.command == "run":
         return _run_project(args)
     if args.command == "export":
