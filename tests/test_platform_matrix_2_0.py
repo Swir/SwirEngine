@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import tomllib
 from pathlib import Path
+import tomllib
 
 from tools.verify_platform_matrix_2_0 import (
+    _WINDOWS_X64_MACHINES,
     SUPPORTED_PYTHONS,
     SUPPORTED_SYSTEMS,
-    _WINDOWS_X64_MACHINES,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
