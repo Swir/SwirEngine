@@ -26,10 +26,10 @@
 
 ## 📊 Project status
 
-<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 1.9 verified roadmap progress: 8 of 10 milestones, 80.0%, in progress" />
+<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 1.9 verified roadmap progress: 9 of 10 milestones, 90.0%, in progress" />
 
 **Active source scope:** SwirEngine 1.9 — Production Workflow & Game Shipping  
-**Verified source progress:** **8/10 milestones = 80.0% — IN PROGRESS**  
+**Verified source progress:** **9/10 milestones = 90.0% — IN PROGRESS**  
 **Latest public stable release:** **SwirEngine 1.5.0**  
 **Release readiness:** intermediate 1.6–1.9 development is source-only.
 
@@ -40,10 +40,9 @@ systems, real rendering validation, deterministic tooling and a practical path f
 to a shipped desktop game. The public package remains the verified 1.5.0 stable baseline while the
 repository continues additive source development toward 2.0.
 
-SwirEngine 1.6, 1.7 and 1.8 are completed source-only checkpoints. The active 1.9 roadmap is closing the
-remaining production workflow gap: project configuration, development sessions, input/UI/settings,
-save/profile integration, scenes, content builds, diagnostics, reproducible desktop shipping and
-end-to-end real-game gates.
+SwirEngine 1.6, 1.7 and 1.8 are completed source-only checkpoints. The active 1.9 roadmap has now
+verified the end-to-end 2D, 3D and multiplayer real-game production gate; the remaining milestone is
+the final 1.9 source checkpoint and measured 2.0 readiness audit.
 
 **SwirEngine 1.5.0** remains the released and locked public compatibility baseline. Its locked contract
 includes **Deterministic Simulation & Replay**, **Save & Profile 2.0**, **World Streaming 2.0**,
@@ -190,6 +189,11 @@ Milestone 8 adds deterministic host-native desktop shipping plans and artifact m
 validation now proves actual packaged smoke-game build, inventory, verification and runtime execution on
 Windows, Linux and macOS while unsupported desktop cross-compilation remains an explicit error.
 
+Milestone 9 closes the representative real-game production path. The maintained 2D and 3D games plus a
+deterministic multiplayer fixture are copied into isolated project manifests, exercise shipping input,
+settings and save/profile state, validate scene/content graphs, stage deterministic export inventories and
+run both source and staged entrypoints. Player-specific data stays outside redistributable project content.
+
 See:
 - [`docs/PROJECT_PRODUCTION_1_9.md`](docs/PROJECT_PRODUCTION_1_9.md)
 - [`docs/RUN_SESSIONS_1_9.md`](docs/RUN_SESSIONS_1_9.md)
@@ -199,6 +203,7 @@ See:
 - [`docs/CONTENT_BUILD_1_9.md`](docs/CONTENT_BUILD_1_9.md)
 - [`docs/RUNTIME_DIAGNOSTICS_1_9.md`](docs/RUNTIME_DIAGNOSTICS_1_9.md)
 - [`docs/desktop-shipping-1.9.md`](docs/desktop-shipping-1.9.md)
+- [`docs/REAL_GAME_PRODUCTION_1_9.md`](docs/REAL_GAME_PRODUCTION_1_9.md)
 - [`ROADMAP_1_9.md`](ROADMAP_1_9.md)
 
 ## 🎮 Validation games and examples
@@ -207,13 +212,14 @@ Representative projects are integration fixtures rather than separate releases:
 
 - **SwirEngine 2D Game Demo** — [`examples/2d_game_demo/`](examples/2d_game_demo/)
 - **SwirEngine 3D Game Demo** — [`examples/3d_game_demo/`](examples/3d_game_demo/)
+- **SwirEngine Multiplayer Game Demo** — [`examples/multiplayer_game_demo/`](examples/multiplayer_game_demo/)
 - **Neon Frontier 1.4** — locked 1.4 compatibility/showcase project
 - **Neon Frontier 1.3** — locked 1.3 regression game
 - **Neon Cube Hunt 3D** — OpenGL + packaged-runtime regression arena
 - **Neon Snake 3D** — complete 3D regression project
 
-The 1.9 Real-Game Production Gate will drive the 2D, 3D and multiplayer fixtures through the same
-project/run/settings/save/assets/scenes/export workflow used by creators.
+The 1.9 Real-Game Production Gate drives the 2D, 3D and multiplayer fixtures through the same
+project/run/settings/save/assets/scenes/export workflow used by creators, including staged runtime checks.
 
 ## 🧪 Development and verification
 
@@ -241,7 +247,7 @@ The SVG layer does not replace roadmap math or release gates.
 - `v1.4.0` and `v1.5.0` are published stable historical releases.
 - The public stable package stays at **1.5.0** while 1.6–1.9 are developed as source-only checkpoints.
 - Stable 1.x behavior is preserved; later source systems are additive or opt-in where required.
-- The 2D and 3D demo projects remain source-only integration fixtures.
+- The 2D, 3D and multiplayer demo projects remain source-only integration fixtures.
 - No 1.6, 1.7, 1.8 or 1.9 GitHub Release, release tag or PyPI publication is permitted.
 - The next public GitHub Release and PyPI publication must be **SwirEngine 2.0**, after its dedicated
   roadmap and full release gate are verified.
@@ -259,7 +265,7 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
 - SwirEngine 1.6 — [`ROADMAP_1_6.md`](ROADMAP_1_6.md) — **10/10 = 100.0%**, source-only checkpoint
 - SwirEngine 1.7 — [`ROADMAP_1_7.md`](ROADMAP_1_7.md) — **10/10 = 100.0%**, source-only checkpoint
 - SwirEngine 1.8 — [`ROADMAP_1_8.md`](ROADMAP_1_8.md) — **10/10 = 100.0%**, source-only checkpoint
-- **SwirEngine 1.9 — [`ROADMAP_1_9.md`](ROADMAP_1_9.md) — 8/10 = 80.0%, active source roadmap**
+- **SwirEngine 1.9 — [`ROADMAP_1_9.md`](ROADMAP_1_9.md) — 9/10 = 90.0%, active source roadmap**
 
 ## ⚠️ Current limitations
 

@@ -6,11 +6,11 @@ SwirEngine 1.8 is a completed source-only rendering checkpoint. SwirEngine 1.9 t
 runtime systems into a coherent production path for building, validating, packaging and shipping
 complete games while preserving stable 1.x behavior.
 
-**Current verified progress: 8/10 milestones = 80.0%.**
+**Current verified progress: 9/10 milestones = 90.0%.**
 
-<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 1.9 verified roadmap progress: 8 of 10 milestones, 80.0%, in progress" />
+<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 1.9 verified roadmap progress: 9 of 10 milestones, 90.0%, in progress" />
 
-**Verified active scope:** 8/10 milestones = 80.0% — IN PROGRESS.  
+**Verified active scope:** 9/10 milestones = 90.0% — IN PROGRESS.  
 **Release readiness:** frozen; the next public GitHub Release and PyPI publication remains SwirEngine 2.0.
 
 A milestone is checked only after implementation, focused tests, creator documentation, its dedicated
@@ -75,7 +75,7 @@ gate and the repository's required compatibility/regression gates pass on the ex
   - clean-environment install/export/build verification;
   - no unsupported cross-compilation claims.
 
-- [ ] **9. Real-Game Production Gate**
+- [x] **9. Real-Game Production Gate**
   - polished source-only 2D integration game through the production workflow;
   - polished source-only 3D integration game through the production workflow;
   - multiplayer integration fixture with packaging/runtime validation;
@@ -332,5 +332,39 @@ Neon Snake 3D Validation and locked 1.4/1.5 hardening. The dedicated contract ma
 Ruff and compile successfully, while the 500-plan workload completed in 2.0154 seconds under the
 5.0-second ceiling. Clean-wheel host-native package/manifest/runtime probes passed on Windows, Linux
 and macOS. This roadmap-marked head must re-pass its triggered gates before merge.
+
+## Milestone 9 verification contract
+
+Milestone 9 is complete only when the exact final implementation candidate satisfies all of the following:
+
+1. The maintained 2D and 3D source games plus a dedicated multiplayer fixture remain source-only integration
+   fixtures and do not create independent releases or bypass the engine production workflow.
+2. Each fixture is copied into an isolated production project with an explicit manifest, title/gameplay scenes,
+   shipping input/settings defaults and content-build declarations rather than relying on repository state.
+3. Player rebinding, accessibility settings and save/profile data round-trip through the production APIs while
+   remaining outside redistributable staged project content.
+4. Scene packages, content dependencies and required shipping files are validated before export, and repeated
+   export planning is deterministic.
+5. Staged outputs contain the entrypoint, project manifest, project controls/settings, declared assets and scenes
+   with deterministic SHA-256 inventory entries, while private user-data paths are rejected from shipping.
+6. Runtime mode launches both copied source entrypoints and staged entrypoints for the 2D, 3D and multiplayer
+   fixtures and requires successful completion rather than treating staging alone as runtime validation.
+7. The multiplayer fixture exercises the established replication, prediction/reconciliation, session, QoS and
+   profiler paths under seeded packet loss, duplication, reordering, latency and jitter with four clients.
+8. The production contract runs on Python 3.10, 3.13 and 3.14, while deterministic staging runs independently on
+   Windows, Linux and macOS without making unsupported cross-compilation claims.
+9. The real-game gate stays separate from the native executable gate: Milestone 8 continues to own clean-wheel
+   host-native executable creation, and both gates must remain green on the exact implementation head.
+10. Focused production tests, runtime/staging validation, Ruff, compile, deterministic SVG checks and the full
+    repository compatibility/runtime/packaging matrix pass before the milestone is marked complete.
+
+Verified implementation head `ab44450e1d2ae9566967b0ec398b712cfe479c85` passed Real-Game Production
+1.9 on Python 3.10, 3.13 and 3.14, including the source-to-staged runtime gate, and deterministic staging
+passed on Windows, Linux and macOS. The same exact head passed CI, Desktop Export, source checkpoints
+1.6/1.7/1.8, Game Demos Validation, Run Sessions + Progress 1.9, Frame Budget 1.7 and locked 1.4/1.5
+hardening. A timing-sensitive frame-budget reentrancy regression was made deterministic with the existing
+fake clock after macOS Python 3.10 exposed the test flake; the production frame-budget implementation was
+unchanged and its Python 3.10/3.13/3.14 dedicated gate passed. This roadmap-marked closeout head must
+re-pass its triggered gates before merge.
 
 `Release/PyPI: frozen until SwirEngine 2.0`.
