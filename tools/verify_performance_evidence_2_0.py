@@ -57,7 +57,7 @@ def _load_contract() -> dict[str, Any]:
     ids: set[str] = set()
     for workload in workloads:
         if not isinstance(workload, dict):
-            raise RuntimeError("performance workload entries must be objects")
+            raise TypeError("performance workload entries must be objects")
         workload_id = str(workload.get("id", "")).strip()
         if not workload_id or workload_id in ids:
             raise RuntimeError("performance workload ids must be non-empty and unique")
