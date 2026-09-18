@@ -226,9 +226,10 @@ def test_external_cache_invalidation_reconciles_residency_and_restages_in_backgr
     assets.register_loader("txt", loader)
     streamer = AssetStreamingManager(assets)
     try:
-        streamer.stage("asset.txt")
+        streamer.stage("asset.txt", pin=True)
         _drain(streamer)
         assert streamer.diagnostics().resident_assets == 1
+        assert streamer.resident()[0].pinned
         assert assets.invalidate("asset.txt")
         assert not assets.cached("asset.txt")
 
@@ -242,6 +243,7 @@ def test_external_cache_invalidation_reconciles_residency_and_restages_in_backgr
         final = streamer.diagnostics()
         assert final.completed == 2
         assert final.resident_assets == 1
+        assert streamer.resident()[0].pinned
         assert assets.cached("asset.txt")
         assert len(loader_threads) == 2
         assert all(name.startswith("swir-assets") for name in loader_threads)
