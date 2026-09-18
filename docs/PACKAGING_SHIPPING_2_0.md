@@ -24,13 +24,14 @@ python -m twine check dist/*
 `tools/verify_packaging_shipping_2_0.py` then requires exactly one SwirEngine wheel and one source
 distribution. Both archives are inspected before installation:
 
-- paths must be relative and traversal-free;
+- paths must be relative, traversal-free and not Windows drive-qualified;
 - case-folded duplicate members are rejected;
 - repository/build-state paths such as `.git`, `.venv` and `__pycache__` are rejected;
-- the wheel must contain one SwirEngine `METADATA` record and `swirengine/__init__.py`;
+- archive inventory is bounded to 50,000 members, 64 MiB per member and 256 MiB total uncompressed data;
+- wheel symlink entries and sdist link/device/FIFO members are rejected;
+- the wheel must contain one SwirEngine `METADATA` record and the exact `swirengine/__init__.py` package entry;
 - the sdist must contain one `PKG-INFO` record and `src/swirengine/__init__.py`;
 - distribution name/version must remain `swirengine` / `1.5.0` while the 2.0 release freeze is active;
-- sdist link/device members are rejected;
 - SHA-256 digests are emitted for both candidate artifacts as verification evidence.
 
 ## Clean wheel and sdist installs
@@ -64,8 +65,8 @@ This is a host-native claim only. It does not introduce or imply desktop cross-c
 
 The milestone is not complete if any of these occur:
 
-- wheel or sdist metadata/inventory is malformed or ambiguous;
-- an archive can escape its extraction root;
+- wheel or sdist metadata/inventory is malformed, ambiguous or exceeds the documented bounds;
+- an archive contains a traversal, drive-qualified path, symlink/device entry or can otherwise escape its intended layout;
 - a clean import resolves through the source checkout;
 - copied 2D/3D/multiplayer fixtures fail from either installed distribution;
 - host-native shipping cannot build, validate or launch its executable;
