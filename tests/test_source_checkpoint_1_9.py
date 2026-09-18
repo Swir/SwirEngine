@@ -95,10 +95,13 @@ def test_checkpoint_workflow_is_validation_only() -> None:
         '"3.10"',
         '"3.13"',
         '"3.14"',
+        "os: [ubuntu-latest, windows-latest, macos-latest]",
         "verify_1_8_source_checkpoint.py --require-complete",
         "generate_progress_svg.py --check",
         "python -m build",
+        "python -m build --wheel --outdir wheelhouse",
         "twine check",
+        "tests/test_shipping_1_9.py tests/test_exporting.py",
         "verify_real_game_production_1_9.py --staging-only",
         "verify_clean_desktop_shipping_1_9.py --wheelhouse wheelhouse",
     ):
