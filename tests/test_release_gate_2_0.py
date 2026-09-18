@@ -5,15 +5,24 @@ import pytest
 from tools.verify_2_0_release_candidate import audit, legacy_progress_meter_lines, parse_roadmap
 
 ROOT = Path(__file__).resolve().parents[1]
+MILESTONE_10 = "- [x] **10. SwirEngine 2.0 Final Release Gate & Public Verification**"
 
 
-def test_release_candidate_preflight_contract_matches_current_repository():
-    report = audit(ROOT)
-    assert report.version == "1.5.0"
-    assert report.roadmap.completed == 9
-    assert report.roadmap.remaining == 1
+def test_release_candidate_contract_matches_current_repository_phase():
+    roadmap = (ROOT / "ROADMAP_2_0.md").read_text(encoding="utf-8")
+    require_final = MILESTONE_10 in roadmap
+    report = audit(ROOT, require_final=require_final)
+    if require_final:
+        assert report.version == "2.0.0"
+        assert report.roadmap.completed == 10
+        assert report.roadmap.remaining == 0
+        assert report.roadmap.percent == 100.0
+    else:
+        assert report.version == "1.5.0"
+        assert report.roadmap.completed == 9
+        assert report.roadmap.remaining == 1
+        assert report.roadmap.percent == 90.0
     assert report.roadmap.total == 10
-    assert report.roadmap.percent == 90.0
     assert len(report.checks) >= 40
 
 
