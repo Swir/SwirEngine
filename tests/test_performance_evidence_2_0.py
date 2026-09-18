@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
-from tools import verify_performance_evidence_2_0 as evidence
 
+from tools import verify_performance_evidence_2_0 as evidence
 
 EXPECTED_WORKLOADS = {
     "frame-budget",
