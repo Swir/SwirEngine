@@ -2,9 +2,9 @@
 
 # SwirEngine 2.0 Roadmap — Release-Quality Python-First Game Production
 
-<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.0 verified roadmap progress: 2 of 10 milestones, 20.0%, in progress" />
+<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.0 verified roadmap progress: 3 of 10 milestones, 30.0%, in progress" />
 
-**Current verified progress: 2/10 milestones = 20.0%.**
+**Current verified progress: 3/10 milestones = 30.0%.**
 
 `Release/PyPI: frozen until SwirEngine 2.0`
 
@@ -42,7 +42,7 @@ retroactively published.
   - add actionable diagnostics for malformed projects, missing assets and invalid shipping configuration;
   - prove the workflow through maintained 2D and 3D fixtures.
 
-- [ ] **3. Multiplayer & Dedicated Server Production Contract**
+- [x] **3. Multiplayer & Dedicated Server Production Contract**
   - harden replication/session lifecycle, reconnect/failure handling and deterministic compatibility checks;
   - provide a documented headless/dedicated-server path where technically supported;
   - separate authoritative server state from player-local settings/save data;
@@ -148,6 +148,35 @@ The integrated workflow is additive over existing project/run/editor/scene/conte
 contracts and the public package/module version remains 1.5.0. Milestone 2 is therefore verified at
 **2/10 = 20.0%**. Release readiness remains separate; this closeout head must re-pass its triggered matrix
 before merge.
+
+## Milestone 3 verification contract
+
+Milestone 3 is complete only when the exact implementation head proves all of the following:
+
+1. Client and server compatibility fingerprints cover project, protocol, build, replication schema and content identity.
+2. Compatibility mismatches are rejected before join/resume mutates authoritative session state.
+3. Disconnect/resume rotates the single-use resume token and forces a full replication resynchronization when authoritative history exists.
+4. Authoritative gameplay state explicitly rejects settings, display, accessibility, controls/input bindings, profile and save data.
+5. Authoritative player-state payloads are bounded, portable and returned as defensive snapshots so caller mutation cannot rewrite stored authoritative state.
+6. The dedicated-server adapter runs through the existing fixed-tick headless runtime and validates startup before execution.
+7. Dedicated-server snapshots preserve the authoritative server tick and fail deterministically on mismatch.
+8. The maintained multiplayer real-game fixture exercises join, authoritative/local state separation, match start, disconnect/resume and full resynchronization without public sockets.
+9. The dedicated workflow passes on Python 3.10, 3.13 and 3.14 with focused multiplayer/session/replication/server tests, snapshot-isolation regressions, Ruff and bytecode compilation.
+10. Full repository CI, locked 1.4/1.5 hardening, source checkpoints 1.6–1.9, desktop export and representative game/runtime gates remain green.
+
+## Milestone 3 verified evidence
+
+Hardened implementation head `419368d6aa910b211a1f71ebdc458ed4b3882d2d` passed every triggered workflow before this closeout
+was marked. The dedicated Multiplayer Production 2.0 gate passed on Python 3.10, 3.13 and 3.14, including
+focused multiplayer production tests, the existing replication/prediction/session/dedicated-server regression
+suites, the representative multiplayer fixture, defensive snapshot-isolation regressions, strict Ruff and
+bytecode compilation. The same exact head also passed full repository CI, locked 1.4/1.5 hardening, source
+checkpoints 1.6–1.9, Game Demos, Demo Game 3D, Neon Snake 3D, Desktop Export and Real-Game Production 1.9.
+
+The new production layer is additive over the established session, replication, networking and headless-server
+APIs; the public package/module version remains 1.5.0 and the fixture opens no public sockets. Milestone 3 is
+therefore verified at **3/10 = 30.0%**. Release readiness remains separate; this closeout head must re-pass
+its triggered matrix before merge.
 
 ## Historical handoff
 
