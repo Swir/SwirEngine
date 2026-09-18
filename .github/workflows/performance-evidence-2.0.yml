@@ -1,0 +1,92 @@
+name: Performance Evidence 2.0
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/PERFORMANCE_EVIDENCE_2_0.md"
+      - "docs/performance_evidence_2_0.json"
+      - "tools/verify_performance_evidence_2_0.py"
+      - "tests/test_performance_evidence_2_0.py"
+      - "tools/benchmark_frame_budget_1_7.py"
+      - "tools/benchmark_editor_productivity_1_5.py"
+      - "tools/benchmark_multiplayer_replication_1_6.py"
+      - "tools/benchmark_render_resources_1_8.py"
+      - "tools/benchmark_world_streaming_2_1_5.py"
+      - "tools/verify_runtime_scalability_2_0.py"
+      - ".github/workflows/performance-evidence-2.0.yml"
+  pull_request:
+    paths:
+      - "docs/PERFORMANCE_EVIDENCE_2_0.md"
+      - "docs/performance_evidence_2_0.json"
+      - "tools/verify_performance_evidence_2_0.py"
+      - "tests/test_performance_evidence_2_0.py"
+      - "tools/benchmark_frame_budget_1_7.py"
+      - "tools/benchmark_editor_productivity_1_5.py"
+      - "tools/benchmark_multiplayer_replication_1_6.py"
+      - "tools/benchmark_render_resources_1_8.py"
+      - "tools/benchmark_world_streaming_2_1_5.py"
+      - "tools/verify_runtime_scalability_2_0.py"
+      - ".github/workflows/performance-evidence-2.0.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: Contract / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install CPython 3.14 native build prerequisites
+        if: matrix.python-version == '3.14'
+        run: sudo apt-get update && sudo apt-get install -y libx11-dev libgl-dev libegl-dev
+      - name: Install engine and development tools
+        run: python -m pip install --disable-pip-version-check -e ".[dev]"
+      - name: Verify evidence metadata
+        run: python tools/verify_performance_evidence_2_0.py --validate-only
+      - name: Run focused evidence tests
+        run: python -m pytest -q tests/test_performance_evidence_2_0.py
+      - name: Strict Ruff gate
+        run: >-
+          python -m ruff check
+          tools/verify_performance_evidence_2_0.py
+          tests/test_performance_evidence_2_0.py
+      - name: Compile evidence surfaces
+        run: >-
+          python -m compileall -q
+          tools/verify_performance_evidence_2_0.py
+          tests/test_performance_evidence_2_0.py
+
+  reference-evidence:
+    name: Reference evidence / Ubuntu 24.04 / Python 3.13
+    needs: contract
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Install engine and development tools
+        run: python -m pip install --disable-pip-version-check -e ".[dev]"
+      - name: Run deterministic performance evidence harness
+        run: python tools/verify_performance_evidence_2_0.py --output build/performance-evidence.json
+      - name: Upload contextual evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: swirengine-2.0-performance-evidence
+          path: build/performance-evidence.json
+          if-no-files-found: error
+          retention-days: 14
