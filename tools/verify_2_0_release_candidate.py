@@ -249,13 +249,18 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
             checks,
         )
         _require(
-            "STATUS-2.0.0%20STABLE" in readme,
-            "README stable-status badge identifies 2.0.0",
+            "STATUS-2.0.0%20RELEASE%20PREP" in readme,
+            "README identifies 2.0.0 as release-prep rather than falsely published stable",
             checks,
         )
         _require(
-            "Release/PyPI: frozen until SwirEngine 2.0" not in readme,
-            "README no longer presents the pre-release freeze after finalization",
+            "**Latest public stable release:** **SwirEngine 1.5.0**" in readme,
+            "README keeps 1.5.0 as the public stable release until publication succeeds",
+            checks,
+        )
+        _require(
+            "Release/PyPI: frozen until SwirEngine 2.0" in readme,
+            "README preserves the publication freeze through the finalization head",
             checks,
         )
     else:
