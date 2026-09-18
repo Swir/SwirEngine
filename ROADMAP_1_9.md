@@ -6,11 +6,11 @@ SwirEngine 1.8 is a completed source-only rendering checkpoint. SwirEngine 1.9 t
 runtime systems into a coherent production path for building, validating, packaging and shipping
 complete games while preserving stable 1.x behavior.
 
-**Current verified progress: 5/10 milestones = 50.0%.**
+**Current verified progress: 6/10 milestones = 60.0%.**
 
-<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 1.9 verified roadmap progress: 5 of 10 milestones, 50.0%, in progress" />
+<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 1.9 verified roadmap progress: 6 of 10 milestones, 60.0%, in progress" />
 
-**Verified active scope:** 5/10 milestones = 50.0% — IN PROGRESS.  
+**Verified active scope:** 6/10 milestones = 60.0% — IN PROGRESS.  
 **Release readiness:** frozen; the next public GitHub Release and PyPI publication remains SwirEngine 2.0.
 
 A milestone is checked only after implementation, focused tests, creator documentation, its dedicated
@@ -57,7 +57,7 @@ gate and the repository's required compatibility/regression gates pass on the ex
   - creator-facing level transition/loading contracts;
   - compatibility bridge for existing scene APIs and demos.
 
-- [ ] **6. Content Build Graph & Shipping Asset Preparation**
+- [x] **6. Content Build Graph & Shipping Asset Preparation**
   - deterministic content dependency graph for assets, scenes, shaders and generated data;
   - preload/warmup/streaming plans connected to existing asset/runtime systems;
   - duplicate/missing content detection and bounded build diagnostics;
@@ -233,5 +233,38 @@ including CI, Desktop Export, source checkpoints 1.6/1.7/1.8, Game Demos Validat
 Validation, Neon Snake 3D Validation and locked 1.4/1.5 hardening. The final implementation includes
 an exporter compatibility regression proving projects without `[scenes]` stay on the legacy path.
 This roadmap-marked head must re-pass its triggered gates before merge.
+
+## Milestone 6 verification contract
+
+Milestone 6 is complete only when the exact final implementation candidate satisfies all of the following:
+
+1. Production content planning is opt-in through a semantically parsed `[content.build]` TOML table; projects
+   without it and malformed legacy manifests keep the established 1.x export path.
+2. The graph is bounded to 1,024 nodes and 128 direct dependencies per node, with build diagnostics capped at
+   64 entries so broken content cannot create unbounded validation output.
+3. Target plans use an iterative deterministic dependency-first order, compute transitive closures without
+   recursion-depth dependence and expose checkout-independent graph/plan fingerprints.
+4. Duplicate node names, duplicate dependency entries, case-folded path collisions, unknown/self/cyclic
+   dependencies and unsafe absolute/traversal/drive-prefixed paths fail explicitly before shipping.
+5. Filesystem preflight rejects missing content, directories used as files and symlink-resolved project escapes;
+   generated build outputs must already exist and are never silently invented or executed by the exporter.
+6. Warmup, preload and stream groups bridge to the established asset/preload/streaming runtimes without moving
+   renderer/GPU finalization onto worker threads or changing stable 1.x loading semantics.
+7. `ProjectExporter` automatically stages required content-build files even outside broad include roots and
+   rejects profiles that would silently exclude graph-declared shipping content.
+8. Existing legacy export behavior, scene packages and stable asset/runtime systems remain additive and pass
+   compatibility coverage when `[content.build]` is not enabled.
+9. The creator demo proves deterministic shader warmup inputs, startup preload and stream-on-demand planning;
+   the 256-node × 2,500-plan Python 3.13 workload remains below the documented 8.0-second ceiling.
+10. Focused graph/export tests, creator demo, Ruff, compile and the dedicated Python 3.10/3.13/3.14 workflow
+    pass, followed by the complete repository compatibility/runtime/packaging matrix on the exact head.
+
+Verified implementation head `71d185b3b32299adfaeee772d27abb7105667614` passed the dedicated
+Python 3.10/3.13/3.14 Content Build 1.9 gate and every triggered compatibility/regression workflow,
+including CI, Desktop Export, source checkpoints 1.6/1.7/1.8, Game Demos Validation, Demo Game 3D
+Validation, Neon Snake 3D Validation and locked 1.4/1.5 hardening. Python 3.13 ran 38 focused
+content/export tests, the creator preload/stream flow, Ruff and compile successfully; the 256-node ×
+2,500-plan workload completed in 1.2311 seconds under the documented 8.0-second ceiling. This
+roadmap-marked head must re-pass its triggered gates before merge.
 
 `Release/PyPI: frozen until SwirEngine 2.0`.
