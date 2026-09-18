@@ -6,11 +6,11 @@ SwirEngine 1.8 is a completed source-only rendering checkpoint. SwirEngine 1.9 t
 runtime systems into a coherent production path for building, validating, packaging and shipping
 complete games while preserving stable 1.x behavior.
 
-**Current verified progress: 6/10 milestones = 60.0%.**
+**Current verified progress: 7/10 milestones = 70.0%.**
 
-<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 1.9 verified roadmap progress: 6 of 10 milestones, 60.0%, in progress" />
+<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 1.9 verified roadmap progress: 7 of 10 milestones, 70.0%, in progress" />
 
-**Verified active scope:** 6/10 milestones = 60.0% — IN PROGRESS.  
+**Verified active scope:** 7/10 milestones = 70.0% — IN PROGRESS.  
 **Release readiness:** frozen; the next public GitHub Release and PyPI publication remains SwirEngine 2.0.
 
 A milestone is checked only after implementation, focused tests, creator documentation, its dedicated
@@ -63,7 +63,7 @@ gate and the repository's required compatibility/regression gates pass on the ex
   - duplicate/missing content detection and bounded build diagnostics;
   - measurable content-build regression workload.
 
-- [ ] **7. Runtime Diagnostics, Crash Reports & Support Bundles**
+- [x] **7. Runtime Diagnostics, Crash Reports & Support Bundles**
   - opt-in structured crash/runtime report capture with privacy-safe defaults;
   - bounded logs, engine/project/build identifiers and diagnostic snapshots;
   - creator-generated support bundle without secrets or arbitrary user files;
@@ -266,5 +266,37 @@ Validation, Neon Snake 3D Validation and locked 1.4/1.5 hardening. Python 3.13 r
 content/export tests, the creator preload/stream flow, Ruff and compile successfully; the 256-node ×
 2,500-plan workload completed in 1.2311 seconds under the documented 8.0-second ceiling. This
 roadmap-marked head must re-pass its triggered gates before merge.
+
+## Milestone 7 verification contract
+
+Milestone 7 is complete only when the exact final implementation candidate satisfies all of the following:
+
+1. Runtime crash capture is opt-in and does not automatically collect environment variables, command-line
+   arguments, locals, arbitrary files or traceback source lines.
+2. Reports carry bounded engine/project/build identity and a deterministic project fingerprint without
+   depending on checkout location or hidden global state.
+3. Structured logs are bounded, sequence-stable and redact sensitive-key fields before they enter a report.
+4. Diagnostic and performance snapshots are explicitly supplied, size/depth bounded and reject non-finite or
+   non-portable JSON values rather than silently serializing them.
+5. Tracebacks expose project-relative paths when possible and external basenames otherwise, while report text
+   scrubs known project/home paths and common inline credential forms.
+6. Creator-generated support ZIPs contain only generated `bundle.json` and `report.json` entries with stable
+   ordering/timestamps, report hashes and explicit privacy metadata; unrelated user files are never swept in.
+7. Report loading rejects invalid UTF-8/JSON, unsupported schemas/versions and oversized payloads before a
+   support bundle can be created from them.
+8. Integration with existing project manifests and `PerformanceDiagnostics2` remains additive and does not
+   change the published 1.5.0 runtime contract.
+9. The creator demo proves crash capture → JSON round-trip → support ZIP without user-file capture; the
+   deterministic 1,000-report Python 3.13 workload remains below the documented 8.0-second ceiling.
+10. Focused tests, creator demo, workload, Ruff, compile and the dedicated Python 3.10/3.13/3.14 workflow pass,
+    followed by the complete repository compatibility/runtime/packaging matrix on the exact head.
+
+Verified implementation head `8546ccc0bf2d70575ab05628e8bf8d4aab4c6f0a` passed the dedicated
+Python 3.10/3.13/3.14 Runtime Diagnostics 1.9 gate and every triggered compatibility/regression workflow,
+including CI, Desktop Export, source checkpoints 1.6/1.7/1.8, Game Demos Validation, Demo Game 3D
+Validation, Neon Snake 3D Validation, Project Production 1.9, GPU Timing Capture 1.8 and locked 1.4/1.5
+hardening. Python 3.13 ran 14 focused runtime-diagnostics tests, the creator support-bundle flow, Ruff and
+compile successfully; the 1,000-report workload completed in 0.2926 seconds (3,418.0 reports/s) under
+the documented 8.0-second ceiling. This roadmap-marked head must re-pass its triggered gates before merge.
 
 `Release/PyPI: frozen until SwirEngine 2.0`.
