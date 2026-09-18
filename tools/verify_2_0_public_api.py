@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from __future__ import annotations
 
 import argparse
@@ -57,8 +58,7 @@ def _git(*args: str, root: Path = ROOT) -> bytes:
     completed = subprocess.run(
         ["git", *args],
         cwd=root,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         check=False,
     )
     if completed.returncode != 0:
