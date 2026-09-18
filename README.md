@@ -26,10 +26,10 @@
 
 ## 📊 Project status
 
-<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 1.9 verified roadmap progress: 7 of 10 milestones, 70.0%, in progress" />
+<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 1.9 verified roadmap progress: 8 of 10 milestones, 80.0%, in progress" />
 
 **Active source scope:** SwirEngine 1.9 — Production Workflow & Game Shipping  
-**Verified source progress:** **7/10 milestones = 70.0% — IN PROGRESS**  
+**Verified source progress:** **8/10 milestones = 80.0% — IN PROGRESS**  
 **Latest public stable release:** **SwirEngine 1.5.0**  
 **Release readiness:** intermediate 1.6–1.9 development is source-only.
 
@@ -63,7 +63,7 @@ includes **Deterministic Simulation & Replay**, **Save & Profile 2.0**, **World 
 | UI + input | Retained UI, keyboard/mouse/gamepad focus, controller input, rebinding foundations and the source-only 1.9 production input/UI/settings contract. |
 | Large worlds | Asset Pipeline 2.0, derived caching, world streaming and bounded resource/runtime diagnostics. |
 | Networking | Stable networking APIs plus source-only replication/server foundations developed after 1.5. |
-| Creator workflow | Editor productivity tooling, manifest/profile validation, unified development sessions, export staging and native desktop build plans. |
+| Creator workflow | Editor productivity tooling, manifest/profile validation, unified development sessions, export staging and verified host-native desktop build plans. |
 | Diagnostics | Stable profiler plus additive runtime/resource/timing capture systems. |
 | Compatibility | Stable 1.x public baseline with later source systems kept additive or opt-in where behavior could change. |
 
@@ -186,6 +186,10 @@ reports, project/build identity, diagnostic/performance snapshots and determinis
 contain generated report metadata only. The workflow never sweeps arbitrary user files, argv or the
 process environment into a support bundle automatically.
 
+Milestone 8 adds deterministic host-native desktop shipping plans and artifact manifests. Clean-wheel
+validation now proves actual packaged smoke-game build, inventory, verification and runtime execution on
+Windows, Linux and macOS while unsupported desktop cross-compilation remains an explicit error.
+
 See:
 - [`docs/PROJECT_PRODUCTION_1_9.md`](docs/PROJECT_PRODUCTION_1_9.md)
 - [`docs/RUN_SESSIONS_1_9.md`](docs/RUN_SESSIONS_1_9.md)
@@ -194,6 +198,7 @@ See:
 - [`docs/SCENE_PACKAGES_1_9.md`](docs/SCENE_PACKAGES_1_9.md)
 - [`docs/CONTENT_BUILD_1_9.md`](docs/CONTENT_BUILD_1_9.md)
 - [`docs/RUNTIME_DIAGNOSTICS_1_9.md`](docs/RUNTIME_DIAGNOSTICS_1_9.md)
+- [`docs/desktop-shipping-1.9.md`](docs/desktop-shipping-1.9.md)
 - [`ROADMAP_1_9.md`](ROADMAP_1_9.md)
 
 ## 🎮 Validation games and examples
@@ -254,7 +259,7 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
 - SwirEngine 1.6 — [`ROADMAP_1_6.md`](ROADMAP_1_6.md) — **10/10 = 100.0%**, source-only checkpoint
 - SwirEngine 1.7 — [`ROADMAP_1_7.md`](ROADMAP_1_7.md) — **10/10 = 100.0%**, source-only checkpoint
 - SwirEngine 1.8 — [`ROADMAP_1_8.md`](ROADMAP_1_8.md) — **10/10 = 100.0%**, source-only checkpoint
-- **SwirEngine 1.9 — [`ROADMAP_1_9.md`](ROADMAP_1_9.md) — 7/10 = 70.0%, active source roadmap**
+- **SwirEngine 1.9 — [`ROADMAP_1_9.md`](ROADMAP_1_9.md) — 8/10 = 80.0%, active source roadmap**
 
 ## ⚠️ Current limitations
 
