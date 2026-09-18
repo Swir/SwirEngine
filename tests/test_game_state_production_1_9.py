@@ -72,6 +72,8 @@ def test_manual_save_background_roundtrip_and_slot_budget(tmp_path: Path) -> Non
         assert len(outcomes) == 1
         assert outcomes[0].request_id == request_id
         assert outcomes[0].successful
+        assert session.diagnostics.pipeline.succeeded == 0
+        assert session.diagnostics.pipeline.submitted_total == 1
 
         loaded = session.load("slot-1")
         assert loaded.data["level"] == 4
