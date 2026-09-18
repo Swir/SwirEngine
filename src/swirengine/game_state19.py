@@ -11,6 +11,8 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any
 
+from typing_extensions import Self
+
 from .background_save17 import (
     BackgroundSaveDiagnostics,
     BackgroundSaveOutcome,
@@ -470,7 +472,7 @@ class ProductionGameStateSession:
         self.pipeline.shutdown(wait=wait, cancel_pending=cancel_pending)
         self._closed = True
 
-    def __enter__(self) -> ProductionGameStateSession:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type: object, exc: object, traceback: object) -> None:
@@ -501,10 +503,14 @@ class ProductionGameStateSession:
             self._recoveries += 1
 
     def _consume_outcomes(self, outcomes: tuple[BackgroundSaveOutcome, ...]) -> None:
-        if self._active_autosave is None:
-            return
-        if any(outcome.request_id == self._active_autosave for outcome in outcomes):
-            self._active_autosave = None
+        for outcome in outcomes:
+            if outcome.request_id == self._active_autosave:
+                self._active_autosave = None
+            # BackgroundSavePipeline retains delivered terminal records until forget().
+            # The production wrapper returns the immutable outcome to the creator and
+            # immediately releases the internal record so long-running autosave sessions
+            # do not accumulate one scheduler/request object per completed write.
+            self.pipeline.forget(outcome.request_id)
 
     def _next_autosave_slot(self) -> tuple[str, int, int]:
         infos = self.manager.list_autosaves(policy=self._autosave_policy)
