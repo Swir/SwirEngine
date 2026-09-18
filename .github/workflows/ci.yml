@@ -39,6 +39,9 @@ jobs:
       - name: Verify complete 1.5 release contract
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
         run: python tools/verify_1_5_release_candidate.py --require-complete
+      - name: Verify 2.0 final release preflight contract
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
+        run: python tools/verify_2_0_release_candidate.py
       - name: Run complete 1.4 headless integration probe
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
         env:
