@@ -38,6 +38,14 @@ _FORBIDDEN_SHIPPING_PARTS = {
 _DIAGNOSTIC_SECRET = "fixture-secret-do-not-export"
 
 
+class _ActivationProbe:
+    def __init__(self) -> None:
+        self.events: list[str] = []
+
+    def __call__(self, _button: UIButton) -> None:
+        self.events.append("play")
+
+
 def _is_sha256(value: object) -> bool:
     return (
         isinstance(value, str)
@@ -160,18 +168,13 @@ def verify_ui_navigation() -> dict[str, bool]:
 
     evidence: dict[str, bool] = {}
     for fixture in FIXTURES:
-        activated: list[str] = []
-        play = UIButton(
-            "Play",
-            0,
-            0,
-            on_click=lambda _button: activated.append("play"),
-        )
+        probe = _ActivationProbe()
+        play = UIButton("Play", 0, 0, on_click=probe)
         settings = UIButton("Settings", 0, 64)
         focus = UIFocusManager((play, settings))
         if focus.move(1) is not play or not play.focused:
             raise RuntimeError(f"{fixture.name} UI could not acquire deterministic initial focus")
-        if not focus.activate() or activated != ["play"]:
+        if not focus.activate() or probe.events != ["play"]:
             raise RuntimeError(f"{fixture.name} UI focused action did not activate")
         if focus.move(1) is not settings or not settings.focused or play.focused:
             raise RuntimeError(f"{fixture.name} UI focus navigation did not advance")
