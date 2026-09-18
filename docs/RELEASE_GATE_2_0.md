@@ -37,12 +37,13 @@ Only after Phase A is green may a dedicated finalization commit:
 - mark Milestone 10 complete and set the roadmap to **10/10 = 100.0%**;
 - set `pyproject.toml` and `swirengine.__version__` to `2.0.0`;
 - update project metadata so the primary roadmap URL points to `ROADMAP_2_0.md`;
-- update README status from development/frozen state to the exact final 2.0 release-candidate identity;
+- update README to a truthful **2.0.0 RELEASE PREP** identity while still naming 1.5.0 as the latest public stable release;
+- keep `Release/PyPI: frozen until SwirEngine 2.0` until public publication has actually succeeded;
 - regenerate `progress-card.svg` and `progress-mini.svg` from the same roadmap source;
 - keep the final release workflow tag-only;
 - pass `python tools/verify_2_0_release_candidate.py --require-final`.
 
-The **exact finalization head** must pass the complete final release gate again. A previously green 9/10 implementation head is not sufficient.
+The **exact finalization head** must pass the complete final release gate again. A previously green 9/10 implementation head is not sufficient. Reaching 10/10 authorizes the guarded publication path; it does not by itself make 2.0.0 a public stable release.
 
 ## Phase C — immutable tag creation
 
@@ -67,9 +68,9 @@ The publication branch must never contain extra release-only code that is absent
 
 A tag or uploaded artifact alone is not a successful release.
 
-## Phase E — post-release audit
+## Phase E — post-release audit and public-doc closeout
 
-After public-index verification succeeds, immediately start a dedicated post-release audit covering:
+After public-index verification succeeds, update the live documentation to name **SwirEngine 2.0.0** as the latest public stable release, remove the pre-publication freeze language, and then immediately start a dedicated post-release audit covering:
 
 - public API consistency and migration quality;
 - backwards compatibility and locked historical contracts;
