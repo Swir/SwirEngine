@@ -26,10 +26,10 @@
 
 ## 📊 Project status
 
-<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.0 verified roadmap progress: 6 of 10 milestones, 60.0%, in progress" />
+<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.0 verified roadmap progress: 7 of 10 milestones, 70.0%, in progress" />
 
 **Active source scope:** SwirEngine 2.0 — Release-Quality Python-First Game Production  
-**Verified source progress:** **6/10 milestones = 60.0% — IN PROGRESS**  
+**Verified source progress:** **7/10 milestones = 70.0% — IN PROGRESS**  
 **Latest public stable release:** **SwirEngine 1.5.0**  
 **Release readiness:** **not beta-ready and not release-ready**; roadmap progress and release readiness are separate gates.
 
@@ -40,12 +40,12 @@ real rendering validation, deterministic tooling, multiplayer foundations, produ
 diagnostics, export staging and host-native desktop shipping. The repository completed source-only
 checkpoints 1.6–1.9 without publishing them; 2.0 is now the active measured development scope.
 
-The first six verified 2.0 milestones lock the published **1.5.0** compatibility floor, integrate project
+The first seven verified 2.0 milestones lock the published **1.5.0** compatibility floor, integrate project
 creation/validation/run/shipping preparation, add a production-facing multiplayer contract, harden runtime
-scalability/resource lifecycle behavior, establish the verified base-engine Python/platform matrix and
-prove representative 2D, 3D and multiplayer projects through production input/UI, settings, save/profile,
-scene/content, diagnostics, deterministic export staging and source/staged runtime paths. Packaging and
-clean-install/native-desktop shipping is the next active milestone.
+scalability/resource lifecycle behavior, establish the verified base-engine Python/platform matrix, prove
+representative 2D/3D/multiplayer production workflows and verify exact-source wheel/sdist clean installs plus
+host-native packaged-game execution on Windows, Linux and macOS. Reproducible performance evidence and the
+competitive quality audit are the next active milestone.
 
 ## ✨ Highlights
 
@@ -61,6 +61,7 @@ clean-install/native-desktop shipping is the next active milestone.
 | Saves + profiles | Save/profile APIs plus source-development autosave, recovery and production user-data integration. |
 | Networking | TCP/gameplay APIs plus source-only production session/replication contracts, compatibility fingerprints, reconnect resynchronization and a headless dedicated-server adapter used by the multiplayer fixture. |
 | Creator workflow | `swirengine workflow` composes project/run/scene/content/settings/save-policy checks, safe preparation, export-profile validation and actionable diagnostics. |
+| Packaging | Exact-source wheel/sdist inspection, isolated clean installs, installed-artifact 2D/3D/multiplayer fixture execution and host-native desktop package runtime verification. |
 | Diagnostics | Profiling, runtime diagnostics, bounded crash/support reporting, streaming pressure/lifecycle diagnostics and deterministic build identity. |
 | Compatibility | Published 1.5.0 root API is the explicit 2.0 migration floor; current source base-engine matrix is verified on 64-bit CPython 3.10–3.14 across hosted Windows, Linux and macOS runners. |
 
@@ -162,7 +163,10 @@ invariants instead of unsupported shared-runner FPS claims. Milestone 5 verifies
 and maintained headless 2D/3D runtime fixtures. Milestone 6 drives maintained 2D, 3D and multiplayer
 projects through the same production creator/shipping contracts, including real focus/navigation/activation,
 player-local data isolation, privacy-safe diagnostic evidence, deterministic export staging, source/staged
-runtime entrypoints and deliberate missing-scene/asset/entrypoint failure probes.
+runtime entrypoints and deliberate missing-scene/asset/entrypoint failure probes. Milestone 7 builds the
+exact candidate source as wheel and sdist, performs bounded archive safety/inventory validation, installs
+each artifact into isolated environments, runs the maintained fixtures from those installs and then builds,
+validates and executes host-native desktop packages on Windows, Linux and macOS from the clean wheel.
 
 ```bash
 git fetch --tags
@@ -190,6 +194,7 @@ See:
 - [`docs/RUNTIME_SCALABILITY_2_0.md`](docs/RUNTIME_SCALABILITY_2_0.md)
 - [`docs/SUPPORT_MATRIX_2_0.md`](docs/SUPPORT_MATRIX_2_0.md)
 - [`docs/REAL_GAME_SHIPPING_2_0.md`](docs/REAL_GAME_SHIPPING_2_0.md)
+- [`docs/PACKAGING_SHIPPING_2_0.md`](docs/PACKAGING_SHIPPING_2_0.md)
 - [`docs/SWIRENGINE_2_0_READINESS_AUDIT.md`](docs/SWIRENGINE_2_0_READINESS_AUDIT.md)
 - [`ROADMAP_2_0.md`](ROADMAP_2_0.md)
 
@@ -225,6 +230,7 @@ python tools/verify_platform_matrix_2_0.py
 python -m pytest -q tests/test_platform_matrix_2_0.py
 python tools/verify_real_game_shipping_2_0.py
 python -m pytest -q tests/test_real_game_shipping_2_0.py
+python -m pytest -q tests/test_packaging_shipping_2_0.py
 ```
 
 Progress assets are generated from the authoritative **2.0** roadmap:
@@ -286,7 +292,7 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md),
 | 1.7 | [`ROADMAP_1_7.md`](ROADMAP_1_7.md) | 10/10 = 100.0%, source-only checkpoint |
 | 1.8 | [`ROADMAP_1_8.md`](ROADMAP_1_8.md) | 10/10 = 100.0%, source-only checkpoint |
 | 1.9 | [`ROADMAP_1_9.md`](ROADMAP_1_9.md) | 10/10 = 100.0%, source-only checkpoint |
-| **2.0** | **[`ROADMAP_2_0.md`](ROADMAP_2_0.md)** | **6/10 = 60.0%, active development** |
+| **2.0** | **[`ROADMAP_2_0.md`](ROADMAP_2_0.md)** | **7/10 = 70.0%, active development** |
 
 ## ⚠️ Current limitations
 

@@ -2,9 +2,9 @@
 
 # SwirEngine 2.0 Roadmap — Release-Quality Python-First Game Production
 
-<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.0 verified roadmap progress: 6 of 10 milestones, 60.0%, in progress" />
+<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.0 verified roadmap progress: 7 of 10 milestones, 70.0%, in progress" />
 
-**Current verified progress: 6/10 milestones = 60.0%.**
+**Current verified progress: 7/10 milestones = 70.0%.**
 
 `Release/PyPI: frozen until SwirEngine 2.0`
 
@@ -66,7 +66,7 @@ retroactively published.
   - verify game-local and player-local data boundaries;
   - treat fixture failures as engine integration failures rather than demo-only issues.
 
-- [ ] **7. Packaging, Clean Install & Native Desktop Shipping**
+- [x] **7. Packaging, Clean Install & Native Desktop Shipping**
   - build wheel and sdist from the exact candidate source;
   - verify clean installation and import/runtime smoke tests from built artifacts;
   - build and validate host-native Windows, Linux and macOS game packages for claimed targets;
@@ -266,6 +266,35 @@ checkpoints 1.6–1.9 and Desktop Export. The gate reuses production systems rat
 shipping shortcuts, keeps player-local data outside redistributable content and preserves the public package
 version at 1.5.0. Milestone 6 is therefore verified at **6/10 = 60.0%**. Release readiness remains separate;
 this closeout head must re-pass its triggered matrix before merge.
+
+## Milestone 7 verification contract
+
+Milestone 7 is complete only when the exact implementation head proves all of the following:
+
+1. Exact candidate source builds one wheel and one sdist and both pass metadata/inventory validation before installation.
+2. Archive validation rejects traversal, absolute or drive-qualified paths, case-folded duplicates, repository/build-state leakage and unsupported link/device entries.
+3. Archive inventory is bounded to 50,000 members, 64 MiB per member and 256 MiB total uncompressed data.
+4. Wheel and sdist install independently into fresh virtual environments with `PYTHONPATH`/`PYTHONHOME` stripped, user site disabled and import provenance outside the checkout.
+5. Maintained 2D, 3D and multiplayer fixtures execute from both clean artifact installs outside the development checkout.
+6. Host-native packaged-game verification builds from the clean wheel, validates its plan/manifest and executes its runtime marker on Windows, Linux and macOS.
+7. Packaging remains host-native only and does not imply unsupported cross-compilation.
+8. Package/module version remains 1.5.0 and no tag, GitHub Release or PyPI publication occurs.
+9. Packaging Shipping 2.0 stays active for roadmap/README/progress closeout changes and verifies deterministic SVG generation plus presentation regressions.
+10. Full repository CI, locked 1.4/1.5 hardening, source checkpoints 1.6–1.9 and Desktop Export pass on the exact implementation head.
+
+## Milestone 7 verified evidence
+
+Hardened implementation head `03aaef751260fc9de0c1a031f1f93b29fdd2c10c` passed every triggered
+workflow before this closeout was marked. Packaging Shipping 2.0 passed on Windows, Linux and macOS with
+CPython 3.13, including focused archive-safety/progress tests, deterministic SVG checks, exact-source wheel
+and sdist builds, Twine metadata validation, isolated clean installs, maintained 2D/3D/multiplayer fixture
+execution and host-native packaged-game build/manifest/runtime verification.
+
+The same exact head passed full repository CI, locked 1.4/1.5 hardening, source checkpoints 1.6–1.9 and
+Desktop Export. The archive gate now rejects drive-qualified paths and wheel symlinks in addition to
+traversal, duplicate and sdist special entries, and it bounds archive inventory before clean installation.
+Milestone 7 is therefore verified at **7/10 = 70.0%**. Release readiness remains separate; this closeout
+head must re-pass its triggered matrix before merge.
 
 ## Historical handoff
 
