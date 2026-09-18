@@ -34,7 +34,7 @@ SwirEngine already has the bounded `TransientRenderResourcePool` from the 1.8 re
 
 The deterministic workload exercises two existing production paths rather than creating a synthetic renderer benchmark:
 
-- a **128 × 128 tilemap (16,384 cells)** must keep viewport visibility work local instead of walking the whole world; the verifier rejects candidate counts above 500 or one-sixteenth of the map;
+- a **128 × 128 tilemap (16,384 cells)** must keep viewport visibility work local instead of walking the whole world; the fixed 1280 × 720 viewport over 16-pixel cells produces roughly 3,680 candidates and the verifier rejects candidate counts above **4,096 / one quarter of the map**, preserving at least 75% pruning versus a full-cell walk;
 - a stable **4,096-sprite batch** is staged repeatedly after preallocation and must not trigger CPU staging-buffer reallocations.
 
 These are algorithmic/work-allocation contracts. They do not claim a specific FPS because CI runner speed is not stable evidence for end-user hardware performance.
