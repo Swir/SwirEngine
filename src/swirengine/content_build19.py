@@ -21,7 +21,7 @@ from .project19 import ProjectDiagnostic, ProjectManifest
 if TYPE_CHECKING:
     from concurrent.futures import Future
 
-    from .asset_pipeline import AssetLoadResult, AssetPreloadReport, AssetPreloader
+    from .asset_pipeline import AssetLoadResult, AssetPreloader, AssetPreloadReport
     from .asset_streaming import AssetStreamingManager
 
 _MAX_NODES = 1024
