@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from concurrent.futures import Future
 from pathlib import Path
+from threading import Event, Thread
 from time import sleep
 
 import pytest
@@ -135,6 +136,40 @@ def test_shutdown_can_release_session_residency_and_reject_new_work(tmp_path):
     with pytest.raises(RuntimeError, match="shut down"):
         streamer.stage("asset-0.txt")
     streamer.shutdown(release_resident=True)
+
+
+def test_owned_pending_worker_cannot_repopulate_cache_after_release_shutdown(tmp_path):
+    started = Event()
+    release = Event()
+    assets = AssetManager(tmp_path)
+    source = tmp_path / "slow.txt"
+    source.write_text("payload", encoding="utf-8")
+
+    def slow_loader(path: Path) -> str:
+        started.set()
+        if not release.wait(timeout=2.0):
+            raise TimeoutError("test loader was never released")
+        return path.read_text(encoding="utf-8")
+
+    assets.register_loader("txt", slow_loader)
+    streamer = AssetStreamingManager(assets)
+    streamer.stage("slow.txt")
+    assert started.wait(timeout=1.0)
+
+    shutdown = Thread(
+        target=lambda: streamer.shutdown(wait=False, release_resident=True),
+        daemon=True,
+    )
+    shutdown.start()
+    sleep(0.02)
+    assert shutdown.is_alive()
+    release.set()
+    shutdown.join(timeout=2.0)
+
+    assert not shutdown.is_alive()
+    assert streamer.closed
+    assert streamer.diagnostics().pending == 0
+    assert not assets.cached("slow.txt")
 
 
 def test_streaming_residency_stays_bounded_under_repeated_workload(tmp_path):
