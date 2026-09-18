@@ -3,7 +3,11 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-from tools.verify_platform_matrix_2_0 import SUPPORTED_PYTHONS, SUPPORTED_SYSTEMS
+from tools.verify_platform_matrix_2_0 import (
+    SUPPORTED_PYTHONS,
+    SUPPORTED_SYSTEMS,
+    _WINDOWS_X64_MACHINES,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -26,8 +30,11 @@ def test_python_metadata_matches_candidate_2_0_range():
 def test_matrix_probe_scope_is_explicit_and_64_bit_only():
     assert SUPPORTED_SYSTEMS == {"Linux", "Windows", "Darwin"}
     assert SUPPORTED_PYTHONS == {"3.10", "3.11", "3.12", "3.13", "3.14"}
+    assert _WINDOWS_X64_MACHINES == {"AMD64", "x86_64"}
     source = (ROOT / "tools" / "verify_platform_matrix_2_0.py").read_text(encoding="utf-8")
     assert "pointer_bits != 64" in source
+    assert 'system != "Windows"' in source
+    assert 'python_minor != "3.14"' in source
     assert "require_vendored_native" in source
 
 
