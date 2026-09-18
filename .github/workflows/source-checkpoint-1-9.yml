@@ -107,11 +107,11 @@ jobs:
         if: matrix.python-version == '3.13'
         run: python -m compileall -q src tests examples demo_projects tools
 
-  cross-platform-staging:
-    name: 1.9 production staging / ${{ matrix.os }}
+  cross-platform-shipping:
+    name: 1.9 shipping / ${{ matrix.os }} / Python 3.13
     needs: contract
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -121,15 +121,21 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
-      - run: python -m pip install --upgrade pip
-      - run: python -m pip install -e ".[dev]"
+      - name: Install test and build dependencies
+        run: python -m pip install --upgrade pip build pyinstaller ".[dev]"
       - name: Validate deterministic representative-game staging
         env:
           PYGAME_HIDE_SUPPORT_PROMPT: "1"
         run: python tools/verify_real_game_production_1_9.py --staging-only
+      - name: Run desktop shipping and exporter regressions
+        run: python -m pytest -q tests/test_shipping_1_9.py tests/test_exporting.py
+      - name: Build source wheel
+        run: python -m build --wheel --outdir wheelhouse
+      - name: Verify clean wheel install, host-native build, manifest and runtime
+        run: python tools/verify_clean_desktop_shipping_1_9.py --wheelhouse wheelhouse
 
   clean-package:
-    name: Build + clean wheel + native shipping checkpoint
+    name: Build + metadata + clean-wheel checkpoint
     needs: contract
     runs-on: ubuntu-24.04
     timeout-minutes: 25
