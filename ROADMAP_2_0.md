@@ -2,9 +2,9 @@
 
 # SwirEngine 2.0 Roadmap — Release-Quality Python-First Game Production
 
-<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.0 verified roadmap progress: 7 of 10 milestones, 70.0%, in progress" />
+<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.0 verified roadmap progress: 8 of 10 milestones, 80.0%, in progress" />
 
-**Current verified progress: 7/10 milestones = 70.0%.**
+**Current verified progress: 8/10 milestones = 80.0%.**
 
 `Release/PyPI: frozen until SwirEngine 2.0`
 
@@ -72,7 +72,7 @@ retroactively published.
   - build and validate host-native Windows, Linux and macOS game packages for claimed targets;
   - verify artifact inventories, manifests and launch behavior without relying on the development checkout.
 
-- [ ] **8. Performance Evidence & Competitive Quality Audit**
+- [x] **8. Performance Evidence & Competitive Quality Audit**
   - establish deterministic performance workloads with regression thresholds;
   - publish only technically comparable benchmark evidence with commands, hardware/runtime context and limitations;
   - compare creator productivity and shipping workflows where objective reproduction is possible;
@@ -295,6 +295,35 @@ Desktop Export. The archive gate now rejects drive-qualified paths and wheel sym
 traversal, duplicate and sdist special entries, and it bounds archive inventory before clean installation.
 Milestone 7 is therefore verified at **7/10 = 70.0%**. Release readiness remains separate; this closeout
 head must re-pass its triggered matrix before merge.
+
+## Milestone 8 verification contract
+
+Milestone 8 is complete only when the exact implementation head proves all of the following:
+
+1. The evidence contract names a bounded deterministic workload set spanning runtime scheduling, creator authoring, multiplayer replication, renderer-resource lifecycle, world streaming and production 2D/3D scalability.
+2. Existing benchmark time budgets are parsed from their source scripts and must exactly match the locked contract; the evidence gate may not silently loosen those thresholds.
+3. Runtime evidence records the exact commit, Python implementation/version, OS, architecture and hosted-runner context together with each command and bounded output.
+4. The reference harness executes every selected workload with deterministic hash seeding, explicit timeout and an expected success marker while preserving each workload's own correctness invariants.
+5. Shared-CI wall-clock observations are explicitly regression evidence rather than FPS, latency, memory or superiority marketing claims.
+6. Cross-engine runtime ranking remains disabled until an identical maintained workload, rendering/content setup, dependency set and platform/runtime context exists for every compared engine.
+7. The competitive workflow audit uses dated official documentation sources for Arcade, Panda3D and Ursina, records only positive reproducible facts and never infers that an unlisted capability is absent.
+8. SwirEngine creator/shipping evidence points to the already verified project, workflow, real-game and packaging gates instead of inventing a synthetic productivity score.
+9. The dedicated Performance Evidence 2.0 workflow passes metadata/tests/Ruff/compile on Python 3.10, 3.13 and 3.14 and uploads one contextual Ubuntu 24.04 / Python 3.13 evidence artifact.
+10. Full repository CI, locked 1.4/1.5 hardening, source checkpoints 1.6–1.9 and Desktop Export pass on the exact implementation head with package/module metadata still frozen at 1.5.0.
+
+## Milestone 8 verified evidence
+
+Hardened implementation head `c810888b28fcc773429778e0bac7ac5d49ee4275` passed every triggered
+workflow before this closeout was marked. Performance Evidence 2.0 passed its Python 3.10, 3.13 and 3.14
+contract jobs plus the Ubuntu 24.04 / Python 3.13 reference-evidence harness and artifact upload. The gate
+locks existing benchmark budgets to their source constants, records contextual observations without
+committing a runner-dependent score and explicitly blocks unsupported cross-engine runtime ranking.
+
+The same exact head passed full repository CI, locked 1.4/1.5 hardening, source checkpoints 1.6–1.9 and
+Desktop Export. The competitive quality audit cites dated official documentation for Arcade, Panda3D and
+Ursina while limiting claims to reproducible workflow facts; it makes no cross-engine FPS/latency/memory or
+superiority claim. Milestone 8 is therefore verified at **8/10 = 80.0%**. Release readiness remains separate;
+this closeout head must re-pass its triggered matrix before merge.
 
 ## Historical handoff
 
