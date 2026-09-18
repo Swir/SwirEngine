@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import os
 import platform
@@ -9,6 +10,7 @@ import sys
 import time
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_PATH = ROOT / "docs" / "performance_evidence_2_0.json"
@@ -16,6 +18,33 @@ DOC_PATH = ROOT / "docs" / "PERFORMANCE_EVIDENCE_2_0.md"
 MAX_WORKLOADS = 16
 MAX_OUTPUT_CHARS = 16_384
 TIMEOUT_SECONDS = 45.0
+MAX_ALLOWED_BUDGETS = {
+    "frame-budget": 5.0,
+    "editor-productivity": 5.0,
+    "multiplayer-replication": 6.0,
+    "render-resource-reuse": 5.0,
+    "world-streaming": 3.0,
+}
+OFFICIAL_REFERENCE_HOSTS = {
+    "Arcade": {"api.arcade.academy"},
+    "Panda3D": {"docs.panda3d.org"},
+    "Ursina": {"www.ursinaengine.org"},
+}
+REFERENCE_CHECK_DATE = "2026-09-18"
+
+
+def _numeric_constant(path: Path, name: str) -> float:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    for node in tree.body:
+        if not isinstance(node, ast.Assign) or len(node.targets) != 1:
+            continue
+        target = node.targets[0]
+        if isinstance(target, ast.Name) and target.id == name:
+            value = ast.literal_eval(node.value)
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                return float(value)
+            break
+    raise RuntimeError(f"{path.relative_to(ROOT)}: numeric constant {name} was not found")
 
 
 def _load_contract() -> dict[str, Any]:
@@ -44,6 +73,22 @@ def _load_contract() -> dict[str, Any]:
         if not marker or not threshold:
             raise RuntimeError(f"{workload_id}: expected marker and threshold source are required")
 
+        budget_name = workload.get("budget_constant")
+        budget_value = workload.get("budget_seconds")
+        if workload_id in MAX_ALLOWED_BUDGETS:
+            if not isinstance(budget_name, str) or not isinstance(budget_value, (int, float)):
+                raise RuntimeError(f"{workload_id}: a locked numeric benchmark budget is required")
+            source_budget = _numeric_constant(path, budget_name)
+            declared_budget = float(budget_value)
+            if source_budget != declared_budget:
+                raise RuntimeError(
+                    f"{workload_id}: source budget {source_budget} != evidence {declared_budget}"
+                )
+            if declared_budget > MAX_ALLOWED_BUDGETS[workload_id]:
+                raise RuntimeError(f"{workload_id}: benchmark budget was loosened without a new gate")
+        elif budget_name is not None or budget_value is not None:
+            raise RuntimeError(f"{workload_id}: algorithmic workload must not invent a time budget")
+
     policy = data.get("measurement_policy", {})
     if policy.get("cross_engine_runtime_benchmark") != "not_performed":
         raise RuntimeError("cross-engine runtime timings require an identical maintained harness")
@@ -55,15 +100,25 @@ def _load_contract() -> dict[str, Any]:
     references = data.get("external_reference_facts")
     if not isinstance(references, list) or len(references) < 3:
         raise RuntimeError("competitive audit requires at least three explicitly sourced references")
+    seen_projects: set[str] = set()
     for item in references:
+        project = str(item.get("project", ""))
+        if project not in OFFICIAL_REFERENCE_HOSTS or project in seen_projects:
+            raise RuntimeError("competitive references must use each approved project exactly once")
+        seen_projects.add(project)
+        if item.get("checked_date") != REFERENCE_CHECK_DATE:
+            raise RuntimeError(f"{project}: external evidence date is stale or missing")
         if item.get("runtime_performance_compared") is not False:
             raise RuntimeError("external runtime performance must remain unranked without a common harness")
         for key in ("official_url", "distribution_url"):
             value = str(item.get(key, ""))
-            if not value.startswith("https://"):
-                raise RuntimeError(f"external reference {key} must be an HTTPS URL")
+            parsed = urlparse(value)
+            if parsed.scheme != "https" or parsed.hostname not in OFFICIAL_REFERENCE_HOSTS[project]:
+                raise RuntimeError(f"{project}: {key} must use an approved official HTTPS host")
         if not str(item.get("verified_fact", "")).strip():
             raise RuntimeError("external reference fact must not be empty")
+    if seen_projects != set(OFFICIAL_REFERENCE_HOSTS):
+        raise RuntimeError("competitive reference inventory is incomplete")
 
     if not DOC_PATH.is_file():
         raise RuntimeError("docs/PERFORMANCE_EVIDENCE_2_0.md is required")
@@ -88,7 +143,10 @@ def _commit_sha() -> str:
         return value
     try:
         return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, stderr=subprocess.DEVNULL
+            ["git", "rev-parse", "HEAD"],
+            cwd=ROOT,
+            text=True,
+            stderr=subprocess.DEVNULL,
         ).strip()
     except (OSError, subprocess.CalledProcessError):
         return "unknown"
@@ -147,8 +205,16 @@ def _run_workload(workload: dict[str, Any]) -> dict[str, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Verify SwirEngine 2.0 performance evidence contracts")
-    parser.add_argument("--validate-only", action="store_true", help="validate evidence metadata without running workloads")
-    parser.add_argument("--output", type=Path, help="optional JSON file for contextual runtime observations")
+    parser.add_argument(
+        "--validate-only",
+        action="store_true",
+        help="validate evidence metadata without running workloads",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        help="optional JSON file for contextual runtime observations",
+    )
     args = parser.parse_args()
 
     contract = _load_contract()
