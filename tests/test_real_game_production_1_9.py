@@ -5,7 +5,6 @@ import pathlib
 import subprocess
 import sys
 
-
 REPOSITORY = pathlib.Path(__file__).resolve().parents[1]
 VERIFIER = REPOSITORY / "tools" / "verify_real_game_production_1_9.py"
 MULTIPLAYER_DEMO = REPOSITORY / "examples" / "multiplayer_game_demo" / "run_game.py"
