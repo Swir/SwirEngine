@@ -15,6 +15,13 @@ PREVIOUS_STABLE_VERSION = "1.5.0"
 EXPECTED_TOTAL = 10
 EXPECTED_PYTHON_RANGE = ">=3.10,<3.15"
 POST_RELEASE_STATUS = "docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md"
+POST_RELEASE_MINI = "../assets/readme/progress-2-0-audit-mini.svg"
+PYPI_PROGRESS_START = "<!-- SWIR-PYPI-PROGRESS:START -->"
+PYPI_PROGRESS_END = "<!-- SWIR-PYPI-PROGRESS:END -->"
+PYPI_PROGRESS_RE = re.compile(
+    rf"{re.escape(PYPI_PROGRESS_START)}.*?{re.escape(PYPI_PROGRESS_END)}",
+    re.DOTALL,
+)
 
 REQUIRED_DOCS = (
     "docs/API_STABILITY.md",
@@ -68,6 +75,10 @@ def parse_roadmap(text: str) -> RoadmapState:
     total = completed + remaining
     percent = 0.0 if total == 0 else completed / total * 100.0
     return RoadmapState(completed, remaining, total, percent)
+
+
+def _without_approved_pypi_progress(text: str) -> str:
+    return PYPI_PROGRESS_RE.sub("", text)
 
 
 def legacy_progress_meter_lines(text: str) -> tuple[str, ...]:
@@ -130,7 +141,15 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
         and "**Latest public stable release:** **SwirEngine 2.0.0**" in readme
     )
 
-    presentation_surfaces = [("README", readme), ("2.0 roadmap", roadmap_text)]
+    _require(
+        readme.count(PYPI_PROGRESS_START) == 1 and readme.count(PYPI_PROGRESS_END) == 1,
+        "README keeps exactly one approved deterministic PyPI progress fallback",
+        checks,
+    )
+    presentation_surfaces = [
+        ("README", _without_approved_pypi_progress(readme)),
+        ("2.0 roadmap", roadmap_text),
+    ]
     if post_release:
         presentation_surfaces.append(("post-release audit", post_release_status))
     for label, text in presentation_surfaces:
@@ -162,8 +181,13 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
             checks,
         )
         _require(
-            'src="../assets/readme/progress-mini.svg"' in post_release_status,
-            "active post-release audit embeds the compact progress SVG",
+            f'src="{POST_RELEASE_MINI}"' in post_release_status,
+            "active post-release audit embeds its scoped compact progress SVG",
+            checks,
+        )
+        _require(
+            'src="../assets/readme/progress-mini.svg"' not in post_release_status,
+            "post-release audit does not reuse the active 2.1 mini graphic",
             checks,
         )
     else:
