@@ -13,6 +13,10 @@ STATUS_PATH = Path("docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md")
 CARD_PATH = Path("assets/readme/progress-card.svg")
 MINI_PATH = Path("assets/readme/progress-mini.svg")
 TEMPLATE_PATH = Path("assets/readme/progress-template.svg")
+README_PATH = Path("README.md")
+ASCII_START = "<!-- SWIR-PYPI-PROGRESS:START -->"
+ASCII_END = "<!-- SWIR-PYPI-PROGRESS:END -->"
+ASCII_WIDTH = 30
 
 PROJECT_NAME = "SwirEngine"
 MILESTONE_LABEL = "2.0 POST-RELEASE"
@@ -91,6 +95,31 @@ def parse_progress(text: str, *, source: str = str(STATUS_PATH)) -> ProgressData
         )
     return data
 
+
+def render_ascii_progress(data: ProgressData) -> str:
+    fraction = data.fraction or 0.0
+    filled = max(0, min(ASCII_WIDTH, round(ASCII_WIDTH * fraction)))
+    bar = "#" * filled + "-" * (ASCII_WIDTH - filled)
+    counter = "N/A domains" if data.total <= 0 else f"{data.completed} / {data.total} domains"
+    return (
+        f"{ASCII_START}\n"
+        "```text\n"
+        f"SwirEngine  [{bar}] {data.display_percentage}\n"
+        f"Audit       {counter}\n"
+        "```\n"
+        f"{ASCII_END}"
+    )
+
+
+def render_readme_with_ascii(readme: str, data: ProgressData) -> str:
+    pattern = re.compile(
+        rf"{re.escape(ASCII_START)}.*?{re.escape(ASCII_END)}",
+        re.DOTALL,
+    )
+    block = render_ascii_progress(data)
+    if not pattern.search(readme):
+        raise ValueError("README is missing the SWIR PyPI ASCII progress block")
+    return pattern.sub(lambda _match: block, readme, count=1)
 
 def _scope_lines(scope: str) -> list[str]:
     lines = textwrap.wrap(scope, width=72, break_long_words=False, break_on_hyphens=False)
@@ -248,6 +277,8 @@ def generate(*, check: bool = False, status_path: Path = STATUS_PATH) -> int:
     data = parse_progress(text, source=status_path.as_posix())
     outputs = expected_outputs(data)
     stale: list[Path] = []
+    readme = README_PATH.read_text(encoding="utf-8")
+    expected_readme = render_readme_with_ascii(readme, data)
     for path, expected in outputs.items():
         if check:
             if not path.is_file() or path.read_text(encoding="utf-8") != expected:
@@ -256,6 +287,12 @@ def generate(*, check: bool = False, status_path: Path = STATUS_PATH) -> int:
         path.parent.mkdir(parents=True, exist_ok=True)
         if not path.is_file() or path.read_text(encoding="utf-8") != expected:
             path.write_text(expected, encoding="utf-8")
+
+    if check:
+        if readme != expected_readme:
+            stale.append(README_PATH)
+    elif readme != expected_readme:
+        README_PATH.write_text(expected_readme, encoding="utf-8")
 
     if stale:
         print("stale SWIR progress assets:")
