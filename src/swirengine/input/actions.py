@@ -176,6 +176,11 @@ class InputActions:
     def down(self, action: str, *, threshold: float = 0.5) -> bool:
         return abs(self.value(action)) >= float(threshold)
 
+    def _axis_active(self, binding: InputBinding, *, previous: bool) -> bool:
+        method = self.input.gamepad_axis_previous if previous else self.input.gamepad_axis
+        axis = method(str(binding.control), gamepad_id=binding.gamepad_id)
+        return axis * binding.direction >= binding.threshold
+
     def _edge(self, binding: InputBinding, *, pressed: bool) -> bool:
         if binding.kind == "key":
             method = self.input.key_pressed if pressed else self.input.key_released
@@ -192,6 +197,10 @@ class InputActions:
                 else self.input.gamepad_button_released
             )
             return method(str(binding.control), gamepad_id=binding.gamepad_id)
+        if binding.kind == "gamepad_axis":
+            active = self._axis_active(binding, previous=False)
+            was_active = self._axis_active(binding, previous=True)
+            return active and not was_active if pressed else was_active and not active
         return False
 
     def pressed(self, action: str) -> bool:

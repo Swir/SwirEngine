@@ -18,6 +18,7 @@ class InputManager:
 
         self.gamepad_deadzone = max(0.0, min(0.95, float(gamepad_deadzone)))
         self._gamepads: dict[int, GamepadSnapshot] = {}
+        self._previous_gamepads: dict[int, GamepadSnapshot] = {}
         self._gamepad_pressed: dict[int, set[int]] = {}
         self._gamepad_released: dict[int, set[int]] = {}
         self._gamepads_connected: set[int] = set()
@@ -28,6 +29,7 @@ class InputManager:
         self._released.clear()
         self._buttons_pressed.clear()
         self._buttons_released.clear()
+        self._previous_gamepads.clear()
         self._gamepad_pressed.clear()
         self._gamepad_released.clear()
         self._gamepads_connected.clear()
@@ -120,6 +122,25 @@ class InputManager:
         deadzone: float | None = None,
     ) -> float:
         state = self.gamepad(gamepad_id)
+        if state is None:
+            return 0.0
+        zone = self.gamepad_deadzone if deadzone is None else float(deadzone)
+        return state.axis(name, deadzone=zone)
+
+    def gamepad_axis_previous(
+        self,
+        name: str,
+        gamepad_id: int = 0,
+        *,
+        deadzone: float | None = None,
+    ) -> float:
+        """Return the previous polled axis value for edge-aware action bindings.
+
+        The previous snapshot is retained only for the current frame, matching the lifetime of
+        button ``pressed``/``released`` state. Missing, newly connected, or already-cleared
+        snapshots read as zero.
+        """
+        state = self._previous_gamepads.get(int(gamepad_id))
         if state is None:
             return 0.0
         zone = self.gamepad_deadzone if deadzone is None else float(deadzone)
@@ -244,6 +265,7 @@ class InputManager:
             if pressed:
                 self._gamepad_pressed[gamepad_id] = pressed
 
+        self._previous_gamepads = previous
         self._gamepads = current
 
     def _on_key(self, key: int, action: int) -> None:

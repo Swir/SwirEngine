@@ -17,6 +17,7 @@ class StubInput:
         self.pad_edges = set()
         self.pad_releases = set()
         self.axes = {}
+        self.previous_axes = {}
 
     def key(self, name):
         return name in self.keys
@@ -48,6 +49,9 @@ class StubInput:
     def gamepad_axis(self, name, gamepad_id=0):
         return self.axes.get((gamepad_id, name), 0.0)
 
+    def gamepad_axis_previous(self, name, gamepad_id=0):
+        return self.previous_axes.get((gamepad_id, name), 0.0)
+
 
 def test_named_action_combines_keyboard_mouse_and_gamepad():
     backend = StubInput()
@@ -77,6 +81,45 @@ def test_axis_binding_supports_direction_threshold_and_analog_value():
     backend.axes[(0, "left_x")] = -0.75
     assert actions.value("move_left") == pytest.approx(0.75)
     assert actions.down("move_left", threshold=0.35)
+
+
+def test_axis_binding_reports_threshold_crossing_edges():
+    backend = StubInput()
+    actions = InputActions(backend)
+    actions.gamepad_axis("accelerate", "right_trigger", threshold=0.4)
+
+    backend.previous_axes[(0, "right_trigger")] = 0.2
+    backend.axes[(0, "right_trigger")] = 0.7
+    assert actions.pressed("accelerate")
+    assert not actions.released("accelerate")
+
+    backend.previous_axes[(0, "right_trigger")] = 0.7
+    backend.axes[(0, "right_trigger")] = 0.9
+    assert not actions.pressed("accelerate")
+    assert not actions.released("accelerate")
+
+    backend.previous_axes[(0, "right_trigger")] = 0.9
+    backend.axes[(0, "right_trigger")] = 0.1
+    assert not actions.pressed("accelerate")
+    assert actions.released("accelerate")
+
+
+def test_axis_edge_respects_negative_direction_and_rebinding():
+    backend = StubInput()
+    actions = InputActions(backend)
+    actions.gamepad_axis("move", "left_x", direction=-1, threshold=0.3)
+
+    backend.previous_axes[(0, "left_x")] = -0.1
+    backend.axes[(0, "left_x")] = -0.8
+    assert actions.pressed("move")
+
+    actions.gamepad_axis("move", "right_x", direction=1, threshold=0.6, replace=True)
+    backend.previous_axes[(0, "right_x")] = 0.2
+    backend.axes[(0, "right_x")] = 0.7
+    assert actions.pressed("move")
+    assert actions.bindings("move") == (
+        InputBinding("gamepad_axis", "right_x", direction=1, threshold=0.6),
+    )
 
 
 def test_rebind_replace_and_unbind():
