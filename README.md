@@ -29,6 +29,13 @@
 
 <img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.1 SwirEditor and creator workflow progress: 3 of 10 milestones, 30.0%, in progress" />
 
+<!-- SWIR-PYPI-PROGRESS:START -->
+```text
+[#########---------------------] 30.0%
+3 / 10 milestones
+```
+<!-- SWIR-PYPI-PROGRESS:END -->
+
 **Active verified development scope:** SwirEngine 2.1 — SwirEditor & Creator Workflow  
 **2.1 roadmap:** **3/10 milestones = 30.0% — IN PROGRESS**  
 **2.1 beta-ready gate:** **NO**  
@@ -88,9 +95,7 @@ cd SwirEngine
 python -m pip install -e ".[dev]"
 ```
 
-The verified base-engine matrix covers maintained **64-bit CPython 3.10–3.14** jobs across hosted Windows,
-Linux and macOS runners. This is not a blanket claim for 32-bit Python, PyPy, free-threaded CPython, all CPU
-architectures or every optional dependency. See [`docs/SUPPORT_MATRIX_2_0.md`](docs/SUPPORT_MATRIX_2_0.md).
+The verified base-engine matrix covers maintained **64-bit CPython 3.10–3.14** jobs across hosted Windows, Linux and macOS runners. This is not a blanket claim for 32-bit Python, PyPy, free-threaded CPython, all CPU architectures or every optional dependency. See [`docs/SUPPORT_MATRIX_2_0.md`](docs/SUPPORT_MATRIX_2_0.md).
 
 ## 🚀 Quick Start
 
@@ -195,9 +200,11 @@ python tools/verify_release_safety_2_0.py
 ```
 
 `tools/generate_progress_svg.py` owns the canonical active-development `progress-card.svg`,
-`progress-mini.svg`, the labelled `progress-template.svg`, and compatibility mirrors for the established
-2.1 asset paths. The separate 2.0 audit generator owns only its audit-scoped mini graphic. Presentation tests
-verify source math, accessibility text, fill geometry, canonical embedding and legacy-meter cleanup.
+`progress-mini.svg`, the labelled `progress-template.svg`, compatibility mirrors for the established 2.1
+asset paths, and the single marked plain-ASCII PyPI fallback block in this README. All live progress outputs
+are derived from the same verified 2.1 roadmap source. The separate 2.0 audit generator owns only its
+audit-scoped mini graphic. Presentation tests verify source math, accessibility text, fill geometry, canonical
+embedding, the approved PyPI exception and legacy-meter cleanup outside that marked block.
 
 ## 🧱 Architecture and technology
 
