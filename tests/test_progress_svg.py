@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import re
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 import pytest
 
 from tools.generate_progress_svg import (
     CARD_PATH,
     MINI_PATH,
-    ROADMAP_PATH,
+    STATUS_PATH,
     TEMPLATE_PATH,
     ProgressData,
     expected_outputs,
@@ -18,8 +19,10 @@ from tools.generate_progress_svg import (
     render_mini,
 )
 
-README_PATH = ROADMAP_PATH.with_name("README.md")
-HISTORICAL_1_9_PATH = ROADMAP_PATH.with_name("ROADMAP_1_9.md")
+ROOT = Path(__file__).resolve().parents[1]
+README_PATH = ROOT / "README.md"
+HISTORICAL_2_0_PATH = ROOT / "ROADMAP_2_0.md"
+HISTORICAL_1_9_PATH = ROOT / "ROADMAP_1_9.md"
 LEGACY_PROGRESS_RE = re.compile(
     r"(?:[█▓▒░]{2,}|\[(?=[^\]\n]*[#=█▓▒░])(?:[#=█▓▒░ .-]){6,}\])"
 )
@@ -34,12 +37,13 @@ def _gradient_fill_width(svg: str) -> float | None:
     return None
 
 
-def test_authoritative_roadmap_math_matches_committed_assets() -> None:
-    data = parse_progress(ROADMAP_PATH.read_text(encoding="utf-8"))
+def test_authoritative_post_release_math_matches_committed_assets() -> None:
+    data = parse_progress(STATUS_PATH.read_text(encoding="utf-8"))
 
-    assert ROADMAP_PATH.name == "ROADMAP_2_0.md"
-    assert data.total > 0
-    assert 0 <= data.completed <= data.total
+    assert STATUS_PATH.as_posix() == "docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md"
+    assert data.completed == 4
+    assert data.total == 10
+    assert data.percentage == pytest.approx(40.0)
     assert data.percentage == pytest.approx(data.completed / data.total * 100.0)
     assert generate(check=True) == 0
     assert CARD_PATH.is_file()
@@ -49,21 +53,37 @@ def test_authoritative_roadmap_math_matches_committed_assets() -> None:
 
 def test_maintained_progress_surfaces_are_svg_only_and_nonduplicated() -> None:
     readme = README_PATH.read_text(encoding="utf-8")
-    roadmap = ROADMAP_PATH.read_text(encoding="utf-8")
-    historical = HISTORICAL_1_9_PATH.read_text(encoding="utf-8")
+    status = STATUS_PATH.read_text(encoding="utf-8")
+    historical_2_0 = HISTORICAL_2_0_PATH.read_text(encoding="utf-8")
+    historical_1_9 = HISTORICAL_1_9_PATH.read_text(encoding="utf-8")
 
     assert "<!-- SWIR-README-STANDARD:v2 -->" in readme
-    assert "<!-- SWIR-PROGRESS-SVG-PRO:v1 -->" in roadmap
 
-    for path, text in ((README_PATH, readme), (ROADMAP_PATH, roadmap), (HISTORICAL_1_9_PATH, historical)):
+    for path, text in (
+        (README_PATH, readme),
+        (STATUS_PATH, status),
+        (HISTORICAL_2_0_PATH, historical_2_0),
+        (HISTORICAL_1_9_PATH, historical_1_9),
+    ):
         assert not LEGACY_PROGRESS_RE.search(text), f"legacy progress meter found in {path}"
         assert "progress-template.svg" not in text
 
     assert readme.count("assets/readme/progress-card.svg") == 1
     assert "assets/readme/progress-mini.svg" not in readme
-    assert roadmap.count("assets/readme/progress-mini.svg") == 1
-    assert "assets/readme/progress-card.svg" not in roadmap
-    assert "assets/readme/progress-mini.svg" not in historical
+    assert status.count("../assets/readme/progress-mini.svg") == 1
+    assert "progress-card.svg" not in status
+    assert "progress-mini.svg" not in historical_2_0
+    assert "progress-mini.svg" not in historical_1_9
+
+
+def test_template_is_valid_but_never_live_project_data() -> None:
+    template = TEMPLATE_PATH.read_text(encoding="utf-8")
+
+    assert "TEMPLATE / NOT PROJECT DATA" in template
+    assert "40.0%" not in template
+    assert "4 / 10" not in template
+    assert "Post-Release Audit" not in template
+    assert ET.fromstring(template).tag.endswith("svg")
 
 
 @pytest.mark.parametrize(
@@ -80,7 +100,7 @@ def test_progress_geometry_is_bounded(
     expected_card: float | None,
     expected_mini: float | None,
 ) -> None:
-    data = ProgressData(completed, total, "fixture.md", scope="Fixture roadmap")
+    data = ProgressData(completed, total, "fixture.md", scope="Fixture audit")
 
     assert _gradient_fill_width(render_card(data)) == expected_card
     assert _gradient_fill_width(render_mini(data)) == expected_mini
@@ -92,6 +112,7 @@ def test_unknown_denominator_renders_na_without_fake_progress() -> None:
     card = render_card(data)
     mini = render_mini(data)
 
+    assert data.status == "N/A"
     assert "N/A" in card
     assert "N/A" in mini
     assert _gradient_fill_width(card) is None
@@ -104,7 +125,7 @@ def test_long_scope_expands_card_height() -> None:
         10,
         "fixture.md",
         scope=(
-            "A deliberately long verified roadmap scope that needs more than one visual line "
+            "A deliberately long verified post-release audit scope that needs more than one visual line "
             "without overlapping the project status or progress geometry"
         ),
     )
@@ -118,7 +139,7 @@ def test_long_scope_expands_card_height() -> None:
 
 def test_parse_progress_rejects_contradictory_summary() -> None:
     text = """
-**Current verified progress: 9/10 milestones = 90.0%.**
+Current verified progress: 9/10 milestones = 90.0%.
 - [x] **1. Done**
 - [ ] **2. Pending**
 """.strip()
@@ -132,7 +153,7 @@ def test_empty_scope_is_na_not_zero_or_complete() -> None:
 
     assert data.total == 0
     assert data.percentage is None
-    assert data.status == "PLANNING"
+    assert data.status == "N/A"
     assert data.display_percentage == "N/A"
 
 
