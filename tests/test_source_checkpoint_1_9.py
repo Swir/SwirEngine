@@ -8,6 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "tools" / "verify_1_9_source_checkpoint.py"
 ROADMAP = ROOT / "ROADMAP_1_9.md"
+ROADMAP_20 = ROOT / "ROADMAP_2_0.md"
 WORKFLOW = ROOT / ".github" / "workflows" / "source-checkpoint-1-9.yml"
 READINESS = ROOT / "docs" / "SWIRENGINE_2_0_READINESS_AUDIT.md"
 
@@ -30,13 +31,33 @@ def roadmap_progress() -> tuple[int, int]:
     return sum(mark.lower() == "x" for mark, _ in milestones), len(milestones)
 
 
+def current_version() -> str:
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    match = VERSION_RE.search(pyproject)
+    assert match is not None
+    return match.group(1)
+
+
+def two_point_zero_finalized() -> bool:
+    return ROADMAP_20.is_file() and (
+        "- [x] **10. SwirEngine 2.0 Final Release Gate & Public Verification**"
+        in ROADMAP_20.read_text(encoding="utf-8")
+    )
+
+
 def test_development_checkpoint_audit_passes() -> None:
     result = run_auditor()
     assert result.returncode == 0, result.stdout + result.stderr
     completed, total = roadmap_progress()
+    version = current_version()
     assert f"roadmap={completed}/{total}" in result.stdout
-    assert "public-version=1.5.0" in result.stdout
-    assert "2.0-readiness: N/A" in result.stdout
+    assert f"public-version={version}" in result.stdout
+    if version == "2.0.0":
+        assert two_point_zero_finalized()
+        assert "2.0-readiness: final release candidate" in result.stdout
+    else:
+        assert version == "1.5.0"
+        assert "2.0-readiness: N/A" in result.stdout
 
 
 def test_strict_checkpoint_tracks_actual_roadmap_completion() -> None:
@@ -56,11 +77,12 @@ def test_roadmap_has_exactly_ten_ordered_milestones() -> None:
     assert [int(number) for _, number in milestones] == list(range(1, 11))
 
 
-def test_public_package_version_remains_frozen() -> None:
-    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    match = VERSION_RE.search(pyproject)
-    assert match is not None
-    assert match.group(1) == "1.5.0"
+def test_public_package_version_preserves_historical_freeze_or_finalized_2_0() -> None:
+    version = current_version()
+    if version == "2.0.0":
+        assert two_point_zero_finalized()
+    else:
+        assert version == "1.5.0"
 
 
 def test_checkpoint_locks_real_game_and_prior_source_checkpoints() -> None:
