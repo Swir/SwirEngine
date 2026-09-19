@@ -15,6 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ROADMAP = ROOT / "ROADMAP_1_9.md"
 ACTIVE_20_ROADMAP = ROOT / "ROADMAP_2_0.md"
+POST_RELEASE_STATUS = ROOT / "docs" / "SWIRENGINE_2_0_POST_RELEASE_AUDIT.md"
 README = ROOT / "README.md"
 PYPROJECT = ROOT / "pyproject.toml"
 WORKFLOWS = ROOT / ".github" / "workflows"
@@ -177,6 +178,16 @@ def _current_public_version() -> str:
     return match.group(1)
 
 
+def _post_release_audit_active() -> bool:
+    if _current_public_version() != FORWARD_PUBLIC_VERSION or not POST_RELEASE_STATUS.is_file():
+        return False
+    readme = _text(README)
+    return (
+        "STATUS-2.0.0%20PUBLISHED" in readme
+        and "**Latest public stable release:** **SwirEngine 2.0.0**" in readme
+    )
+
+
 def _verify_public_version() -> str:
     version = _current_public_version()
     allowed = {STABLE_PUBLIC_VERSION}
@@ -229,15 +240,30 @@ def _verify_visual_contract() -> None:
         raise CheckpointError("progress-template.svg is a template and must never be embedded as real data")
 
     if ACTIVE_20_ROADMAP.is_file():
-        active = _text(ACTIVE_20_ROADMAP)
-        if not active.startswith("<!-- SWIR-PROGRESS-SVG-PRO:v1 -->"):
+        roadmap_20 = _text(ACTIVE_20_ROADMAP)
+        if not roadmap_20.startswith("<!-- SWIR-PROGRESS-SVG-PRO:v1 -->"):
             raise CheckpointError("ROADMAP_2_0.md must retain the SVG progress standard marker")
-        if active.count("assets/readme/progress-mini.svg") != 1:
-            raise CheckpointError("ROADMAP_2_0.md must embed exactly one authoritative progress mini")
+        if "progress-template.svg" in roadmap_20:
+            raise CheckpointError("progress-template.svg is a template and must never be embedded as real data")
         if "assets/readme/progress-mini.svg" in roadmap:
             raise CheckpointError("historical ROADMAP_1_9.md must not reuse the active progress mini")
-        if "progress-template.svg" in active:
-            raise CheckpointError("progress-template.svg is a template and must never be embedded as real data")
+
+        if _post_release_audit_active():
+            if "assets/readme/progress-mini.svg" in roadmap_20:
+                raise CheckpointError(
+                    "historical ROADMAP_2_0.md must not embed the active post-release progress mini"
+                )
+            status = _text(POST_RELEASE_STATUS)
+            if status.count("../assets/readme/progress-mini.svg") != 1:
+                raise CheckpointError(
+                    "active post-release audit must embed exactly one authoritative progress mini"
+                )
+            if "progress-template.svg" in status:
+                raise CheckpointError(
+                    "progress-template.svg is a template and must never be embedded as real data"
+                )
+        elif roadmap_20.count("assets/readme/progress-mini.svg") != 1:
+            raise CheckpointError("ROADMAP_2_0.md must embed exactly one authoritative progress mini")
     elif roadmap.count("assets/readme/progress-mini.svg") != 1:
         raise CheckpointError("ROADMAP_1_9.md must embed exactly one authoritative progress mini")
 
