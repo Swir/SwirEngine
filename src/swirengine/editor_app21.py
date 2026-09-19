@@ -171,7 +171,7 @@ class EditorProjectSession:
     controller: EditorFrontendController
 
     @classmethod
-    def open(cls, project: str | Path = ".") -> "EditorProjectSession":
+    def open(cls, project: str | Path = ".") -> EditorProjectSession:
         try:
             manifest = ProjectManifest.load(project)
         except (FileNotFoundError, ProjectManifestError) as exc:
