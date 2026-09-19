@@ -18,11 +18,23 @@ The async-asset workload repeatedly finalizes successful requests through the pu
 
 `AsyncAssetPipeline.prune_finalized(max_items=...)` provides bounded batch reclamation for long-running creator workflows. It removes finalized dependency leaves newest-first, never removes active requests, and leaves any dependency referenced by a retained request in place. Repeated calls can therefore collapse an already-finalized dependency graph without invalidating live dependency relationships.
 
-## Current evidence
+## Verified closeout evidence
 
-The previous audit found a medium-severity long-session retention issue: finalized pipeline requests and matching terminal scheduler jobs accumulated because the public pipeline had no reclamation path. The current hardening branch replaces that finding with explicit dependency-safe reclamation and expands the deterministic lifecycle harness to success, failure and cancellation outcomes.
+The initial post-release audit found a medium-severity long-session retention issue: finalized pipeline requests and matching terminal scheduler jobs accumulated because the public pipeline had no reclamation path. PR #167 replaced that gap with explicit dependency-safe reclamation and extended deterministic lifecycle coverage to success, worker failure and cancellation outcomes.
 
-This change does **not** advance Domain 5 merely because the API exists. The domain remains open until the exact final branch head passes the repository test/CI matrix and the updated lifecycle harness proves zero retained pipeline request records, zero terminal scheduler records after reclamation, zero pending async requests, bounded streaming residency, clean cache release and clean owned-thread teardown.
+The exact implementation head **`0d1c2b65f305ed8b8619dc56fa56435daa4f897a`** completed all **13/13** required pull-request workflows successfully before merge. That matrix included CI, Final Release Gate 2.0, Async Assets 1.7, Source Checkpoints 1.6–1.9, both maintained showcase/hardening workflows, game-demo validation, 3D demo validation, Neon Snake 3D and Desktop Export. PR #167 then merged to `main` as **`cc28b8803138d7ab5f4a7af88ab343de45c85970`**.
+
+The verified harness contract requires, after explicit reclamation and teardown:
+
+- zero retained finalized pipeline request records for the exercised workload;
+- zero matching terminal scheduler records after reclamation;
+- zero pending async requests;
+- bounded streaming residency during churn and zero tracked residency after forced release;
+- released streaming assets absent from the shared cache;
+- owned preloader/executor worker threads terminated after synchronous shutdown;
+- successful, failed and cancelled terminal outcomes reclaimable through the same dependency-safe public contract.
+
+No remaining critical/high-severity or release-blocking Domain 5 finding is known from this evidence. Domain 5 is therefore closed in the authoritative post-release audit. A future lifecycle regression reopens it.
 
 ## Verification
 
@@ -33,4 +45,4 @@ pytest -q tests/test_async_asset_reclamation_2_0.py tests/test_post_release_runt
 python tools/audit_runtime_lifecycle_2_0.py
 ```
 
-The audit command emits deterministic JSON counters and returns non-zero for high-severity lifecycle failures. A clean run after the reclamation fix must report no findings.
+The audit command emits deterministic JSON counters and returns non-zero for high-severity lifecycle failures. The repository CI keeps the reclamation tests and lifecycle harness in the maintained Async Assets 1.7 path so later changes cannot silently restore unbounded finalized-request retention.
