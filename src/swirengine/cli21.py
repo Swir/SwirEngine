@@ -21,6 +21,7 @@ def _editor_parser() -> argparse.ArgumentParser:
     parser.add_argument("--scene", default=DEFAULT_EDITOR_SCENE)
     parser.add_argument("--headless", action="store_true")
     parser.add_argument("--fresh-layout", action="store_true")
+    parser.add_argument("--recover", action="store_true")
     return parser
 
 
@@ -42,7 +43,7 @@ def _run_editor(argv: list[str]) -> int:
     from .editor_app21 import main as editor_main
 
     args = _editor_parser().parse_args(argv)
-    if args.project is None and not args.headless:
+    if args.project is None and not args.headless and not args.recover:
         try:
             from .project_hub21 import TkProjectHubApp
 
@@ -66,6 +67,8 @@ def _run_editor(argv: list[str]) -> int:
         forwarded.append("--headless")
     if args.fresh_layout:
         forwarded.append("--fresh-layout")
+    if args.recover:
+        forwarded.append("--recover")
     return editor_main(forwarded)
 
 
