@@ -45,15 +45,18 @@ def test_final_game_contract_mentions_every_integrated_1_3_system() -> None:
     assert required <= set(source.split()) | {token for token in required if token in source}
 
 
-def test_active_release_workflow_targets_1_5_and_keeps_locked_compatibility_gates() -> None:
+def test_active_release_workflow_uses_final_2_0_gate_and_registered_trusted_publisher() -> None:
     workflow = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
     trigger_section = workflow.split("jobs:", 1)[0]
 
-    assert 'tags:\n      - "v1.5.0"' in trigger_section
-    assert "verify_1_5_release_candidate.py --require-complete" in workflow
-    assert "verify_1_4_release_candidate.py --require-complete" in workflow
-    assert "verify_1_3_release_candidate.py" in workflow
+    assert "workflow_dispatch:" in trigger_section
+    assert "RELEASE_TAG: v2.0.0" in trigger_section
+    assert "verify_2_0_release_candidate.py --require-final" in workflow
+    assert "verify_1_5_release_candidate.py --require-complete" not in workflow
+    assert "verify_1_4_release_candidate.py --require-complete" not in workflow
+    assert "verify_1_3_release_candidate.py" not in workflow
     assert "pypa/gh-action-pypi-publish@release/v1" in workflow
+    assert "environment: pypi" in workflow
     assert "id-token: write" in workflow
     assert "skip-existing: true" not in workflow
 

@@ -239,11 +239,37 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             "historical GitHub release is wired to the 1.4 release notes",
             checks,
         )
-    _require(
-        "branches:" not in release.split("jobs:", 1)[0],
-        "publication workflow has no main-branch publish trigger",
-        checks,
-    )
+
+    trigger_section = release.split("jobs:", 1)[0]
+    if version == FORWARD_VERSION:
+        _require(
+            "workflow_dispatch:" in trigger_section,
+            "2.0 publication recovery remains manually dispatchable",
+            checks,
+        )
+        _require(
+            "branches:\n      - main" in trigger_section
+            and 'paths:\n      - ".github/workflows/release.yml"' in trigger_section,
+            "2.0 automatic recovery is limited to the release workflow change on main",
+            checks,
+        )
+        _require(
+            "RELEASE_SHA: 4c219f3bed4c107c612a58fa2fb1f1362b4dfc46" in trigger_section
+            and "RELEASE_TAG: v2.0.0" in trigger_section,
+            "2.0 recovery is pinned to the immutable verified release source",
+            checks,
+        )
+        _require(
+            "git push --force" not in release and "git tag -f" not in release,
+            "2.0 recovery cannot move or rewrite the immutable release tag",
+            checks,
+        )
+    else:
+        _require(
+            "branches:" not in trigger_section,
+            "publication workflow has no main-branch publish trigger",
+            checks,
+        )
 
     ci = _read(root, ".github/workflows/ci.yml")
     _require(
