@@ -20,9 +20,9 @@ LEGACY_PROGRESS_RE = re.compile(
 
 def test_2_1_roadmap_math_matches_generated_assets() -> None:
     data = parse_progress((ROOT / STATUS_PATH).read_text(encoding="utf-8"))
-    assert data.completed == 0
+    assert data.completed == 3
     assert data.total == 10
-    assert data.display_percentage == "0.0%"
+    assert data.display_percentage == "30.0%"
     assert data.status == "IN PROGRESS"
 
     outputs = expected_outputs(data)
@@ -30,17 +30,22 @@ def test_2_1_roadmap_math_matches_generated_assets() -> None:
     assert (ROOT / MINI_PATH).read_text(encoding="utf-8") == outputs[MINI_PATH]
 
 
-def test_2_1_progress_svgs_are_valid_accessible_and_zero_fill_is_not_glowing() -> None:
+def test_2_1_progress_svgs_are_valid_accessible_and_have_verified_fill() -> None:
     data = parse_progress((ROOT / STATUS_PATH).read_text(encoding="utf-8"))
-    for relative, svg in expected_outputs(data).items():
+    outputs = expected_outputs(data)
+    for svg in outputs.values():
         root = ET.fromstring(svg)
         assert root.attrib["viewBox"]
         assert root.find("{http://www.w3.org/2000/svg}title") is not None
         assert root.find("{http://www.w3.org/2000/svg}desc") is not None
-        assert "0.0%" in svg
-        assert "0 / 10 milestones" in svg
-        if relative == CARD_PATH:
-            assert 'filter="url(#softGlow)" clip-path="url(#trackClip)"' not in svg
+        assert "30.0%" in svg
+        assert "3 / 10 milestones" in svg
+
+    card = outputs[CARD_PATH]
+    mini = outputs[MINI_PATH]
+    assert 'width="330.000000" height="18"' in card
+    assert 'filter="url(#softGlow)" clip-path="url(#trackClip)"' in card
+    assert 'width="210.000000" height="10"' in mini
 
 
 def test_2_1_roadmap_has_no_legacy_character_progress_meter() -> None:
