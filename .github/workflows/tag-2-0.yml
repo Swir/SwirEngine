@@ -47,6 +47,10 @@ jobs:
           case "$GITHUB_EVENT_NAME" in
             push)
               test "$GITHUB_REF_NAME" = "release/2.0.0-publish"
+              if [ "$main_sha" != "$GITHUB_SHA" ]; then
+                echo "Publication branch is not the exact current main commit: main=$main_sha branch=$GITHUB_SHA"
+                exit 1
+              fi
               source_sha="$GITHUB_SHA"
               ;;
             workflow_run)
