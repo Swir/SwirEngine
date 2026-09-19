@@ -13,7 +13,8 @@ def test_release_workflow_can_be_dispatched_without_changing_release_source():
     assert "workflow_dispatch:" in trigger
     assert "branches:" not in trigger
     assert release.count('ref: "refs/tags/v2.0.0"') >= 6
-    assert "git rev-list" in release
+    assert '["git", "rev-list", "-n", "1", actual]' in release
+    assert '["git", "rev-parse", "HEAD"]' in release
     assert "tag_commit != head_commit" in release
     assert "github.ref_name" not in release
     assert "skip-existing: true" not in release
