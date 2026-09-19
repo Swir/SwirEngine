@@ -23,7 +23,7 @@ REQUIRED_DOCS = (
     "docs/NAVIGATION_2_1_5.md",
     "docs/WORLD_STREAMING_2_1_5.md",
     "docs/UI_TOOLKIT_2_1_5.md",
-    "docs/EDITOR_PRODUCTIVITY_2_1_5.md",
+    "docs/EDITOR_PRODUCTIVITY_1_5.md",
     "docs/PERFORMANCE_DIAGNOSTICS_2_1_5.md",
     "docs/RELEASE_HARDENING_1_5.md",
 )
@@ -260,31 +260,62 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         )
 
         release = _read(root, ".github/workflows/release.yml")
-        for token in (
-            '"v1.5.0"',
-            "verify_1_5_release_candidate.py --require-complete",
-            "verify_1_3_release_candidate.py",
-            "verify_1_4_release_candidate.py --require-complete",
-            "RELEASE_NOTES_1_5.md",
-            "swirengine==1.5.0",
-            "pypa/gh-action-pypi-publish@release/v1",
-            "id-token: write",
-            "examples/2d_game_demo/run_game.py",
-            "examples/3d_game_demo/run_game.py",
-            "SWIR_GAME_DEMO_SMOKE_FRAMES",
-            "xvfb-run",
-            "dist-base\\swirengine-1.5.0-py3-none-any.whl",
-            "https://pypi.org/pypi/swirengine/1.5.0/json",
-        ) + tuple(Path(item).name for item in REQUIRED_BENCHMARKS):
-            _require(token in release, f"release workflow includes {token}", checks)
+        if version == TARGET_VERSION:
+            for token in (
+                '"v1.5.0"',
+                "verify_1_5_release_candidate.py --require-complete",
+                "verify_1_3_release_candidate.py",
+                "verify_1_4_release_candidate.py --require-complete",
+                "RELEASE_NOTES_1_5.md",
+                "swirengine==1.5.0",
+                "pypa/gh-action-pypi-publish@release/v1",
+                "id-token: write",
+                "examples/2d_game_demo/run_game.py",
+                "examples/3d_game_demo/run_game.py",
+                "SWIR_GAME_DEMO_SMOKE_FRAMES",
+                "xvfb-run",
+                "dist-base\\swirengine-1.5.0-py3-none-any.whl",
+                "https://pypi.org/pypi/swirengine/1.5.0/json",
+            ) + tuple(Path(item).name for item in REQUIRED_BENCHMARKS):
+                _require(token in release, f"historical 1.5 release workflow includes {token}", checks)
+            _require(
+                "branches:" not in release.split("jobs:", 1)[0],
+                "historical 1.5 publication workflow has no branch publish trigger",
+                checks,
+            )
+        else:
+            trigger_section = release.split("jobs:", 1)[0]
+            for token in (
+                "verify_2_0_release_candidate.py --require-final",
+                "pypa/gh-action-pypi-publish@release/v1",
+                "id-token: write",
+                "environment: pypi",
+                "RELEASE_TAG: v2.0.0",
+                "RELEASE_SHA: 4c219f3bed4c107c612a58fa2fb1f1362b4dfc46",
+                'ref: "refs/tags/v2.0.0"',
+                "https://pypi.org/pypi/swirengine/2.0.0/json",
+            ):
+                _require(token in release, f"2.0 recovery publication workflow includes {token}", checks)
+            _require(
+                "workflow_dispatch:" in trigger_section,
+                "2.0 recovery publication remains manually dispatchable",
+                checks,
+            )
+            _require(
+                "branches:\n      - main" in trigger_section
+                and 'paths:\n      - ".github/workflows/release.yml"' in trigger_section,
+                "2.0 automatic recovery is limited to the release workflow change on main",
+                checks,
+            )
+            _require(
+                "git push --force" not in release and "git tag -f" not in release,
+                "2.0 recovery cannot rewrite the immutable release tag",
+                checks,
+            )
+
         _require(
             "skip-existing: true" not in release,
             "publication cannot hide duplicate artifacts",
-            checks,
-        )
-        _require(
-            "branches:" not in release.split("jobs:", 1)[0],
-            "publication workflow has no branch publish trigger",
             checks,
         )
 
