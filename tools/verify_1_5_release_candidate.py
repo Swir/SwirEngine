@@ -330,21 +330,27 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             _require(token in tagger, f"1.5 tag bridge includes {token}", checks)
 
         readme = _read(root, "README.md")
-        _require(
-            "SwirEngine 1.5.0" in readme,
-            "README preserves the published 1.5.0 historical release identity",
-            checks,
-        )
         if version == TARGET_VERSION:
+            _require(
+                "SwirEngine 1.5.0" in readme,
+                "README identifies 1.5.0 while it is the current stable release",
+                checks,
+            )
             _require(
                 "STATUS-1.5.0%20STABLE" in readme,
                 "README stable-status badge identifies 1.5.0 while it is current",
                 checks,
             )
+        else:
+            _require(
+                "`v1.5.0`" in readme and "| 1.5 |" in readme and "released/locked" in readme,
+                "later README preserves 1.5 as an immutable released/locked compatibility line",
+                checks,
+            )
         _require("10/10 = 100.0%" in readme, "README preserves verified 1.5 10/10 evidence", checks)
         _require(
-            "Runtime Diagnostics & Profiling 2.0" in readme,
-            "README documents milestone 9",
+            "Runtime Diagnostics & Profiling 2.0" in roadmap_text,
+            "historical 1.5 roadmap preserves milestone 9 evidence",
             checks,
         )
         notes = _read(root, "RELEASE_NOTES_1_5.md")
