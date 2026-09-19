@@ -69,7 +69,7 @@ def test_deadzone_rescales_remaining_range():
     assert apply_deadzone(-0.6, 0.2) == pytest.approx(-0.5)
 
 
-def test_frame_poll_tracks_hotplug_and_button_edges():
+def test_frame_poll_tracks_hotplug_button_edges_and_previous_axes():
     glfw = FakeGLFW()
     manager = InputManager(gamepad_deadzone=0.2)
     glfw.states[0] = ((0.6, -0.4, 0.0, 0.0, -1.0, 0.0), buttons(0))
@@ -86,6 +86,7 @@ def test_frame_poll_tracks_hotplug_and_button_edges():
     assert manager.gamepad_button("A", 0)
     assert manager.gamepad_button_pressed("A", 0)
     assert manager.gamepad_axis("LEFT_X", 0) == pytest.approx(0.5)
+    assert manager.gamepad_axis_previous("LEFT_X", 0) == 0.0
     assert manager.gamepad_stick("left", 0) == pytest.approx((0.5, -0.25))
 
     glfw.states[0] = ((0.0, 0.0, 0.0, 0.0, 1.0, -1.0), buttons(1))
@@ -97,6 +98,7 @@ def test_frame_poll_tracks_hotplug_and_button_edges():
     assert manager.gamepad_button_pressed("B", 0)
     assert manager.gamepad_button_released("A", 0)
     assert not manager.gamepad_just_connected(0)
+    assert manager.gamepad_axis_previous("LEFT_X", 0) == pytest.approx(0.5)
     assert manager.gamepad_trigger("left", 0) == 1.0
     assert manager.gamepad_trigger("right", 0) == 0.0
 
@@ -106,23 +108,30 @@ def test_frame_poll_tracks_hotplug_and_button_edges():
 
     assert not manager.gamepad_connected(0)
     assert manager.gamepad_just_disconnected(0)
+    assert manager.gamepad_axis_previous("LEFT_TRIGGER", 0) == 1.0
     assert manager.gamepads() == ()
 
 
-def test_begin_frame_only_resets_edges_and_keeps_snapshot():
+def test_begin_frame_only_resets_edges_previous_axes_and_keeps_snapshot():
     glfw = FakeGLFW()
-    glfw.states[0] = ((0.0,) * 6, buttons(0))
-    manager = InputManager()
+    glfw.states[0] = ((0.6, 0.0, 0.0, 0.0, -1.0, -1.0), buttons(0))
+    manager = InputManager(gamepad_deadzone=0.2)
     manager.poll_gamepads(glfw)
 
     assert manager.gamepad_just_connected(0)
     assert manager.gamepad_button_pressed("A", 0)
+
+    glfw.states[0] = ((0.0,) * 6, buttons(0))
+    manager.begin_frame()
+    manager.poll_gamepads(glfw)
+    assert manager.gamepad_axis_previous("LEFT_X", 0) == pytest.approx(0.5)
 
     manager.begin_frame()
 
     assert manager.gamepad_connected(0)
     assert not manager.gamepad_just_connected(0)
     assert not manager.gamepad_button_pressed("A", 0)
+    assert manager.gamepad_axis_previous("LEFT_X", 0) == 0.0
 
 
 def test_poll_ignores_non_gamepad_joysticks():
