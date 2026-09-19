@@ -9,6 +9,7 @@ from .core.scene import Scene
 from .editor_assets import EditorAssetBrowser
 from .editor_diagnostics import EditorConsole, EditorProfiler
 from .editor_frontend import EditorFrontendController, TkEditorApp
+from .editor_scene21 import EditorSceneAuthoring
 from .editor_workspace import EditorProjectState, EditorWorkspace
 from .profiler import Profiler
 from .project19 import ProjectManifest, ProjectManifestError
@@ -16,6 +17,7 @@ from .serialization import SceneSerializationError, SceneSerializer
 
 DEFAULT_EDITOR_SCENE = "scenes/main.swirscene"
 DEFAULT_EDITOR_STATE = ".swir/editor.json"
+RECOVERY_INTERVAL_MS = 30_000
 
 
 class EditorProjectOpenError(RuntimeError):
@@ -50,15 +52,18 @@ class EditorProjectSummary:
     object_count: int
     entity_count: int
     asset_count: int
+    open_scenes: int = 1
+    dirty: bool = False
+    recovery_available: bool = False
 
 
 class EditorProjectSession:
     """Project-backed SwirEditor 2.1 session.
 
     The session composes the existing toolkit-neutral editor models into a safe creator workflow:
-    manifest validation, scene load/save, portable editor-state persistence, asset browsing,
-    diagnostics and the Tk desktop shell. Scene and editor-state writes are explicit and stay
-    inside the project root.
+    manifest validation, multi-scene authoring, portable editor-state persistence, asset browsing,
+    diagnostics, deterministic recovery and the Tk desktop shell. Scene and editor-state writes are
+    explicit and stay inside the project root.
     """
 
     def __init__(
@@ -83,6 +88,12 @@ class EditorProjectSession:
         self.console = console
         self.profiler = profiler
         self.controller = controller
+        self.scenes = EditorSceneAuthoring(
+            manifest.root,
+            serializer,
+            workspace,
+            initial_scene=scene_path.relative_to(manifest.root).as_posix(),
+        )
 
     @classmethod
     def open(
@@ -91,6 +102,7 @@ class EditorProjectSession:
         *,
         scene: str | Path = DEFAULT_EDITOR_SCENE,
         restore_state: bool = True,
+        restore_recovery: bool = False,
     ) -> EditorProjectSession:
         try:
             manifest = ProjectManifest.load(project)
@@ -140,7 +152,7 @@ class EditorProjectSession:
             f"Opened {manifest.name} ({manifest.mode})",
             source="swireditor",
         )
-        return cls(
+        session = cls(
             manifest=manifest,
             serializer=serializer,
             scene_path=scene_path,
@@ -151,26 +163,39 @@ class EditorProjectSession:
             profiler=profiler,
             controller=controller,
         )
+        if restore_recovery:
+            if not session.scenes.recovery_available:
+                raise EditorProjectOpenError("no SwirEditor recovery snapshot is available")
+            try:
+                session.scenes.restore_recovery()
+            except (OSError, UnicodeError, TypeError, ValueError) as exc:
+                raise EditorProjectOpenError(f"cannot restore editor recovery: {exc}") from exc
+            console.write("Recovered unsaved SwirEditor state", source="swireditor")
+        return session
 
     def summary(self) -> EditorProjectSummary:
         asset_frame = self.asset_browser.frame()
+        active_path = self.scenes.active_path
+        active_scene = self.workspace.scene
         return EditorProjectSummary(
             project_name=self.manifest.name,
             mode=self.manifest.mode,
-            scene_path=self.scene_path.relative_to(self.manifest.root).as_posix(),
-            scene_exists=self.scene_path.is_file(),
+            scene_path=active_path,
+            scene_exists=(self.manifest.root / PurePosixPath(active_path)).is_file(),
             editor_state_exists=self.state_path.is_file(),
-            object_count=len(self.workspace.scene.objects),
-            entity_count=len(self.workspace.scene.entities),
+            object_count=len(active_scene.objects),
+            entity_count=len(active_scene.entities),
             asset_count=asset_frame.total_files,
+            open_scenes=len(self.scenes.scene_paths),
+            dirty=self.scenes.dirty,
+            recovery_available=self.scenes.recovery_available,
         )
 
     def save(self) -> EditorProjectState:
-        self.serializer.dump_scene(self.workspace.scene, self.scene_path)
-        state = self.workspace.capture_project()
-        state.save(self.state_path)
+        state = self.scenes.save_all(self.state_path)
+        self.scene_path = self.manifest.root / PurePosixPath(self.scenes.active_path)
         self.console.write(
-            f"Saved {self.scene_path.relative_to(self.manifest.root).as_posix()}",
+            f"Saved {len(self.scenes.scene_paths)} open scene(s)",
             source="swireditor",
         )
         return state
@@ -181,6 +206,7 @@ class EditorProjectSession:
             title=f"SwirEditor 2.1 — {self.manifest.name}",
         )
         self._install_file_menu(app)
+        self._schedule_recovery(app)
         app.run()
 
     def _install_file_menu(self, app: TkEditorApp) -> None:
@@ -200,6 +226,26 @@ class EditorProjectSession:
         app.root.bind_all("<Control-S>", lambda _event: self._save_from_ui(app))
         app.root.protocol("WM_DELETE_WINDOW", lambda: self._close_from_ui(app))
 
+    def _schedule_recovery(self, app: TkEditorApp) -> None:
+        def checkpoint() -> None:
+            if getattr(app, "_closed", False):
+                return
+            if self.scenes.dirty:
+                try:
+                    self.scenes.write_recovery()
+                except (
+                    OSError,
+                    UnicodeError,
+                    TypeError,
+                    ValueError,
+                    SceneSerializationError,
+                ) as exc:
+                    self.console.write(str(exc), level="error", source="recovery")
+            if not getattr(app, "_closed", False):
+                app.root.after(RECOVERY_INTERVAL_MS, checkpoint)
+
+        app.root.after(RECOVERY_INTERVAL_MS, checkpoint)
+
     def _save_from_ui(self, app: TkEditorApp) -> None:
         try:
             self.save()
@@ -208,12 +254,25 @@ class EditorProjectSession:
             app.messagebox.showerror("SwirEditor — Save failed", str(exc))
 
     def _close_from_ui(self, app: TkEditorApp) -> None:
-        try:
-            self.save()
-        except (OSError, SceneSerializationError, TypeError, ValueError) as exc:
-            self.console.write(str(exc), level="error", source="swireditor")
-            app.messagebox.showerror("SwirEditor — Save failed", str(exc))
-            return
+        if self.scenes.dirty:
+            decision = app.messagebox.askyesnocancel(
+                "SwirEditor — Unsaved changes",
+                "Save project changes before closing?",
+                parent=app.root,
+            )
+            if decision is None:
+                return
+            if decision:
+                try:
+                    self.save()
+                except (OSError, SceneSerializationError, TypeError, ValueError) as exc:
+                    self.console.write(str(exc), level="error", source="swireditor")
+                    app.messagebox.showerror(
+                        "SwirEditor — Save failed", str(exc), parent=app.root
+                    )
+                    return
+            else:
+                self.scenes.discard_recovery()
         app.close()
 
 
@@ -238,6 +297,11 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=f"ignore saved {DEFAULT_EDITOR_STATE} layout/selection state for this launch",
     )
+    parser.add_argument(
+        "--recover",
+        action="store_true",
+        help="restore the deterministic .swir recovery snapshot before opening",
+    )
     return parser
 
 
@@ -248,6 +312,7 @@ def main(argv: list[str] | None = None) -> int:
             args.project,
             scene=args.scene,
             restore_state=not args.fresh_layout,
+            restore_recovery=args.recover,
         )
     except (EditorProjectOpenError, ValueError) as exc:
         print(f"SwirEditor failed: {exc}")
@@ -260,11 +325,14 @@ def main(argv: list[str] | None = None) -> int:
             f"Scene: {summary.scene_path} "
             f"({summary.object_count} objects, {summary.entity_count} entities)"
         )
+        print(f"Open scenes: {summary.open_scenes}")
         print(f"Assets: {summary.asset_count}")
         print(
             "Persistence: "
             f"scene={'present' if summary.scene_exists else 'new'}, "
-            f"state={'present' if summary.editor_state_exists else 'new'}"
+            f"state={'present' if summary.editor_state_exists else 'new'}, "
+            f"dirty={'yes' if summary.dirty else 'no'}, "
+            f"recovery={'yes' if summary.recovery_available else 'no'}"
         )
         return 0
 
