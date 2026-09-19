@@ -12,7 +12,7 @@ def test_locked_1_4_contract_is_complete_on_supported_stable_lines() -> None:
     report = audit(ROOT, require_complete=True)
 
     assert TARGET_VERSION == "1.4.0"
-    assert report.version in {TARGET_VERSION, "1.5.0"}
+    assert report.version in {TARGET_VERSION, "1.5.0", "2.0.0"}
     assert report.roadmap.total == 10
     assert report.roadmap.completed == 10
     assert report.roadmap.remaining == 0
@@ -104,8 +104,8 @@ def test_current_metadata_remains_compatible_with_locked_1_4_artifacts() -> None
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     notes = (ROOT / "RELEASE_NOTES_1_4.md").read_text(encoding="utf-8")
 
-    assert ('version = "1.4.0"' in pyproject) or ('version = "1.5.0"' in pyproject)
-    assert ('__version__ = "1.4.0"' in init_text) or ('__version__ = "1.5.0"' in init_text)
+    assert any(f'version = "{version}"' in pyproject for version in ("1.4.0", "1.5.0", "2.0.0"))
+    assert any(f'__version__ = "{version}"' in init_text for version in ("1.4.0", "1.5.0", "2.0.0"))
     assert "SwirEngine 1.4" in readme
     assert "released and locked" in readme
     assert "10/10 = 100.0%" in readme
