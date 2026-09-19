@@ -23,7 +23,7 @@ REQUIRED_DOCS = (
     "docs/NAVIGATION_2_1_5.md",
     "docs/WORLD_STREAMING_2_1_5.md",
     "docs/UI_TOOLKIT_2_1_5.md",
-    "docs/EDITOR_PRODUCTIVITY_1_5.md",
+    "docs/EDITOR_PRODUCTIVITY_2_1_5.md",
     "docs/PERFORMANCE_DIAGNOSTICS_2_1_5.md",
     "docs/RELEASE_HARDENING_1_5.md",
 )
