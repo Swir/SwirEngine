@@ -4,7 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from swirengine.cli21 import editor_entry, main as cli_main
+from swirengine.cli21 import editor_entry
+from swirengine.cli21 import main as cli_main
 from swirengine.project_hub21 import EditorProjectHub, RecentProjectsStore
 from swirengine.project_scaffold21 import new_project21
 
