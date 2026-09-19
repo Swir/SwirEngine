@@ -256,7 +256,13 @@ class EditorProjectSession:
         def save_binding(_event=None):
             try:
                 self.save()
-            except (OSError, EditorProjectError, SceneSerializationError, TypeError, ValueError) as exc:
+            except (
+                OSError,
+                EditorProjectError,
+                SceneSerializationError,
+                TypeError,
+                ValueError,
+            ) as exc:
                 app.status_var.set(f"Save failed: {exc}")
             else:
                 app.status_var.set("Project saved")
@@ -265,7 +271,13 @@ class EditorProjectSession:
         def close_with_save() -> None:
             try:
                 self.save()
-            except (OSError, EditorProjectError, SceneSerializationError, TypeError, ValueError) as exc:
+            except (
+                OSError,
+                EditorProjectError,
+                SceneSerializationError,
+                TypeError,
+                ValueError,
+            ) as exc:
                 self.console.write(f"Autosave failed: {exc}", source="SwirEditor")
             app.close()
 
