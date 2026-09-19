@@ -1,0 +1,19 @@
+name = "Neon Robo Rush v8 16-Bit Edition"
+mode = "2d"
+engine = ">=2.0,<3.0"
+entrypoint = "main.py"
+
+[content]
+include = ["assets"]
+
+[run]
+entrypoint = "main.py"
+working_directory = "."
+arguments = []
+inherit_environment = true
+
+[profiles.windows]
+target = "windows"
+app_name = "NeonRoboRush_v8"
+onefile = false
+console = true
