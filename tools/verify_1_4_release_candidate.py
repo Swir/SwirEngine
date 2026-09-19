@@ -295,8 +295,8 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             )
         else:
             _require(
-                "SwirEngine 1.4" in readme and "released and locked" in readme,
-                "later README preserves 1.4 as a released and locked compatibility line",
+                "`v1.4.0`" in readme and "| 1.4 |" in readme and "released/locked" in readme,
+                "later README preserves 1.4 as an immutable released/locked compatibility line",
                 checks,
             )
         notes = _read(root, "RELEASE_NOTES_1_4.md")
