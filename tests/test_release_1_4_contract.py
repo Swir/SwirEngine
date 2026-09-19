@@ -87,15 +87,20 @@ def test_historical_1_4_tag_bridge_only_targets_exact_verified_main_commit() -> 
     assert "GITHUB_SHA" in workflow
 
 
-def test_current_release_workflow_stays_tag_only_and_trusted() -> None:
+def test_current_release_workflow_preserves_trusted_publisher_without_rewriting_history() -> None:
     workflow = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
     trigger_section = workflow.split("jobs:", 1)[0]
 
     assert "pypa/gh-action-pypi-publish@release/v1" in workflow
     assert "id-token: write" in workflow
+    assert "environment: pypi" in workflow
     assert "skip-existing: true" not in workflow
-    assert "tags:" in trigger_section
-    assert "branches:" not in trigger_section
+    assert "workflow_dispatch:" in trigger_section
+    assert "RELEASE_TAG: v2.0.0" in trigger_section
+    assert "RELEASE_SHA: 4c219f3bed4c107c612a58fa2fb1f1362b4dfc46" in trigger_section
+    assert 'ref: "refs/tags/v2.0.0"' in workflow
+    assert "git push --force" not in workflow
+    assert "git tag -f" not in workflow
 
 
 def test_current_metadata_remains_compatible_with_locked_1_4_artifacts() -> None:
