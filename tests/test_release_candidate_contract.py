@@ -27,12 +27,12 @@ def test_historical_1_2_release_artifacts_remain_documented() -> None:
     assert (ROOT / "tools/verify_1_2_release_candidate.py").is_file()
 
 
-def test_active_release_workflow_uses_1_4_and_keeps_historical_gates_out_of_publication() -> None:
+def test_active_release_workflow_uses_final_2_0_gate_and_keeps_historical_gates_separate() -> None:
     ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     release = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
 
     assert "verify_1_3_release_candidate.py" in ci
-    assert "verify_1_4_release_candidate.py --require-complete" in release
+    assert "verify_2_0_release_candidate.py --require-final" in release
     assert "verify_1_3_release_candidate.py --require-complete" not in release
     assert "verify_1_2_release_candidate.py --require-complete" not in release
 
