@@ -12,7 +12,7 @@ from typing import Any
 from swirengine.asset_pipeline import AssetPreloader
 from swirengine.asset_streaming import AssetStreamingBudget, AssetStreamingManager
 from swirengine.assets import AssetManager
-from swirengine.assets17 import AsyncAssetPipeline
+from swirengine.assets17 import AsyncAssetPipeline, AsyncAssetState
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,6 +35,8 @@ class RuntimeLifecycleAuditReport:
     preloader_pending_after_shutdown: int
     lingering_asset_threads: tuple[str, ...]
     async_requests: int
+    async_failure_requests: int
+    async_cancel_requests: int
     async_pending_after_finalize: int
     async_cached_entries: int
     async_retained_request_records: int
@@ -131,22 +133,72 @@ def _audit_preloader(root: Path, *, cycles: int) -> int:
     return pending_after_shutdown
 
 
-def _audit_async_pipeline(root: Path, *, requests: int) -> tuple[int, int, int, int]:
+def _finalize_request(pipeline: AsyncAssetPipeline, request_id: int) -> AsyncAssetState:
+    pipeline.wait_workers(timeout=5.0)
+    while request_id in pipeline.pending_request_ids():
+        pipeline.poll(max_items=16)
+    result = pipeline.result(request_id)
+    pipeline.forget(request_id)
+    return result.state
+
+
+def _audit_async_pipeline(root: Path, *, requests: int) -> tuple[int, int, int, int, int, int]:
     root.mkdir(parents=True, exist_ok=True)
     source = root / "repeat.dat"
     source.write_text("runtime-lifecycle", encoding="utf-8")
+    failure_source = root / "failure.fail"
+    failure_source.write_text("failure", encoding="utf-8")
+    cancel_source = root / "cancel.cancel"
+    cancel_source.write_text("cancel", encoding="utf-8")
+
     pipeline = AsyncAssetPipeline(AssetManager(root), max_workers=2, max_pending=16)
     pipeline.register_processor(
         "data",
         suffixes=[".dat"],
         decode=lambda path, _context: path.read_text(encoding="utf-8"),
     )
+    pipeline.register_processor(
+        "failure",
+        suffixes=[".fail"],
+        decode=lambda _path, _context: (_ for _ in ()).throw(RuntimeError("audit decode failure")),
+    )
+    pipeline.register_processor(
+        "cancel",
+        suffixes=[".cancel"],
+        decode=lambda path, _context: path.read_text(encoding="utf-8"),
+    )
+
+    failure_requests = max(1, min(8, requests // 8))
+    cancel_requests = max(1, min(8, requests // 8))
+    observed_failures = 0
+    observed_cancellations = 0
     try:
         for _ in range(requests):
             request = pipeline.submit(source)
+            state = _finalize_request(pipeline, request.request_id)
+            if state is not AsyncAssetState.COMPLETED:
+                raise AssertionError(f"successful async audit request finalized as {state.value}")
+
+        for _ in range(failure_requests):
+            request = pipeline.submit(failure_source)
+            state = _finalize_request(pipeline, request.request_id)
+            if state is not AsyncAssetState.FAILED:
+                raise AssertionError(f"failing async audit request finalized as {state.value}")
+            observed_failures += 1
+
+        for _ in range(cancel_requests):
+            request = pipeline.submit(cancel_source)
             pipeline.wait_workers(timeout=5.0)
+            if not pipeline.cancel(request.request_id):
+                raise AssertionError("completed worker could not be converted to cancelled finalization")
             while request.request_id in pipeline.pending_request_ids():
                 pipeline.poll(max_items=16)
+            result = pipeline.result(request.request_id)
+            if result.state is not AsyncAssetState.CANCELLED:
+                raise AssertionError(f"cancelled async audit request finalized as {result.state.value}")
+            pipeline.forget(request.request_id)
+            observed_cancellations += 1
+
         diagnostics = pipeline.diagnostics()
         retained_requests = len(pipeline._records)
         scheduler_diagnostics = pipeline._scheduler.diagnostics()
@@ -163,6 +215,8 @@ def _audit_async_pipeline(root: Path, *, requests: int) -> tuple[int, int, int, 
             diagnostics.cached_entries,
             retained_requests,
             scheduler_terminal,
+            observed_failures,
+            observed_cancellations,
         )
     finally:
         pipeline.shutdown(wait=True, cancel_pending=True)
@@ -216,14 +270,14 @@ def run_runtime_lifecycle_audit(
                 detail=f"{async_state[0]} requests remained pending after explicit finalization",
             )
         )
-    if async_state[2] >= async_requests:
+    if async_state[2] or async_state[3]:
         findings.append(
             LifecycleFinding(
                 code="async_asset_terminal_records_retained",
-                severity="medium",
+                severity="high",
                 detail=(
-                    f"{async_state[2]} finalized AsyncAssetPipeline request records remain retained; "
-                    "the public pipeline currently has no creator-facing reclamation API"
+                    f"reclamation left {async_state[2]} pipeline request records and "
+                    f"{async_state[3]} terminal scheduler records retained"
                 ),
             )
         )
@@ -240,6 +294,8 @@ def run_runtime_lifecycle_audit(
         preloader_pending_after_shutdown=preloader_pending,
         lingering_asset_threads=lingering,
         async_requests=async_requests,
+        async_failure_requests=async_state[4],
+        async_cancel_requests=async_state[5],
         async_pending_after_finalize=async_state[0],
         async_cached_entries=async_state[1],
         async_retained_request_records=async_state[2],
