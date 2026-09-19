@@ -37,13 +37,15 @@ audio = ["pygame>=2.6,<3"]
 dev = ["pytest>=8,<10", "ruff>=0.16,<0.17"]
 
 [project.scripts]
-swirengine = "swirengine.cli:main"
+swirengine = "swirengine.cli21:main"
+swireditor = "swirengine.cli21:editor_entry"
 
 [project.urls]
 Homepage = "https://github.com/Swir/SwirEngine"
 Repository = "https://github.com/Swir/SwirEngine"
 Changelog = "https://github.com/Swir/SwirEngine/blob/main/CHANGELOG.md"
 Roadmap = "https://github.com/Swir/SwirEngine/blob/main/ROADMAP_2_0.md"
+"2.1 Roadmap" = "https://github.com/Swir/SwirEngine/blob/main/ROADMAP_2_1.md"
 "1.0 Roadmap" = "https://github.com/Swir/SwirEngine/blob/main/ROADMAP.md"
 "1.1 Roadmap" = "https://github.com/Swir/SwirEngine/blob/main/ROADMAP_1_1.md"
 "1.2 Roadmap" = "https://github.com/Swir/SwirEngine/blob/main/ROADMAP_1_2.md"
@@ -72,3 +74,6 @@ target-version = "py310"
 "src/swirengine/diagnostics19.py" = ["B009", "SIM101"]
 # GPU timing providers are third-party/backend boundaries; failures are deliberately contained.
 "src/swirengine/render_timing18.py" = ["BLE001"]
+# Imported NeonRoboRush demo sources keep their compact gameplay code until their own cleanup pass.
+"demo_projects/NeonRoboRush_v8_16bit/NeonRoboRush_v8_16bit/main.py" = ["RUF059", "PERF102"]
+"demo_projects/NeonRoboRush_v9_32bit/NeonRoboRush_v9_32bit/main.py" = ["RUF059"]
