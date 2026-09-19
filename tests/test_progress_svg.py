@@ -19,6 +19,7 @@ from tools.generate_progress_svg import (
 )
 
 README_PATH = ROADMAP_PATH.with_name("README.md")
+HISTORICAL_2_0_PATH = ROADMAP_PATH.with_name("ROADMAP_2_0.md")
 HISTORICAL_1_9_PATH = ROADMAP_PATH.with_name("ROADMAP_1_9.md")
 LEGACY_PROGRESS_RE = re.compile(
     r"(?:[█▓▒░]{2,}|\[(?=[^\]\n]*[#=█▓▒░])(?:[#=█▓▒░ .-]){6,}\])"
@@ -34,13 +35,13 @@ def _gradient_fill_width(svg: str) -> float | None:
     return None
 
 
-def test_authoritative_roadmap_math_matches_committed_assets() -> None:
+def test_authoritative_post_release_math_matches_committed_assets() -> None:
     data = parse_progress(ROADMAP_PATH.read_text(encoding="utf-8"))
 
-    assert ROADMAP_PATH.name == "ROADMAP_2_0.md"
-    assert data.total > 0
-    assert 0 <= data.completed <= data.total
-    assert data.percentage == pytest.approx(data.completed / data.total * 100.0)
+    assert ROADMAP_PATH.name == "POST_RELEASE_AUDIT_2_0.md"
+    assert data.total == 10
+    assert data.completed == 1
+    assert data.percentage == pytest.approx(10.0)
     assert generate(check=True) == 0
     assert CARD_PATH.is_file()
     assert MINI_PATH.is_file()
@@ -49,21 +50,41 @@ def test_authoritative_roadmap_math_matches_committed_assets() -> None:
 
 def test_maintained_progress_surfaces_are_svg_only_and_nonduplicated() -> None:
     readme = README_PATH.read_text(encoding="utf-8")
-    roadmap = ROADMAP_PATH.read_text(encoding="utf-8")
-    historical = HISTORICAL_1_9_PATH.read_text(encoding="utf-8")
+    active = ROADMAP_PATH.read_text(encoding="utf-8")
+    historical_2_0 = HISTORICAL_2_0_PATH.read_text(encoding="utf-8")
+    historical_1_9 = HISTORICAL_1_9_PATH.read_text(encoding="utf-8")
 
     assert "<!-- SWIR-README-STANDARD:v2 -->" in readme
-    assert "<!-- SWIR-PROGRESS-SVG-PRO:v1 -->" in roadmap
+    assert "<!-- SWIR-PROGRESS-SVG-PRO:v1 -->" in active
+    assert "<!-- SWIR-PROGRESS-SVG-PRO:v1 -->" in historical_2_0
 
-    for path, text in ((README_PATH, readme), (ROADMAP_PATH, roadmap), (HISTORICAL_1_9_PATH, historical)):
+    for path, text in (
+        (README_PATH, readme),
+        (ROADMAP_PATH, active),
+        (HISTORICAL_2_0_PATH, historical_2_0),
+        (HISTORICAL_1_9_PATH, historical_1_9),
+    ):
         assert not LEGACY_PROGRESS_RE.search(text), f"legacy progress meter found in {path}"
         assert "progress-template.svg" not in text
 
     assert readme.count("assets/readme/progress-card.svg") == 1
     assert "assets/readme/progress-mini.svg" not in readme
-    assert roadmap.count("assets/readme/progress-mini.svg") == 1
-    assert "assets/readme/progress-card.svg" not in roadmap
-    assert "assets/readme/progress-mini.svg" not in historical
+    assert active.count("assets/readme/progress-mini.svg") == 1
+    assert "assets/readme/progress-card.svg" not in active
+    assert "assets/readme/progress-mini.svg" not in historical_2_0
+    assert "assets/readme/progress-mini.svg" not in historical_1_9
+
+
+def test_live_svg_scope_is_post_release_not_completed_release_roadmap() -> None:
+    data = parse_progress(ROADMAP_PATH.read_text(encoding="utf-8"))
+    card = CARD_PATH.read_text(encoding="utf-8")
+    mini = MINI_PATH.read_text(encoding="utf-8")
+
+    assert "Post-Release Audit &amp; Hardening" in card
+    assert "2.0 audit" in mini
+    assert "published" in card
+    assert "frozen until SwirEngine 2.0" not in card
+    assert data.status == "IN PROGRESS"
 
 
 @pytest.mark.parametrize(
@@ -104,7 +125,7 @@ def test_long_scope_expands_card_height() -> None:
         10,
         "fixture.md",
         scope=(
-            "A deliberately long verified roadmap scope that needs more than one visual line "
+            "A deliberately long verified audit scope that needs more than one visual line "
             "without overlapping the project status or progress geometry"
         ),
     )
@@ -118,7 +139,7 @@ def test_long_scope_expands_card_height() -> None:
 
 def test_parse_progress_rejects_contradictory_summary() -> None:
     text = """
-**Current verified progress: 9/10 milestones = 90.0%.**
+**Current verified progress: 9/10 checkpoints = 90.0%.**
 - [x] **1. Done**
 - [ ] **2. Pending**
 """.strip()
@@ -128,7 +149,7 @@ def test_parse_progress_rejects_contradictory_summary() -> None:
 
 
 def test_empty_scope_is_na_not_zero_or_complete() -> None:
-    data = parse_progress("# Planning\nNo verified milestones yet.\n", source="planning.md")
+    data = parse_progress("# Planning\nNo verified checkpoints yet.\n", source="planning.md")
 
     assert data.total == 0
     assert data.percentage is None
