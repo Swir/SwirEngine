@@ -30,7 +30,7 @@ The 1.9 source line had evidence for the production path that a real game needed
 These foundations were not a declaration that 2.0 was release-ready. They were the measured starting
 point for the 2.0 roadmap.
 
-## Evidence-backed gaps identified before 2.0
+## Evidence-backed gaps before 2.0
 
 ### 1. Freeze the public 2.0 API and migration contract
 
@@ -87,11 +87,15 @@ README, API/migration guidance, examples, limitations and packaging docs needed 
 verified behavior as CI. The final workflow had to build wheel and sdist, validate metadata, install from
 the public PyPI artifact after publication, and run representative games through documented workflows.
 
-## Historical readiness status
+## 2.0 readiness status
 
 At the time of this snapshot, **2.0 readiness was N/A** until a dedicated SwirEngine 2.0 roadmap and final
 release gate defined the measured denominator. SwirEngine 1.9 completion was a source-checkpoint result only
 and was never valid as 2.0 completion or release readiness.
+
+Historical publication policy at that snapshot:
+
+`Release/PyPI: frozen until SwirEngine 2.0`
 
 That condition has since been superseded: the dedicated [`../ROADMAP_2_0.md`](../ROADMAP_2_0.md) reached
 verified 10/10, `v2.0.0` was published, and fresh public-PyPI installation verification succeeded. Current
