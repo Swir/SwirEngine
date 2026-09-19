@@ -56,6 +56,9 @@ request = pipeline.submit("ship.mesh", priority=10)
 for result in pipeline.poll(max_items=4):
     if result.successful:
         loaded_assets[result.source] = result.value
+    # Once the result is stored elsewhere and no retained request depends on it,
+    # release the request bookkeeping explicitly.
+    pipeline.forget(result.request_id)
 ```
 
 `submit()` never waits for decode/cook work. `wait_workers()` exists for tests, command-line tools and controlled shutdown paths; a realtime game loop should normally submit and keep polling with a bounded budget.
@@ -111,6 +114,29 @@ Worker exceptions are converted to `FAILED` results by the job scheduler. Finali
 
 Dependency-resolution errors, decode failures and cook failures stay on the worker side. Processor-registration and malformed-submit errors remain synchronous creator errors because no background request was accepted.
 
+## Finalized-request reclamation
+
+Long-running creator sessions can explicitly release finalized request bookkeeping instead of retaining every terminal request for the lifetime of the pipeline.
+
+- `forget(request_id)` removes one finalized request and its delivered scheduler outcome and returns the finalized `AsyncAssetResult`.
+- unfinished requests cannot be forgotten;
+- a dependency cannot be forgotten while a retained dependent request still references it;
+- `prune_finalized(max_items=N)` reclaims at most `N` dependency-safe finalized leaves, newest-first;
+- `prune_finalized()` without a limit reclaims every finalized request that can be safely removed in the current retained dependency graph;
+- cache entries are independent of request bookkeeping, so reclaiming a request does not discard valid CPU-side cooked cache entries.
+
+For dependency chains, release dependents before their dependencies or use `prune_finalized()`:
+
+```python
+base = pipeline.submit("base.mesh")
+variant = pipeline.submit("variant.mesh", depends_on=[base.request_id])
+
+# ... poll until both are finalized ...
+forgotten_ids = pipeline.prune_finalized()
+```
+
+The maintained post-release lifecycle audit stress-tests repeated success, worker failure and cancellation paths and requires zero retained request/scheduler records after explicit reclamation.
+
 ## Diagnostics
 
 `pipeline.diagnostics()` exposes:
@@ -131,6 +157,6 @@ This is a regression/workload contract, not an FPS claim. Real asset throughput 
 
 ## Compatibility
 
-The 1.7 pipeline is source-development functionality on the path toward SwirEngine 2.0. Published package metadata remains 1.5.0 and stable 1.x asset APIs remain unchanged.
+The async asset pipeline originated during the 1.7 source-development checkpoint and remains additive in the published SwirEngine 2.0 line. Published 1.x asset APIs remain the compatibility floor; the new reclamation methods are additive lifecycle hardening and do not rewrite historical releases.
 
-**Release/PyPI: frozen until SwirEngine 2.0.**
+SwirEngine **2.0.0 is publicly released**. Active maintenance status is tracked in [`SWIRENGINE_2_0_POST_RELEASE_AUDIT.md`](SWIRENGINE_2_0_POST_RELEASE_AUDIT.md); runtime/resource lifecycle work belongs to Domain 5 of that audit.
