@@ -28,18 +28,22 @@ def test_runtime_lifecycle_audit_keeps_owned_streaming_resources_bounded(tmp_pat
     assert report.async_cached_entries == 1
 
 
-def test_runtime_lifecycle_audit_surfaces_terminal_async_request_retention(tmp_path: Path) -> None:
+def test_runtime_lifecycle_audit_reclaims_terminal_async_records_and_failure_paths(
+    tmp_path: Path,
+) -> None:
     report = run_runtime_lifecycle_audit(
         tmp_path,
         streaming_cycles=1,
         preloader_cycles=1,
-        async_requests=12,
+        async_requests=16,
     )
 
     findings = {finding.code: finding for finding in report.findings}
-    retention = findings["async_asset_terminal_records_retained"]
 
-    assert retention.severity == "medium"
-    assert report.async_retained_request_records == 12
-    assert report.async_scheduler_terminal_records == 12
-    assert not any(finding.severity == "high" for finding in report.findings)
+    assert "async_asset_terminal_records_retained" not in findings
+    assert report.async_failure_requests == 2
+    assert report.async_cancel_requests == 2
+    assert report.async_retained_request_records == 0
+    assert report.async_scheduler_terminal_records == 0
+    assert report.async_pending_after_finalize == 0
+    assert report.clean
