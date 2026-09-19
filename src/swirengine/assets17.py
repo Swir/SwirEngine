@@ -314,15 +314,16 @@ class AsyncAssetPipeline:
             raise TypeError("depends_on must be an iterable of request ids")
         normalized: list[int] = []
         seen: set[int] = set()
-        for value in values:
-            if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
-                raise ValueError("dependency request ids must be positive integers")
-            if value in seen:
-                raise ValueError(f"dependency request id {value} is repeated")
-            if value not in self._records:
-                raise KeyError(value)
-            seen.add(value)
-            normalized.append(value)
+        with self._lock:
+            for value in values:
+                if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+                    raise ValueError("dependency request ids must be positive integers")
+                if value in seen:
+                    raise ValueError(f"dependency request id {value} is repeated")
+                if value not in self._records:
+                    raise KeyError(value)
+                seen.add(value)
+                normalized.append(value)
         return tuple(normalized)
 
     def _run_worker(self, request_id: int, job: JobContext) -> _WorkerProduct:
@@ -419,7 +420,13 @@ class AsyncAssetPipeline:
         results: list[AsyncAssetResult] = []
         for outcome in outcomes:
             request_id = self._job_to_request[outcome.job_id]
-            result = self._finish_outcome(request_id, outcome.state, outcome.value, outcome.error_type, outcome.error_message)
+            result = self._finish_outcome(
+                request_id,
+                outcome.state,
+                outcome.value,
+                outcome.error_type,
+                outcome.error_message,
+            )
             results.append(result)
         return tuple(results)
 
@@ -577,6 +584,62 @@ class AsyncAssetPipeline:
 
     def request(self, request_id: int) -> AsyncAssetRequest:
         return self._record(request_id).request
+
+    def forget(self, request_id: int) -> AsyncAssetResult:
+        """Forget one finalized request after its scheduler outcome was delivered.
+
+        The operation is dependency-safe: retained dependent requests keep the source request
+        alive until they are forgotten first. The returned result lets callers reclaim pipeline
+        bookkeeping without losing the finalized value they already chose to release.
+        """
+        record = self._record(request_id)
+        if record.result is None:
+            raise JobSchedulerError(f"asset request {request_id} is not finalized")
+        result = record.result
+        job_id = record.request.job_id
+        self._scheduler.forget(job_id)
+        with self._lock:
+            current = self._records.get(request_id)
+            if current is not record:
+                raise JobSchedulerError(f"asset request {request_id} changed during reclamation")
+            del self._records[request_id]
+            self._job_to_request.pop(job_id, None)
+            self._cancel_after_worker.discard(request_id)
+        return result
+
+    def prune_finalized(self, *, max_items: int | None = None) -> tuple[int, ...]:
+        """Forget dependency-safe finalized requests, newest dependents first.
+
+        Active requests are never removed. A finalized request is skipped while any retained
+        request still depends on it, so repeated calls can safely reclaim a dependency graph as
+        its leaves are finalized and released.
+        """
+        if max_items is not None and (
+            isinstance(max_items, bool) or not isinstance(max_items, int) or max_items <= 0
+        ):
+            raise ValueError("max_items must be a positive integer or None")
+
+        with self._lock:
+            records = dict(self._records)
+        dependent_counts = {request_id: 0 for request_id in records}
+        for record in records.values():
+            for dependency_id in record.request.depends_on:
+                if dependency_id in dependent_counts:
+                    dependent_counts[dependency_id] += 1
+
+        forgotten: list[int] = []
+        for request_id in sorted(records, reverse=True):
+            if max_items is not None and len(forgotten) >= max_items:
+                break
+            record = records[request_id]
+            if record.result is None or dependent_counts[request_id]:
+                continue
+            self.forget(request_id)
+            forgotten.append(request_id)
+            for dependency_id in record.request.depends_on:
+                if dependency_id in dependent_counts:
+                    dependent_counts[dependency_id] -= 1
+        return tuple(forgotten)
 
     def _record(self, request_id: int) -> _RequestRecord:
         if isinstance(request_id, bool) or not isinstance(request_id, int) or request_id <= 0:

@@ -2,13 +2,17 @@ name: Async Assets 1.7
 
 on:
   push:
-    branches: ["feat/1.7-async-assets"]
+    branches: ["main", "feat/1.7-async-assets"]
     paths:
       - "src/swirengine/assets17.py"
       - "tests/test_async_assets_1_7.py"
+      - "tests/test_async_asset_reclamation_2_0.py"
+      - "tests/test_post_release_runtime_lifecycle_2_0.py"
+      - "tools/audit_runtime_lifecycle_2_0.py"
       - "tools/benchmark_async_assets_1_7.py"
       - "examples/demo_async_assets_1_7.py"
       - "docs/ASYNC_ASSETS_1_7.md"
+      - "docs/SWIRENGINE_2_0_RUNTIME_LIFECYCLE_AUDIT.md"
       - "ROADMAP_1_7.md"
       - "CHANGELOG.d/1.7-async-assets.md"
       - ".github/workflows/async-assets-1-7.yml"
@@ -16,9 +20,13 @@ on:
     paths:
       - "src/swirengine/assets17.py"
       - "tests/test_async_assets_1_7.py"
+      - "tests/test_async_asset_reclamation_2_0.py"
+      - "tests/test_post_release_runtime_lifecycle_2_0.py"
+      - "tools/audit_runtime_lifecycle_2_0.py"
       - "tools/benchmark_async_assets_1_7.py"
       - "examples/demo_async_assets_1_7.py"
       - "docs/ASYNC_ASSETS_1_7.md"
+      - "docs/SWIRENGINE_2_0_RUNTIME_LIFECYCLE_AUDIT.md"
       - "ROADMAP_1_7.md"
       - "CHANGELOG.d/1.7-async-assets.md"
       - ".github/workflows/async-assets-1-7.yml"
@@ -62,6 +70,8 @@ jobs:
         run: >-
           pytest
           tests/test_async_assets_1_7.py
+          tests/test_async_asset_reclamation_2_0.py
+          tests/test_post_release_runtime_lifecycle_2_0.py
           tests/test_background_jobs_1_7.py
           tests/test_asset_pipeline.py
           tests/test_asset_pipeline_1_4.py
@@ -71,6 +81,9 @@ jobs:
           ruff check
           src/swirengine/assets17.py
           tests/test_async_assets_1_7.py
+          tests/test_async_asset_reclamation_2_0.py
+          tests/test_post_release_runtime_lifecycle_2_0.py
+          tools/audit_runtime_lifecycle_2_0.py
           tools/benchmark_async_assets_1_7.py
           examples/demo_async_assets_1_7.py
 
@@ -79,8 +92,15 @@ jobs:
           python -m compileall -q
           src/swirengine/assets17.py
           tests/test_async_assets_1_7.py
+          tests/test_async_asset_reclamation_2_0.py
+          tests/test_post_release_runtime_lifecycle_2_0.py
+          tools/audit_runtime_lifecycle_2_0.py
           tools/benchmark_async_assets_1_7.py
           examples/demo_async_assets_1_7.py
+
+      - name: Run post-release lifecycle reclamation audit
+        if: matrix.python-version == '3.13'
+        run: python tools/audit_runtime_lifecycle_2_0.py
 
       - name: Run async-asset workload benchmark
         if: matrix.python-version == '3.13'
