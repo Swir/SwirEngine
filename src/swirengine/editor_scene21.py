@@ -212,7 +212,7 @@ class EditorSceneAuthoring:
             duplicate = deepcopy(target)
             if hasattr(duplicate, "name"):
                 try:
-                    setattr(duplicate, "name", _copy_name(getattr(target, "name", "")))
+                    duplicate.name = _copy_name(getattr(target, "name", ""))
                 except (AttributeError, TypeError):
                     pass
             self.workspace.scene.add(duplicate)
@@ -312,7 +312,7 @@ class EditorSceneAuthoring:
         scenes: dict[str, Scene] = {}
         for raw_path, document in raw_scenes.items():
             if not isinstance(raw_path, str) or not isinstance(document, dict):
-                raise ValueError("SwirEditor recovery scene entries must be objects")
+                raise TypeError("SwirEditor recovery scene entries must be objects")
             relative = _project_relative_path(raw_path, label="recovery scene")
             try:
                 scenes[relative] = self.serializer.loads_scene(
