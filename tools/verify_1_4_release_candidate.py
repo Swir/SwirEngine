@@ -254,7 +254,7 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             checks,
         )
         _require(
-            f"RELEASE_SHA: 4c219f3bed4c107c612a58fa2fb1f1362b4dfc46" in trigger_section
+            "RELEASE_SHA: 4c219f3bed4c107c612a58fa2fb1f1362b4dfc46" in trigger_section
             and "RELEASE_TAG: v2.0.0" in trigger_section,
             "2.0 recovery is pinned to the immutable verified release source",
             checks,
