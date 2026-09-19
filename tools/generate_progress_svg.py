@@ -9,20 +9,20 @@ from dataclasses import dataclass
 from html import escape
 from pathlib import Path
 
-ROADMAP_PATH = Path("ROADMAP_2_0.md")
+ROADMAP_PATH = Path("POST_RELEASE_AUDIT_2_0.md")
 CARD_PATH = Path("assets/readme/progress-card.svg")
 MINI_PATH = Path("assets/readme/progress-mini.svg")
 TEMPLATE_PATH = Path("assets/readme/progress-template.svg")
 
 PROJECT_NAME = "SwirEngine"
-MILESTONE_LABEL = "2.0"
-MEASURED_SCOPE = "SwirEngine 2.0 — Release-Quality Python-First Game Production"
-RELEASE_STATUS = "Release/PyPI frozen until SwirEngine 2.0"
+MILESTONE_LABEL = "2.0 audit"
+MEASURED_SCOPE = "SwirEngine 2.0 — Post-Release Audit & Hardening"
+RELEASE_STATUS = "SwirEngine 2.0.0 published · post-release audit active"
 
 MILESTONE_RE = re.compile(r"^- \[(?P<state>[ xX])\] \*\*(?P<number>\d+)\.", re.MULTILINE)
 SUMMARY_RE = re.compile(
-    r"Current verified progress:\s*(?P<done>\d+)/(?P<total>\d+)\s+milestones\s*=\s*"
-    r"(?P<percent>\d+(?:\.\d+)?)%\."
+    r"Current verified progress:\s*(?P<done>\d+)/(?P<total>\d+)\s+"
+    r"(?:milestones|checkpoints)\s*=\s*(?P<percent>\d+(?:\.\d+)?)%\."
 )
 
 
@@ -55,8 +55,8 @@ class ProgressData:
     @property
     def counter(self) -> str:
         if self.total <= 0:
-            return "N/A milestones"
-        return f"{self.completed} / {self.total} milestones"
+            return "N/A checkpoints"
+        return f"{self.completed} / {self.total} checkpoints"
 
     @property
     def display_percentage(self) -> str:
@@ -71,28 +71,28 @@ def parse_progress(text: str, *, source: str = str(ROADMAP_PATH)) -> ProgressDat
 
     numbers = [int(match.group("number")) for match in milestones]
     if len(numbers) != len(set(numbers)):
-        raise ValueError("roadmap milestone numbers must be unique")
+        raise ValueError("audit checkpoint numbers must be unique")
 
     completed = sum(match.group("state").lower() == "x" for match in milestones)
     data = ProgressData(completed=completed, total=len(milestones), source=source)
 
     summary = SUMMARY_RE.search(text)
     if summary is None:
-        raise ValueError("roadmap is missing the verified progress summary")
+        raise ValueError("authoritative status is missing the verified progress summary")
     summary_done = int(summary.group("done"))
     summary_total = int(summary.group("total"))
     summary_percent = float(summary.group("percent"))
     expected_percent = data.percentage
     if expected_percent is None:
-        raise ValueError("verified roadmap cannot have an empty milestone denominator")
+        raise ValueError("verified status cannot have an empty checkpoint denominator")
     if summary_done != completed or summary_total != data.total:
         raise ValueError(
-            "roadmap summary disagrees with milestone checklist: "
+            "status summary disagrees with checkpoint checklist: "
             f"summary={summary_done}/{summary_total}, checklist={completed}/{data.total}"
         )
     if not math.isclose(summary_percent, expected_percent, rel_tol=0.0, abs_tol=0.05):
         raise ValueError(
-            "roadmap percentage disagrees with milestone checklist: "
+            "status percentage disagrees with checkpoint checklist: "
             f"summary={summary_percent:.1f}%, computed={expected_percent:.1f}%"
         )
     return data
@@ -290,7 +290,7 @@ def main(argv: list[str] | None = None) -> int:
         "--roadmap",
         type=Path,
         default=ROADMAP_PATH,
-        help="authoritative roadmap path (default: ROADMAP_2_0.md)",
+        help="authoritative status path (default: POST_RELEASE_AUDIT_2_0.md)",
     )
     args = parser.parse_args(argv)
     return generate(check=args.check, roadmap_path=args.roadmap)
