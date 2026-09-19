@@ -37,7 +37,7 @@ audio = ["pygame>=2.6,<3"]
 dev = ["pytest>=8,<10", "ruff>=0.16,<0.17"]
 
 [project.scripts]
-swirengine = "swirengine.cli:main"
+swirengine = "swirengine.cli21:main"
 swireditor = "swirengine.editor_app21:main"
 
 [project.urls]
