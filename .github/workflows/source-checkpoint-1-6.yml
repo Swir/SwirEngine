@@ -148,6 +148,9 @@ jobs:
           .checkpoint16-venv/bin/python -m pip install --upgrade pip
           .checkpoint16-venv/bin/python -m pip install dist/*.whl
           .checkpoint16-venv/bin/python - <<'PY'
+          from pathlib import Path
+          import tomllib
+
           import swirengine
           import swirengine.content16
           import swirengine.multiplayer16
@@ -159,7 +162,8 @@ jobs:
           import swirengine.session16
           import swirengine.transport16
 
-          assert swirengine.__version__ == "1.5.0"
+          expected = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+          assert swirengine.__version__ == expected
           print("clean checkpoint wheel:", swirengine.__version__)
           PY
       - name: Probe source showcases against the clean wheel
