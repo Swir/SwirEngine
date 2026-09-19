@@ -135,6 +135,9 @@ jobs:
           .checkpoint18-venv/bin/python -m pip install --upgrade pip
           .checkpoint18-venv/bin/python -m pip install dist/*.whl
           .checkpoint18-venv/bin/python - <<'PY'
+          from pathlib import Path
+          import tomllib
+
           import swirengine
           import swirengine.render_graph18
           import swirengine.render_quality18
@@ -146,7 +149,8 @@ jobs:
           import swirengine.renderer2_bridge18
           import swirengine.visibility18
 
-          assert swirengine.__version__ == "1.5.0"
+          expected = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+          assert swirengine.__version__ == expected
           print("clean checkpoint wheel:", swirengine.__version__)
           PY
       - name: Probe source showcase and game demos against clean wheel
