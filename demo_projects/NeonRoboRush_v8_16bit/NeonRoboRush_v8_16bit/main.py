@@ -252,7 +252,7 @@ class NeonRoboRush16:
         self.last_grounded=self.grounded
         self.grounded=False
         dy=self.vy*dt; old_y=self.py; ny=self.py+dy
-        ol,orr,ob,ot=self._player_box(self.px,old_y)
+        _ol,_orr,ob,ot=self._player_box(self.px,old_y)
         nl,nr,nb,nt=self._player_box(self.px,ny)
 
         if dy<=0:
@@ -362,7 +362,7 @@ class NeonRoboRush16:
     def _animate_hero(self,dt):
         self.hero_anim_clock+=dt
         state,idx=self._hero_state()
-        for key,frames in self.hero_frames.items():
+        for frames in self.hero_frames.values():
             for s in frames:s.visible=False
         fr=self.hero_frames[state]
         fr[idx].visible=True
