@@ -39,9 +39,16 @@ jobs:
       - name: Verify complete 1.5 release contract
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
         run: python tools/verify_1_5_release_candidate.py --require-complete
-      - name: Verify 2.0 final release preflight contract
+      - name: Verify 2.0 release-phase contract
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
-        run: python tools/verify_2_0_release_candidate.py
+        shell: bash
+        run: |
+          version="$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")"
+          if [ "$version" = "2.0.0" ]; then
+            python tools/verify_2_0_release_candidate.py --require-final
+          else
+            python tools/verify_2_0_release_candidate.py
+          fi
       - name: Run complete 1.4 headless integration probe
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
         env:
