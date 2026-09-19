@@ -111,7 +111,8 @@ def test_current_metadata_remains_compatible_with_locked_1_4_artifacts() -> None
 
     assert any(f'version = "{version}"' in pyproject for version in ("1.4.0", "1.5.0", "2.0.0"))
     assert any(f'__version__ = "{version}"' in init_text for version in ("1.4.0", "1.5.0", "2.0.0"))
-    assert "SwirEngine 1.4" in readme
-    assert "released and locked" in readme
+    assert "`v1.4.0`" in readme
+    assert "| 1.4 |" in readme
+    assert "released/locked" in readme
     assert "10/10 = 100.0%" in readme
     assert notes.startswith("# SwirEngine 1.4.0 Release Notes")
