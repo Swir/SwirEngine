@@ -1,14 +1,19 @@
 # SwirEngine 2.0.0 publication workflow.
-# Tag-only, exact-source, no replacement/skip-existing behavior.
+# Exact-tag-source publication with a guarded dispatch recovery path.
 name: Release 2.0
 
 on:
   push:
     tags:
       - "v2.0.0"
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: swirengine-2.0.0-publication
+  cancel-in-progress: false
 
 jobs:
   build-release:
@@ -17,6 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: "refs/tags/v2.0.0"
           fetch-depth: 0
       - uses: actions/setup-python@v7
         with:
@@ -51,21 +57,35 @@ jobs:
           --dist-dir dist
           --expected-system Linux
           --expected-python 3.13
-      - name: Verify tag and package/runtime versions agree
+      - name: Verify tag, checkout and package/runtime versions agree
         shell: python
         env:
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: v2.0.0
         run: |
           import os
+          import subprocess
           import tomllib
           from pathlib import Path
           import swirengine
 
           version = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
           actual = os.environ["RELEASE_TAG"]
-          if version != "2.0.0" or swirengine.__version__ != version or actual != f"v{version}":
+          tag_commit = subprocess.check_output(
+              ["git", "rev-list", "-n", "1", actual], text=True
+          ).strip()
+          head_commit = subprocess.check_output(
+              ["git", "rev-parse", "HEAD"], text=True
+          ).strip()
+          if (
+              version != "2.0.0"
+              or swirengine.__version__ != version
+              or actual != f"v{version}"
+              or tag_commit != head_commit
+          ):
               raise SystemExit(
-                  f"release identity mismatch: tag={actual!r}, project={version!r}, runtime={swirengine.__version__!r}"
+                  "release identity mismatch: "
+                  f"tag={actual!r}, project={version!r}, runtime={swirengine.__version__!r}, "
+                  f"tag_commit={tag_commit!r}, head={head_commit!r}"
               )
       - uses: actions/upload-artifact@v4
         with:
@@ -79,6 +99,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: "refs/tags/v2.0.0"
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
@@ -106,6 +128,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: "refs/tags/v2.0.0"
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
@@ -144,6 +168,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: "refs/tags/v2.0.0"
       - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
@@ -212,6 +238,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: "refs/tags/v2.0.0"
       - name: Download portable distributions
         uses: actions/download-artifact@v4
         with:
@@ -258,6 +286,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: "refs/tags/v2.0.0"
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
