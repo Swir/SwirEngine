@@ -69,6 +69,13 @@ def _run_editor(argv: list[str]) -> int:
     return editor_main(forwarded)
 
 
+def editor_entry(argv: list[str] | None = None) -> int:
+    """Standalone SwirEditor entry point sharing the Project Hub and editor router."""
+
+    values = list(sys.argv[1:] if argv is None else argv)
+    return _run_editor(values)
+
+
 def main(argv: list[str] | None = None) -> int:
     """2.1 command router preserving every established 2.0 command by delegation."""
 

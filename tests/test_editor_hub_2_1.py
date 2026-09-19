@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from swirengine.cli21 import main as cli_main
+from swirengine.cli21 import editor_entry, main as cli_main
 from swirengine.project_hub21 import EditorProjectHub, RecentProjectsStore
 from swirengine.project_scaffold21 import new_project21
 
@@ -73,3 +73,15 @@ def test_swirengine_editor_subcommand_uses_same_headless_editor_flow(
 def test_unified_cli_delegates_established_commands(capsys) -> None:
     assert cli_main(["info"]) == 0
     assert "SwirEngine 2.0.0" in capsys.readouterr().out
+
+
+def test_standalone_editor_entry_uses_same_headless_router(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    root = new_project21("StandaloneEditor", "3d")
+
+    assert editor_entry([str(root), "--headless"]) == 0
+    assert "SwirEditor 2.1 project: StandaloneEditor (3d)" in capsys.readouterr().out

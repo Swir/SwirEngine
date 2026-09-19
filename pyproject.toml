@@ -38,7 +38,7 @@ dev = ["pytest>=8,<10", "ruff>=0.16,<0.17"]
 
 [project.scripts]
 swirengine = "swirengine.cli21:main"
-swireditor = "swirengine.editor_app21:main"
+swireditor = "swirengine.cli21:editor_entry"
 
 [project.urls]
 Homepage = "https://github.com/Swir/SwirEngine"
