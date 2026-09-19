@@ -12,6 +12,7 @@ except ModuleNotFoundError:  # Python 3.10
 
 TARGET_VERSION = "1.5.0"
 PREVIOUS_STABLE_VERSION = "1.4.0"
+FORWARD_VERSION = "2.0.0"
 EXPECTED_TOTAL = 10
 EXPECTED_PYTHON_RANGE = ">=3.10,<3.15"
 REQUIRED_DOCS = (
@@ -106,6 +107,14 @@ def _require(condition: bool, message: str, checks: list[str]) -> None:
     checks.append(message)
 
 
+def _two_point_zero_finalized(root: Path) -> bool:
+    path = root / "ROADMAP_2_0.md"
+    if not path.is_file():
+        return False
+    text = path.read_text(encoding="utf-8")
+    return "- [x] **10. SwirEngine 2.0 Final Release Gate & Public Verification**" in text
+
+
 def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditReport:
     root = Path(root or Path(__file__).resolve().parents[1]).resolve()
     checks: list[str] = []
@@ -136,28 +145,51 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         checks,
     )
 
+    forward_finalized = _two_point_zero_finalized(root)
     if require_complete:
         _require(
             roadmap.completed == 10 and roadmap.remaining == 0,
             "1.5 release requires exactly 10/10 milestones",
             checks,
         )
-        _require(version == TARGET_VERSION, f"final package version is {TARGET_VERSION}", checks)
-        urls = project.get("urls", {})
+        allowed_versions = {TARGET_VERSION}
+        if forward_finalized:
+            allowed_versions.add(FORWARD_VERSION)
         _require(
-            str(urls.get("Roadmap", "")).endswith("/ROADMAP_1_5.md"),
-            "project metadata points at the 1.5 roadmap",
+            version in allowed_versions,
+            f"current package version preserves completed 1.5 history: {sorted(allowed_versions)}",
             checks,
         )
+        urls = project.get("urls", {})
+        if version == TARGET_VERSION:
+            _require(
+                str(urls.get("Roadmap", "")).endswith("/ROADMAP_1_5.md"),
+                "project metadata points at the 1.5 roadmap",
+                checks,
+            )
+        else:
+            _require(
+                str(urls.get("Roadmap", "")).endswith("/ROADMAP_2_0.md"),
+                "forward 2.0 metadata points at the active 2.0 roadmap",
+                checks,
+            )
+            _require(
+                str(urls.get("1.5 Roadmap", "")).endswith("/ROADMAP_1_5.md"),
+                "forward 2.0 metadata preserves the historical 1.5 roadmap URL",
+                checks,
+            )
     else:
         _require(
             roadmap.completed in {9, 10},
             "1.5 hardening phase must be at milestone 9 or 10",
             checks,
         )
+        allowed_versions = {PREVIOUS_STABLE_VERSION, TARGET_VERSION}
+        if forward_finalized:
+            allowed_versions.add(FORWARD_VERSION)
         _require(
-            version in {PREVIOUS_STABLE_VERSION, TARGET_VERSION},
-            f"package version is valid for 1.5 hardening: {version}",
+            version in allowed_versions,
+            f"package version is valid for 1.5 hardening/history: {version}",
             checks,
         )
         if roadmap.completed < 10:
@@ -216,7 +248,7 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
     )
     _require(
         "verify_1_5_release_candidate.py" in ci,
-        "normal CI audits the active 1.5 release contract",
+        "normal CI audits the active/historical 1.5 release contract",
         checks,
     )
 
@@ -268,16 +300,17 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
 
         readme = _read(root, "README.md")
         _require(
-            "**SwirEngine 1.5.0**" in readme or "# SwirEngine 1.5.0" in readme,
-            "README identifies stable 1.5.0 release",
+            "SwirEngine 1.5.0" in readme,
+            "README preserves the published 1.5.0 historical release identity",
             checks,
         )
-        _require(
-            "STATUS-1.5.0%20STABLE" in readme,
-            "README stable-status badge identifies 1.5.0",
-            checks,
-        )
-        _require("10/10 = 100.0%" in readme, "README reports verified 10/10 progress", checks)
+        if version == TARGET_VERSION:
+            _require(
+                "STATUS-1.5.0%20STABLE" in readme,
+                "README stable-status badge identifies 1.5.0 while it is current",
+                checks,
+            )
+        _require("10/10 = 100.0%" in readme, "README preserves verified 1.5 10/10 evidence", checks)
         _require(
             "Runtime Diagnostics & Profiling 2.0" in readme,
             "README documents milestone 9",

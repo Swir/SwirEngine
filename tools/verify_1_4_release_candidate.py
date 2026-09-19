@@ -12,7 +12,8 @@ except ModuleNotFoundError:  # Python 3.10
 
 TARGET_VERSION = "1.4.0"
 PREVIOUS_STABLE_VERSION = "1.3.0"
-ACTIVE_STABLE_VERSIONS = {PREVIOUS_STABLE_VERSION, TARGET_VERSION, "1.5.0"}
+FORWARD_VERSION = "2.0.0"
+ACTIVE_STABLE_VERSIONS = {PREVIOUS_STABLE_VERSION, TARGET_VERSION, "1.5.0", FORWARD_VERSION}
 EXPECTED_TOTAL = 10
 EXPECTED_PYTHON_RANGE = ">=3.10,<3.15"
 REQUIRED_1_4_DOCS = (
@@ -148,8 +149,8 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             checks,
         )
         _require(
-            version in {TARGET_VERSION, "1.5.0"},
-            "complete 1.4 compatibility contract permits the 1.4 publication or later 1.5 stable line",
+            version in {TARGET_VERSION, "1.5.0", FORWARD_VERSION},
+            "complete 1.4 compatibility contract permits the 1.4 publication or later verified stable lines",
             checks,
         )
     else:

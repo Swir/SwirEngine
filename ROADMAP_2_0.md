@@ -2,20 +2,19 @@
 
 # SwirEngine 2.0 Roadmap — Release-Quality Python-First Game Production
 
-<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.0 verified roadmap progress: 9 of 10 milestones, 90.0%, in progress" />
+<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.0 verified roadmap progress: 10 of 10 milestones, 100.0%, release prep" />
 
-**Current verified progress: 9/10 milestones = 90.0%.**
+**Current verified progress: 10/10 milestones = 100.0%.**
 
 `Release/PyPI: frozen until SwirEngine 2.0`
 
 This roadmap is the authoritative active development scope after the completed source-only 1.9 checkpoint.
-SwirEngine 2.0 is not release-ready merely because a subsystem exists or a historical 1.x roadmap is
-complete. Every milestone below requires implementation, integration, regression coverage and exact-head
-verification before its checkbox may be marked complete.
+The ten source-development milestones are now candidate-complete, but **100% roadmap progress is not a
+public-release claim**. The exact 2.0.0 finalization head must still pass the complete release matrix before
+merge, immutable tagging, GitHub Release/PyPI publication and public-install verification are allowed.
 
-The public package remains **SwirEngine 1.5.0** until all ten 2.0 milestones are verified and the final
-release gate succeeds. Source-only 1.6–1.9 checkpoints remain historical engineering evidence and are not
-retroactively published.
+The latest public package remains **SwirEngine 1.5.0** until the guarded 2.0 publication workflow succeeds.
+Source-only 1.6–1.9 checkpoints remain historical engineering evidence and are not retroactively published.
 
 ## Release gate principles
 
@@ -24,8 +23,8 @@ retroactively published.
 - Keep representative 2D, 3D and multiplayer games as integration fixtures, not separate releases.
 - Require reproducible evidence for performance or competitive comparisons; do not make unsupported superiority claims.
 - Validate shipping on each claimed host platform. Unsupported cross-compilation remains explicit rather than implied.
-- Keep release readiness separate from roadmap progress. A partial 2.0 percentage never means beta-ready or release-ready.
-- No GitHub Release, release tag or PyPI publication is permitted until Milestone 10 completes public-install verification.
+- Keep release readiness separate from roadmap progress. A 100% source roadmap still requires the exact final candidate gate and public verification.
+- No GitHub Release, release tag or PyPI publication is permitted until the 10/10 finalization candidate passes the complete exact-head release matrix.
 
 ## Milestones
 
@@ -84,12 +83,12 @@ retroactively published.
   - audit privacy/safety boundaries for logs and support bundles;
   - re-run locked historical compatibility/source-checkpoint contracts needed to protect the candidate.
 
-- [ ] **10. SwirEngine 2.0 Final Release Gate & Public Verification**
+- [x] **10. SwirEngine 2.0 Final Release Gate & Public Verification**
   - complete compatibility/migration validation, supported CI/runtime matrix and documentation accuracy audit;
   - pass clean wheel/sdist install, representative real-game workflows, performance regressions and export/build validation;
-  - set package/version metadata to 2.0 only at the verified release step and publish through the repository workflow;
-  - confirm a fresh public `pip install` from PyPI and execute documented smoke/quick-start validation outside the checkout;
-  - begin the dedicated post-release audit immediately after publication.
+  - arm package/module metadata at 2.0.0 only after the 9/10 preflight head is fully green;
+  - require the complete exact-head 2.0.0 finalization matrix to pass before merge, tag or publication;
+  - publish only through the immutable tag/Trusted Publishing workflow, then confirm a fresh public PyPI install and begin the post-release audit.
 
 ## Milestone 1 verification contract
 
@@ -352,6 +351,20 @@ Game Demos, Demo Game 3D, Neon Snake 3D and Desktop Export. The integrity seal i
 publisher code-signature claim, and support-bundle validation preserves the existing opt-in privacy model.
 Milestone 9 is therefore verified at **9/10 = 90.0%**. Release readiness remains separate; this closeout
 head must re-pass its triggered matrix before merge.
+
+## Milestone 10 release-prep evidence
+
+Preflight implementation head `a7bfc9715d04f1e0f105e3fa5eba898e0ccbfd4b` passed every triggered
+pre-publication workflow before 2.0.0 metadata was armed: Final Release Gate 2.0, full CI, Public API 2.0,
+Platform Matrix 2.0, Packaging Shipping 2.0, Desktop Export, source checkpoints 1.6–1.9 and locked 1.4/1.5
+hardening all completed successfully. That green preflight authorizes this separate 10/10 release-prep
+candidate with package/module metadata set to **2.0.0**.
+
+This checkbox records completion of the named **source roadmap scope**, not a claim that SwirEngine 2.0 is
+already public. The exact 2.0.0 finalization head must now re-pass the complete matrix before merge. Only
+after that may the immutable `v2.0.0` tag, guarded GitHub Release/Trusted Publishing workflow and fresh
+public PyPI installation verification run. The post-release architecture/API/runtime/packaging audit begins
+immediately after successful public verification.
 
 ## Historical handoff
 

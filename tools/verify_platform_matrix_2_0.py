@@ -4,11 +4,18 @@ import argparse
 import importlib
 import json
 import platform
+import re
 import struct
 import sys
 from importlib.metadata import metadata, version
 from pathlib import Path
 
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10
+    import tomli as tomllib
+
+ROOT = Path(__file__).resolve().parents[1]
 SUPPORTED_SYSTEMS = frozenset({"Linux", "Windows", "Darwin"})
 SUPPORTED_PYTHONS = frozenset({"3.10", "3.11", "3.12", "3.13", "3.14"})
 BASE_RUNTIME_MODULES = ("numpy", "moderngl", "glfw", "PIL", "typing_extensions")
@@ -27,6 +34,35 @@ def _module_path(module_name: str) -> str:
     module = importlib.import_module(module_name)
     file_name = getattr(module, "__file__", None)
     return "<built-in>" if file_name is None else str(Path(file_name).resolve())
+
+
+def _candidate_version(root: Path = ROOT) -> str:
+    project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    project_version = str(project["version"])
+    roadmap = (root / "ROADMAP_2_0.md").read_text(encoding="utf-8")
+    final_checked = bool(
+        re.search(
+            r"^- \[x\] \*\*10\. SwirEngine 2\.0 Final Release Gate & Public Verification\*\*",
+            roadmap,
+            flags=re.MULTILINE | re.IGNORECASE,
+        )
+    )
+    final_open = bool(
+        re.search(
+            r"^- \[ \] \*\*10\. SwirEngine 2\.0 Final Release Gate & Public Verification\*\*",
+            roadmap,
+            flags=re.MULTILINE,
+        )
+    )
+    if final_checked == final_open:
+        raise RuntimeError("Milestone 10 must appear exactly once as checked or unchecked")
+    expected = "2.0.0" if final_checked else "1.5.0"
+    if project_version != expected:
+        raise RuntimeError(
+            "project version disagrees with Milestone 10 release phase: "
+            f"expected {expected}, found {project_version}"
+        )
+    return expected
 
 
 def verify(
@@ -67,10 +103,12 @@ def verify(
             "Windows x86-64 on CPython 3.14"
         )
 
+    expected_package_version = _candidate_version()
     package_version = version("swirengine")
-    if package_version != "1.5.0":
+    if package_version != expected_package_version:
         raise RuntimeError(
-            "package version must remain 1.5.0 until the verified SwirEngine 2.0 release step"
+            "installed package version disagrees with the active 2.0 release phase: "
+            f"expected {expected_package_version}, found {package_version}"
         )
     requires_python = _requires_python()
     if requires_python != frozenset({">=3.10", "<3.15"}):

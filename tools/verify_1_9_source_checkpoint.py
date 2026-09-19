@@ -21,6 +21,7 @@ WORKFLOWS = ROOT / ".github" / "workflows"
 READINESS_AUDIT = ROOT / "docs" / "SWIRENGINE_2_0_READINESS_AUDIT.md"
 
 STABLE_PUBLIC_VERSION = "1.5.0"
+FORWARD_PUBLIC_VERSION = "2.0.0"
 EXPECTED_MILESTONES = 10
 
 MILESTONE_RE = re.compile(r"^- \[([ xX])\] \*\*(\d+)\.", re.MULTILINE)
@@ -161,15 +162,32 @@ def _require_files(paths: tuple[str, ...], *, label: str) -> None:
         raise CheckpointError(f"missing {label}: " + ", ".join(missing))
 
 
-def _verify_public_version() -> None:
+def _two_point_zero_finalized() -> bool:
+    if not ACTIVE_20_ROADMAP.is_file():
+        return False
+    return "- [x] **10. SwirEngine 2.0 Final Release Gate & Public Verification**" in _text(
+        ACTIVE_20_ROADMAP
+    )
+
+
+def _current_public_version() -> str:
     match = VERSION_RE.search(_text(PYPROJECT))
     if match is None:
         raise CheckpointError("pyproject.toml does not expose a static project version")
-    if match.group(1) != STABLE_PUBLIC_VERSION:
+    return match.group(1)
+
+
+def _verify_public_version() -> str:
+    version = _current_public_version()
+    allowed = {STABLE_PUBLIC_VERSION}
+    if _two_point_zero_finalized():
+        allowed.add(FORWARD_PUBLIC_VERSION)
+    if version not in allowed:
         raise CheckpointError(
-            "source-only 1.9 development must keep the public package frozen at "
-            f"{STABLE_PUBLIC_VERSION}; found {match.group(1)}"
+            "locked 1.9 history permits only the current public line or finalized 2.0: "
+            f"allowed={sorted(allowed)}, found {version}"
         )
+    return version
 
 
 def _verify_release_freeze(roadmap_text: str) -> None:
@@ -316,6 +334,7 @@ def main() -> int:
 
     try:
         state = audit(require_complete=args.require_complete)
+        public_version = _current_public_version()
     except CheckpointError as exc:
         print(f"source-checkpoint-1.9: FAIL: {exc}")
         return 1
@@ -324,9 +343,12 @@ def main() -> int:
     print(
         "source-checkpoint-1.9: PASS "
         f"mode={mode} roadmap={state.completed}/{state.total} "
-        f"progress={state.declared_percent:.1f}% public-version={STABLE_PUBLIC_VERSION}"
+        f"progress={state.declared_percent:.1f}% public-version={public_version}"
     )
-    print("2.0-readiness: N/A until the dedicated 2.0 final gate succeeds")
+    if public_version == FORWARD_PUBLIC_VERSION and _two_point_zero_finalized():
+        print("2.0-readiness: final release candidate")
+    else:
+        print("2.0-readiness: N/A until the dedicated 2.0 final gate succeeds")
     print("Release/PyPI: frozen until SwirEngine 2.0")
     return 0
 

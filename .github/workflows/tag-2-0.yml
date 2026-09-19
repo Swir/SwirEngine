@@ -1,0 +1,56 @@
+name: Create SwirEngine 2.0 Release Tag
+
+on:
+  push:
+    branches:
+      - "release/2.0.0-publish"
+
+permissions:
+  contents: read
+
+jobs:
+  create-tag:
+    name: Verify exact final main commit and create v2.0.0
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Enforce complete 2.0 release contract before tagging
+        run: python tools/verify_2_0_release_candidate.py --require-final
+      - name: Prove publication branch points at the exact current main commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "release/2.0.0-publish"
+          main_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
+          if [ "$main_sha" != "$GITHUB_SHA" ]; then
+            echo "Publication branch is not the exact current main commit: main=$main_sha branch=$GITHUB_SHA"
+            exit 1
+          fi
+      - name: Refuse an existing v2.0.0 tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/v2.0.0" >/dev/null 2>&1; then
+            echo "Tag v2.0.0 already exists; refusing to move or replace it."
+            exit 1
+          fi
+      - name: Create immutable release tag at verified main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+            -f ref='refs/tags/v2.0.0' \
+            -f sha="$GITHUB_SHA"

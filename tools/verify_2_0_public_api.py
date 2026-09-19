@@ -17,6 +17,7 @@ MIGRATION_PATH = ROOT / "docs" / "MIGRATING_TO_2_0.md"
 API_STABILITY_PATH = ROOT / "docs" / "API_STABILITY.md"
 ROADMAP_PATH = ROOT / "ROADMAP_2_0.md"
 PUBLIC_VERSION_FLOOR = "1.5.0"
+FINAL_VERSION = "2.0.0"
 
 
 def load_manifest(path: Path = MANIFEST_PATH) -> dict[str, object]:
@@ -120,6 +121,14 @@ def read_module_version(path: Path = INIT_PATH) -> str:
     raise ValueError("swirengine.__version__ literal assignment was not found")
 
 
+def expected_candidate_version(roadmap_text: str) -> str:
+    final_checked = "- [x] **10. SwirEngine 2.0 Final Release Gate & Public Verification**" in roadmap_text
+    final_open = "- [ ] **10. SwirEngine 2.0 Final Release Gate & Public Verification**" in roadmap_text
+    if final_checked == final_open:
+        raise ValueError("Milestone 10 must appear exactly once as checked or unchecked")
+    return FINAL_VERSION if final_checked else PUBLIC_VERSION_FLOOR
+
+
 def verify(root: Path = ROOT) -> list[str]:
     manifest_path = root / "docs" / "public_api_2_0.json"
     init_path = root / "src" / "swirengine" / "__init__.py"
@@ -156,17 +165,18 @@ def verify(root: Path = ROOT) -> list[str]:
     if missing:
         raise ValueError(f"2.0 source removed published 1.5.0 root exports: {missing}")
 
-    project_version = read_project_version(pyproject_path)
-    module_version = read_module_version(init_path)
-    if project_version != PUBLIC_VERSION_FLOOR or module_version != PUBLIC_VERSION_FLOOR:
-        raise ValueError(
-            "source-development versions must stay at 1.5.0 until the verified 2.0 final release gate; "
-            f"project={project_version}, module={module_version}"
-        )
-
     migration = migration_path.read_text(encoding="utf-8")
     api_stability = api_stability_path.read_text(encoding="utf-8")
     roadmap = roadmap_path.read_text(encoding="utf-8")
+    project_version = read_project_version(pyproject_path)
+    module_version = read_module_version(init_path)
+    expected_version = expected_candidate_version(roadmap)
+    if project_version != expected_version or module_version != expected_version:
+        raise ValueError(
+            "candidate version does not match the Milestone 10 release phase; "
+            f"expected={expected_version}, project={project_version}, module={module_version}"
+        )
+
     required_references = {
         "migration guide": (migration, "public_api_2_0.json"),
         "API stability policy": (api_stability, "public_api_2_0.json"),

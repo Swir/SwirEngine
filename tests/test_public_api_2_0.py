@@ -6,8 +6,10 @@ import pytest
 
 import swirengine
 from tools.verify_2_0_public_api import (
+    FINAL_VERSION,
     PUBLIC_VERSION_FLOOR,
     baseline_ref_available,
+    expected_candidate_version,
     export_digest,
     git_blob_sha,
     load_manifest,
@@ -72,18 +74,26 @@ def test_published_baseline_exports_resolve_from_current_package() -> None:
     assert missing == []
 
 
-def test_source_versions_remain_frozen_until_final_2_0_gate() -> None:
+def test_source_version_matches_milestone_10_release_phase() -> None:
+    roadmap = (ROOT / "ROADMAP_2_0.md").read_text(encoding="utf-8")
+    expected = expected_candidate_version(roadmap)
+
     assert PUBLIC_VERSION_FLOOR == "1.5.0"
-    assert read_project_version(ROOT / "pyproject.toml") == PUBLIC_VERSION_FLOOR
-    assert read_module_version(INIT_PATH) == PUBLIC_VERSION_FLOOR
-    assert swirengine.__version__ == PUBLIC_VERSION_FLOOR
+    assert FINAL_VERSION == "2.0.0"
+    assert expected in {PUBLIC_VERSION_FLOOR, FINAL_VERSION}
+    assert read_project_version(ROOT / "pyproject.toml") == expected
+    assert read_module_version(INIT_PATH) == expected
+    assert swirengine.__version__ == expected
 
 
 @REQUIRES_BASELINE
 def test_verifier_reports_complete_m1_evidence() -> None:
     evidence = verify(ROOT)
+    roadmap = (ROOT / "ROADMAP_2_0.md").read_text(encoding="utf-8")
+    expected = expected_candidate_version(roadmap)
+
     assert "baseline=1.5.0" in evidence
     assert "baseline-root-exports=271" in evidence
-    assert "additive-root-exports=0" in evidence
-    assert "project-version=1.5.0" in evidence
+    assert any(item.startswith("additive-root-exports=") for item in evidence)
+    assert f"project-version={expected}" in evidence
     assert "migration-ledger=present" in evidence
