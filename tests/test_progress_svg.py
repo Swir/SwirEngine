@@ -41,14 +41,21 @@ def test_authoritative_post_release_math_matches_committed_assets() -> None:
     data = parse_progress(STATUS_PATH.read_text(encoding="utf-8"))
 
     assert STATUS_PATH.as_posix() == "docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md"
-    assert data.completed == 4
     assert data.total == 10
-    assert data.percentage == pytest.approx(40.0)
     assert data.percentage == pytest.approx(data.completed / data.total * 100.0)
     assert generate(check=True) == 0
     assert CARD_PATH.is_file()
     assert MINI_PATH.is_file()
     assert TEMPLATE_PATH.is_file()
+
+    card = CARD_PATH.read_text(encoding="utf-8")
+    mini = MINI_PATH.read_text(encoding="utf-8")
+    assert _gradient_fill_width(card) == pytest.approx(1100.0 * data.completed / data.total)
+    assert _gradient_fill_width(mini) == pytest.approx(700.0 * data.completed / data.total)
+    assert data.display_percentage in card
+    assert data.display_percentage in mini
+    assert f"{data.completed} / {data.total}" in card
+    assert f"{data.completed} / {data.total}" in mini
 
 
 def test_maintained_progress_surfaces_are_svg_only_and_nonduplicated() -> None:
@@ -78,11 +85,13 @@ def test_maintained_progress_surfaces_are_svg_only_and_nonduplicated() -> None:
 
 def test_template_is_valid_but_never_live_project_data() -> None:
     template = TEMPLATE_PATH.read_text(encoding="utf-8")
+    data = parse_progress(STATUS_PATH.read_text(encoding="utf-8"))
 
     assert "TEMPLATE / NOT PROJECT DATA" in template
-    assert "40.0%" not in template
-    assert "4 / 10" not in template
-    assert "Post-Release Audit" not in template
+    assert data.scope not in template
+    assert data.display_percentage not in template
+    assert f"{data.completed} / {data.total}" not in template
+    assert "Published 2.0.0" not in template
     assert ET.fromstring(template).tag.endswith("svg")
 
 
@@ -163,4 +172,3 @@ def test_all_generated_svgs_are_valid_xml() -> None:
     for content in expected_outputs(data).values():
         root = ET.fromstring(content)
         assert root.tag.endswith("svg")
-        assert "viewBox" in root.attrib

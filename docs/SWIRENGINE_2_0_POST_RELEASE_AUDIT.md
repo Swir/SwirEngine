@@ -4,7 +4,7 @@
 
 This is the authoritative active status document after the public SwirEngine 2.0.0 release. The historical source-development roadmap remains preserved in [`../ROADMAP_2_0.md`](../ROADMAP_2_0.md). Completion here means the named post-release audit scope has been verified; it does not claim literal perfection.
 
-Current verified progress: 4/10 milestones = 40.0%.
+Current verified progress: 5/10 milestones = 50.0%.
 
 ## Verified release snapshot
 
@@ -21,7 +21,7 @@ Current verified progress: 4/10 milestones = 40.0%.
 - [x] **2. API, migration and backwards-compatibility release floor.** The exact tagged release re-ran the complete 2.0 release contract and the published 1.5 compatibility/migration floor before distribution.
 - [x] **3. Supported Python/platform and packaging identity.** Exact-source wheel/sdist metadata, isolated installs, tag/package/runtime version identity, and the Windows CPython 3.14 native wheel path were verified during the public release workflow. Support claims remain limited to the architectures documented in `SUPPORT_MATRIX_2_0.md`.
 - [x] **4. Export/build integrity, diagnostics and release-safety publication gate.** The exact release re-ran export/build integrity and release-safety verification before publication. Privacy-safe support-bundle and deterministic build-identity contracts remain part of the maintained gate.
-- [ ] **5. Runtime stability and resource-lifecycle deep audit.** Re-audit long-running resource ownership, teardown, cache/streaming pressure, failure recovery, memory growth and crash handling from the public 2.0 installation and current `main`. Active evidence is tracked in [`SWIRENGINE_2_0_RUNTIME_LIFECYCLE_AUDIT.md`](SWIRENGINE_2_0_RUNTIME_LIFECYCLE_AUDIT.md); the current pass keeps this domain open because finalized `AsyncAssetPipeline` request/scheduler records have no creator-facing reclamation path yet.
+- [x] **5. Runtime stability and resource-lifecycle deep audit.** The post-release lifecycle harness now covers bounded asset-streaming/cache pressure, owned worker teardown, successful/failed/cancelled async-asset work and dependency-safe reclamation. `AsyncAssetPipeline.forget()` plus bounded `prune_finalized()` remove finalized pipeline/scheduler bookkeeping without invalidating retained dependency graphs. The exact implementation head `0d1c2b65f305ed8b8619dc56fa56435daa4f897a` passed all 13 required pull-request workflows before PR #167 merged to `main` as `cc28b8803138d7ab5f4a7af88ab343de45c85970`. Current evidence is recorded in [`SWIRENGINE_2_0_RUNTIME_LIFECYCLE_AUDIT.md`](SWIRENGINE_2_0_RUNTIME_LIFECYCLE_AUDIT.md).
 - [ ] **6. Rendering, assets and world-production deep audit.** Re-run representative renderer, asset-pipeline, shader/cache, scene visibility, terrain/LOD and world-streaming workloads and address any post-release regressions or creator friction.
 - [ ] **7. Gameplay systems deep audit.** Re-audit animation, physics/collision, navigation/AI, audio, input/gamepad/rebinding, UI/HUD, saves/profiles/config and their high-level creator APIs for production consistency.
 - [ ] **8. Networking and dedicated-server post-release audit.** Re-run multiplayer compatibility, replication/reconnect, QoS/transport, dedicated-server lifecycle and failure-mode evidence from maintained public-install workflows where practical.
@@ -34,4 +34,4 @@ The audit reaches `10/10 = 100%` only after all ten domains above have current e
 
 ## Next highest-impact work
 
-Continue **Domain 5 — runtime stability and resource lifecycle** by adding a dependency-safe reclamation path for finalized `AsyncAssetPipeline` requests, then rerun the lifecycle harness and expand failure/cancellation recovery evidence before changing the verified percentage.
+Continue **Domain 6 — rendering, assets and world production** with a deterministic post-release workload that combines renderer resource reuse/cleanup, shader/cache behavior, scene visibility, terrain/LOD and world-streaming transitions. Treat any regression or creator-facing friction discovered by that workload as an engineering finding before changing the verified percentage again.

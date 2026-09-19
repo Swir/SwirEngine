@@ -10,7 +10,7 @@
 [![PyPI](https://img.shields.io/pypi/v/swirengine?style=for-the-badge&color=02050A&logo=pypi&logoColor=62E5FF)](https://pypi.org/project/swirengine/)
 ![Python](https://img.shields.io/badge/Python-3.10--3.14%2064--bit%20CPython%20verified%20matrix-02050A?style=for-the-badge&logo=python&logoColor=62E5FF)
 ![Status](https://img.shields.io/badge/STATUS-2.0.0%20PUBLISHED-02050A?style=for-the-badge&logoColor=62E5FF)
-![Audit](https://img.shields.io/badge/POST--RELEASE%20AUDIT-4%2F10-02050A?style=for-the-badge&logoColor=62E5FF)
+![Audit](https://img.shields.io/badge/POST--RELEASE%20AUDIT-5%2F10-02050A?style=for-the-badge&logoColor=62E5FF)
 ![License](https://img.shields.io/badge/LICENSE-MIT-02050A?style=for-the-badge&logo=opensourceinitiative&logoColor=62E5FF)
 
 [![Author](https://img.shields.io/badge/Author-Swir-0088FF?style=flat-square&logo=github)](https://github.com/Swir)
@@ -26,10 +26,10 @@
 
 ## 📊 Project status
 
-<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.0 post-release audit progress: 4 of 10 audit domains, 40.0%, in progress" />
+<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.0 post-release audit progress: 5 of 10 audit domains, 50.0%, in progress" />
 
 **Active verified scope:** SwirEngine 2.0 — Post-Release Audit & Hardening  
-**Post-release audit:** **4/10 domains = 40.0% — IN PROGRESS**  
+**Post-release audit:** **5/10 domains = 50.0% — IN PROGRESS**  
 **Latest public stable release:** **SwirEngine 2.0.0**  
 **Release date:** **2026-09-19**  
 **Release source:** immutable tag **`v2.0.0`** from commit **`3fe0ff11e09ca0b4a9abcb2b757c12514100bc59`**
@@ -147,7 +147,7 @@ The ten audit domains cover:
 9. creator/editor/export and complete real-game usability;
 10. documentation, CI, security boundaries and audit closeout.
 
-Domains 1–4 are already verified by exact-release evidence. Domains 5–10 remain active and must be closed by
+Domains 1–5 are now verified by exact release or post-release evidence. Domains 6–10 remain active and must be closed by
 current post-release evidence. Any critical, high-severity or release-blocking regression reopens the
 applicable domain.
 
@@ -178,6 +178,7 @@ swirengine workflow . --prepare
 ### Key documentation
 
 - [`docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md`](docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md) — active post-release status
+- [`docs/SWIRENGINE_2_0_RUNTIME_LIFECYCLE_AUDIT.md`](docs/SWIRENGINE_2_0_RUNTIME_LIFECYCLE_AUDIT.md) — verified Domain 5 lifecycle evidence
 - [`ROADMAP_2_0.md`](ROADMAP_2_0.md) — historical 2.0 source-development roadmap
 - [`docs/MIGRATING_TO_2_0.md`](docs/MIGRATING_TO_2_0.md)
 - [`docs/public_api_2_0.json`](docs/public_api_2_0.json)
@@ -272,11 +273,11 @@ deterministic tooling, failure handling and shipping behavior—not feature coun
 | 1.8 | [`ROADMAP_1_8.md`](ROADMAP_1_8.md) | 10/10 = 100.0%, source-only checkpoint |
 | 1.9 | [`ROADMAP_1_9.md`](ROADMAP_1_9.md) | 10/10 = 100.0%, source-only checkpoint |
 | 2.0 | [`ROADMAP_2_0.md`](ROADMAP_2_0.md) | 10/10 = 100.0%, released 2026-09-19 |
-| **2.0 post-release** | **[`docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md`](docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md)** | **4/10 = 40.0%, active audit** |
+| **2.0 post-release** | **[`docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md`](docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md)** | **5/10 = 50.0%, active audit** |
 
 ## ⚠️ Current limitations
 
-- Post-release audit domains 5–10 remain open; runtime/resource, renderer/world, gameplay, networking, creator-shipping and closeout audits still require current evidence.
+- Post-release audit domains 6–10 remain open; renderer/world, gameplay, networking, creator-shipping and closeout audits still require current evidence.
 - The verified base-engine matrix covers only the maintained 64-bit hosted runner architectures exercised by CI; 32-bit Python, PyPy, free-threaded CPython and unverified architectures are not claimed.
 - Optional extras such as audio require their own dependency/runtime evidence beyond the base-engine support matrix.
 - Desktop build plans are host-native; unsupported cross-compilation is intentionally rejected.
