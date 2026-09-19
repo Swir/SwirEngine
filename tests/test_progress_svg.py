@@ -7,6 +7,8 @@ from pathlib import Path
 import pytest
 
 from tools.generate_progress_svg import (
+    ASCII_END,
+    ASCII_START,
     CARD_PATH,
     MINI_PATH,
     STATUS_PATH,
@@ -15,8 +17,10 @@ from tools.generate_progress_svg import (
     expected_outputs,
     generate,
     parse_progress,
+    render_ascii_progress,
     render_card,
     render_mini,
+    render_readme_with_ascii,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,6 +29,10 @@ HISTORICAL_2_0_PATH = ROOT / "ROADMAP_2_0.md"
 HISTORICAL_1_9_PATH = ROOT / "ROADMAP_1_9.md"
 LEGACY_PROGRESS_RE = re.compile(
     r"(?:[█▓▒░]{2,}|\[(?=[^\]\n]*[#=█▓▒░])(?:[#=█▓▒░ .-]){6,}\])"
+)
+PYPI_ASCII_BLOCK_RE = re.compile(
+    rf"{re.escape(ASCII_START)}.*?{re.escape(ASCII_END)}",
+    re.DOTALL,
 )
 
 
@@ -58,6 +66,20 @@ def test_authoritative_post_release_math_matches_committed_assets() -> None:
     assert f"{data.completed} / {data.total}" in mini
 
 
+def test_pypi_ascii_progress_is_single_deterministic_exception() -> None:
+    readme = README_PATH.read_text(encoding="utf-8")
+    data = parse_progress(STATUS_PATH.read_text(encoding="utf-8"))
+
+    assert readme.count(ASCII_START) == 1
+    assert readme.count(ASCII_END) == 1
+    match = PYPI_ASCII_BLOCK_RE.search(readme)
+    assert match is not None
+    assert match.group(0) == render_ascii_progress(data)
+    assert render_readme_with_ascii(readme, data) == readme
+    assert all(ord(character) < 128 for character in match.group(0))
+    assert LEGACY_PROGRESS_RE.search(match.group(0)) is not None
+
+
 def test_maintained_progress_surfaces_are_svg_only_and_nonduplicated() -> None:
     readme = README_PATH.read_text(encoding="utf-8")
     status = STATUS_PATH.read_text(encoding="utf-8")
@@ -66,8 +88,9 @@ def test_maintained_progress_surfaces_are_svg_only_and_nonduplicated() -> None:
 
     assert "<!-- SWIR-README-STANDARD:v2 -->" in readme
 
+    readme_without_pypi_exception = PYPI_ASCII_BLOCK_RE.sub("", readme, count=1)
     for path, text in (
-        (README_PATH, readme),
+        (README_PATH, readme_without_pypi_exception),
         (STATUS_PATH, status),
         (HISTORICAL_2_0_PATH, historical_2_0),
         (HISTORICAL_1_9_PATH, historical_1_9),
