@@ -237,7 +237,7 @@ class NeonRoboRush32:
     def _move_y(self,dt):
         self.last_grounded=self.grounded;self.grounded=False
         dy=self.vy*dt;old_y=self.py;ny=self.py+dy
-        ol,orr,ob,ot=self._player_box(self.px,old_y);nl,nr,nb,nt=self._player_box(self.px,ny)
+        _ol,_orr,ob,ot=self._player_box(self.px,old_y);nl,nr,nb,nt=self._player_box(self.px,ny)
         if dy<=0:
             best=None
             for s in self.solids:
