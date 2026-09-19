@@ -37,7 +37,7 @@ jobs:
             exit 1
           fi
       - name: Create or preserve immutable v2.0.0 tag
-        id: release-tag
+        id: release_tag
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -58,7 +58,7 @@ jobs:
       - name: Re-verify immutable tagged source and its successful final gate
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG_COMMIT: ${{ steps.release-tag.outputs.tag_commit }}
+          TAG_COMMIT: ${{ steps.release_tag.outputs.tag_commit }}
         shell: bash
         run: |
           set -euo pipefail
