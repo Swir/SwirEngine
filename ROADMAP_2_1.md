@@ -1,3 +1,5 @@
+<!-- SWIR-PROGRESS-SVG-PRO:v1 -->
+
 # SwirEngine 2.1 — SwirEditor & Creator Workflow Roadmap
 
 <img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.1 SwirEditor roadmap progress" />
