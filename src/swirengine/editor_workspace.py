@@ -453,6 +453,12 @@ class EditorWorkspace:
         self.inspector = inspector
         self.viewport = viewport
 
+    def forget_scene_state(self, scene_id: str) -> bool:
+        """Forget saved editor-only metadata for one non-active scene."""
+        if scene_id == self.scene_id:
+            raise ValueError("cannot forget the active editor scene state")
+        return self._scene_states.pop(scene_id, None) is not None
+
     def capture_project(self) -> EditorProjectState:
         self.stash_scene()
         return EditorProjectState(
