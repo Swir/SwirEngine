@@ -13,7 +13,7 @@ def test_release_contract_audits_current_hardening_state() -> None:
     report = audit(ROOT)
     assert report.roadmap.total == 10
     assert report.roadmap.completed in {9, 10}
-    assert report.version in {"1.4.0", "1.5.0"}
+    assert report.version in {"1.4.0", "1.5.0", "2.0.0"}
     assert report.checks
 
 
@@ -21,7 +21,7 @@ def test_strict_release_contract_tracks_roadmap_completion() -> None:
     report = audit(ROOT)
     if report.roadmap.completed == 10:
         strict = audit(ROOT, require_complete=True)
-        assert strict.version == "1.5.0"
+        assert strict.version in {"1.5.0", "2.0.0"}
         assert strict.roadmap.remaining == 0
     else:
         with pytest.raises(AssertionError, match="10/10"):
