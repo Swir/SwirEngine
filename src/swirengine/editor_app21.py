@@ -236,7 +236,7 @@ class EditorProjectSession:
     def save(self) -> EditorSaveResult:
         scene_path = _scene_path(self.root, self.workspace.scene_id)
         scene_path.parent.mkdir(parents=True, exist_ok=True)
-        self.serializer.save_scene(self.workspace.scene, scene_path)
+        self.serializer.dump_scene(self.workspace.scene, scene_path)
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
         self.workspace.capture_project().save(self.state_path)
         self.scene_path = scene_path
