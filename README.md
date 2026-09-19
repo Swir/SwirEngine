@@ -44,14 +44,9 @@
 **Release date:** **2026-09-19**  
 **Release source:** immutable tag **`v2.0.0`** from commit **`3fe0ff11e09ca0b4a9abcb2b757c12514100bc59`**
 
-The public 2.0.0 package remains the stable release while source development proceeds through the dedicated
-[`ROADMAP_2_1.md`](ROADMAP_2_1.md). Milestones 1–3 provide the project-backed SwirEditor session, Project Hub
-and scene-authoring/recovery foundation. Milestone 4 is the next creator-facing gate: typed Inspector,
-component authoring and a complete prefab create/instantiate/apply/revert workflow.
+SwirEngine 2.0.0 is publicly released on GitHub and PyPI. The public 2.0.0 package remains the stable release while source development proceeds through the dedicated [`ROADMAP_2_1.md`](ROADMAP_2_1.md). Milestones 1–3 provide the project-backed SwirEditor session, Project Hub and scene-authoring/recovery foundation. Milestone 4 is the next creator-facing gate: typed Inspector, component authoring and a complete prefab create/instantiate/apply/revert workflow.
 
-The published 2.0 line is still being audited independently in
-[`docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md`](docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md). Publication does not mean
-literal perfection; meaningful hardening remains until every audit domain is re-verified.
+The published 2.0 line is still being audited independently in [`docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md`](docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md). Publication does not mean literal perfection; meaningful hardening remains until every audit domain is re-verified.
 
 ## ✨ Highlights
 
@@ -141,8 +136,7 @@ SwirEngine now tracks two distinct verified scopes without conflating their perc
 - [`ROADMAP_2_1.md`](ROADMAP_2_1.md) — active **2.1 SwirEditor & Creator Workflow**, currently **3/10 = 30.0%** and **BETA READY: NO**.
 - [`docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md`](docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md) — published **2.0.0** hardening audit, currently **5/10 = 50.0%**.
 
-Historical release-development detail remains preserved in [`ROADMAP_2_0.md`](ROADMAP_2_0.md), which is
-**10/10 = 100.0%** only for its named source-development scope.
+Historical release-development detail remains preserved in [`ROADMAP_2_0.md`](ROADMAP_2_0.md), which is **10/10 = 100.0%** only for its named source-development scope.
 
 ### Key documentation
 
@@ -176,10 +170,7 @@ Representative projects are source-only engine integration fixtures and do **not
 - **Neon Cube Hunt 3D** — OpenGL + packaged-runtime regression arena
 - **Neon Snake 3D** — complete 3D regression project
 
-The maintained shipping and compatibility gates drive representative fixtures through creator preparation,
-source runtime, deterministic staged export, staged runtime, settings/save boundaries, scene/content integrity,
-UI focus/navigation/activation and privacy-safe diagnostics. Fixture failures are engine integration failures,
-not demo-only issues.
+The maintained shipping and compatibility gates drive representative fixtures through creator preparation, source runtime, deterministic staged export, staged runtime, settings/save boundaries, scene/content integrity, UI focus/navigation/activation and privacy-safe diagnostics. Fixture failures are engine integration failures, not demo-only issues.
 
 ## 🧪 Development and verification
 
@@ -199,22 +190,13 @@ python tools/verify_performance_evidence_2_0.py --output build/performance-evide
 python tools/verify_release_safety_2_0.py
 ```
 
-`tools/generate_progress_svg.py` owns the canonical active-development `progress-card.svg`,
-`progress-mini.svg`, the labelled `progress-template.svg`, compatibility mirrors for the established 2.1
-asset paths, and the single marked plain-ASCII PyPI fallback block in this README. All live progress outputs
-are derived from the same verified 2.1 roadmap source. The separate 2.0 audit generator owns only its
-audit-scoped mini graphic. Presentation tests verify source math, accessibility text, fill geometry, canonical
-embedding, the approved PyPI exception and legacy-meter cleanup outside that marked block.
+`tools/generate_progress_svg.py` owns the canonical active-development `progress-card.svg`, `progress-mini.svg`, the labelled `progress-template.svg`, compatibility mirrors for the established 2.1 asset paths, and the single marked plain-ASCII PyPI fallback block in this README. All live progress outputs are derived from the same verified 2.1 roadmap source. The separate 2.0 audit generator owns only its audit-scoped mini graphic. Presentation tests verify source math, accessibility text, fill geometry, canonical embedding, the approved PyPI exception and legacy-meter cleanup outside that marked block.
 
 ## 🧱 Architecture and technology
 
-SwirEngine keeps a high-level Python creator surface over modular runtime systems. The repository contains
-rendering, scene/ECS, assets, serialization, physics, audio, input/UI, networking, editor, diagnostics and
-export/shipping modules with focused regression workflows. Advanced systems remain available through explicit
-APIs instead of being hidden behind one monolithic game object.
+SwirEngine keeps a high-level Python creator surface over modular runtime systems. The repository contains rendering, scene/ECS, assets, serialization, physics, audio, input/UI, networking, editor, diagnostics and export/shipping modules with focused regression workflows. Advanced systems remain available through explicit APIs instead of being hidden behind one monolithic game object.
 
-Engineering quality is evaluated against complete games, public installation, resource lifetime,
-deterministic tooling, creator workflow, failure handling and shipping behavior—not feature count alone.
+Engineering quality is evaluated against complete games, public installation, resource lifetime, deterministic tooling, creator workflow, failure handling and shipping behavior—not feature count alone.
 
 ## 🔒 API and release policy
 
