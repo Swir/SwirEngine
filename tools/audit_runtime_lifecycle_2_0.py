@@ -148,13 +148,14 @@ def _audit_async_pipeline(root: Path, *, requests: int) -> tuple[int, int, int, 
             while request.request_id in pipeline.pending_request_ids():
                 pipeline.poll(max_items=16)
         diagnostics = pipeline.diagnostics()
-        retained_requests = len(pipeline._records)  # noqa: SLF001 - deliberate post-release audit probe.
+        retained_requests = len(pipeline._records)
+        scheduler_diagnostics = pipeline._scheduler.diagnostics()
         scheduler_terminal = sum(
             (
-                pipeline._scheduler.diagnostics().succeeded,  # noqa: SLF001
-                pipeline._scheduler.diagnostics().failed,  # noqa: SLF001
-                pipeline._scheduler.diagnostics().cancelled,  # noqa: SLF001
-                pipeline._scheduler.diagnostics().blocked,  # noqa: SLF001
+                scheduler_diagnostics.succeeded,
+                scheduler_diagnostics.failed,
+                scheduler_diagnostics.cancelled,
+                scheduler_diagnostics.blocked,
             )
         )
         return (
