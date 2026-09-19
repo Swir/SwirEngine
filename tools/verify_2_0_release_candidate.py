@@ -14,6 +14,7 @@ TARGET_VERSION = "2.0.0"
 PREVIOUS_STABLE_VERSION = "1.5.0"
 EXPECTED_TOTAL = 10
 EXPECTED_PYTHON_RANGE = ">=3.10,<3.15"
+POST_RELEASE_STATUS = "docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md"
 
 REQUIRED_DOCS = (
     "docs/API_STABILITY.md",
@@ -118,7 +119,21 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
     _require(roadmap.total == EXPECTED_TOTAL, "2.0 roadmap has exactly 10 milestones", checks)
 
     readme = _read(root, "README.md")
-    for label, text in (("README", readme), ("2.0 roadmap", roadmap_text)):
+    post_release_path = root / POST_RELEASE_STATUS
+    post_release_status = (
+        post_release_path.read_text(encoding="utf-8") if post_release_path.is_file() else ""
+    )
+    post_release = (
+        version == TARGET_VERSION
+        and bool(post_release_status)
+        and "STATUS-2.0.0%20PUBLISHED" in readme
+        and "**Latest public stable release:** **SwirEngine 2.0.0**" in readme
+    )
+
+    presentation_surfaces = [("README", readme), ("2.0 roadmap", roadmap_text)]
+    if post_release:
+        presentation_surfaces.append(("post-release audit", post_release_status))
+    for label, text in presentation_surfaces:
         _require(
             legacy_progress_meter_lines(text) == (),
             f"{label} contains no legacy character progress meter",
@@ -140,11 +155,23 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
         "README embeds the project progress card",
         checks,
     )
-    _require(
-        'src="assets/readme/progress-mini.svg"' in roadmap_text,
-        "2.0 roadmap embeds the compact progress SVG",
-        checks,
-    )
+    if post_release:
+        _require(
+            "progress-mini.svg" not in roadmap_text,
+            "historical 2.0 roadmap does not embed the active post-release mini graphic",
+            checks,
+        )
+        _require(
+            'src="../assets/readme/progress-mini.svg"' in post_release_status,
+            "active post-release audit embeds the compact progress SVG",
+            checks,
+        )
+    else:
+        _require(
+            'src="assets/readme/progress-mini.svg"' in roadmap_text,
+            "active 2.0 roadmap embeds the compact progress SVG before publication",
+            checks,
+        )
     for relative in (
         "assets/readme/progress-card.svg",
         "assets/readme/progress-mini.svg",
@@ -243,26 +270,53 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
             "project metadata points at the 2.0 roadmap",
             checks,
         )
-        _require(
-            "10/10 milestones = 100.0%" in readme,
-            "README reports verified 10/10 2.0 progress",
-            checks,
-        )
-        _require(
-            "STATUS-2.0.0%20RELEASE%20PREP" in readme,
-            "README identifies 2.0.0 as release-prep rather than falsely published stable",
-            checks,
-        )
-        _require(
-            "**Latest public stable release:** **SwirEngine 1.5.0**" in readme,
-            "README keeps 1.5.0 as the public stable release until publication succeeds",
-            checks,
-        )
-        _require(
-            "Release/PyPI: frozen until SwirEngine 2.0" in readme,
-            "README preserves the publication freeze through the finalization head",
-            checks,
-        )
+        if post_release:
+            _require(
+                "Current verified progress: 10/10 milestones = 100.0%." in roadmap_text,
+                "historical 2.0 roadmap preserves verified 10/10 source-development evidence",
+                checks,
+            )
+            _require(
+                "STATUS-2.0.0%20PUBLISHED" in readme,
+                "README identifies 2.0.0 as the published stable release",
+                checks,
+            )
+            _require(
+                "**Latest public stable release:** **SwirEngine 2.0.0**" in readme,
+                "README identifies 2.0.0 as the latest public stable release",
+                checks,
+            )
+            _require(
+                "SwirEngine 2.0.0 is publicly released on GitHub and PyPI" in readme,
+                "README records successful public GitHub/PyPI publication",
+                checks,
+            )
+            _require(
+                "SwirEngine 2.0 — Post-Release Audit & Hardening" in post_release_status,
+                "post-release audit is the active hardening source",
+                checks,
+            )
+        else:
+            _require(
+                "10/10 milestones = 100.0%" in readme,
+                "README reports verified 10/10 2.0 progress",
+                checks,
+            )
+            _require(
+                "STATUS-2.0.0%20RELEASE%20PREP" in readme,
+                "README identifies 2.0.0 as release-prep rather than falsely published stable",
+                checks,
+            )
+            _require(
+                "**Latest public stable release:** **SwirEngine 1.5.0**" in readme,
+                "README keeps 1.5.0 as the public stable release until publication succeeds",
+                checks,
+            )
+            _require(
+                "Release/PyPI: frozen until SwirEngine 2.0" in readme,
+                "README preserves the publication freeze through the finalization head",
+                checks,
+            )
     else:
         _require(
             roadmap.completed == 9 and roadmap.remaining == 1,

@@ -9,15 +9,15 @@ from dataclasses import dataclass
 from html import escape
 from pathlib import Path
 
-ROADMAP_PATH = Path("ROADMAP_2_0.md")
+STATUS_PATH = Path("docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md")
 CARD_PATH = Path("assets/readme/progress-card.svg")
 MINI_PATH = Path("assets/readme/progress-mini.svg")
 TEMPLATE_PATH = Path("assets/readme/progress-template.svg")
 
 PROJECT_NAME = "SwirEngine"
-MILESTONE_LABEL = "2.0"
-MEASURED_SCOPE = "SwirEngine 2.0 — Release-Quality Python-First Game Production"
-RELEASE_STATUS = "Release/PyPI frozen until SwirEngine 2.0"
+MILESTONE_LABEL = "2.0 POST-RELEASE"
+MEASURED_SCOPE = "SwirEngine 2.0 — Post-Release Audit & Hardening"
+RELEASE_STATUS = "Published 2.0.0 · post-release audit active"
 
 MILESTONE_RE = re.compile(r"^- \[(?P<state>[ xX])\] \*\*(?P<number>\d+)\.", re.MULTILINE)
 SUMMARY_RE = re.compile(
@@ -35,9 +35,7 @@ class ProgressData:
 
     @property
     def fraction(self) -> float | None:
-        if self.total <= 0:
-            return None
-        return self.completed / self.total
+        return None if self.total <= 0 else self.completed / self.total
 
     @property
     def percentage(self) -> float | None:
@@ -47,16 +45,12 @@ class ProgressData:
     @property
     def status(self) -> str:
         if self.total <= 0:
-            return "PLANNING"
-        if self.completed >= self.total:
-            return "COMPLETE"
-        return "IN PROGRESS"
+            return "N/A"
+        return "COMPLETE" if self.completed >= self.total else "IN PROGRESS"
 
     @property
     def counter(self) -> str:
-        if self.total <= 0:
-            return "N/A milestones"
-        return f"{self.completed} / {self.total} milestones"
+        return "N/A audit domains" if self.total <= 0 else f"{self.completed} / {self.total} audit domains"
 
     @property
     def display_percentage(self) -> str:
@@ -64,35 +58,35 @@ class ProgressData:
         return "N/A" if percentage is None else f"{percentage:.1f}%"
 
 
-def parse_progress(text: str, *, source: str = str(ROADMAP_PATH)) -> ProgressData:
+def parse_progress(text: str, *, source: str = str(STATUS_PATH)) -> ProgressData:
     milestones = list(MILESTONE_RE.finditer(text))
     if not milestones:
         return ProgressData(completed=0, total=0, source=source)
 
     numbers = [int(match.group("number")) for match in milestones]
     if len(numbers) != len(set(numbers)):
-        raise ValueError("roadmap milestone numbers must be unique")
+        raise ValueError("audit domain numbers must be unique")
 
     completed = sum(match.group("state").lower() == "x" for match in milestones)
     data = ProgressData(completed=completed, total=len(milestones), source=source)
 
     summary = SUMMARY_RE.search(text)
     if summary is None:
-        raise ValueError("roadmap is missing the verified progress summary")
+        raise ValueError("status document is missing the verified progress summary")
     summary_done = int(summary.group("done"))
     summary_total = int(summary.group("total"))
     summary_percent = float(summary.group("percent"))
     expected_percent = data.percentage
     if expected_percent is None:
-        raise ValueError("verified roadmap cannot have an empty milestone denominator")
+        raise ValueError("verified status cannot have an empty denominator")
     if summary_done != completed or summary_total != data.total:
         raise ValueError(
-            "roadmap summary disagrees with milestone checklist: "
+            "status summary disagrees with audit checklist: "
             f"summary={summary_done}/{summary_total}, checklist={completed}/{data.total}"
         )
     if not math.isclose(summary_percent, expected_percent, rel_tol=0.0, abs_tol=0.05):
         raise ValueError(
-            "roadmap percentage disagrees with milestone checklist: "
+            "status percentage disagrees with audit checklist: "
             f"summary={summary_percent:.1f}%, computed={expected_percent:.1f}%"
         )
     return data
@@ -113,7 +107,7 @@ def render_card(data: ProgressData) -> str:
     track_x = 50.0
     track_width = 1100.0
     fill_width = 0.0 if data.fraction is None else track_width * data.fraction
-    if not math.isfinite(fill_width) or fill_width < 0.0 or fill_width > track_width:
+    if not math.isfinite(fill_width) or not 0.0 <= fill_width <= track_width:
         raise ValueError("computed card fill width is outside the progress track")
     progress_y = 125 if len(lines) == 1 else 154
     scope_markup = "\n".join(
@@ -163,7 +157,7 @@ def render_card(data: ProgressData) -> str:
   </defs>
   <rect x="1" y="1" width="1198" height="{height - 2}" rx="18" fill="url(#panel)" stroke="#0088FF" stroke-opacity="0.42"/>
   <rect x="1" y="1" width="1198" height="{height - 2}" rx="18" fill="url(#grid)"/>
-  <text x="50" y="28" class="label">SWIR PROJECT · VERIFIED ROADMAP PROGRESS</text>
+  <text x="50" y="28" class="label">SWIR PROJECT · VERIFIED POST-RELEASE AUDIT</text>
   <text x="50" y="54" class="project">{escape(PROJECT_NAME)}</text>
 {scope_markup}
   <text x="1150" y="38" text-anchor="end" class="project">{escape(data.display_percentage)}</text>
@@ -179,7 +173,7 @@ def render_mini(data: ProgressData) -> str:
     track_x = 170.0
     track_width = 700.0
     fill_width = 0.0 if data.fraction is None else track_width * data.fraction
-    if not math.isfinite(fill_width) or fill_width < 0.0 or fill_width > track_width:
+    if not math.isfinite(fill_width) or not 0.0 <= fill_width <= track_width:
         raise ValueError("computed mini fill width is outside the progress track")
     fill = ""
     if fill_width > 0.0:
@@ -188,16 +182,14 @@ def render_mini(data: ProgressData) -> str:
             'fill="url(#progressGradient)" clip-path="url(#trackClip)" />\n'
         )
     description = (
-        f"{PROJECT_NAME}; {data.scope}; {data.display_percentage}; "
-        f"{data.status}; {data.counter}."
+        f"{PROJECT_NAME}; {data.scope}; {data.display_percentage}; {data.status}; {data.counter}."
     )
     return f'''<svg xmlns="http://www.w3.org/2000/svg" width="900" height="72" viewBox="0 0 900 72" role="img" aria-labelledby="title desc">
   <title id="title">{escape(PROJECT_NAME)} {escape(data.display_percentage)} — {escape(data.status)}</title>
   <desc id="desc">{escape(description)}</desc>
   <defs>
     <linearGradient id="progressGradient" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#0088FF"/>
-      <stop offset="1" stop-color="#62E5FF"/>
+      <stop offset="0" stop-color="#0088FF"/><stop offset="1" stop-color="#62E5FF"/>
     </linearGradient>
     <clipPath id="trackClip"><rect x="170" y="43" width="700" height="10" rx="5"/></clipPath>
     <style>text {{ font-family: "Segoe UI", Arial, sans-serif; }}</style>
@@ -245,19 +237,15 @@ def _validate_svg(svg: str) -> None:
 
 
 def expected_outputs(data: ProgressData) -> dict[Path, str]:
-    outputs = {
-        CARD_PATH: render_card(data),
-        MINI_PATH: render_mini(data),
-        TEMPLATE_PATH: render_template(),
-    }
+    outputs = {CARD_PATH: render_card(data), MINI_PATH: render_mini(data), TEMPLATE_PATH: render_template()}
     for content in outputs.values():
         _validate_svg(content)
     return outputs
 
 
-def generate(*, check: bool = False, roadmap_path: Path = ROADMAP_PATH) -> int:
-    text = roadmap_path.read_text(encoding="utf-8")
-    data = parse_progress(text, source=roadmap_path.as_posix())
+def generate(*, check: bool = False, status_path: Path = STATUS_PATH) -> int:
+    text = status_path.read_text(encoding="utf-8")
+    data = parse_progress(text, source=status_path.as_posix())
     outputs = expected_outputs(data)
     stale: list[Path] = []
     for path, expected in outputs.items():
@@ -276,24 +264,16 @@ def generate(*, check: bool = False, roadmap_path: Path = ROADMAP_PATH) -> int:
         return 1
 
     action = "verified" if check else "generated"
-    print(
-        f"{action}: {PROJECT_NAME} {data.scope} — "
-        f"{data.display_percentage} ({data.counter}), {data.status}"
-    )
+    print(f"{action}: {PROJECT_NAME} {data.scope} — {data.display_percentage} ({data.counter}), {data.status}")
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Generate deterministic SWIR progress SVG assets")
     parser.add_argument("--check", action="store_true", help="fail when committed SVGs are stale")
-    parser.add_argument(
-        "--roadmap",
-        type=Path,
-        default=ROADMAP_PATH,
-        help="authoritative roadmap path (default: ROADMAP_2_0.md)",
-    )
+    parser.add_argument("--status", type=Path, default=STATUS_PATH, help="authoritative status document")
     args = parser.parse_args(argv)
-    return generate(check=args.check, roadmap_path=args.roadmap)
+    return generate(check=args.check, status_path=args.status)
 
 
 if __name__ == "__main__":

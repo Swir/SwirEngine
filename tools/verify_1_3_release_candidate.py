@@ -119,15 +119,34 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
     if require_complete:
         _require(roadmap.completed == 10 and roadmap.remaining == 0, "release gate requires exactly 10/10 completed deliverables", checks)
         _require("STATUS-COMPLETE" in roadmap_text, "completed 1.3 roadmap status is COMPLETE", checks)
-        _require(version == TARGET_VERSION, f"historical 1.3 publication version is {TARGET_VERSION}", checks)
+        if version == TARGET_VERSION:
+            _require(version == TARGET_VERSION, f"historical 1.3 publication version is {TARGET_VERSION}", checks)
+        else:
+            _require(
+                version in {"1.4.0", "1.5.0", "2.0.0"},
+                "later verified stable lines preserve the completed 1.3 compatibility contract",
+                checks,
+            )
     else:
         _require(roadmap.completed <= 10, "development roadmap cannot exceed 10 deliverables", checks)
 
     readme = _read(root, "README.md")
-    _require("Python 3.10-3.13" in readme, "README documents cross-platform Python support", checks)
-    _require("Python 3.14 on Windows" in readme, "README documents verified Windows Python 3.14 scope", checks)
+    if version == "2.0.0":
+        _require(
+            "64-bit CPython 3.10–3.14" in readme,
+            "current README documents the verified 2.0 Python support matrix",
+            checks,
+        )
+        _require(
+            "Windows, Linux and macOS" in readme,
+            "current README documents the verified cross-platform support families",
+            checks,
+        )
+    else:
+        _require("Python 3.10-3.13" in readme, "README documents cross-platform Python support", checks)
+        _require("Python 3.14 on Windows" in readme, "README documents verified Windows Python 3.14 scope", checks)
     _require("Neon Frontier 1.3" in readme or roadmap.completed < 10, "README keeps the locked Neon Frontier 1.3 regression game documented", checks)
-    if require_complete:
+    if require_complete and version == TARGET_VERSION:
         _require(f"# SwirEngine {TARGET_VERSION}" in readme, "README title matches historical 1.3 publication", checks)
 
     init_text = _read(root, "src/swirengine/__init__.py")

@@ -1,8 +1,8 @@
 # SwirEngine 2.0.0 Release Notes
 
-SwirEngine 2.0.0 is the next planned public release after 1.5.0. It consolidates the source-only 1.6–1.9 engineering checkpoints into a verified Python-first production path for complete 2D, 3D and multiplayer games.
+SwirEngine 2.0.0 was publicly released on **2026-09-19** after 1.5.0. It consolidates the source-only 1.6–1.9 engineering checkpoints into a verified Python-first production path for complete 2D, 3D and multiplayer games.
 
-These notes are committed before publication so the exact release candidate can validate them. Their presence does not mean 2.0.0 has already been published.
+The immutable release tag is **`v2.0.0`**, built from release-source commit **`3fe0ff11e09ca0b4a9abcb2b757c12514100bc59`**. The guarded release workflow rebuilt the exact tagged wheel/sdist, re-ran the final release contract, API/platform/real-game/performance/release-safety checks, published the artifacts, then installed only `swirengine==2.0.0` from public PyPI and exercised maintained quick-start, 2D and 3D smoke paths.
 
 ## Highlights
 
@@ -32,7 +32,7 @@ These notes are committed before publication so the exact release candidate can 
 
 ### Verified Python/platform matrix
 
-- Base-engine support is verified on 64-bit CPython 3.10–3.14 across the documented Windows, Linux and macOS matrix.
+- Base-engine support is verified on the maintained 64-bit CPython 3.10–3.14 hosted Windows, Linux and macOS matrix described by `docs/SUPPORT_MATRIX_2_0.md`.
 - Clean-wheel verification runs outside the development checkout.
 - Windows x86-64 CPython 3.14 uses the validated native-renderer wheel path.
 
@@ -62,17 +62,17 @@ These notes are committed before publication so the exact release candidate can 
 
 ## Compatibility
 
-- Published 1.4.0 and 1.5.0 releases remain immutable historical releases.
+- Published 1.4.0, 1.5.0 and 2.0.0 releases remain immutable historical release points; release history is not rewritten.
 - Python requirement remains `>=3.10,<3.15`.
-- The final supported platform statement is defined by `docs/SUPPORT_MATRIX_2_0.md`; combinations outside that verified matrix are not implied to be supported.
+- The supported platform statement is defined by `docs/SUPPORT_MATRIX_2_0.md`; combinations outside that verified matrix are not implied to be supported.
 - Source-only 1.6–1.9 checkpoints are not separate public releases.
 
 ## Install
 
-After successful publication, install the exact release from public PyPI:
+Install the exact release from public PyPI:
 
 ```bash
-python -m pip install -U swirengine==2.0.0
+python -m pip install -U "swirengine==2.0.0"
 ```
 
 Optional audio support:
@@ -83,10 +83,11 @@ python -m pip install -U "swirengine[audio]==2.0.0"
 
 ## Verification
 
-The final release is valid only after the repository's complete 2.0 gate passes on the exact tagged source and public PyPI installation is verified outside the development checkout.
+The public 2.0.0 release completed the repository's exact-tag release gate and fresh public-PyPI install verification outside the development checkout. Ongoing hardening is tracked separately in `docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md`; a successful release does not imply literal perfection.
 
 See:
 
+- `docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md`
 - `ROADMAP_2_0.md`
 - `docs/RELEASE_GATE_2_0.md`
 - `docs/MIGRATING_TO_2_0.md`

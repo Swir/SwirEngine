@@ -29,24 +29,33 @@ def test_supported_python_range_is_explicit():
     assert {item.strip() for item in requires_python.split(",")} == {">=3.10", "<3.15"}
 
 
-def test_readme_preserves_locked_1_5_evidence_during_2_0_finalization():
+def test_readme_preserves_locked_1_5_evidence_after_2_0_publication():
     readme = Path("README.md").read_text(encoding="utf-8")
+    roadmap_15 = Path("ROADMAP_1_5.md").read_text(encoding="utf-8")
+    notes_15 = Path("RELEASE_NOTES_1_5.md").read_text(encoding="utf-8")
+
     assert "<!-- SWIR-README-STANDARD:v2 -->" in readme
-    assert "SwirEngine 1.5.0" in readme
+    assert "`v1.5.0`" in readme
+    assert "| 1.5 |" in readme
+    assert "released/locked" in readme
     if swirengine.__version__ == "2.0.0":
         assert "SwirEngine 2.0.0" in readme
-        assert "10/10 milestones = 100.0%" in readme
+        assert "**Latest public stable release:** **SwirEngine 2.0.0**" in readme
+        assert "64-bit CPython 3.10–3.14" in readme
+        assert "Windows, Linux and macOS" in readme
     else:
         assert "STATUS-1.5.0%20STABLE" in readme
-    assert "Python 3.10-3.13" in readme
-    assert "Python 3.14 on Windows x86-64" in readme
+        assert "Python 3.10-3.13" in readme
+        assert "Python 3.14 on Windows x86-64" in readme
     assert "gamepad" in readme.lower()
-    assert "Deterministic Simulation & Replay" in readme
-    assert "Save & Profile 2.0" in readme
-    assert "World Streaming 2.0" in readme
-    assert "UI Toolkit 2.0" in readme
-    assert "Runtime Diagnostics & Profiling 2.0" in readme
+    for historical_feature in (
+        "Deterministic Simulation & Replay",
+        "Save & Profile 2.0",
+        "World Streaming 2.0",
+        "UI Toolkit 2.0",
+        "Runtime Diagnostics & Profiling 2.0",
+    ):
+        assert historical_feature in roadmap_15 or historical_feature in notes_15
     assert "Neon Frontier 1.4" in readme
-    assert "released and locked" in readme
     assert "10/10 = 100.0%" in readme
     assert "remain roadmap work" not in readme

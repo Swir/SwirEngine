@@ -2,7 +2,7 @@
 
 # SwirEngine 2.0 Roadmap — Release-Quality Python-First Game Production
 
-<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.0 verified roadmap progress: 10 of 10 milestones, 100.0%, release prep" />
+> **Historical source-development roadmap.** This file preserves the verified pre-publication 2.0 milestone evidence. SwirEngine **2.0.0 was publicly released on 2026-09-19**; current hardening status is tracked in [`docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md`](docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md). The release-prep/freeze statements below describe this historical development snapshot.
 
 **Current verified progress: 10/10 milestones = 100.0%.**
 
