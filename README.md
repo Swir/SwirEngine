@@ -9,8 +9,8 @@
 ![CI](https://img.shields.io/github/actions/workflow/status/Swir/SwirEngine/ci.yml?branch=main&style=for-the-badge&label=CI&color=02050A&logo=githubactions&logoColor=62E5FF)
 [![PyPI](https://img.shields.io/pypi/v/swirengine?style=for-the-badge&color=02050A&logo=pypi&logoColor=62E5FF)](https://pypi.org/project/swirengine/)
 ![Python](https://img.shields.io/badge/Python-3.10--3.14%2064--bit%20CPython%20source%20matrix-02050A?style=for-the-badge&logo=python&logoColor=62E5FF)
-![Status](https://img.shields.io/badge/STATUS-2.0.0%20RELEASE%20PREP-02050A?style=for-the-badge&logoColor=62E5FF)
-![Source](https://img.shields.io/badge/SOURCE%20ROADMAP-2.0-02050A?style=for-the-badge&logoColor=62E5FF)
+![Status](https://img.shields.io/badge/STATUS-2.0.0%20PUBLIC-02050A?style=for-the-badge&logoColor=62E5FF)
+![Audit](https://img.shields.io/badge/POST--RELEASE%20AUDIT-ACTIVE-02050A?style=for-the-badge&logoColor=62E5FF)
 ![License](https://img.shields.io/badge/LICENSE-MIT-02050A?style=for-the-badge&logo=opensourceinitiative&logoColor=62E5FF)
 
 [![Author](https://img.shields.io/badge/Author-Swir-0088FF?style=flat-square&logo=github)](https://github.com/Swir)
@@ -18,7 +18,7 @@
 
 <br>
 
-[**Install**](#-install) · [**Quick Start**](#-quick-start) · [**2.0 Roadmap**](ROADMAP_2_0.md) · [**Examples**](#-real-game-integration-fixtures) · [**Releases**](https://github.com/Swir/SwirEngine/releases)
+[**Install**](#-install) · [**Quick Start**](#-quick-start) · [**Post-Release Audit**](POST_RELEASE_AUDIT_2_0.md) · [**2.0 Roadmap**](ROADMAP_2_0.md) · [**Examples**](#-real-game-integration-fixtures) · [**Releases**](https://github.com/Swir/SwirEngine/releases)
 
 </div>
 
@@ -26,79 +26,59 @@
 
 ## 📊 Project status
 
-<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.0 verified roadmap progress: 10 of 10 milestones, 100.0%, complete source scope" />
+<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.0 post-release audit progress: 1 of 10 checkpoints, 10.0%, in progress" />
 
-**Active source scope:** SwirEngine 2.0 — Release-Quality Python-First Game Production  
-**Verified source progress:** **10/10 milestones = 100.0% — RELEASE PREP**  
-**Latest public stable release:** **SwirEngine 1.5.0**  
-**Release readiness:** **2.0.0 finalization candidate**; public release still requires exact-head green CI, merge, immutable tag publication and fresh public-PyPI verification.
+**Active verified scope:** SwirEngine 2.0 — Post-Release Audit & Hardening  
+**Audit progress:** **1/10 checkpoints = 10.0% — IN PROGRESS**  
+**Latest public stable release:** **SwirEngine 2.0.0**  
+**Completed release roadmap:** **10/10 milestones = 100.0%**  
+**Public release source:** immutable `v2.0.0` at `4c219f3bed4c107c612a58fa2fb1f1362b4dfc46`
 
-`Release/PyPI: frozen until SwirEngine 2.0`
+SwirEngine is a Python-first 2D/3D game engine focused on complete creator workflows rather than isolated feature demos. The public 2.0.0 release combines scene/content systems, rendering, animation, physics, navigation, audio, UI/input, saves/profiles, networking, dedicated-server foundations, diagnostics, deterministic export/build integrity, packaging and maintained representative 2D/3D/multiplayer integration fixtures.
 
-SwirEngine is a Python-first 2D/3D game engine focused on complete creator workflows: runtime systems,
-real rendering validation, deterministic tooling, multiplayer foundations, production project manifests,
-diagnostics, export staging and host-native desktop shipping. The repository completed source-only
-checkpoints 1.6–1.9 without publishing them; the 2.0 source roadmap is now candidate-complete.
-
-All ten 2.0 source milestones lock the published **1.5.0** compatibility floor, integrate project
-creation/validation/run/shipping preparation, add a production-facing multiplayer contract, harden runtime
-scalability/resource lifecycle behavior, establish the verified base-engine Python/platform matrix, prove
-representative 2D/3D/multiplayer production workflows, verify exact-source wheel/sdist clean installs plus
-host-native packaged-game execution on Windows/Linux/macOS, establish reproducible performance evidence,
-add deterministic staged-export/build identity plus privacy-safe support-bundle verification, and arm the
-guarded 2.0.0 release candidate. This does **not** claim that 2.0.0 is already published.
+The 2.0 release roadmap is complete and historical. Active work now follows [`POST_RELEASE_AUDIT_2_0.md`](POST_RELEASE_AUDIT_2_0.md): fresh architecture/API, runtime/resource, rendering/gameplay, multiplayer, creator workflow, packaging/platform, diagnostics/security, documentation and final regression audits. Cosmetic documentation work does not raise audit progress.
 
 ## ✨ Highlights
 
-| Area | Current source capability |
+| Area | Public 2.0 capability |
 |---|---|
 | Unified 2D + 3D | Sprite/tilemap workflows and OpenGL-backed 3D scenes under one Python-first runtime. |
 | Scenes + content | Scenes, prefabs, serialization, production scene packages, content build graphs and streaming foundations. |
-| Rendering | Materials, lighting, shadows, post-processing, instancing, culling, terrain/LOD, bounded transient-resource reuse and production-sized 2D/3D scalability checks. |
+| Rendering | Materials, lighting, shadows, post-processing, instancing, culling, terrain/LOD and bounded transient-resource reuse. |
 | Animation | Tween/timeline/state machines, animation graphs, skeletal animation and GPU skinning paths. |
 | Physics + navigation | 2D/3D collision and rigid-body systems, character controllers, navigation and local-avoidance foundations. |
-| Audio | Runtime audio engine, buses/groups, spatial behavior and source-development mixer/runtime work. |
-| UI + input | Retained UI, focus/navigation, keyboard/mouse/gamepad input and production rebinding/settings foundations. |
-| Saves + profiles | Save/profile APIs plus source-development autosave, recovery and production user-data integration. |
-| Networking | TCP/gameplay APIs plus source-only production session/replication contracts, compatibility fingerprints, reconnect resynchronization and a headless dedicated-server adapter used by the multiplayer fixture. |
-| Creator workflow | `swirengine workflow` composes project/run/scene/content/settings/save-policy checks, safe preparation, export-profile validation and actionable diagnostics. |
-| Packaging | Exact-source wheel/sdist inspection, isolated clean installs, installed-artifact 2D/3D/multiplayer fixture execution and host-native desktop package runtime verification. |
-| Performance evidence | Locked deterministic runtime/creator/network/render/world workloads with contextual CI evidence; shared-runner timings are regression signals, not unsupported FPS claims. |
-| Diagnostics | Profiling, bounded crash/support reporting, streaming pressure/lifecycle diagnostics, deterministic build-integrity seals and privacy/integrity audits for generated support bundles. |
-| Compatibility | Published 1.5.0 root API is the explicit 2.0 migration floor; current source base-engine matrix is verified on 64-bit CPython 3.10–3.14 across hosted Windows, Linux and macOS runners. |
+| Audio | Runtime audio engine, buses/groups and spatial behavior through the optional audio path. |
+| UI + input | Retained UI, focus/navigation, keyboard/mouse/gamepad input and rebinding/settings foundations. |
+| Saves + profiles | Save/profile APIs, autosave/recovery foundations and production user-data integration. |
+| Networking | Session/replication contracts, compatibility fingerprints, reconnect resynchronization and a headless dedicated-server adapter. |
+| Creator workflow | `swirengine workflow` composes project/run/scene/content/settings/save-policy checks, safe preparation, export-profile validation and diagnostics. |
+| Packaging | Exact-source wheel/sdist checks, isolated installs, installed-artifact fixtures and host-native packaged-game verification. |
+| Diagnostics | Profiling, bounded crash/support reporting, streaming pressure/lifecycle diagnostics, deterministic build-integrity seals and privacy/integrity checks. |
+| Compatibility | Published 1.5.0 root API remains the explicit migration floor; 2.0 source validation covers 64-bit CPython 3.10–3.14 on hosted Windows/Linux/macOS runners. |
 
 ## 📦 Install
 
-The latest **public stable package is 1.5.0**.
-
-Published 1.5.0 validation covers **Python 3.10-3.13** on Windows, Linux and macOS, plus
-**Python 3.14 on Windows x86-64** through the documented native-wheel path. Separately, the current
-2.0.0 release-candidate source matrix is verified on 64-bit CPython **3.10–3.14** across the hosted
-Windows, Linux and macOS runner families. That source evidence is not yet a public 2.0 package claim.
-See [`docs/SUPPORT_MATRIX_2_0.md`](docs/SUPPORT_MATRIX_2_0.md) for architecture boundaries and non-claims.
+The latest public package is **SwirEngine 2.0.0**:
 
 ```bash
-python -m pip install -U swirengine==1.5.0
+python -m pip install -U swirengine==2.0.0
 ```
 
 Optional audio support:
 
 ```bash
-python -m pip install -U "swirengine[audio]==1.5.0"
+python -m pip install -U "swirengine[audio]==2.0.0"
 ```
 
-Current source release candidate:
+Development checkout:
 
 ```bash
 git clone https://github.com/Swir/SwirEngine.git
 cd SwirEngine
-git fetch --tags
 python -m pip install -e ".[dev]"
 ```
 
-> `pyproject.toml` and `swirengine.__version__` are armed at **2.0.0** only for the guarded finalization candidate.
-> The latest public package remains 1.5.0 until the immutable `v2.0.0` release workflow and public-install verification succeed.
-> No 1.6, 1.7, 1.8 or 1.9 package/tag/release is created.
+The release pipeline rebuilt the immutable `v2.0.0` source, re-ran final compatibility/runtime/real-game/performance/release-safety gates, published through PyPI Trusted Publishing, created the GitHub Release, and verified fresh public-PyPI installs on Ubuntu/Python 3.13, macOS/Python 3.13 and Windows/Python 3.14. See [`docs/SUPPORT_MATRIX_2_0.md`](docs/SUPPORT_MATRIX_2_0.md) for exact architecture/runtime boundaries and explicit non-claims.
 
 ## 🚀 Quick Start
 
@@ -137,57 +117,33 @@ def update(dt):
 game.run()
 ```
 
-## 🧭 Current 2.0 development workflow
+## 🧭 Active post-release workflow
 
-The active roadmap is [`ROADMAP_2_0.md`](ROADMAP_2_0.md). Its ten release-quality milestones cover:
+The active quality source is [`POST_RELEASE_AUDIT_2_0.md`](POST_RELEASE_AUDIT_2_0.md). The completed release roadmap remains in [`ROADMAP_2_0.md`](ROADMAP_2_0.md), with its full pre-publication evidence permanently available at the immutable [`v2.0.0` snapshot](https://github.com/Swir/SwirEngine/blob/v2.0.0/ROADMAP_2_0.md).
 
-1. public API and migration compatibility;
-2. creator workflow and integrated tooling;
-3. multiplayer and dedicated-server production behavior;
-4. renderer/runtime scalability and resource lifecycle;
-5. the final Python/platform support matrix;
-6. representative 2D/3D/multiplayer shipping workflows;
-7. packaging, clean installs and native desktop shipping;
-8. reproducible performance/competitive evidence;
-9. export/build integrity, diagnostics and release safety;
-10. the final 2.0 release-candidate gate followed by guarded public verification.
+Current audit domains:
 
-Milestone 1 locks compatibility to the actual published `v1.5.0` root API rather than a hand-written
-subset. Milestone 2 adds one integrated creator inspection/preparation path over the existing project,
-run-session, scene/prefab, content-build, input/settings and save/profile policies. New projects receive
-editable controls/settings defaults automatically, while existing projects can be prepared without
-overwriting user files. Milestone 3 adds deterministic client/server compatibility checks, a production
-session facade, reconnect token rotation with forced full resynchronization, explicit authoritative versus
-player-local state boundaries and a validated fixed-tick headless dedicated-server path. Milestone 4
-hardens streaming/cache lifecycle semantics, explicit resource teardown and pressure diagnostics while
-locking representative 16,384-tile, 4,096-sprite and 4,096-object scene workloads to bounded/reuse/pruning
-invariants instead of unsupported shared-runner FPS claims. Milestone 5 verifies all 15 Windows/Linux/macOS
-× CPython 3.10–3.14 base-engine cells through platform probes, wheel construction, isolated clean installs
-and maintained headless 2D/3D runtime fixtures. Milestone 6 drives maintained 2D, 3D and multiplayer
-projects through the same production creator/shipping contracts, including real focus/navigation/activation,
-player-local data isolation, privacy-safe diagnostic evidence, deterministic export staging, source/staged
-runtime entrypoints and deliberate missing-scene/asset/entrypoint failure probes. Milestone 7 builds the
-exact candidate source as wheel and sdist, performs bounded archive safety/inventory validation, installs
-each artifact into isolated environments, runs the maintained fixtures from those installs and then builds,
-validates and executes host-native desktop packages on Windows, Linux and macOS from the clean wheel.
-Milestone 8 locks six existing deterministic performance/scalability workloads to their source thresholds,
-captures exact commit/Python/platform runner context in ephemeral CI evidence and performs an official-doc
-workflow audit for Arcade, Panda3D and Ursina without publishing technically invalid cross-engine FPS,
-latency, memory or superiority rankings. Milestone 9 verifies staged export bytes against the canonical
-inventory/checksums, seals a deterministic build identity including generated native build inputs and audits
-opt-in support bundles for bounded content, integrity, redaction, safe paths and expected build identity.
-Milestone 10 validates the guarded release workflows and only arms 2.0.0 metadata after the 9/10 exact-head
-preflight is green; the resulting 10/10 candidate must re-pass the complete exact-head matrix before merge,
-tagging or publication.
+1. public release and clean-install reality;
+2. architecture/API/migration/backwards compatibility;
+3. runtime lifecycle, memory and resource handling;
+4. rendering, physics, audio, input and core gameplay systems;
+5. networking, multiplayer and dedicated server;
+6. creator/editor workflows and representative games;
+7. packaging/export/Python/platform matrix;
+8. diagnostics, crash handling, privacy/security/safety;
+9. documentation/examples/upgrade/competitive evidence;
+10. final fresh regression sweep and practical-completion review.
+
+Core verification commands:
 
 ```bash
-git fetch --tags
 python tools/verify_2_0_release_candidate.py --require-final
 python tools/verify_2_0_public_api.py
 python tools/verify_platform_matrix_2_0.py
 python tools/verify_real_game_shipping_2_0.py
 python tools/verify_performance_evidence_2_0.py --validate-only
 python tools/verify_release_safety_2_0.py
+python tools/generate_progress_svg.py --check
 swirengine new MyGame --mode 3d
 swirengine workflow MyGame --profile windows
 swirengine workflow MyGame --json
@@ -200,7 +156,10 @@ For an older source project missing creator directories or editable defaults:
 swirengine workflow . --prepare
 ```
 
-See:
+Reference documentation:
+
+- [`POST_RELEASE_AUDIT_2_0.md`](POST_RELEASE_AUDIT_2_0.md)
+- [`ROADMAP_2_0.md`](ROADMAP_2_0.md)
 - [`docs/MIGRATING_TO_2_0.md`](docs/MIGRATING_TO_2_0.md)
 - [`docs/public_api_2_0.json`](docs/public_api_2_0.json)
 - [`docs/API_STABILITY.md`](docs/API_STABILITY.md)
@@ -213,12 +172,11 @@ See:
 - [`docs/PERFORMANCE_EVIDENCE_2_0.md`](docs/PERFORMANCE_EVIDENCE_2_0.md)
 - [`docs/RELEASE_SAFETY_2_0.md`](docs/RELEASE_SAFETY_2_0.md)
 - [`docs/RELEASE_GATE_2_0.md`](docs/RELEASE_GATE_2_0.md)
-- [`docs/SWIRENGINE_2_0_READINESS_AUDIT.md`](docs/SWIRENGINE_2_0_READINESS_AUDIT.md)
-- [`ROADMAP_2_0.md`](ROADMAP_2_0.md)
+- [`docs/SWIRENGINE_2_0_READINESS_AUDIT.md`](docs/SWIRENGINE_2_0_READINESS_AUDIT.md) — historical pre-release audit
 
 ## 🎮 Real-game integration fixtures
 
-Representative projects are source-only engine integration fixtures and do **not** receive separate releases:
+Representative projects remain source-only engine integration fixtures and do **not** receive separate releases:
 
 - **SwirEngine 2D Game Demo** — [`examples/2d_game_demo/`](examples/2d_game_demo/)
 - **SwirEngine 3D Game Demo** — [`examples/3d_game_demo/`](examples/3d_game_demo/)
@@ -228,10 +186,7 @@ Representative projects are source-only engine integration fixtures and do **not
 - **Neon Cube Hunt 3D** — OpenGL + packaged-runtime regression arena
 - **Neon Snake 3D** — complete 3D regression project
 
-The verified 2.0 real-game shipping gate drives the maintained 2D, 3D and multiplayer fixtures through
-creator preparation, source runtime, deterministic staged export, staged runtime, settings/save boundaries,
-scene/content integrity, real UI focus/navigation/activation and privacy-safe runtime diagnostics. Fixture
-failures are treated as engine integration failures rather than demo-only issues.
+The 2.0 real-game gate drives maintained 2D, 3D and multiplayer fixtures through creator preparation, source runtime, deterministic staged export, staged runtime, settings/save boundaries, scene/content integrity, real UI focus/navigation/activation and privacy-safe diagnostics. Fixture failures are engine integration failures rather than demo-only issues.
 
 ## 🧪 Development and verification
 
@@ -246,63 +201,40 @@ pytest -q tests/test_multiplayer_2_0.py
 python examples/multiplayer_game_demo/run_game.py
 python tools/verify_runtime_scalability_2_0.py
 python tools/verify_platform_matrix_2_0.py
-python -m pytest -q tests/test_platform_matrix_2_0.py
 python tools/verify_real_game_shipping_2_0.py
-python -m pytest -q tests/test_real_game_shipping_2_0.py
-python -m pytest -q tests/test_packaging_shipping_2_0.py
 python tools/verify_performance_evidence_2_0.py --output build/performance-evidence.json
-python -m pytest -q tests/test_performance_evidence_2_0.py
 python tools/verify_release_safety_2_0.py
-python -m pytest -q tests/test_release_safety_2_0.py
 ```
 
-Progress assets are generated from the authoritative **2.0** roadmap:
+Progress assets are generated from the authoritative active post-release audit:
 
 ```bash
 python tools/generate_progress_svg.py
 python tools/generate_progress_svg.py --check
 ```
 
-The generator owns one README card, one active-roadmap mini graphic and one reusable SVG marked
-**TEMPLATE / NOT PROJECT DATA**. Only the card and mini are embedded as live progress.
-
-The SVG layer visualizes verified roadmap math; it never replaces CI, release, compatibility or
-runtime gates.
+The generator owns one README card, one authoritative-status mini graphic and one reusable SVG marked **TEMPLATE / NOT PROJECT DATA**. Only the card and mini are embedded as live progress. The SVG layer visualizes verified audit math; it never replaces CI, runtime, safety, compatibility or packaging gates.
 
 ## 🧱 Architecture and technology
 
-SwirEngine keeps a high-level Python creator surface over modular runtime systems. The repository
-contains rendering, scene/ECS, assets, serialization, physics, audio, input/UI, networking, editor,
-diagnostics and export/shipping modules with focused regression workflows. Advanced systems remain
-available as explicit APIs instead of being hidden behind a single monolithic game object.
+SwirEngine keeps a high-level Python creator surface over modular rendering, scene/ECS, assets, serialization, physics, audio, input/UI, networking, editor, diagnostics and export/shipping systems. Advanced systems remain available as explicit APIs instead of being hidden behind one monolithic game object.
 
-The 2.0 architecture work is evaluated against real-game integration, resource lifetime, deterministic
-tooling, failure handling and package/export behavior—not feature count alone.
+Post-release hardening is evaluated against real-game integration, API consistency, resource lifetime, deterministic tooling, failure handling, package/export behavior and creator productivity—not raw feature count.
 
 ## 🔒 API and release policy
 
-- `v1.4.0` and `v1.5.0` are immutable published historical releases except for genuine maintenance fixes.
-- **1.5.0 remains the latest public stable package.**
-- 1.6, 1.7, 1.8 and 1.9 are completed source-only checkpoints and are not published.
+- `v1.4.0`, `v1.5.0` and `v2.0.0` are immutable published historical releases.
+- **2.0.0 is the latest public stable package.**
+- 1.6, 1.7, 1.8 and 1.9 remain completed source-only checkpoints and are not retroactively published.
 - The 2D, 3D and multiplayer game demos remain source-only integration fixtures.
-- The published 1.5.0 `swirengine.__all__` surface is the starting compatibility floor for 2.0.
-- Deliberate 2.0 breaking changes require a documented migration, tests and explicit engineering justification.
-- The next GitHub Release, release tag and PyPI publication must be **SwirEngine 2.0**.
-- Publication is forbidden until the exact 2.0.0 finalization candidate passes the dedicated Milestone 10 release gate.
-- A 10/10 source roadmap does not itself prove that the public `v2.0.0` tag, GitHub Release or PyPI artifact exists.
+- The published 1.5.0 `swirengine.__all__` surface is the explicit starting compatibility floor for 2.0.
+- Deliberate breaking changes require documented migration evidence, tests and engineering justification.
+- Post-release fixes must preserve release history; existing tags/artifacts are never moved or overwritten.
+- Future publication/version policy must be decided from fresh release evidence rather than inferred from the completed 2.0 roadmap.
 
-Historical locked compatibility evidence remains explicit: **SwirEngine 1.4 is released and locked**.
-The published 1.5.0 gate verified **Python 3.10-3.13** cross-platform and **Python 3.14 on Windows x86-64**.
-Its locked 1.5 capability evidence includes **Deterministic Simulation & Replay**, **Save & Profile 2.0**,
-**World Streaming 2.0**, **UI Toolkit 2.0** and **Runtime Diagnostics & Profiling 2.0**. These statements
-describe published historical release evidence and remain separate from the verified source-development
-SwirEngine 2.0 base-engine support matrix.
+Historical locked compatibility evidence remains explicit: SwirEngine 1.4 and 1.5 are released/locked; source-only 1.6–1.9 remain engineering checkpoints. The 2.0 public release adds the completed 2.0 release-quality scope while keeping unsupported platform/runtime claims explicit.
 
-See [`docs/API_STABILITY.md`](docs/API_STABILITY.md),
-[`docs/MIGRATING_TO_2_0.md`](docs/MIGRATING_TO_2_0.md) and
-[`docs/SUPPORT_MATRIX_2_0.md`](docs/SUPPORT_MATRIX_2_0.md).
-
-## 🗺 Roadmaps
+## 🗺 Roadmaps and audits
 
 | Line | Scope | Verified state |
 |---|---|---:|
@@ -316,18 +248,18 @@ See [`docs/API_STABILITY.md`](docs/API_STABILITY.md),
 | 1.7 | [`ROADMAP_1_7.md`](ROADMAP_1_7.md) | 10/10 = 100.0%, source-only checkpoint |
 | 1.8 | [`ROADMAP_1_8.md`](ROADMAP_1_8.md) | 10/10 = 100.0%, source-only checkpoint |
 | 1.9 | [`ROADMAP_1_9.md`](ROADMAP_1_9.md) | 10/10 = 100.0%, source-only checkpoint |
-| **2.0** | **[`ROADMAP_2_0.md`](ROADMAP_2_0.md)** | **10/10 = 100.0%, release prep** |
+| **2.0 release** | **[`ROADMAP_2_0.md`](ROADMAP_2_0.md)** | **10/10 = 100.0%, published** |
+| **2.0 post-release** | **[`POST_RELEASE_AUDIT_2_0.md`](POST_RELEASE_AUDIT_2_0.md)** | **1/10 = 10.0%, active audit** |
 
 ## ⚠️ Current limitations
 
-- The public PyPI package is still 1.5.0; the 2.0.0 source candidate is not a public release until the guarded publication workflow succeeds.
-- SwirEngine 2.0.0 is in release prep; exact-head finalization CI, immutable tag publication and fresh public-install verification remain mandatory.
-- The verified 2.0 base-engine matrix covers only the 64-bit hosted runner architectures exercised by CI; 32-bit Python, PyPy, free-threaded CPython and unverified architectures are not claimed.
-- Optional extras such as audio are not automatically covered by the base-engine support claim without their own evidence.
+- The verified base-engine source matrix is limited to the 64-bit hosted runner architectures exercised by CI; 32-bit Python, PyPy, free-threaded CPython and unverified architectures are not claimed.
+- Optional extras such as audio require their own dependency/runtime evidence and are not silently promoted to the base-engine support claim.
 - Desktop build plans are host-native; unsupported cross-compilation is intentionally rejected.
 - The dedicated-server contract is headless and deterministic but does not claim public matchmaking, hosting infrastructure or universal transport support.
 - Cross-engine FPS, latency and memory rankings remain intentionally unclaimed without an identical maintained comparison harness.
-- Visual editor ergonomics remain an area for later creator-tooling hardening even though the integrated Milestone 2 workflow is verified.
+- Visual editor ergonomics remain an explicit post-release audit area even though the integrated creator workflow is verified.
+- Public package propagation can briefly differ between PyPI metadata and the Simple index immediately after publication; the post-release audit tracks hardening of that verification path.
 
 ## 🔎 Search Keywords
 
