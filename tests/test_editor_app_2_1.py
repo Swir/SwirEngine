@@ -6,13 +6,13 @@ from pathlib import Path
 import pytest
 
 from swirengine import Color, Rectangle2D
+from swirengine.creator_workflow20 import CreatorProjectWorkflow
 from swirengine.editor_app21 import (
     EDITOR_STATE_FILE,
     EditorProjectError,
     EditorProjectSession,
     create_editor_project,
 )
-from swirengine.creator_workflow20 import CreatorProjectWorkflow
 from swirengine.project19 import ProjectManifest
 
 
