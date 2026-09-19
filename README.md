@@ -26,6 +26,15 @@
 
 ## 📊 Project status
 
+<!-- SWIR-PYPI-PROGRESS:START -->
+```text
+SwirEngine  [###############---------------] 50.0%
+Audit       5 / 10 domains
+```
+<!-- SWIR-PYPI-PROGRESS:END -->
+
+> PyPI-safe text progress is the portable status view. The SVG below is an optional GitHub visual.
+
 <img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.0 post-release audit progress: 5 of 10 audit domains, 50.0%, in progress" />
 
 **Active verified scope:** SwirEngine 2.0 — Post-Release Audit & Hardening  
