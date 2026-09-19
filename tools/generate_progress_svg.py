@@ -9,6 +9,7 @@ from html import escape
 from pathlib import Path
 
 STATUS_PATH = Path("ROADMAP_2_1.md")
+README_PATH = Path("README.md")
 CARD_PATH = Path("assets/readme/progress-card.svg")
 MINI_PATH = Path("assets/readme/progress-mini.svg")
 TEMPLATE_PATH = Path("assets/readme/progress-template.svg")
@@ -19,6 +20,13 @@ PROJECT_NAME = "SwirEngine"
 MILESTONE_LABEL = "2.1 SWIREDITOR"
 MEASURED_SCOPE = "SwirEngine 2.1 — SwirEditor & Creator Workflow"
 RELEASE_STATUS = "Source development · no SwirEngine 2.1 release published"
+PYPI_PROGRESS_START = "<!-- SWIR-PYPI-PROGRESS:START -->"
+PYPI_PROGRESS_END = "<!-- SWIR-PYPI-PROGRESS:END -->"
+PYPI_BAR_WIDTH = 30
+PYPI_BLOCK_RE = re.compile(
+    rf"{re.escape(PYPI_PROGRESS_START)}.*?{re.escape(PYPI_PROGRESS_END)}",
+    re.DOTALL,
+)
 
 MILESTONE_RE = re.compile(r"^- \[(?P<state>[ xX])\] \*\*(?P<number>\d+)\.", re.MULTILINE)
 SUMMARY_RE = re.compile(
@@ -189,6 +197,48 @@ def render_template() -> str:
 '''
 
 
+def render_pypi_progress(data: ProgressData) -> str:
+    if data.fraction is None:
+        body = "Progress: N/A\nN/A milestones"
+    else:
+        filled = min(PYPI_BAR_WIDTH, max(0, int(data.fraction * PYPI_BAR_WIDTH + 0.5)))
+        bar = "#" * filled + "-" * (PYPI_BAR_WIDTH - filled)
+        body = f"[{bar}] {data.display_percentage}\n{data.counter}"
+    return (
+        f"{PYPI_PROGRESS_START}\n"
+        "```text\n"
+        f"{body}\n"
+        "```\n"
+        f"{PYPI_PROGRESS_END}"
+    )
+
+
+def _expected_readme(readme: str, data: ProgressData) -> str:
+    starts = readme.count(PYPI_PROGRESS_START)
+    ends = readme.count(PYPI_PROGRESS_END)
+    if starts != ends or starts > 1:
+        raise ValueError("README must contain at most one well-formed SWIR PyPI progress block")
+
+    block = render_pypi_progress(data)
+    if starts == 1:
+        return PYPI_BLOCK_RE.sub(block, readme, count=1)
+
+    lines = readme.splitlines()
+    anchor_index = next(
+        (
+            index
+            for index, line in enumerate(lines)
+            if 'src="assets/readme/progress-card.svg"' in line
+        ),
+        None,
+    )
+    if anchor_index is None:
+        raise ValueError("README is missing the canonical progress-card.svg embedding")
+    lines[anchor_index + 1 : anchor_index + 1] = ["", block]
+    trailing_newline = "\n" if readme.endswith("\n") else ""
+    return "\n".join(lines) + trailing_newline
+
+
 def _validate_svg(svg: str) -> None:
     root = ET.fromstring(svg)
     view_box = root.attrib.get("viewBox", "").split()
@@ -225,8 +275,19 @@ def generate(*, check: bool = False, status_path: Path = STATUS_PATH) -> int:
         path.parent.mkdir(parents=True, exist_ok=True)
         if not path.is_file() or path.read_text(encoding="utf-8") != expected:
             path.write_text(expected, encoding="utf-8")
+
+    if not README_PATH.is_file():
+        raise ValueError("README.md is required for the SwirEngine PyPI progress fallback")
+    readme = README_PATH.read_text(encoding="utf-8")
+    expected_readme = _expected_readme(readme, data)
+    if check:
+        if readme != expected_readme:
+            stale.append(README_PATH)
+    elif readme != expected_readme:
+        README_PATH.write_text(expected_readme, encoding="utf-8")
+
     if stale:
-        print("stale SWIR active progress assets:")
+        print("stale SWIR active progress presentation:")
         for path in stale:
             print(f"  {path}")
         return 1
@@ -236,8 +297,8 @@ def generate(*, check: bool = False, status_path: Path = STATUS_PATH) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Generate deterministic active SwirEngine progress SVG assets")
-    parser.add_argument("--check", action="store_true", help="fail when committed SVGs are stale")
+    parser = argparse.ArgumentParser(description="Generate deterministic active SwirEngine progress presentation")
+    parser.add_argument("--check", action="store_true", help="fail when committed progress output is stale")
     parser.add_argument("--status", type=Path, default=STATUS_PATH, help="authoritative active roadmap")
     args = parser.parse_args(argv)
     return generate(check=args.check, status_path=args.status)
