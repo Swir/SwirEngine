@@ -12,6 +12,7 @@ except ModuleNotFoundError:  # Python 3.10 compatibility
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 STABLE_PUBLIC_VERSION = "1.5.0"
+FORWARD_PUBLIC_VERSION = "2.0.0"
 EXPECTED_MILESTONES = 10
 
 MILESTONE_RE = re.compile(r"^- \[([ x])\] \*\*(\d+)\.", re.MULTILINE)
@@ -111,6 +112,15 @@ def _runtime_version(root: Path) -> str:
     return match.group(1)
 
 
+def _two_point_zero_finalized(root: Path) -> bool:
+    roadmap = root / "ROADMAP_2_0.md"
+    if not roadmap.is_file():
+        return False
+    return "- [x] **10. SwirEngine 2.0 Final Release Gate & Public Verification**" in roadmap.read_text(
+        encoding="utf-8"
+    )
+
+
 def _assert_locked_roadmap(root: Path, version: str) -> None:
     text = _read_text(root, f"ROADMAP_{version.replace('.', '_')}.md")
     _assert("100.0%" in text, f"locked {version} roadmap must preserve its 100.0% completion marker")
@@ -118,10 +128,6 @@ def _assert_locked_roadmap(root: Path, version: str) -> None:
         "10/10" in text or "DONE-10%2F10" in text,
         f"locked {version} roadmap must preserve its 10/10 completion marker",
     )
-    # 1.6+ use the numbered milestone format understood by milestone_progress().
-    # Earlier locked roadmaps use the SWIR dashboard plus unnumbered deliverable
-    # checkboxes, so their dedicated locked compatibility auditors remain the
-    # authoritative structural validators.
     if version == "1.6":
         checked, total = milestone_progress(text)
         _assert(
@@ -147,8 +153,17 @@ def validate_checkpoint(root: Path = PROJECT_ROOT, *, require_complete: bool = F
 
     project_version = _project_version(root)
     runtime_version = _runtime_version(root)
-    _assert(project_version == STABLE_PUBLIC_VERSION, f"pyproject.toml must remain frozen at public version {STABLE_PUBLIC_VERSION}; found {project_version}")
-    _assert(runtime_version == STABLE_PUBLIC_VERSION, f"runtime __version__ must remain frozen at {STABLE_PUBLIC_VERSION}; found {runtime_version}")
+    allowed_versions = {STABLE_PUBLIC_VERSION}
+    if _two_point_zero_finalized(root):
+        allowed_versions.add(FORWARD_PUBLIC_VERSION)
+    _assert(
+        project_version in allowed_versions,
+        f"pyproject.toml must preserve the locked 1.7 history under {sorted(allowed_versions)}; found {project_version}",
+    )
+    _assert(
+        runtime_version in allowed_versions,
+        f"runtime __version__ must preserve the locked 1.7 history under {sorted(allowed_versions)}; found {runtime_version}",
+    )
     _assert(project_version == runtime_version, "package and runtime versions must agree")
 
     for relative in REQUIRED_17_FILES + LOCKED_COMPATIBILITY_FILES:
