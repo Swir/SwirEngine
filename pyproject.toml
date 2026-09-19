@@ -38,12 +38,14 @@ dev = ["pytest>=8,<10", "ruff>=0.16,<0.17"]
 
 [project.scripts]
 swirengine = "swirengine.cli:main"
+swireditor = "swirengine.editor_app21:main"
 
 [project.urls]
 Homepage = "https://github.com/Swir/SwirEngine"
 Repository = "https://github.com/Swir/SwirEngine"
 Changelog = "https://github.com/Swir/SwirEngine/blob/main/CHANGELOG.md"
 Roadmap = "https://github.com/Swir/SwirEngine/blob/main/ROADMAP_2_0.md"
+"2.1 Roadmap" = "https://github.com/Swir/SwirEngine/blob/main/ROADMAP_2_1.md"
 "1.0 Roadmap" = "https://github.com/Swir/SwirEngine/blob/main/ROADMAP.md"
 "1.1 Roadmap" = "https://github.com/Swir/SwirEngine/blob/main/ROADMAP_1_1.md"
 "1.2 Roadmap" = "https://github.com/Swir/SwirEngine/blob/main/ROADMAP_1_2.md"
