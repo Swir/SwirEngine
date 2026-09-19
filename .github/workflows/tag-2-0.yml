@@ -10,10 +10,11 @@ permissions:
 
 jobs:
   create-tag:
-    name: Verify exact final main commit and create v2.0.0
+    name: Verify final main, preserve v2.0.0 and dispatch publication
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      actions: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -21,7 +22,7 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
-      - name: Enforce complete 2.0 release contract before tagging
+      - name: Enforce complete 2.0 release contract before tagging or recovery
         run: python tools/verify_2_0_release_candidate.py --require-final
       - name: Prove publication branch points at the exact current main commit
         env:
@@ -35,22 +36,63 @@ jobs:
             echo "Publication branch is not the exact current main commit: main=$main_sha branch=$GITHUB_SHA"
             exit 1
           fi
-      - name: Refuse an existing v2.0.0 tag
+      - name: Create or preserve immutable v2.0.0 tag
+        id: release-tag
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
           if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/v2.0.0" >/dev/null 2>&1; then
-            echo "Tag v2.0.0 already exists; refusing to move or replace it."
+            echo "Tag v2.0.0 already exists; preserving it without moving or replacing history."
+            git fetch --force origin refs/tags/v2.0.0:refs/tags/v2.0.0
+          else
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+              -f ref='refs/tags/v2.0.0' \
+              -f sha="$GITHUB_SHA"
+            git fetch --force origin refs/tags/v2.0.0:refs/tags/v2.0.0
+          fi
+          tag_commit="$(git rev-list -n 1 refs/tags/v2.0.0)"
+          echo "tag_commit=$tag_commit" >> "$GITHUB_OUTPUT"
+          echo "Immutable v2.0.0 source commit: $tag_commit"
+      - name: Re-verify immutable tagged source and its successful final gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_COMMIT: ${{ steps.release-tag.outputs.tag_commit }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          worktree="${RUNNER_TEMP}/swirengine-v2.0.0-tag"
+          git worktree add --detach "$worktree" "$TAG_COMMIT"
+          (
+            cd "$worktree"
+            python tools/verify_2_0_release_candidate.py --require-final
+          )
+          final_gate_success="$(
+            gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${TAG_COMMIT}&status=success&per_page=100" \
+              --jq '[.workflow_runs[] | select(.name == "Final Release Gate 2.0")] | length'
+          )"
+          if [ "$final_gate_success" -lt 1 ]; then
+            echo "No successful Final Release Gate 2.0 run exists for immutable tag source $TAG_COMMIT"
             exit 1
           fi
-      - name: Create immutable release tag at verified main
+      - name: Refuse duplicate public release before dispatch
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
-            -f ref='refs/tags/v2.0.0' \
-            -f sha="$GITHUB_SHA"
+          if gh release view "v2.0.0" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "GitHub Release v2.0.0 already exists; refusing duplicate publication dispatch."
+            exit 1
+          fi
+          if curl --fail --silent --show-error --location \
+            "https://pypi.org/pypi/swirengine/2.0.0/json" >/dev/null 2>&1; then
+            echo "PyPI already contains swirengine 2.0.0; refusing duplicate publication dispatch."
+            exit 1
+          fi
+      - name: Dispatch exact-tag SwirEngine 2.0 publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: gh workflow run release-2.0.yml --ref main
