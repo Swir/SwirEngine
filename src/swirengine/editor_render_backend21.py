@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 from collections.abc import Callable
 from typing import Any
 
@@ -16,7 +15,7 @@ class ResizableFramebufferTarget:
     """ModernGL render target that follows the desktop viewport dimensions.
 
     The target owns its color/depth attachments and can safely replace them without
-    requiring the editor UI to know about ModernGL resource lifetimes.  ``owns`` is
+    requiring the editor UI to know about ModernGL resource lifetimes. ``owns`` is
     intentionally exposed so :class:`RendererViewportBridge` never restores a stale
     framebuffer that was superseded during a resize.
     """
@@ -132,12 +131,14 @@ class EditorRenderBackend21:
         ctx: Any,
         renderer: Any,
         target: ResizableFramebufferTarget,
-        window: object,
-        glfw_module: Any,
+        deactivate: Callable[[], None] | None = None,
+        window: object | None = None,
+        glfw_module: Any | None = None,
     ) -> None:
         self.ctx = ctx
         self.renderer = renderer
         self.target = target
+        self._deactivate = deactivate
         self.window = window
         self.glfw = glfw_module
         self.viewport = RendererViewportBridge(renderer, framebuffer=target)
@@ -145,71 +146,65 @@ class EditorRenderBackend21:
 
     @classmethod
     def create(cls, width: int = 640, height: int = 360) -> EditorRenderBackend21:
-        """Create a hidden cross-platform OpenGL 3.3+ context for editor rendering.
+        """Create an isolated headless OpenGL 3.3+ context for editor rendering.
 
-        macOS exposes modern OpenGL through its forward-compatible 4.1 core profile, while
-        Windows and Linux use the engine's 3.3 core baseline. ModernGL still requires only
-        OpenGL 3.3 features, so renderer shaders and behavior remain on the shared baseline.
-
-        GLFW is initialized but deliberately not globally terminated on release: SwirEngine
-        applications may own other GLFW windows in the same process. Only the hidden editor
-        window and its ModernGL resources are destroyed here.
+        The live editor viewport is an offscreen framebuffer, so it does not need to own a
+        hidden GLFW window. ModernGL's standalone context path is purpose-built for this
+        workload and delegates platform context creation to glcontext (WGL on Windows, X11
+        on Linux and CGL on macOS). Keeping the editor context windowless avoids coupling
+        framebuffer capture to the desktop window system while preserving the engine's
+        OpenGL 3.3 renderer baseline.
         """
 
         try:
-            import glfw
             import moderngl
         except ImportError as exc:  # pragma: no cover - package installation failure
             raise EditorRenderBackendUnavailable(
-                "live viewport requires the glfw and moderngl runtime dependencies"
+                "live viewport requires the moderngl headless runtime dependencies"
             ) from exc
 
-        window: object | None = None
         ctx: Any = None
         target: ResizableFramebufferTarget | None = None
         renderer: Renderer | None = None
+        deactivate: Callable[[], None] | None = None
         try:
-            if not glfw.init():
-                raise RuntimeError("GLFW initialization failed")
-            glfw.window_hint(glfw.VISIBLE, glfw.FALSE)
-            context_major, context_minor = (4, 1) if sys.platform == "darwin" else (3, 3)
-            glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, context_major)
-            glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, context_minor)
-            glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
-            if hasattr(glfw, "OPENGL_FORWARD_COMPAT"):
-                glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, glfw.TRUE)
-            window = glfw.create_window(16, 16, "SwirEditor Renderer", None, None)
-            if window is None:
-                raise RuntimeError(
-                    f"cannot create hidden OpenGL {context_major}.{context_minor} core window"
-                )
+            ctx = moderngl.create_standalone_context(require=330)
 
             def activate() -> None:
-                glfw.make_context_current(window)
+                enter = getattr(ctx, "__enter__", None)
+                if callable(enter):
+                    enter()
 
+            def deactivate_context() -> None:
+                exit_context = getattr(ctx, "__exit__", None)
+                if callable(exit_context):
+                    exit_context(None, None, None)
+
+            deactivate = deactivate_context
             activate()
-            ctx = moderngl.create_context(require=330)
             target = ResizableFramebufferTarget(ctx, width, height, activate=activate)
             renderer = Renderer(ctx, max(1, int(width)), max(1, int(height)))
             return cls(
                 ctx=ctx,
                 renderer=renderer,
                 target=target,
-                window=window,
-                glfw_module=glfw,
+                deactivate=deactivate,
             )
         except Exception as exc:
+            activate_existing = getattr(ctx, "__enter__", None)
+            if callable(activate_existing):
+                activate_existing()
             if renderer is not None:
                 release = getattr(renderer, "release", None)
                 if callable(release):
                     release()
             if target is not None:
                 target.release()
+            if deactivate is not None:
+                deactivate()
             release_ctx = getattr(ctx, "release", None)
             if callable(release_ctx):
                 release_ctx()
-            if window is not None:
-                glfw.destroy_window(window)
             raise EditorRenderBackendUnavailable(
                 f"cannot initialize live SwirEditor viewport: {exc}"
             ) from exc
@@ -218,11 +213,15 @@ class EditorRenderBackend21:
         if self._released:
             return
         self._released = True
+        self.target.activate()
         release_renderer = getattr(self.renderer, "release", None)
         if callable(release_renderer):
             release_renderer()
         self.target.release()
+        if self._deactivate is not None:
+            self._deactivate()
         release_ctx = getattr(self.ctx, "release", None)
         if callable(release_ctx):
             release_ctx()
-        self.glfw.destroy_window(self.window)
+        if self.glfw is not None and self.window is not None:
+            self.glfw.destroy_window(self.window)
