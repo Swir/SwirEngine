@@ -4,9 +4,11 @@ import math
 from dataclasses import dataclass
 
 from .editor_gizmo import EditorTransformGizmo, GizmoApplyResult
+from .graphics.camera import Camera2D
 from .graphics.camera3d import Camera3D
 from .graphics.mesh import Mesh3D
-from .math.types import Vec3
+from .graphics.primitives import Cube3D, Rectangle2D, Sprite2D
+from .math.types import Vec2, Vec3
 
 
 @dataclass(frozen=True, slots=True)
@@ -19,7 +21,11 @@ class ViewportRay:
 
 @dataclass(frozen=True, slots=True)
 class ViewportPick:
-    """One resolved viewport hit sorted by nearest distance."""
+    """One resolved viewport hit.
+
+    ``distance`` is the ray distance for 3D hits and ``0.0`` for 2D hits, where visual
+    stacking order (layer, then scene order) determines the winning target.
+    """
 
     target_key: str
     distance: float
@@ -27,13 +33,14 @@ class ViewportPick:
 
 
 class EditorViewportController:
-    """Toolkit-independent viewport picking and direct transform manipulation.
+    """Toolkit-independent production viewport interaction controller.
 
-    Pointer coordinates are expressed in framebuffer pixels with ``(0, 0)`` at the
-    top-left. 3D picking uses camera-derived world rays and conservative mesh bounding
-    spheres, which keeps the controller independent from a particular GPU backend while
-    remaining fast enough for editor interaction. Selected objects can then be dragged
-    in the camera plane through the existing ``EditorTransformGizmo`` history path.
+    Pointer coordinates use framebuffer pixels with ``(0, 0)`` at the top-left. The
+    controller keeps editor interaction independent from a specific GUI or GPU backend:
+    2D picking mirrors the renderer's centered orthographic camera convention, while 3D
+    picking uses camera-derived world rays and conservative object bounds. Transform
+    mutations still flow through :class:`EditorTransformGizmo`, so the normal inspector
+    history, snapping and undo/redo contracts remain authoritative.
     """
 
     def __init__(self, workspace: object) -> None:
@@ -44,6 +51,170 @@ class EditorViewportController:
         self.workspace = workspace
         self.inspector = inspector
         self.gizmo = EditorTransformGizmo(inspector)
+
+    def screen_to_world_2d(
+        self,
+        camera: Camera2D,
+        x: float,
+        y: float,
+        width: float,
+        height: float,
+        *,
+        screen_space: bool = False,
+    ) -> Vec2:
+        """Convert a framebuffer pointer to the renderer's centered 2D coordinate space."""
+
+        width = self._positive_number(width, "viewport width")
+        height = self._positive_number(height, "viewport height")
+        x = self._number(x, "pointer x")
+        y = self._number(y, "pointer y")
+        centered_x = x - width * 0.5
+        centered_y = height * 0.5 - y
+        if screen_space:
+            return Vec2(centered_x, centered_y)
+        zoom = self._positive_number(camera.safe_zoom, "camera zoom")
+        return Vec2(camera.x + centered_x / zoom, camera.y + centered_y / zoom)
+
+    def world_to_screen_2d(
+        self,
+        camera: Camera2D,
+        x: float,
+        y: float,
+        width: float,
+        height: float,
+        *,
+        screen_space: bool = False,
+    ) -> Vec2:
+        """Project a 2D world/screen-space point back to framebuffer pixels."""
+
+        width = self._positive_number(width, "viewport width")
+        height = self._positive_number(height, "viewport height")
+        x = self._number(x, "world x")
+        y = self._number(y, "world y")
+        if screen_space:
+            centered_x = x
+            centered_y = y
+        else:
+            zoom = self._positive_number(camera.safe_zoom, "camera zoom")
+            centered_x = (x - camera.x) * zoom
+            centered_y = (y - camera.y) * zoom
+        return Vec2(width * 0.5 + centered_x, height * 0.5 - centered_y)
+
+    def pick_2d(
+        self,
+        camera: Camera2D,
+        x: float,
+        y: float,
+        width: float,
+        height: float,
+        *,
+        select: bool = True,
+    ) -> ViewportPick | None:
+        """Pick the visually top-most bounded 2D primitive at a framebuffer position.
+
+        Rectangle bounds are always available. Sprite bounds are pickable when explicit
+        ``width`` and ``height`` are supplied; implicit texture-size sprites intentionally
+        remain unpickable here rather than causing hidden image I/O in editor interaction.
+        Rotation is handled by inverse-transforming the pointer into local object space.
+        """
+
+        world_point = self.screen_to_world_2d(camera, x, y, width, height)
+        screen_point = self.screen_to_world_2d(
+            camera, x, y, width, height, screen_space=True
+        )
+        indexed = list(enumerate(self.inspector.scene.objects))
+        indexed.sort(
+            key=lambda item: (int(getattr(item[1], "layer", 0)), item[0]),
+            reverse=True,
+        )
+        for _, target in indexed:
+            if not getattr(target, "enabled", True) or not getattr(target, "visible", True):
+                continue
+            bounds = self._bounds_2d(target)
+            if bounds is None:
+                continue
+            point = screen_point if bool(getattr(target, "screen_space", False)) else world_point
+            center_x = float(getattr(target, "x"))
+            center_y = float(getattr(target, "y"))
+            rotation = float(getattr(target, "rotation", 0.0))
+            if not self._point_in_rotated_rect(
+                point,
+                center_x,
+                center_y,
+                bounds[0],
+                bounds[1],
+                rotation,
+            ):
+                continue
+            key = self.inspector.key_for(target)
+            hit = ViewportPick(key, 0.0, Vec3(point.x, point.y, 0.0))
+            if select:
+                self.inspector.select(key)
+            return hit
+        if select:
+            self.inspector.select(None)
+        return None
+
+    def drag_selected_2d(
+        self,
+        camera: Camera2D,
+        dx_pixels: float,
+        dy_pixels: float,
+    ) -> tuple[GizmoApplyResult, ...]:
+        """Translate the selected 2D target by a pointer delta with viewport snapping."""
+
+        target = self.inspector.selected_target
+        if target is None:
+            raise RuntimeError("no viewport target selected")
+        if self.workspace.viewport.gizmo != "translate":
+            raise RuntimeError("2D pointer translation requires the translate gizmo")
+        dx = self._number(dx_pixels, "pointer delta x")
+        dy = self._number(dy_pixels, "pointer delta y")
+        zoom = self._positive_number(camera.safe_zoom, "camera zoom")
+        world_dx = dx / zoom
+        world_dy = -dy / zoom
+        results: list[GizmoApplyResult] = []
+        if abs(world_dx) > 1e-12:
+            results.append(
+                self.gizmo.apply_viewport(self.workspace.viewport, "x", world_dx, target=target)
+            )
+        if abs(world_dy) > 1e-12:
+            results.append(
+                self.gizmo.apply_viewport(self.workspace.viewport, "y", world_dy, target=target)
+            )
+        return tuple(results)
+
+    def pan_camera_2d(self, camera: Camera2D, dx_pixels: float, dy_pixels: float) -> Camera2D:
+        """Pan a 2D camera so scene content follows the pointer drag."""
+
+        dx = self._number(dx_pixels, "pointer delta x")
+        dy = self._number(dy_pixels, "pointer delta y")
+        zoom = self._positive_number(camera.safe_zoom, "camera zoom")
+        camera.move(-dx / zoom, dy / zoom)
+        return camera
+
+    def zoom_camera_2d(
+        self,
+        camera: Camera2D,
+        steps: float,
+        *,
+        factor: float = 1.15,
+        min_zoom: float = 0.05,
+        max_zoom: float = 64.0,
+    ) -> Camera2D:
+        """Apply bounded exponential zoom suitable for wheel/trackpad input."""
+
+        steps = self._number(steps, "zoom steps")
+        factor = self._positive_number(factor, "zoom factor")
+        min_zoom = self._positive_number(min_zoom, "minimum zoom")
+        max_zoom = self._positive_number(max_zoom, "maximum zoom")
+        if factor <= 1.0:
+            raise ValueError("zoom factor must be greater than 1")
+        if min_zoom > max_zoom:
+            raise ValueError("minimum zoom cannot exceed maximum zoom")
+        current = self._positive_number(camera.safe_zoom, "camera zoom")
+        camera.zoom = min(max_zoom, max(min_zoom, current * (factor**steps)))
+        return camera
 
     def ray_from_screen(
         self,
@@ -85,14 +256,21 @@ class EditorViewportController:
         *,
         select: bool = True,
     ) -> ViewportPick | None:
-        """Pick the nearest visible ``Mesh3D`` using conservative world bounds."""
+        """Pick the nearest visible mesh/cube using conservative world bounds."""
         ray = self.ray_from_screen(camera, x, y, width, height)
         best: ViewportPick | None = None
         for target in self.inspector.scene.objects:
-            if not isinstance(target, Mesh3D) or not target.enabled or not target.visible:
+            if not getattr(target, "enabled", True) or not getattr(target, "visible", True):
                 continue
-            radius = self._mesh_radius(target)
-            distance = self._ray_sphere(ray, target.position, radius)
+            if isinstance(target, Mesh3D):
+                center = target.position
+                radius = self._mesh_radius(target)
+            elif isinstance(target, Cube3D):
+                center = target.position
+                radius = max(abs(float(target.size)) * math.sqrt(3.0) * 0.5, 1e-6)
+            else:
+                continue
+            distance = self._ray_sphere(ray, center, radius)
             if distance is None or distance < camera.near or distance > camera.far:
                 continue
             hit = ViewportPick(
@@ -115,7 +293,7 @@ class EditorViewportController:
         *,
         depth: float | None = None,
     ) -> tuple[GizmoApplyResult, ...]:
-        """Translate the current 3D selection in the camera plane from a pointer delta.
+        """Manipulate the current 3D selection in the camera plane from a pointer delta.
 
         The pixel delta is converted to world units at the selected object's camera depth.
         Each axis mutation goes through the normal gizmo/inspector path, so undo/redo stays
@@ -143,6 +321,69 @@ class EditorViewportController:
             if abs(amount) > 1e-12:
                 results.append(self.gizmo.apply_viewport(viewport, axis, amount, target=target))
         return tuple(results)
+
+    def pan_camera_3d(
+        self,
+        camera: Camera3D,
+        dx_pixels: float,
+        dy_pixels: float,
+        viewport_height: float,
+        *,
+        depth: float | None = None,
+    ) -> Camera3D:
+        """Pan camera position and target in the current view plane."""
+
+        height = self._positive_number(viewport_height, "viewport height")
+        dx = self._number(dx_pixels, "pointer delta x")
+        dy = self._number(dy_pixels, "pointer delta y")
+        if depth is None:
+            depth = (camera.target - camera.position).length
+        depth = self._positive_number(depth, "camera pan depth")
+        world_per_pixel = (2.0 * depth * math.tan(math.radians(camera.fov) * 0.5)) / height
+        delta = camera.right * (-dx * world_per_pixel) + camera.up.normalized() * (
+            dy * world_per_pixel
+        )
+        camera.move(delta.x, delta.y, delta.z)
+        return camera
+
+    def dolly_camera_3d(self, camera: Camera3D, distance: float) -> Camera3D:
+        """Move a 3D camera along its local forward axis while preserving orientation."""
+
+        distance = self._number(distance, "dolly distance")
+        camera.move_local(forward=distance)
+        return camera
+
+    @staticmethod
+    def _bounds_2d(target: object) -> tuple[float, float] | None:
+        if isinstance(target, Rectangle2D):
+            width = abs(float(target.width))
+            height = abs(float(target.height))
+        elif isinstance(target, Sprite2D) and target.width is not None and target.height is not None:
+            width = abs(float(target.width))
+            height = abs(float(target.height))
+        else:
+            return None
+        if width <= 0.0 or height <= 0.0:
+            return None
+        return (width, height)
+
+    @staticmethod
+    def _point_in_rotated_rect(
+        point: Vec2,
+        center_x: float,
+        center_y: float,
+        width: float,
+        height: float,
+        rotation_degrees: float,
+    ) -> bool:
+        angle = math.radians(-rotation_degrees)
+        cos_angle = math.cos(angle)
+        sin_angle = math.sin(angle)
+        dx = point.x - center_x
+        dy = point.y - center_y
+        local_x = cos_angle * dx - sin_angle * dy
+        local_y = sin_angle * dx + cos_angle * dy
+        return abs(local_x) <= width * 0.5 and abs(local_y) <= height * 0.5
 
     @staticmethod
     def _mesh_radius(mesh: Mesh3D) -> float:
