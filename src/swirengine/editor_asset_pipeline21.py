@@ -13,7 +13,6 @@ from .asset_pipeline import (
     AssetImportDiagnostics,
     AssetImportRequest,
     AssetImportResult,
-    AssetImportState,
     AssetPipeline,
 )
 from .assets import AssetManager
@@ -492,7 +491,12 @@ class EditorAssetPipeline21:
                 duration_seconds=duration,
             )
 
-        category = "image" if suffix in _IMAGE_SUFFIXES else "audio" if suffix in _AUDIO_SUFFIXES else kind
+        if suffix in _IMAGE_SUFFIXES:
+            category = "image"
+        elif suffix in _AUDIO_SUFFIXES:
+            category = "audio"
+        else:
+            category = kind
         return EditorAssetPreview(
             relative,
             kind,
