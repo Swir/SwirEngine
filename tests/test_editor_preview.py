@@ -44,6 +44,23 @@ class FakeFramebuffer:
         return self.payload
 
 
+class FakeResizableFramebuffer(FakeFramebuffer):
+    def __init__(self, payload: bytes) -> None:
+        super().__init__(payload)
+        self.resize_calls: list[tuple[int, int]] = []
+        self.activate_calls = 0
+        self.owned: set[int] = set()
+
+    def activate(self) -> None:
+        self.activate_calls += 1
+
+    def resize(self, width: int, height: int) -> None:
+        self.resize_calls.append((width, height))
+
+    def owns(self, framebuffer: object) -> bool:
+        return id(framebuffer) in self.owned
+
+
 class FakeRenderer:
     def __init__(self, framebuffer: FakeFramebuffer) -> None:
         self.ctx = SimpleNamespace(screen=framebuffer, fbo=framebuffer)
@@ -85,6 +102,23 @@ def test_renderer_viewport_bridge_renders_and_flips_framebuffer_rows():
     assert image.rgb == top + bottom
 
 
+def test_renderer_viewport_bridge_resizes_dynamic_target_before_capture():
+    payload = bytes(range(18))
+    screen = FakeFramebuffer(payload)
+    target = FakeResizableFramebuffer(payload)
+    renderer = FakeRenderer(screen)
+    bridge = RendererViewportBridge(renderer, framebuffer=target)
+
+    image = bridge.capture(Scene(), 3, 2)
+
+    assert image.width == 3
+    assert image.height == 2
+    assert target.activate_calls >= 1
+    assert target.resize_calls == [(3, 2)]
+    assert target.use_calls == 1
+    assert renderer.resized == [(3, 2)]
+
+
 def test_renderer_viewport_bridge_binds_target_restores_previous_and_syncs_mode_camera():
     payload = bytes(range(12))
     screen = FakeFramebuffer(payload)
@@ -105,6 +139,21 @@ def test_renderer_viewport_bridge_binds_target_restores_previous_and_syncs_mode_
     assert target.use_calls == 1
     assert previous.use_calls == 1
     assert screen.use_calls == 0
+
+
+def test_renderer_viewport_bridge_does_not_restore_target_owned_previous_fbo():
+    payload = bytes(range(12))
+    screen = FakeFramebuffer(payload)
+    target = FakeResizableFramebuffer(payload)
+    previous = FakeFramebuffer(payload)
+    target.owned.add(id(previous))
+    renderer = FakeRenderer(screen)
+    renderer.ctx.fbo = previous
+    bridge = RendererViewportBridge(renderer, framebuffer=target)
+
+    bridge.capture(Scene(), 2, 2)
+
+    assert previous.use_calls == 0
 
 
 def test_renderer_viewport_bridge_restores_previous_framebuffer_after_render_failure():
@@ -198,5 +247,33 @@ def test_preview_capture_forwards_active_camera_and_mode_to_bridge():
     image = preview.capture(2, 2, camera=camera, mode="3d")
 
     assert image is not None
+    assert renderer.mode == "3d"
+    assert renderer.rendered[-1] == (scene, camera)
+
+
+def test_preview_uses_workspace_mode_and_camera_provider_when_capture_is_implicit():
+    framebuffer = FakeFramebuffer(bytes(range(12)))
+    renderer = FakeRenderer(framebuffer)
+    bridge = RendererViewportBridge(renderer)
+    scene = Scene()
+    workspace = EditorWorkspace(scene)
+    workspace.configure_viewport(mode="3d")
+    camera = object()
+    requested_modes: list[str] = []
+
+    def camera_provider(mode: str) -> object:
+        requested_modes.append(mode)
+        return camera
+
+    preview = EditorPreviewSession(
+        workspace,
+        viewport=bridge,
+        camera_provider=camera_provider,
+    )
+
+    image = preview.capture(2, 2)
+
+    assert image is not None
+    assert requested_modes == ["3d"]
     assert renderer.mode == "3d"
     assert renderer.rendered[-1] == (scene, camera)

@@ -13,7 +13,9 @@ from .editor_creator_frontend21 import (
 )
 from .editor_diagnostics import EditorConsole, EditorProfiler
 from .editor_frontend import TkEditorApp
+from .editor_preview import EditorPreviewSession
 from .editor_project_authoring21 import EditorProjectAuthoring21
+from .editor_render_backend21 import EditorRenderBackend21, EditorRenderBackendUnavailable
 from .editor_scene21 import EditorSceneAuthoring
 from .editor_viewport_frontend21 import (
     EditorProductionViewportController21,
@@ -100,6 +102,7 @@ class EditorProjectSession:
         self.console = console
         self.profiler = profiler
         self.controller = controller
+        self._render_backend: EditorRenderBackend21 | None = None
         self.scenes = EditorSceneAuthoring(
             manifest.root,
             serializer,
@@ -170,6 +173,12 @@ class EditorProjectSession:
             console=console,
             profiler=profiler,
         )
+        controller.preview = EditorPreviewSession(
+            workspace,
+            camera_provider=lambda mode: (
+                controller.camera_3d if mode == "3d" else controller.camera_2d
+            ),
+        )
         console.write(
             f"Opened {manifest.name} ({manifest.mode})",
             source="swireditor",
@@ -223,16 +232,50 @@ class EditorProjectSession:
         )
         return state
 
+    def enable_live_viewport(
+        self,
+        backend: EditorRenderBackend21 | None = None,
+    ) -> EditorRenderBackend21:
+        """Attach the isolated GPU renderer without affecting headless project opening."""
+
+        if not isinstance(self.controller, EditorProductionViewportController21):
+            raise TypeError("SwirEditor session is missing production viewport controls")
+        if self.controller.preview is None:
+            raise RuntimeError("SwirEditor session is missing runtime preview support")
+        if self._render_backend is not None:
+            if backend is None or backend is self._render_backend:
+                return self._render_backend
+            self.disable_live_viewport()
+        active = backend or EditorRenderBackend21.create()
+        self._render_backend = active
+        self.controller.preview.viewport = active.viewport
+        self.console.write("Live renderer viewport attached", source="renderer")
+        return active
+
+    def disable_live_viewport(self) -> None:
+        backend, self._render_backend = self._render_backend, None
+        if self.controller.preview is not None:
+            self.controller.preview.viewport = None
+        if backend is not None:
+            backend.release()
+
     def run(self) -> None:
         if not isinstance(self.controller, EditorProductionViewportController21):
             raise TypeError("SwirEditor session is missing production viewport controls")
-        app = TkProductionViewportEditorApp21(
-            self.controller,
-            title=f"SwirEditor 2.1 — {self.manifest.name}",
-        )
-        self._install_file_menu(app)
-        self._schedule_recovery(app)
-        app.run()
+        try:
+            try:
+                self.enable_live_viewport()
+            except EditorRenderBackendUnavailable as exc:
+                self.console.write(str(exc), level="warning", source="renderer")
+            app = TkProductionViewportEditorApp21(
+                self.controller,
+                title=f"SwirEditor 2.1 — {self.manifest.name}",
+            )
+            self._install_file_menu(app)
+            self._schedule_recovery(app)
+            app.run()
+        finally:
+            self.disable_live_viewport()
 
     def _install_file_menu(self, app: TkEditorApp) -> None:
         tk = app.tk
