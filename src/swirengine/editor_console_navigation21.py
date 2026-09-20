@@ -109,7 +109,7 @@ def open_project_source(
     code = shutil.which("code")
     try:
         if code is not None:
-            subprocess.Popen(  # noqa: S603 - fixed executable path from shutil.which
+            subprocess.Popen(
                 [code, "--goto", _vscode_target(path, location)],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
@@ -125,7 +125,7 @@ def open_project_source(
         opener = shutil.which(opener_name)
         if opener is None:
             return False
-        subprocess.Popen(  # noqa: S603 - fixed executable path from shutil.which
+        subprocess.Popen(
             [opener, str(path)],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
