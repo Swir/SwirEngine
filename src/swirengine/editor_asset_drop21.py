@@ -68,7 +68,7 @@ def _tkinterdnd_backend21() -> tuple[Callable[[Any], Any], str, str]:
 
     require = getattr(TkinterDnD, "_require", None)
     if not callable(require):
-        raise RuntimeError("tkinterdnd2 does not expose the required TkDnD loader")
+        raise TypeError("tkinterdnd2 does not expose a callable TkDnD loader")
     return require, str(DND_FILES), str(COPY)
 
 
@@ -93,7 +93,7 @@ def install_native_asset_drop21(
     try:
         require, dnd_files, copy_action = backend_loader()
         require(root)
-    except (ImportError, RuntimeError, AttributeError) as exc:
+    except (ImportError, RuntimeError, AttributeError, TypeError) as exc:
         return NativeAssetDropStatus21(
             False,
             "copy",
