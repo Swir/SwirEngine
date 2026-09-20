@@ -92,6 +92,41 @@ def test_creator_frontend_component_actions_share_creator_history(tmp_path: Path
     assert second.require(Health).value == 100
 
 
+def test_component_factory_discovery_does_not_instantiate_factory(tmp_path: Path) -> None:
+    @dataclass(slots=True)
+    class Health:
+        value: int = 100
+
+    calls = 0
+
+    def make_health() -> Health:
+        nonlocal calls
+        calls += 1
+        return Health()
+
+    scene = Scene()
+    entity = scene.create_entity(name="Player")
+    controller = _creator_controller(
+        scene,
+        tmp_path / "assets",
+        component_factories={"Health": make_health},
+    )
+    controller.select(controller.workspace.inspector.key_for(entity))
+
+    assert controller.available_add_component_names() == ("Health",)
+    assert calls == 0
+
+    controller.add_component_by_name("Health")
+    assert calls == 1
+    assert entity.require(Health).value == 100
+    assert controller.available_add_component_names() == ()
+    assert calls == 1
+
+    remove_name = f"{Health.__module__}.{Health.__qualname__}"
+    assert controller.available_remove_component_names() == (remove_name,)
+    assert calls == 1
+
+
 def test_creator_frontend_prefab_create_instantiate_apply_revert(tmp_path: Path) -> None:
     scene = Scene()
     source = scene.add(Rectangle2D(2.0, 3.0, 8.0, 9.0, Color(), name="Source"))
