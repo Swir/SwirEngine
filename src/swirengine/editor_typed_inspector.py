@@ -84,10 +84,7 @@ class EditorTypedInspector:
         if not spec.editable:
             raise AttributeError(f"property {name!r} is not editable across the current selection")
         targets = self.authoring.selected_targets
-        converted = [
-            self.coerce(raw_value, self._field_value(target, name))
-            for target in targets
-        ]
+        converted = [self.coerce(raw_value, self._field_value(target, name)) for target in targets]
         if not converted:
             raise RuntimeError("no editor targets selected")
         first = converted[0]
@@ -148,14 +145,20 @@ class EditorTypedInspector:
                 raise TypeError("path fields require a string or PurePath")
             return type(current)(raw_value)
 
-        if isinstance(current, tuple) and 2 <= len(current) <= 4:
-            if all(isinstance(item, (int, float)) and not isinstance(item, bool) for item in current):
-                if not isinstance(raw_value, (tuple, list)) or len(raw_value) != len(current):
-                    raise TypeError(f"vector field requires {len(current)} numeric values")
-                return tuple(
-                    float(value) if isinstance(original, float) else int(value)
-                    for value, original in zip(raw_value, current, strict=True)
-                )
+        if (
+            isinstance(current, tuple)
+            and 2 <= len(current) <= 4
+            and all(
+                isinstance(item, (int, float)) and not isinstance(item, bool)
+                for item in current
+            )
+        ):
+            if not isinstance(raw_value, (tuple, list)) or len(raw_value) != len(current):
+                raise TypeError(f"vector field requires {len(current)} numeric values")
+            return tuple(
+                float(value) if isinstance(original, float) else int(value)
+                for value, original in zip(raw_value, current, strict=True)
+            )
 
         if type(raw_value) is type(current):
             return raw_value
@@ -178,9 +181,15 @@ class EditorTypedInspector:
             return "text", ()
         if isinstance(value, set) and all(isinstance(item, str) for item in value):
             return "tags", ()
-        if isinstance(value, tuple) and 2 <= len(value) <= 4:
-            if all(isinstance(item, (int, float)) and not isinstance(item, bool) for item in value):
-                return "vector", ()
+        if (
+            isinstance(value, tuple)
+            and 2 <= len(value) <= 4
+            and all(
+                isinstance(item, (int, float)) and not isinstance(item, bool)
+                for item in value
+            )
+        ):
+            return "vector", ()
         return "object", ()
 
     def _field_value(self, target: object, name: str) -> object:
