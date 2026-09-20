@@ -1,0 +1,55 @@
+name: Editor Play Debug 2.1 Validation
+
+on:
+  pull_request:
+    paths:
+      - "src/swirengine/editor_preview.py"
+      - "src/swirengine/editor_runtime.py"
+      - "src/swirengine/editor_frontend.py"
+      - "src/swirengine/editor_diagnostics.py"
+      - "src/swirengine/profiler.py"
+      - "tests/test_editor_preview.py"
+      - "tests/test_editor_runtime.py"
+      - "tests/test_editor_frontend.py"
+      - "tests/test_editor_diagnostics.py"
+      - "tests/test_editor_play_debug_2_1.py"
+      - "tools/generate_progress_svg.py"
+      - ".github/workflows/editor-play-debug-2-1.yml"
+      - "pyproject.toml"
+      - "ROADMAP_2_1.md"
+      - "README.md"
+      - "assets/readme/progress-*.svg"
+  workflow_dispatch:
+
+jobs:
+  play-debug-contract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Play debug regression suite
+        run: >-
+          pytest -q
+          tests/test_editor_runtime.py
+          tests/test_editor_preview.py
+          tests/test_editor_frontend.py
+          tests/test_editor_diagnostics.py
+          tests/test_editor_play_debug_2_1.py
+      - name: Strict Ruff gate
+        run: >-
+          ruff check
+          src/swirengine/editor_preview.py
+          src/swirengine/profiler.py
+          tests/test_editor_play_debug_2_1.py
+      - name: Compile play debug files
+        run: >-
+          python -m compileall -q
+          src/swirengine/editor_preview.py
+          src/swirengine/profiler.py
+          tests/test_editor_play_debug_2_1.py
+      - name: Progress presentation drift check
+        run: python tools/generate_progress_svg.py --check
