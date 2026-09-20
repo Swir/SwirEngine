@@ -25,6 +25,7 @@ def test_priority_order_and_global_item_budget_are_bounded() -> None:
         frame_budget_ms=10.0,
         max_items_per_frame=3,
         max_drain_calls_per_frame=8,
+        clock=FakeClock(),
     )
     controller.register(
         "low",
