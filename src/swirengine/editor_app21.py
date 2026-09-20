@@ -7,20 +7,18 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 from .assets import AssetManager
 from .core.scene import Scene
 from .editor_assets import EditorAssetBrowser
-from .editor_creator_frontend21 import (
-    EditorCreatorFrontendController21,
-    TkCreatorEditorApp21,
+from .editor_console_navigation21 import (
+    TkConsoleNavigationEditorApp21,
+    source_location_from_exception,
 )
+from .editor_creator_frontend21 import EditorCreatorFrontendController21, TkCreatorEditorApp21
 from .editor_diagnostics import EditorConsole, EditorProfiler
 from .editor_frontend import TkEditorApp
 from .editor_preview import EditorPreviewSession
 from .editor_project_authoring21 import EditorProjectAuthoring21
 from .editor_render_backend21 import EditorRenderBackend21, EditorRenderBackendUnavailable
 from .editor_scene21 import EditorSceneAuthoring
-from .editor_viewport_frontend21 import (
-    EditorProductionViewportController21,
-    TkProductionViewportEditorApp21,
-)
+from .editor_viewport_frontend21 import EditorProductionViewportController21
 from .editor_workspace import EditorProjectState, EditorWorkspace
 from .profiler import Profiler
 from .project19 import ProjectManifest, ProjectManifestError
@@ -175,10 +173,14 @@ class EditorProjectSession:
         )
 
         def report_runtime_error(operation: str, exc: Exception) -> None:
+            location = source_location_from_exception(manifest.root, exc)
             console.write(
                 f"Runtime {operation} failed: {type(exc).__name__}: {exc}",
                 level="error",
                 source="runtime",
+                path=None if location is None else location.path,
+                line=None if location is None else location.line,
+                column=None if location is None else location.column,
             )
 
         controller.preview = EditorPreviewSession(
@@ -277,8 +279,9 @@ class EditorProjectSession:
                 self.enable_live_viewport()
             except EditorRenderBackendUnavailable as exc:
                 self.console.write(str(exc), level="warning", source="renderer")
-            app = TkProductionViewportEditorApp21(
+            app = TkConsoleNavigationEditorApp21(
                 self.controller,
+                project_root=self.manifest.root,
                 title=f"SwirEditor 2.1 — {self.manifest.name}",
             )
             self._install_file_menu(app)
