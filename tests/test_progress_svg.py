@@ -6,12 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from tools.generate_2_0_audit_progress_svg import (
-    MINI_PATH as AUDIT_MINI_PATH,
-    STATUS_PATH as AUDIT_STATUS_PATH,
-    expected_outputs as audit_expected_outputs,
-    parse_progress as parse_audit_progress,
-)
+import tools.generate_2_0_audit_progress_svg as audit_progress
 from tools.generate_progress_svg import (
     CARD_PATH,
     COMPAT_CARD_PATH,
@@ -91,20 +86,24 @@ def test_readme_pypi_fallback_is_single_deterministic_exception() -> None:
 
 
 def test_post_release_audit_keeps_separate_truthful_graphic() -> None:
-    data = parse_audit_progress((ROOT / AUDIT_STATUS_PATH).read_text(encoding="utf-8"))
-    outputs = audit_expected_outputs(data)
+    data = audit_progress.parse_progress(
+        (ROOT / audit_progress.STATUS_PATH).read_text(encoding="utf-8")
+    )
+    outputs = audit_progress.expected_outputs(data)
 
     assert data.completed == 5
     assert data.total == 10
     assert data.display_percentage == "50.0%"
-    assert (ROOT / AUDIT_MINI_PATH).read_text(encoding="utf-8") == outputs[AUDIT_MINI_PATH]
-    assert _gradient_fill_width(outputs[AUDIT_MINI_PATH]) == pytest.approx(350.0)
+    assert (
+        ROOT / audit_progress.MINI_PATH
+    ).read_text(encoding="utf-8") == outputs[audit_progress.MINI_PATH]
+    assert _gradient_fill_width(outputs[audit_progress.MINI_PATH]) == pytest.approx(350.0)
 
 
 def test_maintained_progress_surfaces_are_svg_only_nonduplicated_and_scoped() -> None:
     readme = README_PATH.read_text(encoding="utf-8")
     roadmap = (ROOT / STATUS_PATH).read_text(encoding="utf-8")
-    audit = (ROOT / AUDIT_STATUS_PATH).read_text(encoding="utf-8")
+    audit = (ROOT / audit_progress.STATUS_PATH).read_text(encoding="utf-8")
     historical_2_0 = HISTORICAL_2_0_PATH.read_text(encoding="utf-8")
     historical_1_9 = HISTORICAL_1_9_PATH.read_text(encoding="utf-8")
 
@@ -114,7 +113,7 @@ def test_maintained_progress_surfaces_are_svg_only_nonduplicated_and_scoped() ->
     for path, text in (
         (README_PATH, _without_approved_pypi_progress(readme)),
         (ROOT / STATUS_PATH, roadmap),
-        (ROOT / AUDIT_STATUS_PATH, audit),
+        (ROOT / audit_progress.STATUS_PATH, audit),
         (HISTORICAL_2_0_PATH, historical_2_0),
         (HISTORICAL_1_9_PATH, historical_1_9),
     ):
