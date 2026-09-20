@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 from .editor_app21 import EditorProjectOpenError, EditorProjectSession, _build_parser
 from .editor_asset_frontend21 import (
