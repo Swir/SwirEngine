@@ -9,6 +9,15 @@ from swirengine.cli import new_project
 from swirengine.editor_app21 import EditorProjectOpenError, EditorProjectSession, main
 
 
+class FakeLiveBackend:
+    def __init__(self) -> None:
+        self.viewport = object()
+        self.release_calls = 0
+
+    def release(self) -> None:
+        self.release_calls += 1
+
+
 def test_editor_session_opens_manifest_project_and_reports_creator_state(
     tmp_path: Path,
     monkeypatch,
@@ -27,6 +36,8 @@ def test_editor_session_opens_manifest_project_and_reports_creator_state(
     assert summary.asset_count == 0
     assert not summary.scene_exists
     assert not summary.editor_state_exists
+    assert session.controller.preview is not None
+    assert session.controller.preview.viewport is None
 
 
 def test_editor_session_saves_scene_and_portable_editor_state(
@@ -57,6 +68,27 @@ def test_editor_session_saves_scene_and_portable_editor_state(
     assert frame.viewport.mode == "2d"
     assert frame.viewport.snap_enabled
     assert frame.viewport.translation_snap == 8.0
+
+
+def test_editor_session_attaches_and_releases_live_viewport_lazily(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    root = new_project("LiveViewport", "3d")
+    session = EditorProjectSession.open(root)
+    backend = FakeLiveBackend()
+
+    attached = session.enable_live_viewport(backend)  # type: ignore[arg-type]
+
+    assert attached is backend
+    assert session.controller.preview is not None
+    assert session.controller.preview.viewport is backend.viewport
+    session.disable_live_viewport()
+    assert session.controller.preview.viewport is None
+    assert backend.release_calls == 1
+    session.disable_live_viewport()
+    assert backend.release_calls == 1
 
 
 def test_editor_session_rejects_project_escape_scene_paths(
