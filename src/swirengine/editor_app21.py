@@ -7,8 +7,13 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 from .assets import AssetManager
 from .core.scene import Scene
 from .editor_assets import EditorAssetBrowser
+from .editor_creator_frontend21 import (
+    EditorCreatorFrontendController21,
+    TkCreatorEditorApp21,
+)
 from .editor_diagnostics import EditorConsole, EditorProfiler
-from .editor_frontend import EditorFrontendController, TkEditorApp
+from .editor_frontend import TkEditorApp
+from .editor_project_authoring21 import EditorProjectAuthoring21
 from .editor_scene21 import EditorSceneAuthoring
 from .editor_workspace import EditorProjectState, EditorWorkspace
 from .profiler import Profiler
@@ -62,8 +67,8 @@ class EditorProjectSession:
 
     The session composes the existing toolkit-neutral editor models into a safe creator workflow:
     manifest validation, multi-scene authoring, portable editor-state persistence, asset browsing,
-    diagnostics, deterministic recovery and the Tk desktop shell. Scene and editor-state writes are
-    explicit and stay inside the project root.
+    typed multi-selection, component/prefab authoring, diagnostics, deterministic recovery and the
+    Tk desktop shell. Scene and editor-state writes are explicit and stay inside the project root.
     """
 
     def __init__(
@@ -74,16 +79,18 @@ class EditorProjectSession:
         scene_path: Path,
         state_path: Path,
         workspace: EditorWorkspace,
+        authoring: EditorProjectAuthoring21,
         asset_browser: EditorAssetBrowser,
         console: EditorConsole,
         profiler: EditorProfiler,
-        controller: EditorFrontendController,
+        controller: EditorCreatorFrontendController21,
     ) -> None:
         self.manifest = manifest
         self.serializer = serializer
         self.scene_path = scene_path
         self.state_path = state_path
         self.workspace = workspace
+        self.authoring = authoring
         self.asset_browser = asset_browser
         self.console = console
         self.profiler = profiler
@@ -142,8 +149,14 @@ class EditorProjectSession:
         asset_browser = EditorAssetBrowser(AssetManager(manifest.root / "assets"))
         console = EditorConsole()
         profiler = EditorProfiler(Profiler())
-        controller = EditorFrontendController(
+        authoring = EditorProjectAuthoring21(
             workspace,
+            serializer=serializer,
+            asset_root=manifest.root / "assets",
+        )
+        controller = EditorCreatorFrontendController21(
+            workspace,
+            authoring,
             asset_browser=asset_browser,
             console=console,
             profiler=profiler,
@@ -158,6 +171,7 @@ class EditorProjectSession:
             scene_path=scene_path,
             state_path=state_path,
             workspace=workspace,
+            authoring=authoring,
             asset_browser=asset_browser,
             console=console,
             profiler=profiler,
@@ -201,7 +215,7 @@ class EditorProjectSession:
         return state
 
     def run(self) -> None:
-        app = TkEditorApp(
+        app = TkCreatorEditorApp21(
             self.controller,
             title=f"SwirEditor 2.1 — {self.manifest.name}",
         )
@@ -221,6 +235,8 @@ class EditorProjectSession:
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=lambda: self._close_from_ui(app))
         menu.add_cascade(label="File", menu=file_menu)
+        if isinstance(app, TkCreatorEditorApp21):
+            app.install_creator_menu(menu)
         app.root.configure(menu=menu)
         app.root.bind_all("<Control-s>", lambda _event: self._save_from_ui(app))
         app.root.bind_all("<Control-S>", lambda _event: self._save_from_ui(app))
