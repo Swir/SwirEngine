@@ -43,11 +43,13 @@ jobs:
         run: >-
           ruff check
           src/swirengine/editor_preview.py
+          src/swirengine/profiler.py
           tests/test_editor_play_debug_2_1.py
       - name: Compile play debug files
         run: >-
           python -m compileall -q
           src/swirengine/editor_preview.py
+          src/swirengine/profiler.py
           tests/test_editor_play_debug_2_1.py
       - name: Progress presentation drift check
         run: python tools/generate_progress_svg.py --check
