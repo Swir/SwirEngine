@@ -23,6 +23,8 @@ READINESS_AUDIT = ROOT / "docs" / "SWIRENGINE_2_0_READINESS_AUDIT.md"
 POST_RELEASE_MINI = "../assets/readme/progress-2-0-audit-mini.svg"
 ARCHIVED_POST_RELEASE_TITLE = "# SwirEngine 2.0 — Archived Post-Release Audit Snapshot"
 ARCHIVED_POST_RELEASE_MARKER = "It is no longer an active progress scope."
+PYPI_PROGRESS_START = "<!-- SWIR-PYPI-PROGRESS:START -->"
+PYPI_PROGRESS_END = "<!-- SWIR-PYPI-PROGRESS:END -->"
 
 STABLE_PUBLIC_VERSION = "1.5.0"
 FORWARD_PUBLIC_VERSION = "2.0.0"
@@ -270,8 +272,13 @@ def _verify_visual_contract() -> None:
         raise CheckpointError("README.md must retain SWIR README standard v2")
     if not roadmap.startswith("<!-- SWIR-PROGRESS-SVG-PRO:v1 -->"):
         raise CheckpointError("ROADMAP_1_9.md must retain the SVG progress standard marker")
-    if readme.count("assets/readme/progress-card.svg") != 1:
-        raise CheckpointError("README.md must embed exactly one authoritative progress card")
+    if readme.count(PYPI_PROGRESS_START) != 1 or readme.count(PYPI_PROGRESS_END) != 1:
+        raise CheckpointError("README.md must keep exactly one approved deterministic PyPI progress block")
+    if (
+        'src="assets/readme/progress-card.svg"' in readme
+        or 'src="assets/readme/progress-mini.svg"' in readme
+    ):
+        raise CheckpointError("README.md progress must stay PyPI-safe without SVG progress embeds")
     if _embeds_progress_template(readme) or _embeds_progress_template(roadmap):
         raise CheckpointError("progress-template.svg is a template and must never be embedded as real data")
 
