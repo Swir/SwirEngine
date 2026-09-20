@@ -40,7 +40,8 @@ def _run_new(argv: list[str]) -> int:
 
 
 def _run_editor(argv: list[str]) -> int:
-    from .editor_app21 import main as editor_main
+    from .editor_asset_app21 import main as editor_main
+    from .editor_asset_app21 import run_editor_session21
 
     args = _editor_parser().parse_args(argv)
     if args.project is None and not args.headless and not args.recover:
@@ -54,7 +55,7 @@ def _run_editor(argv: list[str]) -> int:
         if session is None:
             return 0
         try:
-            session.run()
+            run_editor_session21(session)
         except RuntimeError as exc:
             print(f"SwirEditor failed: {exc}")
             return 2
