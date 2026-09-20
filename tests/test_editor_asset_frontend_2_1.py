@@ -51,7 +51,7 @@ def test_asset_workflow_import_preview_background_and_reimport(tmp_path: Path) -
 
         result = workflow.backend.wait(ticket, timeout=5.0)
         assert result.successful is True
-        assert result.value["size_bytes"] == len(b"first version\n")
+        assert result.value["size_bytes"] == source.stat().st_size
         assert len(result.value["sha256"]) == 64
 
         frame = workflow.refresh()
@@ -72,7 +72,7 @@ def test_asset_workflow_import_preview_background_and_reimport(tmp_path: Path) -
         assert reimport.queued is True
         second = workflow.backend.wait(reimport, timeout=5.0)
         assert second.successful is True
-        assert second.value["size_bytes"] == len(b"second version\n")
+        assert second.value["size_bytes"] == source.stat().st_size
         assert workflow.frame().preview is not None
         assert workflow.frame().preview.text == "second version\n"
     finally:
