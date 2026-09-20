@@ -1,12 +1,12 @@
-<!-- SWIR-PROGRESS-SVG-PRO:v1 -->
+<!-- SWIR-PROGRESS-TEXT:v1 -->
 
 # SwirEngine 2.1 — SwirEditor & Creator Workflow Roadmap
 
-<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.1 SwirEditor roadmap progress" />
-
 SwirEngine 2.1 develops the creator-facing desktop workflow after the public SwirEngine 2.0.0 release. Historical 2.0 release and audit evidence remain preserved, but active progress now tracks 2.1 only unless a concrete stable-line regression requires maintenance.
 
-Current verified progress: 6/10 milestones = 60.0%.
+<!-- SWIR-PROGRESS:BEGIN -->
+**Progress:** `[######----]` **60.0%** (**6/10 milestones**)
+<!-- SWIR-PROGRESS:END -->
 
 ## Milestones
 
