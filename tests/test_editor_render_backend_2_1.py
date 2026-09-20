@@ -6,9 +6,10 @@ import sys
 from types import SimpleNamespace
 
 import pytest
+from typing_extensions import Self
 
-from swirengine import Scene
 import swirengine.editor_render_backend21 as render_backend_module
+from swirengine import Scene
 from swirengine.editor_render_backend21 import (
     EditorRenderBackend21,
     ResizableFramebufferTarget,
@@ -72,7 +73,7 @@ class FakeStandaloneContext(FakeContext):
         self.exit_calls = 0
         self.release_calls = 0
 
-    def __enter__(self) -> FakeStandaloneContext:
+    def __enter__(self) -> Self:
         self.enter_calls += 1
         return self
 
