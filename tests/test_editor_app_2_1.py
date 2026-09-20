@@ -7,6 +7,8 @@ import pytest
 from swirengine import Color, Rectangle2D
 from swirengine.cli import new_project
 from swirengine.editor_app21 import EditorProjectOpenError, EditorProjectSession, main
+from swirengine.editor_preview import DEFAULT_EDITOR_FIXED_STEP
+from swirengine.editor_runtime import EditorRuntimeMode
 
 
 class FakeLiveBackend:
@@ -38,6 +40,56 @@ def test_editor_session_opens_manifest_project_and_reports_creator_state(
     assert not summary.editor_state_exists
     assert session.controller.preview is not None
     assert session.controller.preview.viewport is None
+
+
+def test_editor_session_wires_runtime_profiler_into_production_preview(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    root = new_project("EditorProfile", "2d")
+    session = EditorProjectSession.open(root)
+    preview = session.controller.preview
+
+    assert preview is not None
+    assert preview.profiler is session.profiler.profiler
+    assert session.controller.play_pause() is EditorRuntimeMode.PLAYING
+    assert session.controller.update_runtime(DEFAULT_EDITOR_FIXED_STEP)
+
+    profile = session.profiler.frame()
+    assert profile.sample_count == 1
+    assert profile.latest.frame_ms == pytest.approx(DEFAULT_EDITOR_FIXED_STEP * 1000.0)
+    assert profile.latest.fps == pytest.approx(60.0)
+
+
+def test_editor_session_routes_runtime_failures_to_production_console(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    root = new_project("EditorFailure", "2d")
+    session = EditorProjectSession.open(root)
+    preview = session.controller.preview
+
+    assert preview is not None
+    session.console.clear()
+    assert session.controller.play_pause() is EditorRuntimeMode.PLAYING
+
+    def explode(_dt: float) -> bool:
+        raise RuntimeError("game update exploded")
+
+    monkeypatch.setattr(preview.runtime, "update", explode)
+
+    assert not session.controller.update_runtime(DEFAULT_EDITOR_FIXED_STEP)
+    assert preview.runtime.mode is EditorRuntimeMode.EDIT
+    assert session.profiler.frame().sample_count == 0
+
+    entries = session.console.entries
+    assert len(entries) == 1
+    assert entries[0].level == "error"
+    assert entries[0].source == "runtime"
+    assert entries[0].message == "Runtime update failed: RuntimeError: game update exploded"
+    assert preview.last_error == entries[0].message
 
 
 def test_editor_session_saves_scene_and_portable_editor_state(
