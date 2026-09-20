@@ -16,6 +16,8 @@ EXPECTED_TOTAL = 10
 EXPECTED_PYTHON_RANGE = ">=3.10,<3.15"
 POST_RELEASE_STATUS = "docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md"
 POST_RELEASE_MINI = "../assets/readme/progress-2-0-audit-mini.svg"
+ARCHIVED_POST_RELEASE_TITLE = "# SwirEngine 2.0 — Archived Post-Release Audit Snapshot"
+ARCHIVED_POST_RELEASE_MARKER = "It is no longer an active progress scope."
 PYPI_PROGRESS_START = "<!-- SWIR-PYPI-PROGRESS:START -->"
 PYPI_PROGRESS_END = "<!-- SWIR-PYPI-PROGRESS:END -->"
 PYPI_PROGRESS_RE = re.compile(
@@ -134,12 +136,17 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
     post_release_status = (
         post_release_path.read_text(encoding="utf-8") if post_release_path.is_file() else ""
     )
-    post_release = (
+    published_20 = (
         version == TARGET_VERSION
-        and bool(post_release_status)
         and "STATUS-2.0.0%20PUBLISHED" in readme
         and "**Latest public stable release:** **SwirEngine 2.0.0**" in readme
     )
+    post_release_archived = (
+        published_20
+        and ARCHIVED_POST_RELEASE_TITLE in post_release_status
+        and ARCHIVED_POST_RELEASE_MARKER in post_release_status
+    )
+    post_release_active = published_20 and bool(post_release_status) and not post_release_archived
 
     _require(
         readme.count(PYPI_PROGRESS_START) == 1 and readme.count(PYPI_PROGRESS_END) == 1,
@@ -150,7 +157,7 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
         ("README", _without_approved_pypi_progress(readme)),
         ("2.0 roadmap", roadmap_text),
     ]
-    if post_release:
+    if published_20 and post_release_status:
         presentation_surfaces.append(("post-release audit", post_release_status))
     for label, text in presentation_surfaces:
         _require(
@@ -174,22 +181,51 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
         "README embeds the project progress card",
         checks,
     )
-    if post_release:
+    if published_20:
+        _require(
+            bool(post_release_status),
+            "published 2.0 history preserves its post-release audit evidence",
+            checks,
+        )
         _require(
             "progress-mini.svg" not in roadmap_text,
-            "historical 2.0 roadmap does not embed the active post-release mini graphic",
+            "historical 2.0 roadmap does not embed the active progress mini graphic",
             checks,
         )
-        _require(
-            f'src="{POST_RELEASE_MINI}"' in post_release_status,
-            "active post-release audit embeds its scoped compact progress SVG",
-            checks,
-        )
-        _require(
-            'src="../assets/readme/progress-mini.svg"' not in post_release_status,
-            "post-release audit does not reuse the active 2.1 mini graphic",
-            checks,
-        )
+        if post_release_archived:
+            _require(
+                POST_RELEASE_MINI not in post_release_status,
+                "archived post-release audit does not embed the former audit progress mini",
+                checks,
+            )
+            _require(
+                'src="../assets/readme/progress-mini.svg"' not in post_release_status,
+                "archived post-release audit does not reuse the active 2.1 mini graphic",
+                checks,
+            )
+            _require(
+                "progress-template.svg" not in post_release_status,
+                "archived post-release audit does not embed the progress template as data",
+                checks,
+            )
+        elif post_release_active:
+            _require(
+                f'src="{POST_RELEASE_MINI}"' in post_release_status,
+                "active post-release audit embeds its scoped compact progress SVG",
+                checks,
+            )
+            _require(
+                'src="../assets/readme/progress-mini.svg"' not in post_release_status,
+                "post-release audit does not reuse the active 2.1 mini graphic",
+                checks,
+            )
+            _require(
+                "progress-template.svg" not in post_release_status,
+                "active post-release audit does not embed the progress template as data",
+                checks,
+            )
+        else:
+            _require(False, "published 2.0 post-release audit state is neither active nor archived", checks)
     else:
         _require(
             'src="assets/readme/progress-mini.svg"' in roadmap_text,
@@ -294,7 +330,7 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
             "project metadata points at the 2.0 roadmap",
             checks,
         )
-        if post_release:
+        if published_20:
             _require(
                 "Current verified progress: 10/10 milestones = 100.0%." in roadmap_text,
                 "historical 2.0 roadmap preserves verified 10/10 source-development evidence",
@@ -315,11 +351,23 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
                 "README records successful public GitHub/PyPI publication",
                 checks,
             )
-            _require(
-                "SwirEngine 2.0 — Post-Release Audit & Hardening" in post_release_status,
-                "post-release audit is the active hardening source",
-                checks,
-            )
+            if post_release_archived:
+                _require(
+                    ARCHIVED_POST_RELEASE_TITLE in post_release_status,
+                    "post-release audit is preserved as an archived historical snapshot",
+                    checks,
+                )
+                _require(
+                    ARCHIVED_POST_RELEASE_MARKER in post_release_status,
+                    "archived post-release audit explicitly states that it is not active progress",
+                    checks,
+                )
+            else:
+                _require(
+                    "SwirEngine 2.0 — Post-Release Audit & Hardening" in post_release_status,
+                    "post-release audit is the active hardening source",
+                    checks,
+                )
         else:
             _require(
                 "10/10 milestones = 100.0%" in readme,

@@ -21,6 +21,8 @@ PYPROJECT = ROOT / "pyproject.toml"
 WORKFLOWS = ROOT / ".github" / "workflows"
 READINESS_AUDIT = ROOT / "docs" / "SWIRENGINE_2_0_READINESS_AUDIT.md"
 POST_RELEASE_MINI = "../assets/readme/progress-2-0-audit-mini.svg"
+ARCHIVED_POST_RELEASE_TITLE = "# SwirEngine 2.0 — Archived Post-Release Audit Snapshot"
+ARCHIVED_POST_RELEASE_MARKER = "It is no longer an active progress scope."
 
 STABLE_PUBLIC_VERSION = "1.5.0"
 FORWARD_PUBLIC_VERSION = "2.0.0"
@@ -179,13 +181,31 @@ def _current_public_version() -> str:
     return match.group(1)
 
 
-def _post_release_audit_active() -> bool:
-    if _current_public_version() != FORWARD_PUBLIC_VERSION or not POST_RELEASE_STATUS.is_file():
+def _two_point_zero_published() -> bool:
+    if _current_public_version() != FORWARD_PUBLIC_VERSION:
         return False
     readme = _text(README)
     return (
         "STATUS-2.0.0%20PUBLISHED" in readme
         and "**Latest public stable release:** **SwirEngine 2.0.0**" in readme
+    )
+
+
+def _post_release_audit_archived() -> bool:
+    if not _two_point_zero_published() or not POST_RELEASE_STATUS.is_file():
+        return False
+    status = _text(POST_RELEASE_STATUS)
+    return (
+        ARCHIVED_POST_RELEASE_TITLE in status
+        and ARCHIVED_POST_RELEASE_MARKER in status
+    )
+
+
+def _post_release_audit_active() -> bool:
+    return (
+        _two_point_zero_published()
+        and POST_RELEASE_STATUS.is_file()
+        and not _post_release_audit_archived()
     )
 
 
@@ -205,9 +225,7 @@ def _verify_public_version() -> str:
 def _verify_release_freeze(roadmap_text: str) -> None:
     lowered = roadmap_text.lower()
     active_wording = "do not create `v1.9.0`, a github release, a release tag or a pypi publish"
-    historical_wording = (
-        "no `v1.9.0`, github release, release tag or pypi publication was created"
-    )
+    historical_wording = "no `v1.9.0`, github release, release tag or pypi publication was created"
     if active_wording not in lowered and historical_wording not in lowered:
         raise CheckpointError(
             "ROADMAP_1_9.md must explicitly preserve the no-1.9-publication contract"
@@ -217,10 +235,11 @@ def _verify_release_freeze(roadmap_text: str) -> None:
     if "release/pypi: frozen until swirengine 2.0" not in lowered:
         raise CheckpointError("ROADMAP_1_9.md does not preserve the explicit Release/PyPI freeze")
 
-    forbidden = []
-    for path in WORKFLOWS.glob("*.y*ml"):
-        if any(pattern.search(path.name) for pattern in FORBIDDEN_19_WORKFLOW_PATTERNS):
-            forbidden.append(path.name)
+    forbidden = [
+        path.name
+        for path in WORKFLOWS.glob("*.y*ml")
+        if any(pattern.search(path.name) for pattern in FORBIDDEN_19_WORKFLOW_PATTERNS)
+    ]
     if forbidden:
         raise CheckpointError(
             "intermediate 1.9 release/tag/publish workflows are forbidden: "
@@ -235,6 +254,15 @@ def _embeds_progress_template(text: str) -> bool:
     )
 
 
+def _verify_archived_post_release_status(status: str) -> None:
+    if ARCHIVED_POST_RELEASE_TITLE not in status or ARCHIVED_POST_RELEASE_MARKER not in status:
+        raise CheckpointError("archived post-release audit must retain its archival identity")
+    if POST_RELEASE_MINI in status or "../assets/readme/progress-mini.svg" in status:
+        raise CheckpointError("archived post-release audit must not embed an active progress mini")
+    if _embeds_progress_template(status):
+        raise CheckpointError("progress-template.svg is a template and must never be embedded as real data")
+
+
 def _verify_visual_contract() -> None:
     readme = _text(README)
     roadmap = _text(ROADMAP)
@@ -247,37 +275,42 @@ def _verify_visual_contract() -> None:
     if _embeds_progress_template(readme) or _embeds_progress_template(roadmap):
         raise CheckpointError("progress-template.svg is a template and must never be embedded as real data")
 
-    if ACTIVE_20_ROADMAP.is_file():
-        roadmap_20 = _text(ACTIVE_20_ROADMAP)
-        if not roadmap_20.startswith("<!-- SWIR-PROGRESS-SVG-PRO:v1 -->"):
-            raise CheckpointError("ROADMAP_2_0.md must retain the SVG progress standard marker")
-        if _embeds_progress_template(roadmap_20):
-            raise CheckpointError("progress-template.svg is a template and must never be embedded as real data")
-        if "assets/readme/progress-mini.svg" in roadmap:
-            raise CheckpointError("historical ROADMAP_1_9.md must not reuse the active progress mini")
+    if not ACTIVE_20_ROADMAP.is_file():
+        if roadmap.count("assets/readme/progress-mini.svg") != 1:
+            raise CheckpointError("ROADMAP_1_9.md must embed exactly one authoritative progress mini")
+        return
 
-        if _post_release_audit_active():
-            if "assets/readme/progress-mini.svg" in roadmap_20:
-                raise CheckpointError(
-                    "historical ROADMAP_2_0.md must not embed the active post-release progress mini"
-                )
-            status = _text(POST_RELEASE_STATUS)
+    roadmap_20 = _text(ACTIVE_20_ROADMAP)
+    if not roadmap_20.startswith("<!-- SWIR-PROGRESS-SVG-PRO:v1 -->"):
+        raise CheckpointError("ROADMAP_2_0.md must retain the SVG progress standard marker")
+    if _embeds_progress_template(roadmap_20):
+        raise CheckpointError("progress-template.svg is a template and must never be embedded as real data")
+    if "assets/readme/progress-mini.svg" in roadmap:
+        raise CheckpointError("historical ROADMAP_1_9.md must not reuse the active progress mini")
+
+    if _two_point_zero_published():
+        if "assets/readme/progress-mini.svg" in roadmap_20:
+            raise CheckpointError("historical ROADMAP_2_0.md must not embed the active progress mini")
+        if not POST_RELEASE_STATUS.is_file():
+            raise CheckpointError("published 2.0 history must preserve its post-release audit evidence")
+        status = _text(POST_RELEASE_STATUS)
+        if _post_release_audit_archived():
+            _verify_archived_post_release_status(status)
+        elif _post_release_audit_active():
             if status.count(POST_RELEASE_MINI) != 1:
                 raise CheckpointError(
                     "active post-release audit must embed exactly one scoped audit progress mini"
                 )
             if "../assets/readme/progress-mini.svg" in status:
-                raise CheckpointError(
-                    "active post-release audit must not reuse the active 2.1 progress mini"
-                )
+                raise CheckpointError("active post-release audit must not reuse the active 2.1 progress mini")
             if _embeds_progress_template(status):
                 raise CheckpointError(
                     "progress-template.svg is a template and must never be embedded as real data"
                 )
-        elif roadmap_20.count("assets/readme/progress-mini.svg") != 1:
-            raise CheckpointError("ROADMAP_2_0.md must embed exactly one authoritative progress mini")
-    elif roadmap.count("assets/readme/progress-mini.svg") != 1:
-        raise CheckpointError("ROADMAP_1_9.md must embed exactly one authoritative progress mini")
+        else:
+            raise CheckpointError("published 2.0 post-release audit state is neither active nor archived")
+    elif roadmap_20.count("assets/readme/progress-mini.svg") != 1:
+        raise CheckpointError("ROADMAP_2_0.md must embed exactly one authoritative progress mini")
 
 
 def _verify_readiness_audit() -> None:
@@ -385,9 +418,10 @@ def main() -> int:
     )
     if public_version == FORWARD_PUBLIC_VERSION and _two_point_zero_finalized():
         print("2.0-readiness: final release candidate")
+        print("Release/PyPI: SwirEngine 2.0 published; 1.9 remains historical source-only")
     else:
         print("2.0-readiness: N/A until the dedicated 2.0 final gate succeeds")
-    print("Release/PyPI: frozen until SwirEngine 2.0")
+        print("Release/PyPI: frozen until SwirEngine 2.0")
     return 0
 
 

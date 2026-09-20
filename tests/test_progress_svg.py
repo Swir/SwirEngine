@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 
-import tools.generate_2_0_audit_progress_svg as audit_progress
 from tools.generate_progress_svg import (
     CARD_PATH,
     COMPAT_CARD_PATH,
@@ -28,6 +27,7 @@ from tools.generate_progress_svg import (
 
 ROOT = Path(__file__).resolve().parents[1]
 README_PATH = ROOT / "README.md"
+ARCHIVED_2_0_AUDIT_PATH = ROOT / "docs" / "SWIRENGINE_2_0_POST_RELEASE_AUDIT.md"
 HISTORICAL_2_0_PATH = ROOT / "ROADMAP_2_0.md"
 HISTORICAL_1_9_PATH = ROOT / "ROADMAP_1_9.md"
 LEGACY_PROGRESS_RE = re.compile(
@@ -88,25 +88,10 @@ def test_readme_pypi_fallback_is_single_deterministic_exception() -> None:
     assert not re.search(r"[█▓▒░]", block)
 
 
-def test_post_release_audit_keeps_separate_truthful_graphic() -> None:
-    data = audit_progress.parse_progress(
-        (ROOT / audit_progress.STATUS_PATH).read_text(encoding="utf-8")
-    )
-    outputs = audit_progress.expected_outputs(data)
-
-    assert data.completed == 5
-    assert data.total == 10
-    assert data.display_percentage == "50.0%"
-    assert (
-        ROOT / audit_progress.MINI_PATH
-    ).read_text(encoding="utf-8") == outputs[audit_progress.MINI_PATH]
-    assert _gradient_fill_width(outputs[audit_progress.MINI_PATH]) == pytest.approx(350.0)
-
-
 def test_maintained_progress_surfaces_are_svg_only_nonduplicated_and_scoped() -> None:
     readme = README_PATH.read_text(encoding="utf-8")
     roadmap = (ROOT / STATUS_PATH).read_text(encoding="utf-8")
-    audit = (ROOT / audit_progress.STATUS_PATH).read_text(encoding="utf-8")
+    archived_audit = ARCHIVED_2_0_AUDIT_PATH.read_text(encoding="utf-8")
     historical_2_0 = HISTORICAL_2_0_PATH.read_text(encoding="utf-8")
     historical_1_9 = HISTORICAL_1_9_PATH.read_text(encoding="utf-8")
 
@@ -116,7 +101,7 @@ def test_maintained_progress_surfaces_are_svg_only_nonduplicated_and_scoped() ->
     for path, text in (
         (README_PATH, _without_approved_pypi_progress(readme)),
         (ROOT / STATUS_PATH, roadmap),
-        (ROOT / audit_progress.STATUS_PATH, audit),
+        (ARCHIVED_2_0_AUDIT_PATH, archived_audit),
         (HISTORICAL_2_0_PATH, historical_2_0),
         (HISTORICAL_1_9_PATH, historical_1_9),
     ):
@@ -128,10 +113,11 @@ def test_maintained_progress_surfaces_are_svg_only_nonduplicated_and_scoped() ->
     assert 'src="assets/readme/progress-mini.svg"' not in readme
     assert roadmap.count("assets/readme/progress-mini.svg") == 1
     assert "progress-card.svg" not in roadmap
-    assert audit.count("../assets/readme/progress-2-0-audit-mini.svg") == 1
-    assert "../assets/readme/progress-mini.svg" not in audit
+    assert "progress-2-0-audit-mini.svg" not in archived_audit
+    assert "progress-mini.svg" not in archived_audit
     assert "progress-mini.svg" not in historical_2_0
     assert "progress-mini.svg" not in historical_1_9
+    assert "2.0%20AUDIT" not in readme
 
 
 def test_template_is_valid_labelled_and_never_live_project_data() -> None:
