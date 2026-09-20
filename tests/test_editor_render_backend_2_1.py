@@ -12,6 +12,7 @@ import swirengine.editor_render_backend21 as render_backend_module
 from swirengine import Scene
 from swirengine.editor_render_backend21 import (
     EditorRenderBackend21,
+    EditorRenderBackendUnavailable,
     ResizableFramebufferTarget,
 )
 from swirengine.graphics.camera import Camera2D
@@ -292,7 +293,24 @@ def test_real_live_backend_captures_2d_and_3d_scenes_on_desktop_runner() -> None
             "the vendored platform wheel instead"
         )
 
-    backend = EditorRenderBackend21.create(16, 12)
+    try:
+        backend = EditorRenderBackend21.create(16, 12)
+    except EditorRenderBackendUnavailable as exc:
+        message = str(exc)
+        known_hosted_windows_gap = sys.platform.startswith("win") and os.environ.get(
+            "GITHUB_ACTIONS"
+        ) == "true" and (
+            "driver does not appear to support OpenGL" in message
+            or "Cannot detect window with OpenGL support" in message
+        )
+        if known_hosted_windows_gap:
+            pytest.skip(
+                "GitHub Windows hosted runner has no usable WGL 3.3 driver; the Windows "
+                "backend path is covered by the mocked context contract and the dedicated "
+                "CPython 3.14 packaging/runtime probe"
+            )
+        raise
+
     try:
         scene_2d = Scene()
         scene_2d.add(Rectangle2D(0.0, 0.0, 8.0, 8.0, name="Smoke2D"))
