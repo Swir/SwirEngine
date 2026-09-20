@@ -28,6 +28,7 @@ from tools.generate_progress_svg import (
 
 ROOT = Path(__file__).resolve().parents[1]
 README_PATH = ROOT / "README.md"
+GENERATOR_PATH = ROOT / "tools/generate_progress_svg.py"
 HISTORICAL_2_0_PATH = ROOT / "ROADMAP_2_0.md"
 HISTORICAL_1_9_PATH = ROOT / "ROADMAP_1_9.md"
 LEGACY_PROGRESS_RE = re.compile(
@@ -42,10 +43,6 @@ def _gradient_fill_width(svg: str) -> float | None:
         if rect.attrib.get("fill") == "url(#progressGradient)":
             return float(rect.attrib["width"])
     return None
-
-
-def _without_approved_pypi_progress(text: str) -> str:
-    return PYPI_BLOCK_RE.sub("", text)
 
 
 def test_active_2_1_math_matches_canonical_assets() -> None:
@@ -72,7 +69,7 @@ def test_active_2_1_math_matches_canonical_assets() -> None:
     assert outputs[COMPAT_MINI_PATH] == mini
 
 
-def test_readme_pypi_fallback_is_single_deterministic_exception() -> None:
+def test_readme_numeric_progress_summary_is_deterministic_and_meter_free() -> None:
     data = parse_progress((ROOT / STATUS_PATH).read_text(encoding="utf-8"))
     readme = README_PATH.read_text(encoding="utf-8")
 
@@ -81,8 +78,17 @@ def test_readme_pypi_fallback_is_single_deterministic_exception() -> None:
     match = PYPI_BLOCK_RE.search(readme)
     assert match is not None
     assert match.group(0) == render_pypi_progress(data)
-    assert "[#########---------------------] 30.0%" in match.group(0)
     assert "3 / 10 milestones" in match.group(0)
+    assert "30.0%" in match.group(0)
+    assert not LEGACY_PROGRESS_RE.search(match.group(0))
+
+
+def test_progress_generator_cannot_restore_legacy_ascii_meter() -> None:
+    generator = GENERATOR_PATH.read_text(encoding="utf-8")
+
+    assert "PYPI_BAR_WIDTH" not in generator
+    assert 'bar = "#" *' not in generator
+    assert "single marked plain-ASCII PyPI fallback" not in README_PATH.read_text(encoding="utf-8")
 
 
 def test_post_release_audit_keeps_separate_truthful_graphic() -> None:
@@ -111,7 +117,7 @@ def test_maintained_progress_surfaces_are_svg_only_nonduplicated_and_scoped() ->
     assert roadmap.startswith("<!-- SWIR-PROGRESS-SVG-PRO:v1 -->")
 
     for path, text in (
-        (README_PATH, _without_approved_pypi_progress(readme)),
+        (README_PATH, readme),
         (ROOT / STATUS_PATH, roadmap),
         (ROOT / audit_progress.STATUS_PATH, audit),
         (HISTORICAL_2_0_PATH, historical_2_0),
@@ -171,8 +177,8 @@ def test_unknown_denominator_renders_na_without_fake_progress() -> None:
     assert data.status == "N/A"
     assert "N/A" in card
     assert "N/A" in mini
-    assert "Progress: N/A" in pypi
-    assert "[" not in pypi
+    assert "N/A milestones" in pypi
+    assert not LEGACY_PROGRESS_RE.search(pypi)
     assert _gradient_fill_width(card) is None
     assert _gradient_fill_width(mini) is None
 
