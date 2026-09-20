@@ -15,6 +15,10 @@ from .editor_diagnostics import EditorConsole, EditorProfiler
 from .editor_frontend import TkEditorApp
 from .editor_project_authoring21 import EditorProjectAuthoring21
 from .editor_scene21 import EditorSceneAuthoring
+from .editor_viewport_frontend21 import (
+    EditorProductionViewportController21,
+    TkProductionViewportEditorApp21,
+)
 from .editor_workspace import EditorProjectState, EditorWorkspace
 from .profiler import Profiler
 from .project19 import ProjectManifest, ProjectManifestError
@@ -67,8 +71,9 @@ class EditorProjectSession:
 
     The session composes the existing toolkit-neutral editor models into a safe creator workflow:
     manifest validation, multi-scene authoring, portable editor-state persistence, asset browsing,
-    typed multi-selection, component/prefab authoring, diagnostics, deterministic recovery and the
-    Tk desktop shell. Scene and editor-state writes are explicit and stay inside the project root.
+    typed multi-selection, component/prefab authoring, production viewport interaction,
+    diagnostics, deterministic recovery and the Tk desktop shell. Scene and editor-state writes
+    are explicit and stay inside the project root.
     """
 
     def __init__(
@@ -137,14 +142,18 @@ class EditorProjectSession:
             project_name=manifest.name,
             asset_root="assets",
         )
+        state_restored = False
         if restore_state and state_path.is_file():
             try:
                 state = EditorProjectState.load(state_path)
                 workspace.restore_project(state, live_scene, scene_id=relative_scene)
+                state_restored = True
             except (OSError, UnicodeError, TypeError, ValueError, LookupError) as exc:
                 raise EditorProjectOpenError(
                     f"cannot restore {DEFAULT_EDITOR_STATE}: {exc}"
                 ) from exc
+        if not state_restored:
+            workspace.configure_viewport(mode=manifest.mode)
 
         asset_browser = EditorAssetBrowser(AssetManager(manifest.root / "assets"))
         console = EditorConsole()
@@ -154,7 +163,7 @@ class EditorProjectSession:
             serializer=serializer,
             asset_root=manifest.root / "assets",
         )
-        controller = EditorCreatorFrontendController21(
+        controller = EditorProductionViewportController21(
             workspace,
             authoring,
             asset_browser=asset_browser,
@@ -215,7 +224,9 @@ class EditorProjectSession:
         return state
 
     def run(self) -> None:
-        app = TkCreatorEditorApp21(
+        if not isinstance(self.controller, EditorProductionViewportController21):
+            raise RuntimeError("SwirEditor session is missing production viewport controls")
+        app = TkProductionViewportEditorApp21(
             self.controller,
             title=f"SwirEditor 2.1 — {self.manifest.name}",
         )
@@ -358,7 +369,3 @@ def main(argv: list[str] | None = None) -> int:
         print(f"SwirEditor failed: {exc}")
         return 2
     return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
