@@ -3,11 +3,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from .editor_app21 import EditorProjectOpenError, EditorProjectSession, _build_parser
-from .editor_asset_frontend21 import (
-    EditorAssetWorkflow21,
-    TkAssetPipelineEditorApp21,
-    create_editor_asset_pipeline21,
-)
+from .editor_asset_formats21 import create_format_aware_editor_asset_pipeline21
+from .editor_asset_frontend21 import EditorAssetWorkflow21, TkAssetPipelineEditorApp21
 from .editor_render_backend21 import EditorRenderBackendUnavailable
 
 
@@ -16,7 +13,7 @@ def run_editor_session21(session: EditorProjectSession) -> None:
 
     if not isinstance(session, EditorProjectSession):
         raise TypeError("session must be an EditorProjectSession")
-    backend = create_editor_asset_pipeline21(session.asset_browser.manager)
+    backend = create_format_aware_editor_asset_pipeline21(session.asset_browser.manager)
     workflow = EditorAssetWorkflow21(backend, session.asset_browser)
     try:
         try:
