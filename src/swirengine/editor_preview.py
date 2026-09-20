@@ -187,7 +187,7 @@ class EditorPreviewSession:
                 self.runtime.pause()
             else:
                 self.runtime.play()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - creator runtime failures must fail closed
             self._recover("play", exc)
         return self.runtime.mode
 
@@ -205,7 +205,7 @@ class EditorPreviewSession:
             elif self.runtime.mode is EditorRuntimeMode.PLAYING:
                 self.runtime.pause()
             stepped = self.runtime.step(dt)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - creator runtime failures must fail closed
             self._recover("step", exc)
             return False
         self._runtime_error = None
@@ -215,7 +215,7 @@ class EditorPreviewSession:
         self._sync_edit_scene()
         try:
             updated = self.runtime.update(dt)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - creator runtime failures must fail closed
             self._recover("update", exc)
             return False
         self._runtime_error = None
@@ -245,7 +245,7 @@ class EditorPreviewSession:
                 camera=active_camera,
                 mode=active_mode,
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - renderer/backend failures must fail closed
             self._image = None
             self._recover("render", exc)
             return None
@@ -258,7 +258,7 @@ class EditorPreviewSession:
         self._image = None
         try:
             self.runtime.stop()
-        except Exception as stop_exc:
+        except Exception as stop_exc:  # noqa: BLE001 - recovery must survive callback/plugin faults
             message = f"{message} (recovery callback failed: {type(stop_exc).__name__}: {stop_exc})"
             self._runtime_error = message
         self._sync_edit_scene()
