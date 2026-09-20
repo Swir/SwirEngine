@@ -4,12 +4,16 @@ from pathlib import Path
 
 import pytest
 
+from swirengine.cli import new_project
+from swirengine.editor_app21 import EditorProjectSession
 from swirengine.editor_console_navigation21 import (
     EditorSourceLocation,
     resolve_project_source,
     source_location_from_exception,
 )
 from swirengine.editor_diagnostics import EditorConsole
+from swirengine.editor_preview import DEFAULT_EDITOR_FIXED_STEP
+from swirengine.editor_runtime import EditorRuntimeMode
 
 
 def test_console_entries_preserve_structured_source_locations_and_filter_by_path() -> None:
@@ -54,6 +58,35 @@ def test_source_location_from_exception_prefers_deepest_project_frame(tmp_path: 
     assert location is not None
     assert location.path == "scripts/player.py"
     assert location.line == 2
+
+
+def test_project_runtime_error_is_routed_with_source_location(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    root = new_project("ConsoleLocation", "2d")
+    source = root / "scripts" / "player.py"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_text("def explode(_dt):\n    raise RuntimeError('project boom')\n", encoding="utf-8")
+    namespace: dict[str, object] = {}
+    exec(compile(source.read_text(encoding="utf-8"), str(source), "exec"), namespace)
+    explode = namespace["explode"]
+    assert callable(explode)
+
+    session = EditorProjectSession.open(root)
+    preview = session.controller.preview
+    assert preview is not None
+    session.console.clear()
+    monkeypatch.setattr(preview.runtime, "update", explode)
+
+    assert session.controller.play_pause() is EditorRuntimeMode.PLAYING
+    assert not session.controller.update_runtime(DEFAULT_EDITOR_FIXED_STEP)
+
+    [entry] = session.console.entries
+    assert entry.message == "Runtime update failed: RuntimeError: project boom"
+    assert entry.path == "scripts/player.py"
+    assert entry.line == 2
 
 
 def test_project_source_resolution_is_project_scoped_and_requires_a_file(tmp_path: Path) -> None:
