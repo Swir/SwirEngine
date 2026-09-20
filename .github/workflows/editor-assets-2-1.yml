@@ -1,0 +1,61 @@
+name: Editor Assets 2.1 Validation
+
+on:
+  pull_request:
+    paths:
+      - "src/swirengine/editor_asset*.py"
+      - "src/swirengine/editor_creator_frontend21.py"
+      - "tests/test_editor_asset*.py"
+      - "tools/verify_editor_asset_workflow_2_1.py"
+      - "tools/generate_progress_svg.py"
+      - ".github/workflows/editor-assets-2-1.yml"
+      - "ROADMAP_2_1.md"
+      - "README.md"
+      - "assets/readme/progress-*.svg"
+  workflow_dispatch:
+
+jobs:
+  asset-workflow-contract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Install Xvfb runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Asset workflow regression suite
+        run: >-
+          pytest -q
+          tests/test_editor_asset_pipeline_2_1.py
+          tests/test_editor_asset_frontend_2_1.py
+          tests/test_editor_asset_formats_2_1.py
+          tests/test_editor_asset_drag_drop_2_1.py
+      - name: Native TkDnD and end-to-end runtime probe
+        run: xvfb-run -a -s "-screen 0 1280x800x24" python tools/verify_editor_asset_workflow_2_1.py
+      - name: Strict Ruff gate
+        run: >-
+          ruff check
+          src/swirengine/editor_asset_pipeline21.py
+          src/swirengine/editor_asset_frontend21.py
+          src/swirengine/editor_asset_formats21.py
+          src/swirengine/editor_asset_drop21.py
+          tests/test_editor_asset_pipeline_2_1.py
+          tests/test_editor_asset_frontend_2_1.py
+          tests/test_editor_asset_formats_2_1.py
+          tests/test_editor_asset_drag_drop_2_1.py
+          tools/verify_editor_asset_workflow_2_1.py
+      - name: Compile asset workflow files
+        run: >-
+          python -m compileall -q
+          src/swirengine/editor_asset_pipeline21.py
+          src/swirengine/editor_asset_frontend21.py
+          src/swirengine/editor_asset_formats21.py
+          src/swirengine/editor_asset_drop21.py
+          tools/verify_editor_asset_workflow_2_1.py
+      - name: Progress presentation drift check
+        run: python tools/generate_progress_svg.py --check
