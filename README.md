@@ -10,7 +10,8 @@
 [![PyPI](https://img.shields.io/pypi/v/swirengine?style=for-the-badge&color=02050A&logo=pypi&logoColor=62E5FF)](https://pypi.org/project/swirengine/)
 ![Python](https://img.shields.io/badge/Python-3.10--3.14%2064--bit%20CPython%20verified%20matrix-02050A?style=for-the-badge&logo=python&logoColor=62E5FF)
 ![Status](https://img.shields.io/badge/STATUS-2.0.0%20PUBLISHED-02050A?style=for-the-badge&logoColor=62E5FF)
-![Audit](https://img.shields.io/badge/POST--RELEASE%20AUDIT-5%2F10-02050A?style=for-the-badge&logoColor=62E5FF)
+![Development](https://img.shields.io/badge/2.1%20ROADMAP-3%2F10-02050A?style=for-the-badge&logoColor=62E5FF)
+![Audit](https://img.shields.io/badge/2.0%20AUDIT-5%2F10-02050A?style=for-the-badge&logoColor=62E5FF)
 ![License](https://img.shields.io/badge/LICENSE-MIT-02050A?style=for-the-badge&logo=opensourceinitiative&logoColor=62E5FF)
 
 [![Author](https://img.shields.io/badge/Author-Swir-0088FF?style=flat-square&logo=github)](https://github.com/Swir)
@@ -18,7 +19,7 @@
 
 <br>
 
-[**Install**](#-install) · [**Quick Start**](#-quick-start) · [**Post-Release Audit**](docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md) · [**2.0 Roadmap**](ROADMAP_2_0.md) · [**Examples**](#-real-game-integration-fixtures) · [**Releases**](https://github.com/Swir/SwirEngine/releases)
+[**Install**](#-install) · [**Quick Start**](#-quick-start) · [**2.1 Roadmap**](ROADMAP_2_1.md) · [**2.0 Audit**](docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md) · [**Examples**](#-real-game-integration-fixtures) · [**Releases**](https://github.com/Swir/SwirEngine/releases)
 
 </div>
 
@@ -26,31 +27,34 @@
 
 ## 📊 Project status
 
-<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.0 post-release audit progress: 5 of 10 audit domains, 50.0%, in progress" />
+<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.1 SwirEditor and creator workflow progress: 3 of 10 milestones, 30.0%, in progress" />
 
-**Active verified scope:** SwirEngine 2.0 — Post-Release Audit & Hardening  
-**Post-release audit:** **5/10 domains = 50.0% — IN PROGRESS**  
+<!-- SWIR-PYPI-PROGRESS:START -->
+```text
+[#########---------------------] 30.0%
+3 / 10 milestones
+```
+<!-- SWIR-PYPI-PROGRESS:END -->
+
+**Active verified development scope:** SwirEngine 2.1 — SwirEditor & Creator Workflow  
+**2.1 roadmap:** **3/10 milestones = 30.0% — IN PROGRESS**  
+**2.1 beta-ready gate:** **NO**  
 **Latest public stable release:** **SwirEngine 2.0.0**  
+**2.0 post-release audit:** **5/10 domains = 50.0% — IN PROGRESS**  
 **Release date:** **2026-09-19**  
 **Release source:** immutable tag **`v2.0.0`** from commit **`3fe0ff11e09ca0b4a9abcb2b757c12514100bc59`**
 
-SwirEngine 2.0.0 is publicly released on GitHub and PyPI. Its guarded publication workflow rebuilt the
-exact tagged wheel and sdist, checked isolated artifact installs, rebuilt the Windows CPython 3.14 native
-wheel, re-ran the complete 2.0 release contract, API/platform/real-game/performance/release-safety gates,
-and then installed **only `swirengine==2.0.0` from public PyPI** for maintained quick-start, 2D and 3D smoke
-checks.
+SwirEngine 2.0.0 is publicly released on GitHub and PyPI. The public 2.0.0 package remains the stable release while source development proceeds through the dedicated [`ROADMAP_2_1.md`](ROADMAP_2_1.md). Milestones 1–3 provide the project-backed SwirEditor session, Project Hub and scene-authoring/recovery foundation. Milestone 4 is the next creator-facing gate: typed Inspector, component authoring and a complete prefab create/instantiate/apply/revert workflow.
 
-The source-development roadmap is complete and preserved as historical evidence. Active development now
-follows [`docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md`](docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md). The audit is
-intentionally conservative: publication does not mean the engine is declared perfect, and meaningful
-hardening remains until every audit domain is re-verified.
+The published 2.0 line is still being audited independently in [`docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md`](docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md). Publication does not mean literal perfection; meaningful hardening remains until every audit domain is re-verified.
 
 ## ✨ Highlights
 
-| Area | Verified 2.0 capability |
+| Area | Verified capability |
 |---|---|
 | Unified 2D + 3D | Sprite/tilemap workflows and OpenGL-backed 3D scenes under one Python-first runtime. |
 | Scenes + content | Scenes, prefabs, serialization, production scene packages, content build graphs and streaming foundations. |
+| SwirEditor 2.1 | Project-backed editor sessions, desktop launcher, New/Open/Recent Project Hub, multi-scene authoring, hierarchy editing, unsaved-change protection and deterministic recovery. |
 | Rendering | Materials, lighting, shadows, post-processing, instancing, culling, terrain/LOD and bounded transient-resource reuse. |
 | Animation | Tween/timeline/state machines, animation graphs, skeletal animation and GPU skinning paths. |
 | Physics + navigation | 2D/3D collision and rigid-body systems, character controllers, navigation and local-avoidance foundations. |
@@ -86,10 +90,7 @@ cd SwirEngine
 python -m pip install -e ".[dev]"
 ```
 
-The verified base-engine matrix covers maintained **64-bit CPython 3.10–3.14** jobs across hosted
-Windows, Linux and macOS runners. This is not a blanket claim for 32-bit Python, PyPy, free-threaded CPython,
-all CPU architectures or every optional dependency. See
-[`docs/SUPPORT_MATRIX_2_0.md`](docs/SUPPORT_MATRIX_2_0.md) for exact boundaries and non-claims.
+The verified base-engine matrix covers maintained **64-bit CPython 3.10–3.14** jobs across hosted Windows, Linux and macOS runners. This is not a blanket claim for 32-bit Python, PyPy, free-threaded CPython, all CPU architectures or every optional dependency. See [`docs/SUPPORT_MATRIX_2_0.md`](docs/SUPPORT_MATRIX_2_0.md).
 
 ## 🚀 Quick Start
 
@@ -128,57 +129,20 @@ def update(dt):
 game.run()
 ```
 
-## 🧭 Post-release hardening workflow
+## 🧭 Active development and post-release hardening
 
-The active status source is
-[`docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md`](docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md). It separates public
-release evidence from the deeper hardening still required after publication.
+SwirEngine now tracks two distinct verified scopes without conflating their percentages:
 
-The ten audit domains cover:
+- [`ROADMAP_2_1.md`](ROADMAP_2_1.md) — active **2.1 SwirEditor & Creator Workflow**, currently **3/10 = 30.0%** and **BETA READY: NO**.
+- [`docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md`](docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md) — published **2.0.0** hardening audit, currently **5/10 = 50.0%**.
 
-1. public release provenance and fresh public installation;
-2. API, migration and backwards-compatibility release floor;
-3. supported Python/platform and packaging identity;
-4. export/build integrity, diagnostics and release safety;
-5. runtime stability and resource lifecycle;
-6. rendering, assets and world-production behavior;
-7. gameplay systems and high-level creator APIs;
-8. networking and dedicated-server behavior;
-9. creator/editor/export and complete real-game usability;
-10. documentation, CI, security boundaries and audit closeout.
-
-Domains 1–5 are now verified by exact release or post-release evidence. Domains 6–10 remain active and must be closed by
-current post-release evidence. Any critical, high-severity or release-blocking regression reopens the
-applicable domain.
-
-Historical release-development detail is preserved in [`ROADMAP_2_0.md`](ROADMAP_2_0.md), which remains
-**10/10 = 100.0%** for the named source-development scope.
-
-Useful verification commands:
-
-```bash
-python tools/verify_2_0_release_candidate.py --require-final
-python tools/verify_2_0_public_api.py
-python tools/verify_platform_matrix_2_0.py
-python tools/verify_real_game_shipping_2_0.py
-python tools/verify_performance_evidence_2_0.py --validate-only
-python tools/verify_release_safety_2_0.py
-swirengine new MyGame --mode 3d
-swirengine workflow MyGame --profile windows
-swirengine workflow MyGame --json
-swirengine run MyGame --dry-run
-```
-
-For an older source project missing creator directories or editable defaults:
-
-```bash
-swirengine workflow . --prepare
-```
+Historical release-development detail remains preserved in [`ROADMAP_2_0.md`](ROADMAP_2_0.md), which is **10/10 = 100.0%** only for its named source-development scope.
 
 ### Key documentation
 
-- [`docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md`](docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md) — active post-release status
-- [`docs/SWIRENGINE_2_0_RUNTIME_LIFECYCLE_AUDIT.md`](docs/SWIRENGINE_2_0_RUNTIME_LIFECYCLE_AUDIT.md) — verified Domain 5 lifecycle evidence
+- [`ROADMAP_2_1.md`](ROADMAP_2_1.md) — active 2.1 editor/creator roadmap
+- [`docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md`](docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md) — active 2.0 post-release audit
+- [`docs/SWIRENGINE_2_0_RUNTIME_LIFECYCLE_AUDIT.md`](docs/SWIRENGINE_2_0_RUNTIME_LIFECYCLE_AUDIT.md) — verified 2.0 lifecycle evidence
 - [`ROADMAP_2_0.md`](ROADMAP_2_0.md) — historical 2.0 source-development roadmap
 - [`docs/MIGRATING_TO_2_0.md`](docs/MIGRATING_TO_2_0.md)
 - [`docs/public_api_2_0.json`](docs/public_api_2_0.json)
@@ -206,10 +170,7 @@ Representative projects are source-only engine integration fixtures and do **not
 - **Neon Cube Hunt 3D** — OpenGL + packaged-runtime regression arena
 - **Neon Snake 3D** — complete 3D regression project
 
-The maintained 2.0 shipping gate drives the 2D, 3D and multiplayer fixtures through creator preparation,
-source runtime, deterministic staged export, staged runtime, settings/save boundaries, scene/content
-integrity, UI focus/navigation/activation and privacy-safe diagnostics. Fixture failures are engine integration
-failures rather than demo-only issues.
+The maintained shipping and compatibility gates drive representative fixtures through creator preparation, source runtime, deterministic staged export, staged runtime, settings/save boundaries, scene/content integrity, UI focus/navigation/activation and privacy-safe diagnostics. Fixture failures are engine integration failures, not demo-only issues.
 
 ## 🧪 Development and verification
 
@@ -218,6 +179,8 @@ python -m pip install -e ".[dev]"
 pytest
 ruff check src tests examples demo_projects tools
 python -m compileall -q src tests examples demo_projects tools
+python tools/generate_progress_svg.py --check
+python tools/generate_2_0_audit_progress_svg.py --check
 python tools/verify_2_0_release_candidate.py --require-final
 python tools/verify_creator_workflow_2_0.py
 python tools/verify_runtime_scalability_2_0.py
@@ -227,26 +190,13 @@ python tools/verify_performance_evidence_2_0.py --output build/performance-evide
 python tools/verify_release_safety_2_0.py
 ```
 
-Progress assets are generated from the authoritative post-release audit:
-
-```bash
-python tools/generate_progress_svg.py
-python tools/generate_progress_svg.py --check
-```
-
-The generator owns one README card, one active-status mini graphic and one reusable SVG marked
-**TEMPLATE / NOT PROJECT DATA**. Only the card and mini are embedded as live progress. The SVG layer
-visualizes verified status math; it never substitutes for CI, runtime, compatibility or release evidence.
+`tools/generate_progress_svg.py` owns the canonical active-development `progress-card.svg`, `progress-mini.svg`, the labelled `progress-template.svg`, compatibility mirrors for the established 2.1 asset paths, and the single marked plain-ASCII PyPI fallback block in this README. All live progress outputs are derived from the same verified 2.1 roadmap source. The separate 2.0 audit generator owns only its audit-scoped mini graphic. Presentation tests verify source math, accessibility text, fill geometry, canonical embedding, the approved PyPI exception and legacy-meter cleanup outside that marked block.
 
 ## 🧱 Architecture and technology
 
-SwirEngine keeps a high-level Python creator surface over modular runtime systems. The repository contains
-rendering, scene/ECS, assets, serialization, physics, audio, input/UI, networking, editor, diagnostics and
-export/shipping modules with focused regression workflows. Advanced systems remain available through explicit
-APIs instead of being hidden behind one monolithic game object.
+SwirEngine keeps a high-level Python creator surface over modular runtime systems. The repository contains rendering, scene/ECS, assets, serialization, physics, audio, input/UI, networking, editor, diagnostics and export/shipping modules with focused regression workflows. Advanced systems remain available through explicit APIs instead of being hidden behind one monolithic game object.
 
-Post-release engineering is evaluated against complete games, public installation, resource lifetime,
-deterministic tooling, failure handling and shipping behavior—not feature count alone.
+Engineering quality is evaluated against complete games, public installation, resource lifetime, deterministic tooling, creator workflow, failure handling and shipping behavior—not feature count alone.
 
 ## 🔒 API and release policy
 
@@ -256,7 +206,8 @@ deterministic tooling, failure handling and shipping behavior—not feature coun
 - The 2D, 3D and multiplayer game demos remain source-only integration fixtures.
 - The published 1.5.0 `swirengine.__all__` surface remains the documented starting compatibility floor for 2.0 migration validation.
 - Breaking post-2.0 changes require explicit engineering justification, migration documentation and tests.
-- A completed historical roadmap does not imply literal perfection; active post-release audit findings take precedence.
+- SwirEngine 2.1 is source development only until its own release gate is complete; no release is implied by roadmap progress.
+- A completed historical roadmap does not imply literal perfection; active audit findings take precedence.
 
 ## 🗺 Roadmaps and active audit
 
@@ -274,22 +225,23 @@ deterministic tooling, failure handling and shipping behavior—not feature coun
 | 1.9 | [`ROADMAP_1_9.md`](ROADMAP_1_9.md) | 10/10 = 100.0%, source-only checkpoint |
 | 2.0 | [`ROADMAP_2_0.md`](ROADMAP_2_0.md) | 10/10 = 100.0%, released 2026-09-19 |
 | **2.0 post-release** | **[`docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md`](docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md)** | **5/10 = 50.0%, active audit** |
+| **2.1** | **[`ROADMAP_2_1.md`](ROADMAP_2_1.md)** | **3/10 = 30.0%, active development** |
 
 ## ⚠️ Current limitations
 
+- SwirEngine 2.1 milestones 4–10 remain open; typed Inspector/component/prefab authoring is the next major creator-workflow gap.
 - Post-release audit domains 6–10 remain open; renderer/world, gameplay, networking, creator-shipping and closeout audits still require current evidence.
 - The verified base-engine matrix covers only the maintained 64-bit hosted runner architectures exercised by CI; 32-bit Python, PyPy, free-threaded CPython and unverified architectures are not claimed.
 - Optional extras such as audio require their own dependency/runtime evidence beyond the base-engine support matrix.
 - Desktop build plans are host-native; unsupported cross-compilation is intentionally rejected.
 - The dedicated-server contract is headless and deterministic but does not claim public matchmaking, hosting infrastructure or universal transport support.
 - Cross-engine FPS, latency and memory superiority rankings remain intentionally unclaimed without an identical maintained comparison harness.
-- Visual editor ergonomics remain an explicit hardening area even though the integrated creator workflow and shipping gates are verified.
 
 ## 🔎 Search Keywords
 
 `Python game engine` · `Python 2D engine` · `Python 3D engine` · `Python multiplayer engine` ·
 `pip game engine` · `game development Python` · `OpenGL Python game engine` · `scene prefab engine` ·
-`Python ECS` · `Python physics engine` · `Python game editor` · `desktop game packaging` ·
+`Python ECS` · `Python physics engine` · `Python game editor` · `SwirEditor` · `desktop game packaging` ·
 `PyInstaller game build` · `game engine networking` · `SwirEngine`
 
 ---

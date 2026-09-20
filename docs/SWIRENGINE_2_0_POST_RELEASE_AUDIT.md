@@ -1,6 +1,6 @@
 # SwirEngine 2.0 — Post-Release Audit & Hardening
 
-<img width="100%" src="../assets/readme/progress-mini.svg" alt="SwirEngine 2.0 post-release audit progress" />
+<img width="100%" src="../assets/readme/progress-2-0-audit-mini.svg" alt="SwirEngine 2.0 post-release audit progress" />
 
 This is the authoritative active status document after the public SwirEngine 2.0.0 release. The historical source-development roadmap remains preserved in [`../ROADMAP_2_0.md`](../ROADMAP_2_0.md). Completion here means the named post-release audit scope has been verified; it does not claim literal perfection.
 

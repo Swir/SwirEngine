@@ -1,6 +1,8 @@
+<!-- SWIR-PROGRESS-SVG-PRO:v1 -->
+
 # SwirEngine 2.1 — SwirEditor & Creator Workflow Roadmap
 
-<img width="100%" src="assets/readme/progress-2-1-mini.svg" alt="SwirEngine 2.1 SwirEditor roadmap progress" />
+<img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.1 SwirEditor roadmap progress" />
 
 SwirEngine 2.1 develops the creator-facing desktop workflow in parallel with the maintained SwirEngine 2.0 post-release audit. It does not rewrite the published 2.0.0 release or its historical roadmap.
 
