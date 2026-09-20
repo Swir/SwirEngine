@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import PurePath
-from typing import Any
 
 from .editor import InspectorField
 from .editor_authoring import EditorAuthoringSession, EditorBatchPropertyResult
