@@ -4,10 +4,10 @@ import os
 import shutil
 import tempfile
 import wave
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path, PurePosixPath, PureWindowsPath
-from typing import Iterable
 
 from .asset_pipeline import (
     AssetImportDiagnostics,
