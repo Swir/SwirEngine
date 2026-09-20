@@ -177,8 +177,9 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
         checks,
     )
     _require(
-        'src="assets/readme/progress-card.svg"' in readme,
-        "README embeds the project progress card",
+        'src="assets/readme/progress-card.svg"' not in readme
+        and 'src="assets/readme/progress-mini.svg"' not in readme,
+        "README keeps project progress PyPI-safe without SVG progress embeds",
         checks,
     )
     if published_20:
