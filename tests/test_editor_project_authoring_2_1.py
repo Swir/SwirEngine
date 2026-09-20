@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import PurePosixPath
+from pathlib import Path
 
 from swirengine import Scene
 from swirengine.editor_project_authoring21 import EditorProjectAuthoring21
@@ -13,7 +13,7 @@ from swirengine.serialization import SceneCodecRegistry, SceneSerializer
 class Actor:
     name: str
     health: int = 100
-    texture: PurePosixPath = PurePosixPath("textures/default.png")
+    texture: Path = Path("textures/default.png")
 
 
 @dataclass
