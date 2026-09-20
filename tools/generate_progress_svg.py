@@ -5,30 +5,33 @@ import math
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
+from html import escape
 from pathlib import Path
 
 STATUS_PATH = Path("ROADMAP_2_1.md")
 README_PATH = Path("README.md")
+CARD_PATH = Path("assets/readme/progress-card.svg")
+MINI_PATH = Path("assets/readme/progress-mini.svg")
 TEMPLATE_PATH = Path("assets/readme/progress-template.svg")
+COMPAT_CARD_PATH = Path("assets/readme/progress-2-1-card.svg")
+COMPAT_MINI_PATH = Path("assets/readme/progress-2-1-mini.svg")
 
 PROJECT_NAME = "SwirEngine"
+MILESTONE_LABEL = "2.1 SWIREDITOR"
 MEASURED_SCOPE = "SwirEngine 2.1 — SwirEditor & Creator Workflow"
-PROGRESS_START = "<!-- SWIR-PROGRESS:BEGIN -->"
-PROGRESS_END = "<!-- SWIR-PROGRESS:END -->"
-ROADMAP_POLICY_MARKER = "<!-- SWIR-PROGRESS-TEXT:v1 -->"
-BAR_WIDTH = 10
+RELEASE_STATUS = "Source development · no SwirEngine 2.1 release published"
+PYPI_PROGRESS_START = "<!-- SWIR-PYPI-PROGRESS:START -->"
+PYPI_PROGRESS_END = "<!-- SWIR-PYPI-PROGRESS:END -->"
+PYPI_BAR_WIDTH = 30
+PYPI_BLOCK_RE = re.compile(
+    rf"{re.escape(PYPI_PROGRESS_START)}.*?{re.escape(PYPI_PROGRESS_END)}",
+    re.DOTALL,
+)
 
 MILESTONE_RE = re.compile(r"^- \[(?P<state>[ xX])\] \*\*(?P<number>\d+)\.", re.MULTILINE)
-UNICODE_METER_RE = re.compile(r"[█▓▒░]{2,}")
-GRAPHIC_PROGRESS_RE = re.compile(
-    r"(?:progress-(?:card|mini|2-1-card|2-1-mini)\.svg|"
-    r"!\[[^\]]*progress[^\]]*\]\([^)]*\)|"
-    r"<img[^>]+(?:progress-card|progress-mini|progress-2-1)[^>]*>)",
-    re.IGNORECASE,
-)
-OLD_PYPI_PROGRESS_MARKERS = (
-    "<!-- SWIR-PYPI-PROGRESS:START -->",
-    "<!-- SWIR-PYPI-PROGRESS:END -->",
+SUMMARY_RE = re.compile(
+    r"Current verified progress:\s*(?P<done>\d+)/(?P<total>\d+)\s+milestones\s*=\s*"
+    r"(?P<percent>\d+(?:\.\d+)?)%\."
 )
 
 
@@ -61,172 +64,240 @@ class ProgressData:
 
     @property
     def counter(self) -> str:
-        return "N/A milestones" if self.total <= 0 else f"{self.completed}/{self.total} milestones"
+        return "N/A milestones" if self.total <= 0 else f"{self.completed} / {self.total} milestones"
 
 
 def parse_progress(text: str, *, source: str = str(STATUS_PATH)) -> ProgressData:
     matches = list(MILESTONE_RE.finditer(text))
     if not matches:
         return ProgressData(0, 0, source)
-
     numbers = [int(match.group("number")) for match in matches]
     if len(numbers) != len(set(numbers)):
         raise ValueError("2.1 milestone numbers must be unique")
-    if numbers != sorted(numbers):
-        raise ValueError("2.1 milestone numbers must remain ordered")
 
     completed = sum(match.group("state").lower() == "x" for match in matches)
-    return ProgressData(completed, len(matches), source)
+    data = ProgressData(completed, len(matches), source)
+    summary = SUMMARY_RE.search(text)
+    if summary is None:
+        raise ValueError("2.1 roadmap is missing the verified progress summary")
+    expected = data.percentage
+    if expected is None:
+        raise ValueError("2.1 roadmap cannot have an empty denominator")
+    if int(summary.group("done")) != completed or int(summary.group("total")) != data.total:
+        raise ValueError("2.1 roadmap summary disagrees with the milestone checklist")
+    if not math.isclose(float(summary.group("percent")), expected, rel_tol=0.0, abs_tol=0.05):
+        raise ValueError("2.1 roadmap percentage disagrees with the milestone checklist")
+    return data
 
 
-def render_text_meter(data: ProgressData, *, width: int = BAR_WIDTH) -> str:
-    if width <= 0:
-        raise ValueError("progress meter width must be positive")
-    fraction = data.fraction
-    if fraction is None:
-        return "N/A"
-    if not math.isfinite(fraction) or not 0.0 <= fraction <= 1.0:
-        raise ValueError("progress fraction must be finite and between 0 and 1")
-    filled = min(width, max(0, int(fraction * width + 0.5)))
-    return f"[{'#' * filled}{'-' * (width - filled)}]"
-
-
-def render_progress_line(data: ProgressData) -> str:
-    if data.fraction is None:
-        return "**Progress:** N/A (**N/A milestones**)"
-    return (
-        f"**Progress:** `{render_text_meter(data)}` **{data.display_percentage}** "
-        f"(**{data.completed}/{data.total} milestones**)"
-    )
-
-
-def build_readme_progress_block(data: ProgressData) -> str:
-    return "\n".join(
-        (
-            PROGRESS_START,
-            f"Source: `{data.source}` · Verified scope: **{data.scope}** · Status: **{data.status}**",
-            "",
-            render_progress_line(data),
-            "",
-            "- **BETA READY: NO.**",
-            PROGRESS_END,
+def render_card(data: ProgressData) -> str:
+    width = 1100.0
+    fill_width = 0.0 if data.fraction is None else width * data.fraction
+    if not math.isfinite(fill_width) or not 0.0 <= fill_width <= width:
+        raise ValueError("computed card fill width is outside the progress track")
+    fill = ""
+    if fill_width > 0:
+        fill = (
+            f'  <rect x="50" y="125" width="{fill_width:.6f}" height="18" rx="9" '
+            'fill="url(#progressGradient)" filter="url(#softGlow)" '
+            'clip-path="url(#trackClip)" />\n'
         )
+    desc = (
+        f"{data.scope}. Status {data.status}. Verified {data.counter}. "
+        f"Source: {data.source}. {RELEASE_STATUS}."
+    )
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="180" viewBox="0 0 1200 180" role="img" aria-labelledby="title desc">
+  <title id="title">{escape(PROJECT_NAME)} 2.1 progress — {escape(data.display_percentage)}</title>
+  <desc id="desc">{escape(desc)}</desc>
+  <defs>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#02050A"/><stop offset="1" stop-color="#07111C"/>
+    </linearGradient>
+    <linearGradient id="progressGradient" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#0088FF"/><stop offset="1" stop-color="#62E5FF"/>
+    </linearGradient>
+    <filter id="softGlow" x="-10%" y="-80%" width="120%" height="260%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#62E5FF" stroke-opacity="0.035" stroke-width="1"/>
+    </pattern>
+    <clipPath id="trackClip"><rect x="50" y="125" width="1100" height="18" rx="9"/></clipPath>
+    <style>
+      text {{ font-family: "Segoe UI", Arial, sans-serif; }}
+      .label {{ fill:#62E5FF;font-size:13px;font-weight:700;letter-spacing:2px; }}
+      .project {{ fill:#F4FAFF;font-size:28px;font-weight:700; }}
+      .scope {{ fill:#8DA8B8;font-size:17px; }}
+      .meta {{ fill:#F4FAFF;font-size:14px;font-weight:600; }}
+      .release {{ fill:#8DA8B8;font-size:12px; }}
+    </style>
+  </defs>
+  <rect x="1" y="1" width="1198" height="178" rx="18" fill="url(#panel)" stroke="#0088FF" stroke-opacity="0.42"/>
+  <rect x="1" y="1" width="1198" height="178" rx="18" fill="url(#grid)"/>
+  <text x="50" y="28" class="label">SWIR PROJECT · VERIFIED DEVELOPMENT ROADMAP</text>
+  <text x="50" y="54" class="project">{escape(PROJECT_NAME)}</text>
+  <text x="50" y="82" class="scope">{escape(data.scope)}</text>
+  <text x="1150" y="38" text-anchor="end" class="project">{escape(data.display_percentage)}</text>
+  <text x="1150" y="65" text-anchor="end" class="meta">{escape(data.status)} · {escape(data.counter)}</text>
+  <rect x="50" y="125" width="1100" height="18" rx="9" fill="#07111C" stroke="#0088FF" stroke-opacity="0.45"/>
+{fill}  <text x="50" y="165" class="release">{escape(RELEASE_STATUS)}</text>
+  <text x="1150" y="165" text-anchor="end" class="release">Source: {escape(data.source)}</text>
+</svg>
+'''
+
+
+def render_mini(data: ProgressData) -> str:
+    width = 700.0
+    fill_width = 0.0 if data.fraction is None else width * data.fraction
+    if not math.isfinite(fill_width) or not 0.0 <= fill_width <= width:
+        raise ValueError("computed mini fill width is outside the progress track")
+    fill = ""
+    if fill_width > 0:
+        fill = (
+            f'  <rect x="170" y="43" width="{fill_width:.6f}" height="10" rx="5" '
+            'fill="url(#progressGradient)" clip-path="url(#trackClip)" />\n'
+        )
+    desc = f"{PROJECT_NAME}; {data.scope}; {data.display_percentage}; {data.status}; {data.counter}."
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="900" height="72" viewBox="0 0 900 72" role="img" aria-labelledby="title desc">
+  <title id="title">{escape(PROJECT_NAME)} 2.1 {escape(data.display_percentage)} — {escape(data.status)}</title>
+  <desc id="desc">{escape(desc)}</desc>
+  <defs>
+    <linearGradient id="progressGradient" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0088FF"/><stop offset="1" stop-color="#62E5FF"/></linearGradient>
+    <clipPath id="trackClip"><rect x="170" y="43" width="700" height="10" rx="5"/></clipPath>
+    <style>text {{ font-family: "Segoe UI", Arial, sans-serif; }}</style>
+  </defs>
+  <rect x="1" y="1" width="898" height="70" rx="14" fill="#02050A" stroke="#0088FF" stroke-opacity="0.42"/>
+  <text x="24" y="29" fill="#F4FAFF" font-size="18" font-weight="700">{escape(PROJECT_NAME)} · {escape(MILESTONE_LABEL)}</text>
+  <text x="870" y="29" text-anchor="end" fill="#62E5FF" font-size="18" font-weight="700">{escape(data.display_percentage)} · {escape(data.counter)}</text>
+  <text x="24" y="55" fill="#8DA8B8" font-size="12">{escape(data.status)}</text>
+  <rect x="170" y="43" width="700" height="10" rx="5" fill="#07111C" stroke="#0088FF" stroke-opacity="0.38"/>
+{fill}</svg>
+'''
+
+
+def render_template() -> str:
+    return '''<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="180" viewBox="0 0 1200 180" role="img" aria-labelledby="title desc">
+  <title id="title">SWIR Progress SVG PRO template</title>
+  <desc id="desc">Reusable visual template only. TEMPLATE / NOT PROJECT DATA. Generate live progress from an authoritative source.</desc>
+  <defs>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#02050A"/>
+      <stop offset="1" stop-color="#07111C"/>
+    </linearGradient>
+    <style>text { font-family: "Segoe UI", Arial, sans-serif; }</style>
+  </defs>
+  <rect x="1" y="1" width="1198" height="178" rx="18" fill="url(#panel)" stroke="#0088FF" stroke-opacity="0.42"/>
+  <text x="50" y="31" fill="#62E5FF" font-size="13" font-weight="700" letter-spacing="2">SWIR PROJECT · PROGRESS TEMPLATE</text>
+  <text x="50" y="67" fill="#F4FAFF" font-size="28" font-weight="700">TEMPLATE / NOT PROJECT DATA</text>
+  <text x="50" y="96" fill="#8DA8B8" font-size="16">Project, scope, status, counter and percentage are inserted by the deterministic generator.</text>
+  <rect x="50" y="125" width="1100" height="18" rx="9" fill="#07111C" stroke="#0088FF" stroke-opacity="0.42"/>
+  <text x="50" y="166" fill="#8DA8B8" font-size="12">Never embed this template as live project progress.</text>
+</svg>
+'''
+
+
+def render_pypi_progress(data: ProgressData) -> str:
+    if data.fraction is None:
+        body = "Progress: N/A\nN/A milestones"
+    else:
+        filled = min(PYPI_BAR_WIDTH, max(0, int(data.fraction * PYPI_BAR_WIDTH + 0.5)))
+        bar = "#" * filled + "-" * (PYPI_BAR_WIDTH - filled)
+        body = f"[{bar}] {data.display_percentage}\n{data.counter}"
+    return (
+        f"{PYPI_PROGRESS_START}\n"
+        "```text\n"
+        f"{body}\n"
+        "```\n"
+        f"{PYPI_PROGRESS_END}"
     )
 
 
-def build_roadmap_progress_block(data: ProgressData) -> str:
-    return "\n".join((PROGRESS_START, render_progress_line(data), PROGRESS_END))
+def _expected_readme(readme: str, data: ProgressData) -> str:
+    starts = readme.count(PYPI_PROGRESS_START)
+    ends = readme.count(PYPI_PROGRESS_END)
+    if starts != ends or starts > 1:
+        raise ValueError("README must contain at most one well-formed SWIR PyPI progress block")
+
+    block = render_pypi_progress(data)
+    if starts == 1:
+        return PYPI_BLOCK_RE.sub(block, readme, count=1)
+
+    lines = readme.splitlines()
+    anchor_index = next(
+        (
+            index
+            for index, line in enumerate(lines)
+            if 'src="assets/readme/progress-card.svg"' in line
+        ),
+        None,
+    )
+    if anchor_index is None:
+        raise ValueError("README is missing the canonical progress-card.svg embedding")
+    lines[anchor_index + 1 : anchor_index + 1] = ["", block]
+    trailing_newline = "\n" if readme.endswith("\n") else ""
+    return "\n".join(lines) + trailing_newline
 
 
-def _progress_block(text: str, *, label: str) -> str:
-    starts = text.count(PROGRESS_START)
-    ends = text.count(PROGRESS_END)
-    if starts != 1 or ends != 1:
-        raise ValueError(f"{label} must contain exactly one SWIR progress block")
-    start = text.index(PROGRESS_START)
-    end = text.index(PROGRESS_END, start) + len(PROGRESS_END)
-    return text[start:end]
+def _validate_svg(svg: str) -> None:
+    root = ET.fromstring(svg)
+    view_box = root.attrib.get("viewBox", "").split()
+    if len(view_box) != 4:
+        raise ValueError("SVG viewBox must contain four numeric values")
+    values = [float(value) for value in view_box]
+    if not all(math.isfinite(value) for value in values) or values[2] <= 0 or values[3] <= 0:
+        raise ValueError("SVG viewBox must contain finite positive dimensions")
 
 
-def _replace_progress_block(text: str, replacement: str, *, label: str) -> str:
-    current = _progress_block(text, label=label)
-    return text.replace(current, replacement, 1)
-
-
-def _validate_template() -> None:
-    if not TEMPLATE_PATH.is_file():
-        raise ValueError("progress-template.svg is required as an internal labelled template")
-    template = TEMPLATE_PATH.read_text(encoding="utf-8")
-    if "TEMPLATE / NOT PROJECT DATA" not in template:
-        raise ValueError("progress-template.svg must remain explicitly labelled TEMPLATE / NOT PROJECT DATA")
-    root = ET.fromstring(template)
-    if not root.tag.endswith("svg"):
-        raise ValueError("progress-template.svg must remain valid SVG")
-
-
-def verify_progress_presentation(readme: str, roadmap: str, data: ProgressData) -> None:
-    readme_block = _progress_block(readme, label="README.md")
-    roadmap_block = _progress_block(roadmap, label="ROADMAP_2_1.md")
-
-    if readme_block != build_readme_progress_block(data):
-        raise ValueError("README active progress block is stale")
-    if roadmap_block != build_roadmap_progress_block(data):
-        raise ValueError("ROADMAP_2_1 active progress block is stale")
-    if not roadmap.startswith(ROADMAP_POLICY_MARKER):
-        raise ValueError("ROADMAP_2_1.md is missing the SwirEngine text-progress policy marker")
-
-    for label, text in (("README.md", readme), ("ROADMAP_2_1.md", roadmap)):
-        if GRAPHIC_PROGRESS_RE.search(text):
-            raise ValueError(f"{label} must not embed graphical progress assets")
-        if UNICODE_METER_RE.search(text):
-            raise ValueError(f"{label} must not use Unicode block progress meters")
-
-    if any(marker in readme for marker in OLD_PYPI_PROGRESS_MARKERS):
-        raise ValueError("README contains the retired duplicate PyPI progress block")
-
-    meter = render_text_meter(data)
-    if meter != "N/A":
-        if readme_block.count(meter) != 1 or roadmap_block.count(meter) != 1:
-            raise ValueError("canonical text progress meter must appear exactly once per active progress block")
-
-    _validate_template()
+def expected_outputs(data: ProgressData) -> dict[Path, str]:
+    card = render_card(data)
+    mini = render_mini(data)
+    outputs = {
+        CARD_PATH: card,
+        MINI_PATH: mini,
+        TEMPLATE_PATH: render_template(),
+        COMPAT_CARD_PATH: card,
+        COMPAT_MINI_PATH: mini,
+    }
+    for value in outputs.values():
+        _validate_svg(value)
+    return outputs
 
 
 def generate(*, check: bool = False, status_path: Path = STATUS_PATH) -> int:
-    if status_path != STATUS_PATH:
-        raise ValueError("SwirEngine active progress generation only supports ROADMAP_2_1.md")
-    if not STATUS_PATH.is_file() or not README_PATH.is_file():
-        raise ValueError("README.md and ROADMAP_2_1.md are required")
+    data = parse_progress(status_path.read_text(encoding="utf-8"), source=status_path.as_posix())
+    stale: list[Path] = []
+    for path, expected in expected_outputs(data).items():
+        if check:
+            if not path.is_file() or path.read_text(encoding="utf-8") != expected:
+                stale.append(path)
+            continue
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if not path.is_file() or path.read_text(encoding="utf-8") != expected:
+            path.write_text(expected, encoding="utf-8")
 
-    roadmap = STATUS_PATH.read_text(encoding="utf-8")
-    data = parse_progress(roadmap, source=STATUS_PATH.as_posix())
+    if not README_PATH.is_file():
+        raise ValueError("README.md is required for the SwirEngine PyPI progress fallback")
     readme = README_PATH.read_text(encoding="utf-8")
-
-    expected_readme = _replace_progress_block(
-        readme,
-        build_readme_progress_block(data),
-        label="README.md",
-    )
-    expected_roadmap = _replace_progress_block(
-        roadmap,
-        build_roadmap_progress_block(data),
-        label="ROADMAP_2_1.md",
-    )
-
+    expected_readme = _expected_readme(readme, data)
     if check:
-        stale: list[Path] = []
         if readme != expected_readme:
             stale.append(README_PATH)
-        if roadmap != expected_roadmap:
-            stale.append(STATUS_PATH)
-        try:
-            verify_progress_presentation(readme, roadmap, data)
-        except ValueError as exc:
-            print(f"invalid SWIR active progress presentation: {exc}")
-            return 1
-        if stale:
-            print("stale SWIR active progress presentation:")
-            for path in stale:
-                print(f"  {path}")
-            return 1
-    else:
-        if readme != expected_readme:
-            README_PATH.write_text(expected_readme, encoding="utf-8")
-            readme = expected_readme
-        if roadmap != expected_roadmap:
-            STATUS_PATH.write_text(expected_roadmap, encoding="utf-8")
-            roadmap = expected_roadmap
-        verify_progress_presentation(readme, roadmap, data)
+    elif readme != expected_readme:
+        README_PATH.write_text(expected_readme, encoding="utf-8")
 
+    if stale:
+        print("stale SWIR active progress presentation:")
+        for path in stale:
+            print(f"  {path}")
+        return 1
     action = "verified" if check else "generated"
     print(f"{action}: {data.scope} — {data.display_percentage} ({data.counter}), {data.status}")
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="Generate deterministic text-only active SwirEngine progress presentation"
-    )
+    parser = argparse.ArgumentParser(description="Generate deterministic active SwirEngine progress presentation")
     parser.add_argument("--check", action="store_true", help="fail when committed progress output is stale")
     parser.add_argument("--status", type=Path, default=STATUS_PATH, help="authoritative active roadmap")
     args = parser.parse_args(argv)
