@@ -116,6 +116,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 libgl-dev libegl-dev
+      - name: Real OpenGL SwirEditor live 2D + 3D viewport
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          MESA_GL_VERSION_OVERRIDE: "3.3"
+        run: >-
+          xvfb-run -a python -m pytest -q
+          tests/test_editor_render_backend_2_1.py::test_real_live_backend_captures_2d_and_3d_scenes_on_desktop_runner
       - name: Real OpenGL SwirEngine 2D Game Demo
         env:
           LIBGL_ALWAYS_SOFTWARE: "1"
