@@ -27,6 +27,11 @@ PYPI_BLOCK_RE = re.compile(
     rf"{re.escape(PYPI_PROGRESS_START)}.*?{re.escape(PYPI_PROGRESS_END)}",
     re.DOTALL,
 )
+README_PROGRESS_SVG_RE = re.compile(
+    r'<img[^>\n]*src="assets/readme/progress-(?:card|mini)\.svg"[^>\n]*/?>\n*',
+    re.IGNORECASE,
+)
+README_STATUS_HEADING = "## 📊 Project status"
 
 MILESTONE_RE = re.compile(r"^- \[(?P<state>[ xX])\] \*\*(?P<number>\d+)\.", re.MULTILINE)
 SUMMARY_RE = re.compile(
@@ -219,21 +224,21 @@ def _expected_readme(readme: str, data: ProgressData) -> str:
     if starts != ends or starts > 1:
         raise ValueError("README must contain at most one well-formed SWIR PyPI progress block")
 
+    # SwirEngine's README is also rendered on PyPI, where repository SVG progress
+    # is not reliable. Keep those SVG assets for roadmap/status tooling but remove
+    # progress SVG embeds from the README itself.
+    readme = README_PROGRESS_SVG_RE.sub("", readme)
     block = render_pypi_progress(data)
     if starts == 1:
         return PYPI_BLOCK_RE.sub(block, readme, count=1)
 
     lines = readme.splitlines()
     anchor_index = next(
-        (
-            index
-            for index, line in enumerate(lines)
-            if 'src="assets/readme/progress-card.svg"' in line
-        ),
+        (index for index, line in enumerate(lines) if line.strip() == README_STATUS_HEADING),
         None,
     )
     if anchor_index is None:
-        raise ValueError("README is missing the canonical progress-card.svg embedding")
+        raise ValueError("README is missing the project status heading for ASCII progress")
     lines[anchor_index + 1 : anchor_index + 1] = ["", block]
     trailing_newline = "\n" if readme.endswith("\n") else ""
     return "\n".join(lines) + trailing_newline
@@ -277,7 +282,7 @@ def generate(*, check: bool = False, status_path: Path = STATUS_PATH) -> int:
             path.write_text(expected, encoding="utf-8")
 
     if not README_PATH.is_file():
-        raise ValueError("README.md is required for the SwirEngine PyPI progress fallback")
+        raise ValueError("README.md is required for the SwirEngine PyPI-safe ASCII progress block")
     readme = README_PATH.read_text(encoding="utf-8")
     expected_readme = _expected_readme(readme, data)
     if check:
