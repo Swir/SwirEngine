@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import os
 import sys
 from types import SimpleNamespace
@@ -159,6 +160,11 @@ def test_real_live_backend_captures_2d_scene_on_desktop_runner() -> None:
         os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")
     ):
         pytest.skip("Linux runner has no desktop display for a hidden GLFW context")
+    if importlib.util.find_spec("moderngl") is None:
+        pytest.skip(
+            "source environment has no ModernGL; Windows CPython 3.14 is validated from "
+            "the vendored platform wheel instead"
+        )
 
     backend = EditorRenderBackend21.create(16, 12)
     try:
