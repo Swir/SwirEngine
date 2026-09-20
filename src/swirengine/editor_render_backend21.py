@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from collections.abc import Callable
 from typing import Any
 
@@ -144,10 +145,14 @@ class EditorRenderBackend21:
 
     @classmethod
     def create(cls, width: int = 640, height: int = 360) -> EditorRenderBackend21:
-        """Create a hidden cross-platform OpenGL 3.3 context for editor rendering.
+        """Create a hidden cross-platform OpenGL 3.3+ context for editor rendering.
+
+        macOS exposes modern OpenGL through its forward-compatible 4.1 core profile, while
+        Windows and Linux use the engine's 3.3 core baseline. ModernGL still requires only
+        OpenGL 3.3 features, so renderer shaders and behavior remain on the shared baseline.
 
         GLFW is initialized but deliberately not globally terminated on release: SwirEngine
-        applications may own other GLFW windows in the same process.  Only the hidden editor
+        applications may own other GLFW windows in the same process. Only the hidden editor
         window and its ModernGL resources are destroyed here.
         """
 
@@ -167,14 +172,17 @@ class EditorRenderBackend21:
             if not glfw.init():
                 raise RuntimeError("GLFW initialization failed")
             glfw.window_hint(glfw.VISIBLE, glfw.FALSE)
-            glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
-            glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
+            context_major, context_minor = (4, 1) if sys.platform == "darwin" else (3, 3)
+            glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, context_major)
+            glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, context_minor)
             glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
             if hasattr(glfw, "OPENGL_FORWARD_COMPAT"):
                 glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, glfw.TRUE)
             window = glfw.create_window(16, 16, "SwirEditor Renderer", None, None)
             if window is None:
-                raise RuntimeError("cannot create hidden OpenGL 3.3 window")
+                raise RuntimeError(
+                    f"cannot create hidden OpenGL {context_major}.{context_minor} core window"
+                )
 
             def activate() -> None:
                 glfw.make_context_current(window)
