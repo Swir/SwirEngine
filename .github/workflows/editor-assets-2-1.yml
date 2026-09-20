@@ -3,12 +3,16 @@ name: Editor Assets 2.1 Validation
 on:
   pull_request:
     paths:
+      - "src/swirengine/asset_pipeline.py"
+      - "src/swirengine/assets.py"
+      - "src/swirengine/editor_assets.py"
       - "src/swirengine/editor_asset*.py"
       - "src/swirengine/editor_creator_frontend21.py"
       - "tests/test_editor_asset*.py"
       - "tools/verify_editor_asset_workflow_2_1.py"
       - "tools/generate_progress_svg.py"
       - ".github/workflows/editor-assets-2-1.yml"
+      - "pyproject.toml"
       - "ROADMAP_2_1.md"
       - "README.md"
       - "assets/readme/progress-*.svg"
@@ -22,10 +26,10 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
-      - name: Install Xvfb runtime
+      - name: Install virtual display runtime
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb
+          sudo apt-get install -y xvfb xauth
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e ".[dev]"
       - name: Asset workflow regression suite
