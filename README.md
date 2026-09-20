@@ -10,7 +10,7 @@
 [![PyPI](https://img.shields.io/pypi/v/swirengine?style=for-the-badge&color=02050A&logo=pypi&logoColor=62E5FF)](https://pypi.org/project/swirengine/)
 ![Python](https://img.shields.io/badge/Python-3.10--3.14%2064--bit%20CPython%20verified%20matrix-02050A?style=for-the-badge&logo=python&logoColor=62E5FF)
 ![Status](https://img.shields.io/badge/STATUS-2.0.0%20PUBLISHED-02050A?style=for-the-badge&logoColor=62E5FF)
-![Development](https://img.shields.io/badge/2.1%20ROADMAP-6%2F10-02050A?style=for-the-badge&logoColor=62E5FF)
+![Development](https://img.shields.io/badge/2.1-DEVELOPMENT%20ACTIVE-02050A?style=for-the-badge&logoColor=62E5FF)
 ![License](https://img.shields.io/badge/LICENSE-MIT-02050A?style=for-the-badge&logo=opensourceinitiative&logoColor=62E5FF)
 
 [![Author](https://img.shields.io/badge/Author-Swir-0088FF?style=flat-square&logo=github)](https://github.com/Swir)
@@ -26,18 +26,14 @@
 
 ## 📊 Project status
 
-<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.1 SwirEditor and creator workflow progress: 6 of 10 milestones, 60.0%, in progress" />
+<!-- SWIR-PROGRESS:BEGIN -->
+Source: `ROADMAP_2_1.md` · Verified scope: **SwirEngine 2.1 — SwirEditor & Creator Workflow** · Status: **IN PROGRESS**
 
-<!-- SWIR-PYPI-PROGRESS:START -->
-```text
-[##################------------] 60.0%
-6 / 10 milestones
-```
-<!-- SWIR-PYPI-PROGRESS:END -->
+**Progress:** `[######----]` **60.0%** (**6/10 milestones**)
 
-**Active verified development scope:** SwirEngine 2.1 — SwirEditor & Creator Workflow  
-**2.1 roadmap:** **6/10 milestones = 60.0% — IN PROGRESS**  
-**2.1 beta-ready gate:** **NO**  
+- **BETA READY: NO.**
+<!-- SWIR-PROGRESS:END -->
+
 **Latest public stable release:** **SwirEngine 2.0.0**  
 **Release date:** **2026-09-19**  
 **Release source:** immutable tag **`v2.0.0`** from commit **`3fe0ff11e09ca0b4a9abcb2b757c12514100bc59`**
@@ -186,7 +182,7 @@ python tools/verify_performance_evidence_2_0.py --output build/performance-evide
 python tools/verify_release_safety_2_0.py
 ```
 
-`tools/generate_progress_svg.py` owns the canonical active-development `progress-card.svg`, `progress-mini.svg`, the labelled `progress-template.svg`, compatibility mirrors for the established 2.1 asset paths, and the single marked plain-ASCII PyPI fallback block in this README. All live progress outputs are derived from the same verified 2.1 roadmap source. Presentation tests verify source math, accessibility text, fill geometry, canonical embedding, the approved PyPI exception and legacy-meter cleanup outside that marked block.
+`tools/generate_progress_svg.py` keeps its historical filename for CI compatibility, but the active SwirEngine policy is text-only. It deterministically derives the README and `ROADMAP_2_1.md` progress blocks from the verified milestone checklist, rejects graphical progress embeds and Unicode block meters on maintained active surfaces, and validates that the internal `progress-template.svg` remains a labelled TEMPLATE rather than live project data.
 
 ## 🧱 Architecture and technology
 
