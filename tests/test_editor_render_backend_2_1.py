@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+import os
+import sys
 from types import SimpleNamespace
 
+import pytest
+
+from swirengine import Scene
 from swirengine.editor_render_backend21 import (
     EditorRenderBackend21,
     ResizableFramebufferTarget,
 )
+from swirengine.graphics.camera import Camera2D
+from swirengine.graphics.primitives import Rectangle2D
 
 
 class FakeResource:
@@ -145,3 +152,27 @@ def test_editor_backend_release_owns_only_its_window_and_gpu_resources() -> None
     assert renderer.release_calls == 1
     assert context_release_calls == [True]
     assert glfw.destroyed == [window]
+
+
+def test_real_live_backend_captures_2d_scene_on_desktop_runner() -> None:
+    if sys.platform.startswith("linux") and not (
+        os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")
+    ):
+        pytest.skip("Linux runner has no desktop display for a hidden GLFW context")
+
+    backend = EditorRenderBackend21.create(16, 12)
+    try:
+        scene = Scene()
+        scene.add(Rectangle2D(0.0, 0.0, 8.0, 8.0, name="Smoke"))
+        image = backend.viewport.capture(
+            scene,
+            16,
+            12,
+            camera=Camera2D(),
+            mode="2d",
+        )
+        assert image.width == 16
+        assert image.height == 12
+        assert len(image.rgb) == 16 * 12 * 3
+    finally:
+        backend.release()
