@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import ast
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import PurePath
 
 from .editor import InspectorField
-from .editor_authoring import EditorAuthoringSession, EditorBatchPropertyResult
+from .editor_authoring import (
+    EditorAssetPropertyDropResult,
+    EditorAuthoringSession,
+    EditorBatchPropertyResult,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,7 +32,8 @@ class EditorTypedInspector:
     The model intentionally describes controls instead of rendering them. Native, web and in-game
     SwirEditor front-ends can therefore share the same coercion, mixed-value and editability rules.
     Mutations are delegated to ``EditorAuthoringSession`` so multi-selection stays one logical
-    undo/redo transaction.
+    undo/redo transaction. Asset-path controls additionally route through the project-relative
+    authoring guard instead of bypassing path safety with a raw property write.
     """
 
     def __init__(self, authoring: EditorAuthoringSession) -> None:
@@ -78,11 +84,20 @@ class EditorTypedInspector:
                 return field
         raise AttributeError(name)
 
-    def set(self, name: str, raw_value: object) -> EditorBatchPropertyResult:
+    def set(
+        self,
+        name: str,
+        raw_value: object,
+    ) -> EditorBatchPropertyResult | EditorAssetPropertyDropResult:
         """Validate/coerce one UI value, then update the full current selection atomically."""
         spec = self.field(name)
         if not spec.editable:
             raise AttributeError(f"property {name!r} is not editable across the current selection")
+        if spec.kind == "asset_path":
+            if not isinstance(raw_value, (str, PurePath)):
+                raise TypeError("asset path fields require a project-relative string or PurePath")
+            return self.authoring.set_asset_path(name, raw_value)
+
         targets = self.authoring.selected_targets
         converted = [self.coerce(raw_value, self._field_value(target, name)) for target in targets]
         if not converted:
@@ -145,6 +160,9 @@ class EditorTypedInspector:
                 raise TypeError("path fields require a string or PurePath")
             return type(current)(raw_value)
 
+        if isinstance(current, set) and all(isinstance(item, str) for item in current):
+            return EditorTypedInspector._coerce_tags(raw_value)
+
         if (
             isinstance(current, tuple)
             and 2 <= len(current) <= 4
@@ -153,12 +171,7 @@ class EditorTypedInspector:
                 for item in current
             )
         ):
-            if not isinstance(raw_value, (tuple, list)) or len(raw_value) != len(current):
-                raise TypeError(f"vector field requires {len(current)} numeric values")
-            return tuple(
-                float(value) if isinstance(original, float) else int(value)
-                for value, original in zip(raw_value, current, strict=True)
-            )
+            return EditorTypedInspector._coerce_vector(raw_value, current)
 
         if type(raw_value) is type(current):
             return raw_value
@@ -166,6 +179,47 @@ class EditorTypedInspector:
             f"unsupported typed conversion from {type(raw_value).__name__} "
             f"to {type(current).__name__}"
         )
+
+    @staticmethod
+    def _coerce_tags(raw_value: object) -> set[str]:
+        value = raw_value
+        if isinstance(value, str):
+            text = value.strip()
+            if not text:
+                return set()
+            if text[:1] in {"{", "[", "("}:
+                try:
+                    value = ast.literal_eval(text)
+                except (SyntaxError, ValueError) as exc:
+                    raise TypeError("tag fields require comma-separated text or string values") from exc
+            else:
+                value = tuple(part.strip() for part in text.split(",") if part.strip())
+        if not isinstance(value, (set, tuple, list)) or not all(
+            isinstance(item, str) for item in value
+        ):
+            raise TypeError("tag fields require string values")
+        return set(value)
+
+    @staticmethod
+    def _coerce_vector(raw_value: object, current: tuple[object, ...]) -> tuple[object, ...]:
+        value = raw_value
+        if isinstance(value, str):
+            try:
+                value = ast.literal_eval(value.strip())
+            except (SyntaxError, ValueError) as exc:
+                raise TypeError(f"vector field requires {len(current)} numeric values") from exc
+        if not isinstance(value, (tuple, list)) or len(value) != len(current):
+            raise TypeError(f"vector field requires {len(current)} numeric values")
+
+        converted: list[object] = []
+        for item, original in zip(value, current, strict=True):
+            if isinstance(item, bool):
+                raise TypeError("vector fields do not accept booleans")
+            try:
+                converted.append(float(item) if isinstance(original, float) else int(item))
+            except (TypeError, ValueError) as exc:
+                raise TypeError("vector fields require numeric values") from exc
+        return tuple(converted)
 
     @staticmethod
     def _kind(value: object) -> tuple[str, tuple[str, ...]]:
