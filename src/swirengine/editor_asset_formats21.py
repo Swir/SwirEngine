@@ -185,10 +185,10 @@ class FormatAwareEditorAssetPipeline21(EditorAssetPipeline21):
 
     def validate_asset(self, asset: str | Path) -> tuple[EditorAssetIssue, ...]:
         issues = list(super().validate_asset(asset))
-        base = super().preview(asset)
-        if base.suffix not in _GLTF_SUFFIXES_21:
+        suffix = Path(str(asset)).suffix.lower()
+        if suffix not in _GLTF_SUFFIXES_21 or any(issue.code == "asset_missing" for issue in issues):
             return tuple(issues)
-        source = self.manager.require(base.relative_path).expanduser().resolve()
+        source = self.manager.resolve(asset).expanduser().resolve()
         try:
             inspection = inspect_gltf21(source)
         except (OSError, ValueError) as exc:
