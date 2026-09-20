@@ -5,8 +5,53 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .asset_pipeline import AssetPipeline
+from .assets import AssetManager
+from .editor_asset_pipeline21 import (
+    EditorAssetIssue,
+    EditorAssetIssueSeverity,
+    EditorAssetPipeline21,
+    EditorAssetPreview,
+)
 from .graphics.gltf import _load_document
 from .graphics.gltf_dependencies import gltf_asset_dependencies
+
+_EDITOR_GENERIC_SUFFIXES_21 = (
+    ".bmp",
+    ".comp",
+    ".csv",
+    ".dae",
+    ".fbx",
+    ".flac",
+    ".frag",
+    ".geom",
+    ".gif",
+    ".glsl",
+    ".hdr",
+    ".jpeg",
+    ".jpg",
+    ".json",
+    ".m4a",
+    ".md",
+    ".mp3",
+    ".obj",
+    ".ogg",
+    ".otf",
+    ".png",
+    ".py",
+    ".tga",
+    ".toml",
+    ".ttf",
+    ".txt",
+    ".vert",
+    ".wav",
+    ".webp",
+    ".woff",
+    ".woff2",
+    ".yaml",
+    ".yml",
+)
+_GLTF_SUFFIXES_21 = (".gltf", ".glb")
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,3 +163,80 @@ def gltf_source_metadata21(path: Path) -> dict[str, object]:
         }
     )
     return metadata
+
+
+class FormatAwareEditorAssetPipeline21(EditorAssetPipeline21):
+    """SwirEditor pipeline with safe format-level inspection for production assets."""
+
+    def preview(self, asset: str | Path) -> EditorAssetPreview:
+        base = super().preview(asset)
+        if base.suffix not in _GLTF_SUFFIXES_21:
+            return base
+        source = self.manager.require(base.relative_path).expanduser().resolve()
+        inspection = inspect_gltf21(source)
+        return EditorAssetPreview(
+            relative_path=base.relative_path,
+            kind=base.kind,
+            suffix=base.suffix,
+            size_bytes=base.size_bytes,
+            summary=inspection.summary,
+            text=inspection.as_text(source),
+        )
+
+    def validate_asset(self, asset: str | Path) -> tuple[EditorAssetIssue, ...]:
+        issues = list(super().validate_asset(asset))
+        base = super().preview(asset)
+        if base.suffix not in _GLTF_SUFFIXES_21:
+            return tuple(issues)
+        source = self.manager.require(base.relative_path).expanduser().resolve()
+        try:
+            inspection = inspect_gltf21(source)
+        except (OSError, ValueError) as exc:
+            issues.append(
+                EditorAssetIssue(
+                    "gltf_invalid",
+                    f"Invalid glTF asset: {exc}",
+                    EditorAssetIssueSeverity.ERROR,
+                    "Fix the glTF/GLB source and reimport it.",
+                )
+            )
+            return tuple(issues)
+
+        known_missing = {issue.message for issue in issues if issue.code == "dependency_missing"}
+        for dependency in inspection.missing_dependencies:
+            message = f"Dependency is missing: {self._display_path(dependency)}"
+            if message in known_missing:
+                continue
+            issues.append(
+                EditorAssetIssue(
+                    "dependency_missing",
+                    message,
+                    EditorAssetIssueSeverity.ERROR,
+                    "Restore the referenced glTF buffer/image or update its URI and reimport.",
+                )
+            )
+        return tuple(issues)
+
+
+def create_format_aware_editor_asset_pipeline21(
+    manager: AssetManager,
+    *,
+    max_workers: int = 2,
+) -> FormatAwareEditorAssetPipeline21:
+    """Create the default 2.1 editor pipeline with real glTF dependency tracking."""
+
+    if not isinstance(manager, AssetManager):
+        raise TypeError("manager must be an AssetManager")
+    pipeline = AssetPipeline(manager, max_workers=max_workers)
+    pipeline.register_processor(
+        "editor-source-metadata",
+        suffixes=_EDITOR_GENERIC_SUFFIXES_21,
+        loader=source_metadata21,
+    )
+    pipeline.register_processor(
+        "editor-gltf-metadata",
+        suffixes=_GLTF_SUFFIXES_21,
+        loader=gltf_source_metadata21,
+        dependencies=gltf_asset_dependencies,
+    )
+    return FormatAwareEditorAssetPipeline21(manager, pipeline)
