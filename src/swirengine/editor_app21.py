@@ -173,11 +173,21 @@ class EditorProjectSession:
             console=console,
             profiler=profiler,
         )
+
+        def report_runtime_error(operation: str, exc: Exception) -> None:
+            console.write(
+                f"Runtime {operation} failed: {type(exc).__name__}: {exc}",
+                level="error",
+                source="runtime",
+            )
+
         controller.preview = EditorPreviewSession(
             workspace,
             camera_provider=lambda mode: (
                 controller.camera_3d if mode == "3d" else controller.camera_2d
             ),
+            error_sink=report_runtime_error,
+            profiler=profiler.profiler,
         )
         console.write(
             f"Opened {manifest.name} ({manifest.mode})",
