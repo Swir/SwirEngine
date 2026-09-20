@@ -57,6 +57,30 @@ def test_creator_frontend_multi_selection_uses_typed_grouped_history(tmp_path: P
     assert right.x == pytest.approx(12.5)
 
 
+def test_creator_frontend_asset_assignment_stays_project_relative(tmp_path: Path) -> None:
+    @dataclass(slots=True)
+    class Visual:
+        name: str
+        texture: Path = Path("textures/default.png")
+
+    scene = Scene()
+    visual = scene.add(Visual("Player"))
+    controller = _creator_controller(scene, tmp_path / "assets")
+    controller.select(controller.workspace.inspector.key_for(visual))
+
+    texture = next(field for field in controller.frame().inspector_fields if field.name == "texture")
+    assert texture.kind == "asset_path"
+    assert texture.display_value == "textures/default.png"
+
+    assigned = controller.edit_property("texture", "textures/player.png")
+    assert assigned == "textures/player.png"
+    assert visual.texture == Path("textures/player.png")
+
+    with pytest.raises(ValueError, match="project-relative"):
+        controller.edit_property("texture", "../outside.png")
+    assert visual.texture == Path("textures/player.png")
+
+
 def test_creator_frontend_component_actions_share_creator_history(tmp_path: Path) -> None:
     @dataclass(slots=True)
     class Health:
