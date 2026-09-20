@@ -6,6 +6,7 @@ from typing import Any
 from swirengine.editor_asset_drop21 import (
     NativeAssetDropStatus21,
     TkNativeDropAssetPipelineEditorApp21,
+    _tkinterdnd_backend21,
     install_native_asset_drop21,
     split_external_drop_paths21,
 )
@@ -21,6 +22,18 @@ class _DropTarget:
 
     def dnd_bind(self, event: str, callback: Any) -> None:
         self.bindings.append((event, callback))
+
+
+def test_tkinterdnd_backend_contract_patches_tk_widgets() -> None:
+    import tkinter
+
+    require, dnd_files, copy_action = _tkinterdnd_backend21()
+
+    assert callable(require)
+    assert dnd_files
+    assert copy_action
+    assert callable(getattr(tkinter.BaseWidget, "drop_target_register", None))
+    assert callable(getattr(tkinter.BaseWidget, "dnd_bind", None))
 
 
 def test_split_external_drop_paths_uses_tcl_list_and_deduplicates(tmp_path) -> None:
