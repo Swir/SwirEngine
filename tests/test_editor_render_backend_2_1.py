@@ -102,8 +102,43 @@ class FakeRenderer:
 
 
 class FakeGlfw:
+    VISIBLE = 1
+    FALSE = 0
+    CONTEXT_VERSION_MAJOR = 2
+    CONTEXT_VERSION_MINOR = 3
+    OPENGL_PROFILE = 4
+    OPENGL_CORE_PROFILE = 5
+    OPENGL_FORWARD_COMPAT = 6
+    TRUE = 1
+
     def __init__(self) -> None:
+        self.init_calls = 0
+        self.hints: list[tuple[int, int]] = []
+        self.created: list[object] = []
+        self.current: list[object] = []
         self.destroyed: list[object] = []
+
+    def init(self) -> bool:
+        self.init_calls += 1
+        return True
+
+    def window_hint(self, hint: int, value: int) -> None:
+        self.hints.append((hint, value))
+
+    def create_window(self, width: int, height: int, title: str, monitor, share):
+        assert (width, height, title, monitor, share) == (
+            16,
+            16,
+            "SwirEditor Renderer",
+            None,
+            None,
+        )
+        window = SimpleNamespace(name="editor")
+        self.created.append(window)
+        return window
+
+    def make_context_current(self, window: object) -> None:
+        self.current.append(window)
 
     def destroy_window(self, window: object) -> None:
         self.destroyed.append(window)
@@ -186,6 +221,7 @@ def test_editor_backend_create_uses_standalone_offscreen_context(monkeypatch) ->
         requested_versions.append(require)
         return ctx
 
+    monkeypatch.setattr(render_backend_module.sys, "platform", "darwin")
     monkeypatch.setitem(
         sys.modules,
         "moderngl",
@@ -206,6 +242,43 @@ def test_editor_backend_create_uses_standalone_offscreen_context(monkeypatch) ->
     assert renderer.release_calls == 1
     assert ctx.exit_calls == 1
     assert ctx.release_calls == 1
+
+
+def test_editor_backend_create_uses_hidden_glfw_context_off_macos(monkeypatch) -> None:
+    ctx = FakeContext()
+    renderer = FakeRenderer(ctx)
+    glfw = FakeGlfw()
+    requested_versions: list[int] = []
+    context_release_calls: list[bool] = []
+    ctx.release = lambda: context_release_calls.append(True)
+
+    def create_context(*, require: int):
+        requested_versions.append(require)
+        return ctx
+
+    monkeypatch.setattr(render_backend_module.sys, "platform", "linux")
+    monkeypatch.setitem(
+        sys.modules,
+        "moderngl",
+        SimpleNamespace(create_context=create_context),
+    )
+    monkeypatch.setitem(sys.modules, "glfw", glfw)
+    monkeypatch.setattr(render_backend_module, "Renderer", lambda *_args: renderer)
+
+    backend = EditorRenderBackend21.create(7, 5)
+
+    assert requested_versions == [330]
+    assert glfw.init_calls == 1
+    assert backend.window is glfw.created[0]
+    assert backend.glfw is glfw
+    assert glfw.current
+    assert (backend.target.width, backend.target.height) == (7, 5)
+
+    backend.release()
+
+    assert renderer.release_calls == 1
+    assert context_release_calls == [True]
+    assert glfw.destroyed == [backend.window]
 
 
 def test_real_live_backend_captures_2d_and_3d_scenes_on_desktop_runner() -> None:
