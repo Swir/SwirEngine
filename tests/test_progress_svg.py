@@ -52,9 +52,8 @@ def test_active_2_1_math_matches_canonical_assets() -> None:
     data = parse_progress((ROOT / STATUS_PATH).read_text(encoding="utf-8"))
 
     assert STATUS_PATH.as_posix() == "ROADMAP_2_1.md"
-    assert data.completed == 3
     assert data.total == 10
-    assert data.percentage == pytest.approx(30.0)
+    assert data.percentage == pytest.approx((data.completed / data.total) * 100.0)
     assert generate(check=True) == 0
 
     outputs = expected_outputs(data)
@@ -63,11 +62,11 @@ def test_active_2_1_math_matches_canonical_assets() -> None:
 
     card = outputs[CARD_PATH]
     mini = outputs[MINI_PATH]
-    assert _gradient_fill_width(card) == pytest.approx(330.0)
-    assert _gradient_fill_width(mini) == pytest.approx(210.0)
+    assert _gradient_fill_width(card) == pytest.approx(1100.0 * data.completed / data.total)
+    assert _gradient_fill_width(mini) == pytest.approx(700.0 * data.completed / data.total)
     assert "SwirEngine 2.1 — SwirEditor &amp; Creator Workflow" in card
-    assert "3 / 10 milestones" in card
-    assert "30.0%" in card
+    assert data.counter in card
+    assert data.display_percentage in card
     assert outputs[COMPAT_CARD_PATH] == card
     assert outputs[COMPAT_MINI_PATH] == mini
 
@@ -80,9 +79,13 @@ def test_readme_pypi_fallback_is_single_deterministic_exception() -> None:
     assert readme.count(PYPI_PROGRESS_END) == 1
     match = PYPI_BLOCK_RE.search(readme)
     assert match is not None
-    assert match.group(0) == render_pypi_progress(data)
-    assert "[#########---------------------] 30.0%" in match.group(0)
-    assert "3 / 10 milestones" in match.group(0)
+    block = match.group(0)
+    assert block == render_pypi_progress(data)
+    assert block.startswith(f"{PYPI_PROGRESS_START}\n```text\n")
+    assert block.endswith(f"\n```\n{PYPI_PROGRESS_END}")
+    assert data.display_percentage in block
+    assert data.counter in block
+    assert not re.search(r"[█▓▒░]", block)
 
 
 def test_post_release_audit_keeps_separate_truthful_graphic() -> None:

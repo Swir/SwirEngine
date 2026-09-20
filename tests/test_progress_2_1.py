@@ -16,7 +16,8 @@ def test_2_1_compatibility_generator_delegates_to_canonical_active_generator() -
     assert compatibility.COMPAT_MINI_PATH == canonical.COMPAT_MINI_PATH
 
     data = compatibility.parse_progress((ROOT / compatibility.STATUS_PATH).read_text(encoding="utf-8"))
-    assert data.completed == 3
     assert data.total == 10
-    assert data.display_percentage == "30.0%"
+    assert 0 <= data.completed <= data.total
+    assert data.percentage == (data.completed / data.total) * 100.0
+    assert data.display_percentage == f"{data.percentage:.1f}%"
     assert compatibility.expected_outputs(data) == canonical.expected_outputs(data)
