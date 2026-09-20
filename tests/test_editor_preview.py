@@ -34,6 +34,10 @@ class FakeFramebuffer:
     def __init__(self, payload: bytes) -> None:
         self.payload = payload
         self.calls: list[dict[str, object]] = []
+        self.use_calls = 0
+
+    def use(self) -> None:
+        self.use_calls += 1
 
     def read(self, **kwargs):
         self.calls.append(kwargs)
@@ -42,7 +46,8 @@ class FakeFramebuffer:
 
 class FakeRenderer:
     def __init__(self, framebuffer: FakeFramebuffer) -> None:
-        self.ctx = SimpleNamespace(screen=framebuffer)
+        self.ctx = SimpleNamespace(screen=framebuffer, fbo=framebuffer)
+        self.mode = "2d"
         self.resized: list[tuple[int, int]] = []
         self.rendered: list[tuple[Scene, object | None]] = []
 
@@ -73,16 +78,62 @@ def test_renderer_viewport_bridge_renders_and_flips_framebuffer_rows():
 
     assert renderer.resized == [(2, 2)]
     assert renderer.rendered == [(scene, None)]
+    assert framebuffer.use_calls == 1
     assert framebuffer.calls == [
         {"viewport": (0, 0, 2, 2), "components": 3, "alignment": 1}
     ]
     assert image.rgb == top + bottom
 
 
-def test_renderer_viewport_bridge_rejects_invalid_framebuffer_payload():
+def test_renderer_viewport_bridge_binds_target_restores_previous_and_syncs_mode_camera():
+    payload = bytes(range(12))
+    screen = FakeFramebuffer(payload)
+    target = FakeFramebuffer(payload)
+    previous = FakeFramebuffer(payload)
+    renderer = FakeRenderer(screen)
+    renderer.ctx.fbo = previous
+    bridge = RendererViewportBridge(renderer, framebuffer=target)
+    camera = object()
+    scene = Scene()
+
+    image = bridge.capture(scene, 2, 2, camera=camera, mode="3d")
+
+    assert image.width == 2
+    assert image.height == 2
+    assert renderer.mode == "3d"
+    assert renderer.rendered == [(scene, camera)]
+    assert target.use_calls == 1
+    assert previous.use_calls == 1
+    assert screen.use_calls == 0
+
+
+def test_renderer_viewport_bridge_restores_previous_framebuffer_after_render_failure():
+    payload = bytes(range(12))
+    screen = FakeFramebuffer(payload)
+    target = FakeFramebuffer(payload)
+    previous = FakeFramebuffer(payload)
+    renderer = FakeRenderer(screen)
+    renderer.ctx.fbo = previous
+
+    def fail_render(scene: Scene, *, camera=None) -> None:
+        raise RuntimeError("render failed")
+
+    renderer.render = fail_render
+    bridge = RendererViewportBridge(renderer, framebuffer=target)
+
+    with pytest.raises(RuntimeError, match="render failed"):
+        bridge.capture(Scene(), 2, 2)
+
+    assert target.use_calls == 1
+    assert previous.use_calls == 1
+
+
+def test_renderer_viewport_bridge_rejects_invalid_mode_and_framebuffer_payload():
     renderer = FakeRenderer(FakeFramebuffer(b"bad"))
     bridge = RendererViewportBridge(renderer)
 
+    with pytest.raises(ValueError, match="unsupported renderer mode"):
+        bridge.capture(Scene(), 2, 2, mode="vr")
     with pytest.raises(RuntimeError, match="unexpected RGB"):
         bridge.capture(Scene(), 2, 2)
 
@@ -133,3 +184,19 @@ def test_preview_tracks_workspace_scene_switch_while_in_edit_mode():
 
     assert runtime.edit_scene is second
     assert preview.frame().runtime.scene is second
+
+
+def test_preview_capture_forwards_active_camera_and_mode_to_bridge():
+    framebuffer = FakeFramebuffer(bytes(range(12)))
+    renderer = FakeRenderer(framebuffer)
+    bridge = RendererViewportBridge(renderer)
+    scene = Scene()
+    workspace = EditorWorkspace(scene)
+    preview = EditorPreviewSession(workspace, viewport=bridge)
+    camera = object()
+
+    image = preview.capture(2, 2, camera=camera, mode="3d")
+
+    assert image is not None
+    assert renderer.mode == "3d"
+    assert renderer.rendered[-1] == (scene, camera)

@@ -42,8 +42,8 @@ class EditorTransformGizmo:
 
     The gizmo deliberately routes every mutation through ``SceneInspector.set_property`` so
     normal undo/redo, stale-target protection and history limits stay authoritative. It supports
-    native 3D ``Vec3`` transforms and the existing 2D primitive convention (``x``/``y`` plus
-    scalar ``rotation``). Scalar ``scale`` and ``size`` are treated as uniform scaling.
+    native 3D ``Vec3`` transforms, the existing 2D primitive position/rotation convention and
+    explicit 2D width/height scaling. Scalar ``scale`` and ``size`` remain uniform scaling.
     """
 
     def __init__(self, inspector: SceneInspector) -> None:
@@ -169,6 +169,10 @@ class EditorTransformGizmo:
         size = getattr(target, "size", None)
         if EditorTransformGizmo._numeric(size):
             return float(size)
+        width = getattr(target, "width", None)
+        height = getattr(target, "height", None)
+        if EditorTransformGizmo._numeric(width) and EditorTransformGizmo._numeric(height):
+            return (float(width), float(height), 1.0)
         return None
 
     def _transform_value(
@@ -246,6 +250,18 @@ class EditorTransformGizmo:
                     raise ValueError("uniform scalar scaling requires the all axis")
                 before = float(value)
                 return property_name, before, self._snapped(before + delta, snap)
+
+        width = getattr(target, "width", None)
+        height = getattr(target, "height", None)
+        if self._numeric(width) and self._numeric(height):
+            if axis not in {"x", "y"}:
+                raise ValueError("2D dimension scaling supports x/y axes")
+            property_name = "width" if axis == "x" else "height"
+            before = float(width if axis == "x" else height)
+            after = self._snapped(before + delta, snap)
+            if after <= 0.0:
+                raise ValueError("2D dimensions must remain greater than zero")
+            return property_name, before, after
         raise TypeError("selected target does not expose a scalable transform")
 
     @staticmethod
