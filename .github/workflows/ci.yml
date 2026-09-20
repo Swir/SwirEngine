@@ -123,6 +123,7 @@ jobs:
           .\.verify314\Scripts\python.exe -m pip install --upgrade pip
           .\.verify314\Scripts\python.exe -m pip install --find-links dist "swirengine==$version"
           .\.verify314\Scripts\python.exe -c "import sys, swirengine, moderngl, glcontext; assert sys.version_info[:2] == (3, 14); assert swirengine.__version__ == '$version'; assert '_vendor_native' in moderngl.__file__; assert '_vendor_native' in glcontext.__file__; print(sys.version); print(moderngl.__file__); print(glcontext.__file__)"
+          .\.verify314\Scripts\python.exe -c "from swirengine import Scene; from swirengine.editor_render_backend21 import EditorRenderBackend21; from swirengine.graphics.camera import Camera2D; from swirengine.graphics.primitives import Rectangle2D; backend=EditorRenderBackend21.create(32,24); scene=Scene(); scene.add(Rectangle2D(0.0,0.0,16.0,12.0,name='LiveViewportProbe')); image=backend.viewport.capture(scene,32,24,camera=Camera2D(),mode='2d'); assert (image.width,image.height,len(image.rgb)) == (32,24,2304); backend.release(); print('SwirEditor live viewport probe: OK')"
           $env:SWIR_GAME_DEMO_HEADLESS = '1'
           .\.verify314\Scripts\python.exe examples/2d_game_demo/run_game.py
           .\.verify314\Scripts\python.exe examples/3d_game_demo/run_game.py
