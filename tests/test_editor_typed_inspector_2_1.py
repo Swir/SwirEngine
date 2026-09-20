@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import PurePosixPath
 
@@ -25,7 +25,9 @@ class InspectableActor:
     speed: float = 3.0
     title: str = "Actor"
     mood: Mood = Mood.IDLE
-    texture: PurePosixPath = PurePosixPath("textures/default.png")
+    texture: PurePosixPath = field(
+        default_factory=lambda: PurePosixPath("textures/default.png")
+    )
     position: tuple[float, float, float] = (0.0, 0.0, 0.0)
 
 
