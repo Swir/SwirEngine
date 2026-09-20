@@ -57,7 +57,7 @@ def test_asset_workflow_import_preview_background_and_reimport(tmp_path: Path) -
         frame = workflow.refresh()
         assert frame.selected_path == "dialogue.txt"
         assert frame.preview is not None
-        assert frame.preview.text == "first version\n"
+        assert frame.preview.text == source.read_bytes().decode("utf-8")
         assert frame.dependencies is not None
         assert frame.dependencies.dependencies == ()
         assert frame.dependencies.dependents == ()
@@ -74,7 +74,7 @@ def test_asset_workflow_import_preview_background_and_reimport(tmp_path: Path) -
         assert second.successful is True
         assert second.value["size_bytes"] == source.stat().st_size
         assert workflow.frame().preview is not None
-        assert workflow.frame().preview.text == "second version\n"
+        assert workflow.frame().preview.text == source.read_bytes().decode("utf-8")
     finally:
         workflow.shutdown()
 
