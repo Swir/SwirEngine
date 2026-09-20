@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -40,8 +41,9 @@ class RendererViewportBridge:
     """Render editor/runtime scenes and read a ModernGL framebuffer back as RGB.
 
     Explicit framebuffers are bound for the capture and the previously active framebuffer is
-    restored afterwards when the backend exposes ``Context.fbo``/``Framebuffer.use``. This keeps
-    editor preview captures isolated when the renderer shares a context with another surface.
+    restored afterwards when the backend exposes ``Context.fbo``/``Framebuffer.use``. Resizable
+    editor targets may additionally provide ``activate()``, ``resize()`` and ``owns()`` hooks.
+    This keeps captures isolated while allowing the GPU target to follow the desktop viewport.
     """
 
     def __init__(
@@ -85,8 +87,20 @@ class RendererViewportBridge:
                 self.renderer.mode = normalized_mode
 
         active_camera = self.camera if camera is None else camera
+        activate = getattr(self.framebuffer, "activate", None)
+        if callable(activate):
+            activate()
         ctx = getattr(self.renderer, "ctx", None)
         previous_framebuffer = None if ctx is None else getattr(ctx, "fbo", None)
+        owns = getattr(self.framebuffer, "owns", None)
+        previous_owned = bool(
+            previous_framebuffer is not None
+            and callable(owns)
+            and owns(previous_framebuffer)
+        )
+        resize_target = getattr(self.framebuffer, "resize", None)
+        if callable(resize_target):
+            resize_target(width, height)
         bind = getattr(self.framebuffer, "use", None)
         if callable(bind):
             bind()
@@ -99,7 +113,11 @@ class RendererViewportBridge:
                 alignment=1,
             )
         finally:
-            if previous_framebuffer is not None and previous_framebuffer is not self.framebuffer:
+            if (
+                previous_framebuffer is not None
+                and previous_framebuffer is not self.framebuffer
+                and not previous_owned
+            ):
                 restore = getattr(previous_framebuffer, "use", None)
                 if callable(restore):
                     restore()
@@ -123,6 +141,7 @@ class EditorPreviewSession:
         *,
         runtime: EditorRuntimeSession | None = None,
         viewport: RendererViewportBridge | None = None,
+        camera_provider: Callable[[str], object | None] | None = None,
     ) -> None:
         if not isinstance(workspace, EditorWorkspace):
             raise TypeError("workspace must be an EditorWorkspace")
@@ -131,6 +150,7 @@ class EditorPreviewSession:
         if self.runtime.edit_scene is not workspace.scene:
             raise ValueError("runtime edit scene must match workspace scene")
         self.viewport = viewport
+        self.camera_provider = camera_provider
         self._image: EditorViewportImage | None = None
 
     @property
@@ -178,12 +198,16 @@ class EditorPreviewSession:
             self._image = None
             return None
         self._sync_edit_scene()
+        active_mode = self.workspace.viewport.mode if mode is None else mode.strip().lower()
+        active_camera = camera
+        if active_camera is None and self.camera_provider is not None:
+            active_camera = self.camera_provider(active_mode)
         self._image = self.viewport.capture(
             self.runtime.active_scene,
             width,
             height,
-            camera=camera,
-            mode=mode,
+            camera=active_camera,
+            mode=active_mode,
         )
         return self._image
 
