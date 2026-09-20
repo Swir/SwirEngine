@@ -225,7 +225,7 @@ class EditorProjectSession:
 
     def run(self) -> None:
         if not isinstance(self.controller, EditorProductionViewportController21):
-            raise RuntimeError("SwirEditor session is missing production viewport controls")
+            raise TypeError("SwirEditor session is missing production viewport controls")
         app = TkProductionViewportEditorApp21(
             self.controller,
             title=f"SwirEditor 2.1 — {self.manifest.name}",
