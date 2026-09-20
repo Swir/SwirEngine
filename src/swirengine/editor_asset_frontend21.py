@@ -203,7 +203,7 @@ class EditorAssetWorkflow21:
             issues.extend(self.backend.validate_asset(selected))
             try:
                 preview = self.backend.preview(selected)
-                dependencies = self.backend.dependency_view(selected)
+                dependencies = self.backend.dependencies(selected)
             except (OSError, EOFError, ValueError) as exc:
                 issues.append(
                     EditorAssetIssue(
@@ -223,7 +223,7 @@ class EditorAssetWorkflow21:
         )
 
     def shutdown(self, *, wait: bool = True) -> None:
-        self.backend.shutdown(wait=wait)
+        self.backend.close(wait=wait)
 
 
 class TkAssetPipelineEditorApp21(TkProductionViewportEditorApp21):
