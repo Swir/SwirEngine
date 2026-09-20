@@ -4,15 +4,21 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-from .editor_authoring import EditorAuthoringTransaction, EditorSelectionSnapshot, SelectionMode
-from .editor_component_authoring import EditorComponentAuthoringSession, EditorComponentMutationResult
+from .editor_authoring import (
+    EditorAssetPropertyDropResult,
+    EditorAuthoringTransaction,
+    EditorBatchPropertyResult,
+    EditorSelectionSnapshot,
+    SelectionMode,
+)
+from .editor_component_authoring import EditorComponentAuthoringSession, EditorComponentResult
 from .editor_prefab_authoring import (
     EditorPrefabAsset,
     EditorPrefabAuthoring,
     EditorPrefabBinding,
     EditorPrefabInstantiation,
 )
-from .editor_typed_inspector import EditorTypedField, EditorTypedInspector, EditorTypedSetResult
+from .editor_typed_inspector import EditorTypedInspector, InspectorEditorSpec
 from .editor_workspace import EditorWorkspace
 from .serialization import SceneSerializer
 
@@ -23,7 +29,7 @@ class EditorProjectAuthoringFrame:
 
     scene_id: str
     selection: EditorSelectionSnapshot
-    fields: tuple[EditorTypedField, ...]
+    fields: tuple[InspectorEditorSpec, ...]
     prefab_assets: tuple[EditorPrefabAsset, ...]
     prefab_bindings: tuple[EditorPrefabBinding, ...]
 
@@ -118,13 +124,17 @@ class EditorProjectAuthoring21:
     def clear_selection(self) -> EditorSelectionSnapshot:
         return self.components.clear_selection()
 
-    def set_typed_property(self, name: str, value: object) -> EditorTypedSetResult:
+    def set_typed_property(
+        self,
+        name: str,
+        value: object,
+    ) -> EditorBatchPropertyResult | EditorAssetPropertyDropResult:
         return self.typed.set(name, value)
 
-    def add_component(self, component: object) -> EditorComponentMutationResult:
+    def add_component(self, component: object) -> EditorComponentResult:
         return self.components.add_component(component)
 
-    def remove_component(self, component_type: type[object]) -> EditorComponentMutationResult:
+    def remove_component(self, component_type: type[object]) -> EditorComponentResult:
         return self.components.remove_component(component_type)
 
     def create_prefab(
