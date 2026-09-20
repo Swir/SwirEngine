@@ -92,7 +92,7 @@ class EditorViewportOverlay:
         x = first_x
         while x <= right + 1e-9 and len(lines) < max_lines:
             screen = self.world_to_screen_2d(camera, Vec2(x, 0.0), width, height)
-            index = int(round(x / spacing))
+            index = round(x / spacing)
             role = "axis_y" if abs(x) <= 1e-9 else "grid_major" if index % 5 == 0 else "grid_minor"
             lines.append(ViewportOverlayLine(screen.x, 0.0, screen.x, float(height), role))
             x += spacing
@@ -101,7 +101,7 @@ class EditorViewportOverlay:
         y = first_y
         while y <= top + 1e-9 and len(lines) < max_lines:
             screen = self.world_to_screen_2d(camera, Vec2(0.0, y), width, height)
-            index = int(round(y / spacing))
+            index = round(y / spacing)
             role = "axis_x" if abs(y) <= 1e-9 else "grid_major" if index % 5 == 0 else "grid_minor"
             lines.append(ViewportOverlayLine(0.0, screen.y, float(width), screen.y, role))
             y += spacing
