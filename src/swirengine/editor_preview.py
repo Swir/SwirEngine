@@ -139,7 +139,7 @@ class EditorPreviewSession:
     """Join an editor workspace, isolated Play/Edit runtime and renderer capture pipeline.
 
     The built-in runtime uses a deterministic 60 Hz fixed step so the production editor's Step
-    control works without requiring callers to supply a delta manually. Runtime/update/render
+    control works without requiring callers to supply a delta manually. Runtime/play/render
     failures fail closed back to Edit mode, preserving the authoring scene and keeping the editor
     process alive. ``error_sink`` can route those failures to a creator-facing console.
     """
@@ -182,10 +182,13 @@ class EditorPreviewSession:
     def play_pause(self) -> EditorRuntimeMode:
         self._sync_edit_scene()
         self._runtime_error = None
-        if self.runtime.mode is EditorRuntimeMode.PLAYING:
-            self.runtime.pause()
-        else:
-            self.runtime.play()
+        try:
+            if self.runtime.mode is EditorRuntimeMode.PLAYING:
+                self.runtime.pause()
+            else:
+                self.runtime.play()
+        except Exception as exc:
+            self._recover("play", exc)
         return self.runtime.mode
 
     def stop(self) -> bool:
@@ -253,7 +256,11 @@ class EditorPreviewSession:
         message = f"Runtime {operation} failed: {type(exc).__name__}: {exc}"
         self._runtime_error = message
         self._image = None
-        self.runtime.stop()
+        try:
+            self.runtime.stop()
+        except Exception as stop_exc:
+            message = f"{message} (recovery callback failed: {type(stop_exc).__name__}: {stop_exc})"
+            self._runtime_error = message
         self._sync_edit_scene()
         if self.error_sink is not None:
             self.error_sink(operation, exc)
