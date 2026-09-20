@@ -8,6 +8,8 @@ from .core.scene import Scene
 from .editor_runtime import EditorRuntimeFrame, EditorRuntimeMode, EditorRuntimeSession
 from .editor_workspace import EditorWorkspace
 
+DEFAULT_EDITOR_FIXED_STEP = 1.0 / 60.0
+
 
 @dataclass(frozen=True, slots=True)
 class EditorViewportImage:
@@ -35,6 +37,7 @@ class EditorPreviewFrame:
 
     runtime: EditorRuntimeFrame
     image: EditorViewportImage | None
+    runtime_error: str | None = None
 
 
 class RendererViewportBridge:
@@ -133,7 +136,13 @@ class RendererViewportBridge:
 
 
 class EditorPreviewSession:
-    """Join an editor workspace, isolated Play/Edit runtime and renderer capture pipeline."""
+    """Join an editor workspace, isolated Play/Edit runtime and renderer capture pipeline.
+
+    The built-in runtime uses a deterministic 60 Hz fixed step so the production editor's Step
+    control works without requiring callers to supply a delta manually. Runtime/update/render
+    failures fail closed back to Edit mode, preserving the authoring scene and keeping the editor
+    process alive. ``error_sink`` can route those failures to a creator-facing console.
+    """
 
     def __init__(
         self,
@@ -142,26 +151,37 @@ class EditorPreviewSession:
         runtime: EditorRuntimeSession | None = None,
         viewport: RendererViewportBridge | None = None,
         camera_provider: Callable[[str], object | None] | None = None,
+        fixed_step: float = DEFAULT_EDITOR_FIXED_STEP,
+        error_sink: Callable[[str, Exception], None] | None = None,
     ) -> None:
         if not isinstance(workspace, EditorWorkspace):
             raise TypeError("workspace must be an EditorWorkspace")
+        if fixed_step <= 0:
+            raise ValueError("fixed_step must be greater than zero")
         self.workspace = workspace
-        self.runtime = runtime or EditorRuntimeSession(workspace.scene)
+        self.runtime = runtime or EditorRuntimeSession(workspace.scene, fixed_step=fixed_step)
         if self.runtime.edit_scene is not workspace.scene:
             raise ValueError("runtime edit scene must match workspace scene")
         self.viewport = viewport
         self.camera_provider = camera_provider
+        self.error_sink = error_sink
         self._image: EditorViewportImage | None = None
+        self._runtime_error: str | None = None
 
     @property
     def image(self) -> EditorViewportImage | None:
         return self._image
 
+    @property
+    def last_error(self) -> str | None:
+        return self._runtime_error
+
     def frame(self) -> EditorPreviewFrame:
-        return EditorPreviewFrame(self.runtime.frame(), self._image)
+        return EditorPreviewFrame(self.runtime.frame(), self._image, self._runtime_error)
 
     def play_pause(self) -> EditorRuntimeMode:
         self._sync_edit_scene()
+        self._runtime_error = None
         if self.runtime.mode is EditorRuntimeMode.PLAYING:
             self.runtime.pause()
         else:
@@ -174,17 +194,29 @@ class EditorPreviewSession:
         return stopped
 
     def step(self, dt: float | None = None) -> bool:
-        if self.runtime.mode is EditorRuntimeMode.EDIT:
-            self._sync_edit_scene()
-            self.runtime.play()
-            self.runtime.pause()
-        elif self.runtime.mode is EditorRuntimeMode.PLAYING:
-            self.runtime.pause()
-        return self.runtime.step(dt)
+        try:
+            if self.runtime.mode is EditorRuntimeMode.EDIT:
+                self._sync_edit_scene()
+                self.runtime.play()
+                self.runtime.pause()
+            elif self.runtime.mode is EditorRuntimeMode.PLAYING:
+                self.runtime.pause()
+            stepped = self.runtime.step(dt)
+        except Exception as exc:
+            self._recover("step", exc)
+            return False
+        self._runtime_error = None
+        return stepped
 
     def update(self, dt: float) -> bool:
         self._sync_edit_scene()
-        return self.runtime.update(dt)
+        try:
+            updated = self.runtime.update(dt)
+        except Exception as exc:
+            self._recover("update", exc)
+            return False
+        self._runtime_error = None
+        return updated
 
     def capture(
         self,
@@ -202,14 +234,29 @@ class EditorPreviewSession:
         active_camera = camera
         if active_camera is None and self.camera_provider is not None:
             active_camera = self.camera_provider(active_mode)
-        self._image = self.viewport.capture(
-            self.runtime.active_scene,
-            width,
-            height,
-            camera=active_camera,
-            mode=active_mode,
-        )
+        try:
+            self._image = self.viewport.capture(
+                self.runtime.active_scene,
+                width,
+                height,
+                camera=active_camera,
+                mode=active_mode,
+            )
+        except Exception as exc:
+            self._image = None
+            self._recover("render", exc)
+            return None
+        self._runtime_error = None
         return self._image
+
+    def _recover(self, operation: str, exc: Exception) -> None:
+        message = f"Runtime {operation} failed: {type(exc).__name__}: {exc}"
+        self._runtime_error = message
+        self._image = None
+        self.runtime.stop()
+        self._sync_edit_scene()
+        if self.error_sink is not None:
+            self.error_sink(operation, exc)
 
     def _sync_edit_scene(self) -> None:
         if self.runtime.mode is EditorRuntimeMode.EDIT and self.runtime.edit_scene is not self.workspace.scene:
