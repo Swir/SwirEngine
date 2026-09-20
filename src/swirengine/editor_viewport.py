@@ -49,8 +49,24 @@ class EditorViewportController:
         if inspector is None or viewport is None:
             raise TypeError("workspace must expose inspector and viewport")
         self.workspace = workspace
-        self.inspector = inspector
-        self.gizmo = EditorTransformGizmo(inspector)
+        self._gizmo_inspector: object | None = None
+        self._gizmo: EditorTransformGizmo | None = None
+
+    @property
+    def inspector(self):
+        """Return the current workspace inspector, including after scene switches."""
+
+        return self.workspace.inspector
+
+    @property
+    def gizmo(self) -> EditorTransformGizmo:
+        """Keep transform history bound to the current scene inspector."""
+
+        inspector = self.inspector
+        if self._gizmo is None or self._gizmo_inspector is not inspector:
+            self._gizmo = EditorTransformGizmo(inspector)
+            self._gizmo_inspector = inspector
+        return self._gizmo
 
     def screen_to_world_2d(
         self,
@@ -134,8 +150,8 @@ class EditorViewportController:
             if bounds is None:
                 continue
             point = screen_point if bool(getattr(target, "screen_space", False)) else world_point
-            center_x = float(getattr(target, "x"))
-            center_y = float(getattr(target, "y"))
+            center_x = float(target.x)
+            center_y = float(target.y)
             rotation = float(getattr(target, "rotation", 0.0))
             if not self._point_in_rotated_rect(
                 point,
@@ -225,6 +241,7 @@ class EditorViewportController:
         height: float,
     ) -> ViewportRay:
         """Build a perspective world ray from a framebuffer-space pointer."""
+
         width = self._positive_number(width, "viewport width")
         height = self._positive_number(height, "viewport height")
         x = self._number(x, "pointer x")
@@ -257,6 +274,7 @@ class EditorViewportController:
         select: bool = True,
     ) -> ViewportPick | None:
         """Pick the nearest visible mesh/cube using conservative world bounds."""
+
         ray = self.ray_from_screen(camera, x, y, width, height)
         best: ViewportPick | None = None
         for target in self.inspector.scene.objects:
@@ -299,6 +317,7 @@ class EditorViewportController:
         Each axis mutation goes through the normal gizmo/inspector path, so undo/redo stays
         authoritative. The returned tuple contains only non-zero axis edits.
         """
+
         target = self.inspector.selected_target
         if target is None:
             raise RuntimeError("no viewport target selected")
@@ -313,7 +332,9 @@ class EditorViewportController:
             depth = self._dot(position - camera.position, camera.forward)
         depth = self._positive_number(depth, "drag depth")
         world_per_pixel = (2.0 * depth * math.tan(math.radians(camera.fov) * 0.5)) / height
-        delta = camera.right * (dx * world_per_pixel) + camera.up.normalized() * (-dy * world_per_pixel)
+        delta = camera.right * (dx * world_per_pixel) + camera.up.normalized() * (
+            -dy * world_per_pixel
+        )
 
         viewport = self.workspace.viewport
         results: list[GizmoApplyResult] = []
@@ -355,14 +376,12 @@ class EditorViewportController:
 
     @staticmethod
     def _bounds_2d(target: object) -> tuple[float, float] | None:
-        if isinstance(target, Rectangle2D):
-            width = abs(float(target.width))
-            height = abs(float(target.height))
-        elif isinstance(target, Sprite2D) and target.width is not None and target.height is not None:
-            width = abs(float(target.width))
-            height = abs(float(target.height))
-        else:
+        if not isinstance(target, (Rectangle2D, Sprite2D)):
             return None
+        if isinstance(target, Sprite2D) and (target.width is None or target.height is None):
+            return None
+        width = abs(float(target.width))
+        height = abs(float(target.height))
         if width <= 0.0 or height <= 0.0:
             return None
         return (width, height)
