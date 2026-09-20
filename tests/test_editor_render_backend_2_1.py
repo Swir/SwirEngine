@@ -13,7 +13,9 @@ from swirengine.editor_render_backend21 import (
     ResizableFramebufferTarget,
 )
 from swirengine.graphics.camera import Camera2D
-from swirengine.graphics.primitives import Rectangle2D
+from swirengine.graphics.camera3d import Camera3D
+from swirengine.graphics.primitives import Cube3D, Rectangle2D
+from swirengine.math.types import Vec3
 
 
 class FakeResource:
@@ -155,7 +157,7 @@ def test_editor_backend_release_owns_only_its_window_and_gpu_resources() -> None
     assert glfw.destroyed == [window]
 
 
-def test_real_live_backend_captures_2d_scene_on_desktop_runner() -> None:
+def test_real_live_backend_captures_2d_and_3d_scenes_on_desktop_runner() -> None:
     if sys.platform.startswith("linux") and not (
         os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")
     ):
@@ -168,17 +170,26 @@ def test_real_live_backend_captures_2d_scene_on_desktop_runner() -> None:
 
     backend = EditorRenderBackend21.create(16, 12)
     try:
-        scene = Scene()
-        scene.add(Rectangle2D(0.0, 0.0, 8.0, 8.0, name="Smoke"))
-        image = backend.viewport.capture(
-            scene,
+        scene_2d = Scene()
+        scene_2d.add(Rectangle2D(0.0, 0.0, 8.0, 8.0, name="Smoke2D"))
+        image_2d = backend.viewport.capture(
+            scene_2d,
             16,
             12,
             camera=Camera2D(),
             mode="2d",
         )
-        assert image.width == 16
-        assert image.height == 12
-        assert len(image.rgb) == 16 * 12 * 3
+        assert (image_2d.width, image_2d.height, len(image_2d.rgb)) == (16, 12, 576)
+
+        scene_3d = Scene()
+        scene_3d.add(Cube3D(position=Vec3(0.0, 0.0, -3.0), name="Smoke3D"))
+        image_3d = backend.viewport.capture(
+            scene_3d,
+            20,
+            14,
+            camera=Camera3D(),
+            mode="3d",
+        )
+        assert (image_3d.width, image_3d.height, len(image_3d.rgb)) == (20, 14, 840)
     finally:
         backend.release()
