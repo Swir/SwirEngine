@@ -37,7 +37,12 @@ class EditorPreviewFrame:
 
 
 class RendererViewportBridge:
-    """Render editor/runtime scenes and read the active ModernGL framebuffer back as RGB."""
+    """Render editor/runtime scenes and read a ModernGL framebuffer back as RGB.
+
+    Explicit framebuffers are bound for the capture and the previously active framebuffer is
+    restored afterwards when the backend exposes ``Context.fbo``/``Framebuffer.use``. This keeps
+    editor preview captures isolated when the renderer shares a context with another surface.
+    """
 
     def __init__(
         self,
@@ -59,18 +64,46 @@ class RendererViewportBridge:
         self.camera = camera
         self.framebuffer = framebuffer
 
-    def capture(self, scene: Scene, width: int, height: int) -> EditorViewportImage:
+    def capture(
+        self,
+        scene: Scene,
+        width: int,
+        height: int,
+        *,
+        camera: object | None = None,
+        mode: str | None = None,
+    ) -> EditorViewportImage:
         if not isinstance(scene, Scene):
             raise TypeError("scene must be a Scene")
         width = max(1, int(width))
         height = max(1, int(height))
-        self.renderer.resize(width, height)
-        self.renderer.render(scene, camera=self.camera)
-        rgb = self.framebuffer.read(
-            viewport=(0, 0, width, height),
-            components=3,
-            alignment=1,
-        )
+        if mode is not None:
+            normalized_mode = mode.strip().lower()
+            if normalized_mode not in {"2d", "3d"}:
+                raise ValueError(f"unsupported renderer mode {mode!r}")
+            if hasattr(self.renderer, "mode"):
+                self.renderer.mode = normalized_mode
+
+        active_camera = self.camera if camera is None else camera
+        ctx = getattr(self.renderer, "ctx", None)
+        previous_framebuffer = None if ctx is None else getattr(ctx, "fbo", None)
+        bind = getattr(self.framebuffer, "use", None)
+        if callable(bind):
+            bind()
+        try:
+            self.renderer.resize(width, height)
+            self.renderer.render(scene, camera=active_camera)
+            rgb = self.framebuffer.read(
+                viewport=(0, 0, width, height),
+                components=3,
+                alignment=1,
+            )
+        finally:
+            if previous_framebuffer is not None and previous_framebuffer is not self.framebuffer:
+                restore = getattr(previous_framebuffer, "use", None)
+                if callable(restore):
+                    restore()
+
         stride = width * 3
         if len(rgb) != stride * height:
             raise RuntimeError("renderer framebuffer returned an unexpected RGB payload size")
@@ -133,12 +166,25 @@ class EditorPreviewSession:
         self._sync_edit_scene()
         return self.runtime.update(dt)
 
-    def capture(self, width: int, height: int) -> EditorViewportImage | None:
+    def capture(
+        self,
+        width: int,
+        height: int,
+        *,
+        camera: object | None = None,
+        mode: str | None = None,
+    ) -> EditorViewportImage | None:
         if self.viewport is None:
             self._image = None
             return None
         self._sync_edit_scene()
-        self._image = self.viewport.capture(self.runtime.active_scene, width, height)
+        self._image = self.viewport.capture(
+            self.runtime.active_scene,
+            width,
+            height,
+            camera=camera,
+            mode=mode,
+        )
         return self._image
 
     def _sync_edit_scene(self) -> None:
