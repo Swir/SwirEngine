@@ -58,6 +58,11 @@ class EditorCreatorFrontendController21(EditorFrontendController):
         )
         self.authoring = authoring
         self._component_factories = dict(component_factories or {})
+        self._factory_component_types: dict[str, type[object]] = {
+            name: factory
+            for name, factory in self._component_factories.items()
+            if isinstance(factory, type)
+        }
 
     @property
     def selection_count(self) -> int:
@@ -137,12 +142,14 @@ class EditorCreatorFrontendController21(EditorFrontendController):
             return ()
         existing_types = {type(component) for entity in entities for component in entity.components}
         catalog = self._component_catalog()
-        return tuple(
+        names = {
             name
-            for name, component_type in sorted(catalog.items())
+            for name, component_type in catalog.items()
             if component_type not in existing_types
             and (name in self._component_factories or self._supports_no_arg(component_type))
-        )
+        }
+        names.update(name for name in self._component_factories if name not in catalog)
+        return tuple(sorted(names))
 
     def available_remove_component_names(self) -> tuple[str, ...]:
         entities = self._selected_entities()
@@ -156,6 +163,14 @@ class EditorCreatorFrontendController21(EditorFrontendController):
     def add_component_by_name(self, name: str) -> object:
         if name in self._component_factories:
             component = self._component_factories[name]()
+            component_type = type(component)
+            known_type = self._factory_component_types.get(name)
+            if known_type is not None and known_type is not component_type:
+                raise TypeError(
+                    f"component factory {name!r} returned {component_type.__name__}; "
+                    f"expected {known_type.__name__}"
+                )
+            self._factory_component_types[name] = component_type
         else:
             catalog = self._component_catalog()
             try:
@@ -227,12 +242,7 @@ class EditorCreatorFrontendController21(EditorFrontendController):
             for component in entity.components:
                 component_type = type(component)
                 catalog[self._component_name(component_type)] = component_type
-        for name, factory in self._component_factories.items():
-            try:
-                sample = factory()
-            except Exception:
-                continue
-            catalog[name] = type(sample)
+        catalog.update(self._factory_component_types)
         return catalog
 
     @staticmethod
