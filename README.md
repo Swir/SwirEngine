@@ -26,11 +26,10 @@
 
 ## 📊 Project status
 
-<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.1 SwirEditor and creator workflow progress: 5 of 10 milestones, 50.0%, in progress" />
 
 <!-- SWIR-PYPI-PROGRESS:START -->
 ```text
-[###############---------------] 50.0%
+[##########----------] 50.0%
 5 / 10 milestones
 ```
 <!-- SWIR-PYPI-PROGRESS:END -->
@@ -186,7 +185,7 @@ python tools/verify_performance_evidence_2_0.py --output build/performance-evide
 python tools/verify_release_safety_2_0.py
 ```
 
-`tools/generate_progress_svg.py` owns the canonical active-development `progress-card.svg`, `progress-mini.svg`, the labelled `progress-template.svg`, compatibility mirrors for the established 2.1 asset paths, and the single marked plain-ASCII PyPI fallback block in this README. All live progress outputs are derived from the same verified 2.1 roadmap source. Presentation tests verify source math, accessibility text, fill geometry, canonical embedding, the approved PyPI exception and legacy-meter cleanup outside that marked block.
+`tools/generate_progress_svg.py` keeps its historical filename for workflow compatibility, but SwirEngine now uses **ASCII/text progress only** in README and the active roadmap. The generator derives the text block directly from the verified 2.1 milestone checklist and CI rejects any reintroduced graphical progress-card/progress-mini embedding.
 
 ## 🧱 Architecture and technology
 
