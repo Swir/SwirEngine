@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import importlib.util
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 
@@ -14,6 +16,14 @@ from swirengine.editor_console_navigation21 import (
 from swirengine.editor_diagnostics import EditorConsole
 from swirengine.editor_preview import DEFAULT_EDITOR_FIXED_STEP
 from swirengine.editor_runtime import EditorRuntimeMode
+
+
+def _load_source_module(source: Path, name: str) -> ModuleType:
+    spec = importlib.util.spec_from_file_location(name, source)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def test_console_entries_preserve_structured_source_locations_and_filter_by_path() -> None:
@@ -46,10 +56,9 @@ def test_source_location_from_exception_prefers_deepest_project_frame(tmp_path: 
     source = tmp_path / "scripts" / "player.py"
     source.parent.mkdir(parents=True)
     source.write_text("def boom():\n    raise RuntimeError('boom')\nboom()\n", encoding="utf-8")
-    namespace: dict[str, object] = {}
 
     try:
-        exec(compile(source.read_text(encoding="utf-8"), str(source), "exec"), namespace)
+        _load_source_module(source, "_swir_console_location_boom")
     except RuntimeError as exc:
         location = source_location_from_exception(tmp_path, exc)
     else:  # pragma: no cover - defensive guard for the fixture itself
@@ -69,9 +78,8 @@ def test_project_runtime_error_is_routed_with_source_location(
     source = root / "scripts" / "player.py"
     source.parent.mkdir(parents=True, exist_ok=True)
     source.write_text("def explode(_dt):\n    raise RuntimeError('project boom')\n", encoding="utf-8")
-    namespace: dict[str, object] = {}
-    exec(compile(source.read_text(encoding="utf-8"), str(source), "exec"), namespace)
-    explode = namespace["explode"]
+    module = _load_source_module(source, "_swir_console_location_player")
+    explode = getattr(module, "explode")
     assert callable(explode)
 
     session = EditorProjectSession.open(root)
