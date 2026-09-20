@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from collections.abc import Callable
 from typing import Any
 
@@ -146,42 +147,73 @@ class EditorRenderBackend21:
 
     @classmethod
     def create(cls, width: int = 640, height: int = 360) -> EditorRenderBackend21:
-        """Create an isolated headless OpenGL 3.3+ context for editor rendering.
+        """Create an isolated OpenGL 3.3+ context for the offscreen editor viewport.
 
-        The live editor viewport is an offscreen framebuffer, so it does not need to own a
-        hidden GLFW window. ModernGL's standalone context path is purpose-built for this
-        workload and delegates platform context creation to glcontext (WGL on Windows, X11
-        on Linux and CGL on macOS). Keeping the editor context windowless avoids coupling
-        framebuffer capture to the desktop window system while preserving the engine's
-        OpenGL 3.3 renderer baseline.
+        Windows and Linux use a hidden GLFW 3.3 core context because that path is reliable
+        on desktop drivers and hosted WGL/GLX runners. macOS uses ModernGL's standalone CGL
+        context path, avoiding NSGL hidden-window pixel-format failures seen on hosted Apple
+        runners. Both paths render into the same resizable offscreen framebuffer and keep the
+        SwirEngine renderer on its shared OpenGL 3.3 shader/runtime baseline.
         """
 
         try:
             import moderngl
         except ImportError as exc:  # pragma: no cover - package installation failure
             raise EditorRenderBackendUnavailable(
-                "live viewport requires the moderngl headless runtime dependencies"
+                "live viewport requires the moderngl runtime dependency"
             ) from exc
 
         ctx: Any = None
         target: ResizableFramebufferTarget | None = None
         renderer: Renderer | None = None
         deactivate: Callable[[], None] | None = None
+        window: object | None = None
+        glfw_module: Any | None = None
+        activate: Callable[[], None] | None = None
         try:
-            ctx = moderngl.create_standalone_context(require=330)
+            if sys.platform == "darwin":
+                ctx = moderngl.create_standalone_context(require=330)
 
-            def activate() -> None:
-                enter = getattr(ctx, "__enter__", None)
-                if callable(enter):
-                    enter()
+                def activate_standalone() -> None:
+                    enter = getattr(ctx, "__enter__", None)
+                    if callable(enter):
+                        enter()
 
-            def deactivate_context() -> None:
-                exit_context = getattr(ctx, "__exit__", None)
-                if callable(exit_context):
-                    exit_context(None, None, None)
+                def deactivate_standalone() -> None:
+                    exit_context = getattr(ctx, "__exit__", None)
+                    if callable(exit_context):
+                        exit_context(None, None, None)
 
-            deactivate = deactivate_context
+                activate = activate_standalone
+                deactivate = deactivate_standalone
+            else:
+                try:
+                    import glfw
+                except ImportError as exc:
+                    raise RuntimeError(
+                        "live viewport requires the glfw runtime dependency on this platform"
+                    ) from exc
+                glfw_module = glfw
+                if not glfw.init():
+                    raise RuntimeError("GLFW initialization failed")
+                glfw.window_hint(glfw.VISIBLE, glfw.FALSE)
+                glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
+                glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
+                glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
+                if hasattr(glfw, "OPENGL_FORWARD_COMPAT"):
+                    glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, glfw.TRUE)
+                window = glfw.create_window(16, 16, "SwirEditor Renderer", None, None)
+                if window is None:
+                    raise RuntimeError("cannot create hidden OpenGL 3.3 core window")
+
+                def activate_glfw() -> None:
+                    glfw.make_context_current(window)
+
+                activate = activate_glfw
+
             activate()
+            if sys.platform != "darwin":
+                ctx = moderngl.create_context(require=330)
             target = ResizableFramebufferTarget(ctx, width, height, activate=activate)
             renderer = Renderer(ctx, max(1, int(width)), max(1, int(height)))
             return cls(
@@ -189,11 +221,10 @@ class EditorRenderBackend21:
                 renderer=renderer,
                 target=target,
                 deactivate=deactivate,
+                window=window,
+                glfw_module=glfw_module,
             )
         except Exception as exc:
-            activate_existing = getattr(ctx, "__enter__", None)
-            if callable(activate_existing):
-                activate_existing()
             if renderer is not None:
                 release = getattr(renderer, "release", None)
                 if callable(release):
@@ -205,6 +236,8 @@ class EditorRenderBackend21:
             release_ctx = getattr(ctx, "release", None)
             if callable(release_ctx):
                 release_ctx()
+            if glfw_module is not None and window is not None:
+                glfw_module.destroy_window(window)
             raise EditorRenderBackendUnavailable(
                 f"cannot initialize live SwirEditor viewport: {exc}"
             ) from exc
