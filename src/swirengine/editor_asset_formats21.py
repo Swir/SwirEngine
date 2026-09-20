@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -8,6 +9,7 @@ from typing import Any
 from .asset_pipeline import AssetPipeline
 from .assets import AssetManager
 from .editor_asset_pipeline21 import (
+    EditorAssetImportTicket,
     EditorAssetIssue,
     EditorAssetIssueSeverity,
     EditorAssetPipeline21,
@@ -167,6 +169,47 @@ def gltf_source_metadata21(path: Path) -> dict[str, object]:
 
 class FormatAwareEditorAssetPipeline21(EditorAssetPipeline21):
     """SwirEditor pipeline with safe format-level inspection for production assets."""
+
+    def import_paths(
+        self,
+        paths: Iterable[str | Path],
+        *,
+        destination_folder: str | Path = "",
+        overwrite: bool = False,
+        submit: bool = True,
+    ) -> tuple[EditorAssetImportTicket, ...]:
+        """Copy a whole drop batch before scheduling dependency-aware processing.
+
+        A glTF file may refer to buffers or images that belong to the same dropped directory. Copying
+        every source first prevents a background import from observing those dependencies halfway
+        through the batch and being correctly rejected by the runtime stale-input guard.
+        """
+
+        tickets = super().import_paths(
+            paths,
+            destination_folder=destination_folder,
+            overwrite=overwrite,
+            submit=False,
+        )
+        if not submit:
+            return tickets
+
+        submitted: list[EditorAssetImportTicket] = []
+        for ticket in tickets:
+            request = None
+            if self.processor_for(ticket.relative_path) is not None:
+                request = self.pipeline.submit(ticket.relative_path, force=True)
+            submitted.append(
+                EditorAssetImportTicket(
+                    ticket.relative_path,
+                    ticket.source,
+                    ticket.destination,
+                    request,
+                    ticket.copied,
+                    ticket.issues,
+                )
+            )
+        return tuple(submitted)
 
     def preview(self, asset: str | Path) -> EditorAssetPreview:
         base = super().preview(asset)
