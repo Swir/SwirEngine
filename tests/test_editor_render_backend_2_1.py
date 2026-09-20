@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 from swirengine import Scene
+import swirengine.editor_render_backend21 as render_backend_module
 from swirengine.editor_render_backend21 import (
     EditorRenderBackend21,
     ResizableFramebufferTarget,
@@ -62,6 +63,24 @@ class FakeContext:
         resource = FakeResource(bytes(range(18)))
         self.framebuffers.append(resource)
         return resource
+
+
+class FakeStandaloneContext(FakeContext):
+    def __init__(self) -> None:
+        super().__init__()
+        self.enter_calls = 0
+        self.exit_calls = 0
+        self.release_calls = 0
+
+    def __enter__(self) -> FakeStandaloneContext:
+        self.enter_calls += 1
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.exit_calls += 1
+
+    def release(self) -> None:
+        self.release_calls += 1
 
 
 class FakeRenderer:
@@ -157,11 +176,42 @@ def test_editor_backend_release_owns_only_its_window_and_gpu_resources() -> None
     assert glfw.destroyed == [window]
 
 
+def test_editor_backend_create_uses_standalone_offscreen_context(monkeypatch) -> None:
+    ctx = FakeStandaloneContext()
+    renderer = FakeRenderer(ctx)
+    requested_versions: list[int] = []
+
+    def create_standalone_context(*, require: int):
+        requested_versions.append(require)
+        return ctx
+
+    monkeypatch.setitem(
+        sys.modules,
+        "moderngl",
+        SimpleNamespace(create_standalone_context=create_standalone_context),
+    )
+    monkeypatch.setattr(render_backend_module, "Renderer", lambda *_args: renderer)
+
+    backend = EditorRenderBackend21.create(6, 4)
+
+    assert requested_versions == [330]
+    assert backend.window is None
+    assert backend.glfw is None
+    assert (backend.target.width, backend.target.height) == (6, 4)
+    assert ctx.enter_calls >= 1
+
+    backend.release()
+
+    assert renderer.release_calls == 1
+    assert ctx.exit_calls == 1
+    assert ctx.release_calls == 1
+
+
 def test_real_live_backend_captures_2d_and_3d_scenes_on_desktop_runner() -> None:
     if sys.platform.startswith("linux") and not (
         os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")
     ):
-        pytest.skip("Linux runner has no desktop display for a hidden GLFW context")
+        pytest.skip("Linux runner has no desktop display for the standalone X11 context")
     if importlib.util.find_spec("moderngl") is None:
         pytest.skip(
             "source environment has no ModernGL; Windows CPython 3.14 is validated from "
