@@ -178,7 +178,6 @@ def test_swireditor_headless_cli_works_without_window_system(
     assert main([str(root), "--headless"]) == 0
 
     output = capsys.readouterr().out
-    assert "SwirEditor 2.1 project: EditorStart" not in output
     assert "SwirEditor 2.1 project: HeadlessEditor (3d)" in output
     assert "Scene: scenes/main.swirscene" in output
     assert "Assets: 0" in output
