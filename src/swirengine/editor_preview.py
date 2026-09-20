@@ -7,6 +7,7 @@ from typing import Any
 from .core.scene import Scene
 from .editor_runtime import EditorRuntimeFrame, EditorRuntimeMode, EditorRuntimeSession
 from .editor_workspace import EditorWorkspace
+from .profiler import Profiler
 
 DEFAULT_EDITOR_FIXED_STEP = 1.0 / 60.0
 
@@ -141,7 +142,8 @@ class EditorPreviewSession:
     The built-in runtime uses a deterministic 60 Hz fixed step so the production editor's Step
     control works without requiring callers to supply a delta manually. Runtime/play/render
     failures fail closed back to Edit mode, preserving the authoring scene and keeping the editor
-    process alive. ``error_sink`` can route those failures to a creator-facing console.
+    process alive. ``error_sink`` can route those failures to a creator-facing console, while an
+    optional ``profiler`` records successful runtime ticks for the live Profiler panel.
     """
 
     def __init__(
@@ -153,11 +155,14 @@ class EditorPreviewSession:
         camera_provider: Callable[[str], object | None] | None = None,
         fixed_step: float = DEFAULT_EDITOR_FIXED_STEP,
         error_sink: Callable[[str, Exception], None] | None = None,
+        profiler: Profiler | None = None,
     ) -> None:
         if not isinstance(workspace, EditorWorkspace):
             raise TypeError("workspace must be an EditorWorkspace")
         if fixed_step <= 0:
             raise ValueError("fixed_step must be greater than zero")
+        if profiler is not None and not isinstance(profiler, Profiler):
+            raise TypeError("profiler must be a Profiler")
         self.workspace = workspace
         self.runtime = runtime or EditorRuntimeSession(workspace.scene, fixed_step=fixed_step)
         if self.runtime.edit_scene is not workspace.scene:
@@ -165,6 +170,7 @@ class EditorPreviewSession:
         self.viewport = viewport
         self.camera_provider = camera_provider
         self.error_sink = error_sink
+        self.profiler = profiler
         self._image: EditorViewportImage | None = None
         self._runtime_error: str | None = None
 
@@ -204,7 +210,15 @@ class EditorPreviewSession:
                 self.runtime.pause()
             elif self.runtime.mode is EditorRuntimeMode.PLAYING:
                 self.runtime.pause()
-            stepped = self.runtime.step(dt)
+            elapsed_before = self.runtime.elapsed
+            if self.profiler is None:
+                stepped = self.runtime.step(dt)
+            else:
+                self.profiler.begin_frame()
+                with self.profiler.measure("update"):
+                    stepped = self.runtime.step(dt)
+                if stepped:
+                    self.profiler.end_frame(self.runtime.elapsed - elapsed_before)
         except Exception as exc:  # noqa: BLE001 - creator runtime failures must fail closed
             self._recover("step", exc)
             return False
@@ -213,8 +227,18 @@ class EditorPreviewSession:
 
     def update(self, dt: float) -> bool:
         self._sync_edit_scene()
+        profiling = self.profiler is not None and self.runtime.mode is EditorRuntimeMode.PLAYING
+        elapsed_before = self.runtime.elapsed
         try:
-            updated = self.runtime.update(dt)
+            if not profiling:
+                updated = self.runtime.update(dt)
+            else:
+                assert self.profiler is not None
+                self.profiler.begin_frame()
+                with self.profiler.measure("update"):
+                    updated = self.runtime.update(dt)
+                if updated:
+                    self.profiler.end_frame(self.runtime.elapsed - elapsed_before)
         except Exception as exc:  # noqa: BLE001 - creator runtime failures must fail closed
             self._recover("update", exc)
             return False
