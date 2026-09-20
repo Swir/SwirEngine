@@ -3,8 +3,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from .editor_app21 import EditorProjectOpenError, EditorProjectSession, _build_parser
+from .editor_asset_drop21 import TkNativeDropAssetPipelineEditorApp21
 from .editor_asset_formats21 import create_format_aware_editor_asset_pipeline21
-from .editor_asset_frontend21 import EditorAssetWorkflow21, TkAssetPipelineEditorApp21
+from .editor_asset_frontend21 import EditorAssetWorkflow21
 from .editor_render_backend21 import EditorRenderBackendUnavailable
 
 
@@ -20,7 +21,7 @@ def run_editor_session21(session: EditorProjectSession) -> None:
             session.enable_live_viewport()
         except EditorRenderBackendUnavailable as exc:
             session.console.write(str(exc), level="warning", source="renderer")
-        app = TkAssetPipelineEditorApp21(
+        app = TkNativeDropAssetPipelineEditorApp21(
             session.controller,
             workflow,
             title=f"SwirEditor 2.1 — {session.manifest.name}",
