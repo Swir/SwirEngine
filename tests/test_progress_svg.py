@@ -17,6 +17,7 @@ from tools.generate_progress_svg import (
     STATUS_PATH,
     TEMPLATE_PATH,
     ProgressData,
+    _expected_readme,
     expected_outputs,
     generate,
     parse_progress,
@@ -71,7 +72,7 @@ def test_active_2_1_math_matches_canonical_assets() -> None:
     assert outputs[COMPAT_MINI_PATH] == mini
 
 
-def test_readme_pypi_fallback_is_single_deterministic_exception() -> None:
+def test_readme_ascii_progress_is_single_deterministic_pypi_safe_surface() -> None:
     data = parse_progress((ROOT / STATUS_PATH).read_text(encoding="utf-8"))
     readme = README_PATH.read_text(encoding="utf-8")
 
@@ -86,9 +87,28 @@ def test_readme_pypi_fallback_is_single_deterministic_exception() -> None:
     assert data.display_percentage in block
     assert data.counter in block
     assert not re.search(r"[█▓▒░]", block)
+    assert 'src="assets/readme/progress-card.svg"' not in readme
+    assert 'src="assets/readme/progress-mini.svg"' not in readme
 
 
-def test_maintained_progress_surfaces_are_svg_only_nonduplicated_and_scoped() -> None:
+def test_generator_removes_progress_svg_embed_and_restores_ascii_block() -> None:
+    data = ProgressData(6, 10, "ROADMAP_2_1.md")
+    legacy = (
+        "## 📊 Project status\n\n"
+        '<img width="100%" src="assets/readme/progress-card.svg" alt="progress" />\n\n'
+        "Other status text.\n"
+    )
+
+    expected = _expected_readme(legacy, data)
+
+    assert 'src="assets/readme/progress-card.svg"' not in expected
+    assert expected.count(PYPI_PROGRESS_START) == 1
+    assert expected.count(PYPI_PROGRESS_END) == 1
+    assert render_pypi_progress(data) in expected
+    assert "Other status text." in expected
+
+
+def test_maintained_progress_surfaces_are_nonduplicated_and_scoped() -> None:
     readme = README_PATH.read_text(encoding="utf-8")
     roadmap = (ROOT / STATUS_PATH).read_text(encoding="utf-8")
     archived_audit = ARCHIVED_2_0_AUDIT_PATH.read_text(encoding="utf-8")
@@ -109,8 +129,8 @@ def test_maintained_progress_surfaces_are_svg_only_nonduplicated_and_scoped() ->
         assert 'src="assets/readme/progress-template.svg"' not in text
         assert 'src="../assets/readme/progress-template.svg"' not in text
 
-    assert readme.count("assets/readme/progress-card.svg") == 1
-    assert 'src="assets/readme/progress-mini.svg"' not in readme
+    assert "assets/readme/progress-card.svg" not in readme
+    assert "assets/readme/progress-mini.svg" not in readme
     assert roadmap.count("assets/readme/progress-mini.svg") == 1
     assert "progress-card.svg" not in roadmap
     assert "progress-2-0-audit-mini.svg" not in archived_audit
