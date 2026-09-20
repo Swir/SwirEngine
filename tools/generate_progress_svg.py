@@ -22,7 +22,6 @@ MEASURED_SCOPE = "SwirEngine 2.1 — SwirEditor & Creator Workflow"
 RELEASE_STATUS = "Source development · no SwirEngine 2.1 release published"
 PYPI_PROGRESS_START = "<!-- SWIR-PYPI-PROGRESS:START -->"
 PYPI_PROGRESS_END = "<!-- SWIR-PYPI-PROGRESS:END -->"
-PYPI_BAR_WIDTH = 30
 PYPI_BLOCK_RE = re.compile(
     rf"{re.escape(PYPI_PROGRESS_START)}.*?{re.escape(PYPI_PROGRESS_END)}",
     re.DOTALL,
@@ -198,17 +197,9 @@ def render_template() -> str:
 
 
 def render_pypi_progress(data: ProgressData) -> str:
-    if data.fraction is None:
-        body = "Progress: N/A\nN/A milestones"
-    else:
-        filled = min(PYPI_BAR_WIDTH, max(0, int(data.fraction * PYPI_BAR_WIDTH + 0.5)))
-        bar = "#" * filled + "-" * (PYPI_BAR_WIDTH - filled)
-        body = f"[{bar}] {data.display_percentage}\n{data.counter}"
     return (
         f"{PYPI_PROGRESS_START}\n"
-        "```text\n"
-        f"{body}\n"
-        "```\n"
+        f"SwirEngine 2.1 progress: **{data.counter} ({data.display_percentage})**.\n"
         f"{PYPI_PROGRESS_END}"
     )
 
