@@ -26,12 +26,7 @@
 
 ## 📊 Project status
 
-<!-- SWIR-PYPI-PROGRESS:START -->
-```text
-[#####################---------] 70.0%
-7 / 10 milestones
-```
-<!-- SWIR-PYPI-PROGRESS:END -->
+![SwirEngine 2.1 verified progress](assets/readme/progress-card.svg)
 
 **Active verified development scope:** SwirEngine 2.1 — SwirEditor & Creator Workflow  
 **2.1 roadmap:** **7/10 milestones = 70.0% — IN PROGRESS**  
@@ -183,7 +178,7 @@ python tools/verify_performance_evidence_2_0.py --output build/performance-evide
 python tools/verify_release_safety_2_0.py
 ```
 
-`tools/generate_progress_svg.py` keeps the canonical active-development SVG assets synchronized for roadmap/status tooling while this README deliberately uses one deterministic plain-ASCII progress block so the same status renders correctly on GitHub and PyPI. All progress outputs are derived from the same verified 2.1 roadmap source. Presentation tests verify source math, accessibility text, SVG fill geometry, the ASCII README contract and that no progress SVG is embedded in this README.
+`tools/generate_progress_svg.py` deterministically derives the README progress card and authoritative-roadmap mini card from the verified 2.1 milestone source, while preserving the TEMPLATE asset as non-live data. Presentation validation requires exactly one card in this README, exactly one mini card in the active roadmap, rejects legacy ASCII/Unicode progress meters and prevents the template from being embedded as project data.
 
 ## 🧱 Architecture and technology
 
