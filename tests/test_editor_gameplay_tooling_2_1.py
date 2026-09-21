@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from swirengine.cli import new_project
+from swirengine.editor_app21 import EditorProjectSession
 from swirengine.editor_gameplay_tooling21 import (
     EditorGameplayTooling21,
     EditorGameplayToolingError,
@@ -61,6 +63,33 @@ def test_gameplay_tooling_authors_runtime_input_and_settings_end_to_end(
     assert runtime.settings.display.max_fps == 144
     assert runtime.settings.accessibility.subtitles is True
     assert runtime.settings.accessibility.text_scale == 1.25
+
+
+def test_editor_project_save_persists_gameplay_configuration(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    root = new_project("EditorGameplay", "2d")
+    session = EditorProjectSession.open(root)
+
+    assert session.gameplay.dirty is False
+    session.gameplay.bind_key("pause", "p")
+    session.gameplay.update_display(width=1600, height=900)
+    assert session.summary().dirty is True
+
+    session.save()
+
+    assert session.gameplay.dirty is False
+    runtime = ProjectShippingDefaults.load(root)
+    assert runtime.actions.bindings("pause") == (InputBinding("key", "p"),)
+    assert runtime.settings.display.width == 1600
+    assert runtime.settings.display.height == 900
+
+    reopened = EditorProjectSession.open(root)
+    assert reopened.gameplay.actions.bindings("pause") == (InputBinding("key", "p"),)
+    assert reopened.gameplay.settings.display.width == 1600
+    assert reopened.summary().dirty is False
 
 
 def test_gameplay_tooling_reload_discards_unsaved_editor_changes(tmp_path: Path) -> None:
