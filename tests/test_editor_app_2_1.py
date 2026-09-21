@@ -92,6 +92,39 @@ def test_editor_session_routes_runtime_failures_to_production_console(
     assert preview.last_error == entries[0].message
 
 
+def test_editor_session_exercises_milestone_7_play_debug_contract(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    root = new_project("EditorMilestone7", "2d")
+    session = EditorProjectSession.open(root)
+    preview = session.controller.preview
+
+    assert preview is not None
+    frame = session.controller.frame()
+    assert frame.console is not None
+    assert frame.profiler is not None
+    assert frame.preview is not None
+    assert preview.runtime.mode is EditorRuntimeMode.EDIT
+
+    assert session.controller.play_pause() is EditorRuntimeMode.PLAYING
+    assert session.controller.update_runtime(DEFAULT_EDITOR_FIXED_STEP)
+    assert session.controller.play_pause() is EditorRuntimeMode.PAUSED
+    first_sample_count = session.profiler.frame().sample_count
+    assert first_sample_count == 1
+
+    assert session.controller.step()
+    assert preview.runtime.mode is EditorRuntimeMode.PAUSED
+    assert session.profiler.frame().sample_count == first_sample_count + 1
+
+    assert session.controller.stop()
+    assert preview.runtime.mode is EditorRuntimeMode.EDIT
+    final_frame = session.controller.frame()
+    assert final_frame.preview is not None
+    assert final_frame.preview.runtime.mode is EditorRuntimeMode.EDIT
+
+
 def test_editor_session_saves_scene_and_portable_editor_state(
     tmp_path: Path,
     monkeypatch,
