@@ -150,11 +150,11 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
 
     _require(
         readme.count(PYPI_PROGRESS_START) == 1 and readme.count(PYPI_PROGRESS_END) == 1,
-        "README keeps exactly one approved deterministic PyPI progress fallback",
+        "README keeps exactly one deterministic SVG progress block",
         checks,
     )
     presentation_surfaces = [
-        ("README", _without_approved_pypi_progress(readme)),
+        ("README", readme),
         ("2.0 roadmap", roadmap_text),
     ]
     if published_20 and post_release_status:
@@ -177,9 +177,18 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
         checks,
     )
     _require(
-        'src="assets/readme/progress-card.svg"' not in readme
-        and 'src="assets/readme/progress-mini.svg"' not in readme,
-        "README keeps project progress PyPI-safe without SVG progress embeds",
+        readme.count('src="assets/readme/progress-card.svg"') == 1,
+        "README embeds exactly one canonical progress card SVG",
+        checks,
+    )
+    _require(
+        'src="assets/readme/progress-mini.svg"' not in readme,
+        "README does not duplicate the active progress mini",
+        checks,
+    )
+    _require(
+        'src="assets/readme/progress-template.svg"' not in readme,
+        "README never embeds the progress template as live data",
         checks,
     )
     if published_20:

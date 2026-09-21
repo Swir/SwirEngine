@@ -15,6 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ROADMAP = ROOT / "ROADMAP_1_9.md"
 ACTIVE_20_ROADMAP = ROOT / "ROADMAP_2_0.md"
+ACTIVE_21_ROADMAP = ROOT / "ROADMAP_2_1.md"
 POST_RELEASE_STATUS = ROOT / "docs" / "SWIRENGINE_2_0_POST_RELEASE_AUDIT.md"
 README = ROOT / "README.md"
 PYPROJECT = ROOT / "pyproject.toml"
@@ -36,6 +37,9 @@ PROGRESS_RE = re.compile(
     re.IGNORECASE,
 )
 VERSION_RE = re.compile(r'^version\s*=\s*"([^"]+)"\s*$', re.MULTILINE)
+LEGACY_PROGRESS_RE = re.compile(
+    r"(?:[█▓▒░■□]{5,}|\[(?=[^\]\n]*[#=█▓▒░])(?:[#=█▓▒░ .-]){6,}\])"
+)
 
 REQUIRED_19_FILES = (
     "src/swirengine/project19.py",
@@ -197,10 +201,7 @@ def _post_release_audit_archived() -> bool:
     if not _two_point_zero_published() or not POST_RELEASE_STATUS.is_file():
         return False
     status = _text(POST_RELEASE_STATUS)
-    return (
-        ARCHIVED_POST_RELEASE_TITLE in status
-        and ARCHIVED_POST_RELEASE_MARKER in status
-    )
+    return ARCHIVED_POST_RELEASE_TITLE in status and ARCHIVED_POST_RELEASE_MARKER in status
 
 
 def _post_release_audit_active() -> bool:
@@ -256,6 +257,11 @@ def _embeds_progress_template(text: str) -> bool:
     )
 
 
+def _reject_legacy_meter(label: str, text: str) -> None:
+    if LEGACY_PROGRESS_RE.search(text):
+        raise CheckpointError(f"{label} must not contain a legacy ASCII/Unicode progress meter")
+
+
 def _verify_archived_post_release_status(status: str) -> None:
     if ARCHIVED_POST_RELEASE_TITLE not in status or ARCHIVED_POST_RELEASE_MARKER not in status:
         raise CheckpointError("archived post-release audit must retain its archival identity")
@@ -263,6 +269,22 @@ def _verify_archived_post_release_status(status: str) -> None:
         raise CheckpointError("archived post-release audit must not embed an active progress mini")
     if _embeds_progress_template(status):
         raise CheckpointError("progress-template.svg is a template and must never be embedded as real data")
+    _reject_legacy_meter("archived post-release audit", status)
+
+
+def _verify_active_21_status() -> None:
+    if not ACTIVE_21_ROADMAP.is_file():
+        return
+    roadmap_21 = _text(ACTIVE_21_ROADMAP)
+    if not roadmap_21.startswith("<!-- SWIR-PROGRESS-SVG-PRO:v1 -->"):
+        raise CheckpointError("ROADMAP_2_1.md must retain the SVG progress standard marker")
+    if roadmap_21.count("assets/readme/progress-mini.svg") != 1:
+        raise CheckpointError("ROADMAP_2_1.md must embed exactly one authoritative progress mini")
+    if "progress-card.svg" in roadmap_21:
+        raise CheckpointError("ROADMAP_2_1.md must not duplicate the README progress card")
+    if _embeds_progress_template(roadmap_21):
+        raise CheckpointError("progress-template.svg is a template and must never be embedded as real data")
+    _reject_legacy_meter("ROADMAP_2_1.md", roadmap_21)
 
 
 def _verify_visual_contract() -> None:
@@ -273,14 +295,15 @@ def _verify_visual_contract() -> None:
     if not roadmap.startswith("<!-- SWIR-PROGRESS-SVG-PRO:v1 -->"):
         raise CheckpointError("ROADMAP_1_9.md must retain the SVG progress standard marker")
     if readme.count(PYPI_PROGRESS_START) != 1 or readme.count(PYPI_PROGRESS_END) != 1:
-        raise CheckpointError("README.md must keep exactly one approved deterministic PyPI progress block")
-    if (
-        'src="assets/readme/progress-card.svg"' in readme
-        or 'src="assets/readme/progress-mini.svg"' in readme
-    ):
-        raise CheckpointError("README.md progress must stay PyPI-safe without SVG progress embeds")
+        raise CheckpointError("README.md must keep exactly one deterministic progress block")
+    if readme.count('src="assets/readme/progress-card.svg"') != 1:
+        raise CheckpointError("README.md must embed exactly one canonical progress card SVG")
+    if 'src="assets/readme/progress-mini.svg"' in readme:
+        raise CheckpointError("README.md must not duplicate the authoritative roadmap progress mini")
     if _embeds_progress_template(readme) or _embeds_progress_template(roadmap):
         raise CheckpointError("progress-template.svg is a template and must never be embedded as real data")
+    _reject_legacy_meter("README.md", readme)
+    _reject_legacy_meter("ROADMAP_1_9.md", roadmap)
 
     if not ACTIVE_20_ROADMAP.is_file():
         if roadmap.count("assets/readme/progress-mini.svg") != 1:
@@ -294,6 +317,7 @@ def _verify_visual_contract() -> None:
         raise CheckpointError("progress-template.svg is a template and must never be embedded as real data")
     if "assets/readme/progress-mini.svg" in roadmap:
         raise CheckpointError("historical ROADMAP_1_9.md must not reuse the active progress mini")
+    _reject_legacy_meter("ROADMAP_2_0.md", roadmap_20)
 
     if _two_point_zero_published():
         if "assets/readme/progress-mini.svg" in roadmap_20:
@@ -314,8 +338,10 @@ def _verify_visual_contract() -> None:
                 raise CheckpointError(
                     "progress-template.svg is a template and must never be embedded as real data"
                 )
+            _reject_legacy_meter("active post-release audit", status)
         else:
             raise CheckpointError("published 2.0 post-release audit state is neither active nor archived")
+        _verify_active_21_status()
     elif roadmap_20.count("assets/readme/progress-mini.svg") != 1:
         raise CheckpointError("ROADMAP_2_0.md must embed exactly one authoritative progress mini")
 
