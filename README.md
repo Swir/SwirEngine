@@ -27,10 +27,7 @@
 ## 📊 Project status
 
 <!-- SWIR-PYPI-PROGRESS:START -->
-```text
-[#####################---------] 70.0%
-7 / 10 milestones
-```
+![SwirEngine 2.1 progress](assets/readme/progress-card.svg)
 <!-- SWIR-PYPI-PROGRESS:END -->
 
 **Active verified development scope:** SwirEngine 2.1 — SwirEditor & Creator Workflow  
@@ -40,7 +37,7 @@
 **Release date:** **2026-09-19**  
 **Release source:** immutable tag **`v2.0.0`** from commit **`3fe0ff11e09ca0b4a9abcb2b757c12514100bc59`**
 
-SwirEngine 2.0.0 is publicly released on GitHub and PyPI. The public 2.0.0 package remains the stable release while source development proceeds through the dedicated [`ROADMAP_2_1.md`](ROADMAP_2_1.md). Milestones 1–7 now provide the project-backed SwirEditor session, Project Hub, scene-authoring/recovery, typed Inspector multi-selection, component and prefab authoring, the production 2D/3D viewport, integrated asset import/reimport and content validation, plus the verified Play/Pause/Stop/Step loop with isolated runtime state, Console source navigation, Profiler integration, diagnostics and failure-safe recovery. Milestone 8 is the next creator-facing gate: integrated gameplay tooling built on the high-level runtime APIs.
+SwirEngine 2.0.0 is publicly released on GitHub and PyPI. The public 2.0.0 package remains the stable release while source development proceeds through the dedicated [`ROADMAP_2_1.md`](ROADMAP_2_1.md). Milestones 1–7 now provide the project-backed SwirEditor session, Project Hub, scene-authoring/recovery, typed Inspector multi-selection, component and prefab authoring, the production 2D/3D viewport, integrated asset import/reimport and content validation, plus the verified Play/Pause/Stop/Step loop with isolated runtime state, Console source navigation, Profiler integration, diagnostics and failure-safe recovery. Milestone 8 gameplay tooling is in progress; production Input & Settings authoring now covers creator-facing rebinding, conflict detection, display/accessibility settings and project persistence while the remaining gameplay editors are still open.
 
 Stable 2.0 maintenance is no longer tracked as a separate active progress scope. Historical audit evidence remains preserved, and concrete regressions, compatibility failures, security/safety issues or release-blocking defects still reopen focused maintenance when discovered.
 
@@ -50,7 +47,7 @@ Stable 2.0 maintenance is no longer tracked as a separate active progress scope.
 |---|---|
 | Unified 2D + 3D | Sprite/tilemap workflows and OpenGL-backed 3D scenes under one Python-first runtime. |
 | Scenes + content | Scenes, prefabs, serialization, production scene packages, content build graphs and streaming foundations. |
-| SwirEditor 2.1 | Project-backed sessions, Project Hub, multi-scene authoring/recovery, typed Inspector multi-selection, component/prefab authoring, a production 2D/3D viewport with picking, camera navigation, transform gizmos, snapping, overlays, grid controls and live rendering, verified asset import/reimport and content validation, plus integrated Play/Pause/Stop/Step with isolated runtime state, Console source navigation, Profiler views, diagnostics and failure-safe recovery. |
+| SwirEditor 2.1 | Project-backed sessions, Project Hub, multi-scene authoring/recovery, typed Inspector multi-selection, component/prefab authoring, a production 2D/3D viewport with picking, camera navigation, transform gizmos, snapping, overlays, grid controls and live rendering, verified asset import/reimport and content validation, integrated Play/Pause/Stop/Step with isolated runtime state, Console source navigation, Profiler views, diagnostics and failure-safe recovery, plus creator-facing Input & Settings authoring with persisted rebinding and display/accessibility configuration. |
 | Rendering | Materials, lighting, shadows, post-processing, instancing, culling, terrain/LOD and bounded transient-resource reuse. |
 | Animation | Tween/timeline/state machines, animation graphs, skeletal animation and GPU skinning paths. |
 | Physics + navigation | 2D/3D collision and rigid-body systems, character controllers, navigation and local-avoidance foundations. |
@@ -87,6 +84,7 @@ python -m pip install -e ".[dev]"
 ```
 
 The verified base-engine matrix covers maintained **64-bit CPython 3.10–3.14** jobs across hosted Windows, Linux and macOS runners. This is not a blanket claim for 32-bit Python, PyPy, free-threaded CPython, all CPU architectures or every optional dependency. See [`docs/SUPPORT_MATRIX_2_0.md`](docs/SUPPORT_MATRIX_2_0.md).
+
 ## 🚀 Quick Start
 
 ### 2D
@@ -183,7 +181,7 @@ python tools/verify_performance_evidence_2_0.py --output build/performance-evide
 python tools/verify_release_safety_2_0.py
 ```
 
-`tools/generate_progress_svg.py` keeps the canonical active-development SVG assets synchronized for roadmap/status tooling while this README deliberately uses one deterministic plain-ASCII progress block so the same status renders correctly on GitHub and PyPI. All progress outputs are derived from the same verified 2.1 roadmap source. Presentation tests verify source math, accessibility text, SVG fill geometry, the ASCII README contract and that no progress SVG is embedded in this README.
+`tools/generate_progress_svg.py` keeps the canonical active-development `progress-card.svg`, roadmap `progress-mini.svg` and labelled template synchronized from the same verified 2.1 roadmap source. The README embeds only the card for its scope, while the active roadmap embeds only the mini. Presentation tests verify source math, accessibility text, SVG fill geometry, single-surface placement and rejection of legacy ASCII/Unicode meters or live template embeds.
 
 ## 🧱 Architecture and technology
 
@@ -222,7 +220,7 @@ Engineering quality is evaluated against complete games, public installation, re
 
 ## ⚠️ Current limitations
 
-- SwirEngine 2.1 milestones 8–10 remain open; integrated gameplay tooling for input/rebinding, settings, animation, physics/collision, navigation/AI, audio, UI/HUD and save/profile editing is the next major creator-workflow gap.
+- SwirEngine 2.1 milestones 8–10 remain open; animation, physics/collision, navigation/AI, audio, UI/HUD and save/profile authoring are the remaining major gameplay-tooling gaps before the later build/export and real-game readiness milestones.
 - The verified base-engine matrix covers only the maintained 64-bit hosted runner architectures exercised by CI; 32-bit Python, PyPy, free-threaded CPython and unverified architectures are not claimed.
 - Optional extras such as audio require their own dependency/runtime evidence beyond the base-engine support matrix.
 - Desktop build plans are host-native; unsupported cross-compilation is intentionally rejected.
