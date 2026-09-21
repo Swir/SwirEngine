@@ -6,7 +6,6 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from .assets import AssetManager
 from .core.scene import Scene
-from .editor_animation_frontend21 import TkAnimationEditorApp21
 from .editor_animation_tooling21 import EditorAnimationTooling21, EditorAnimationToolingError
 from .editor_assets import EditorAssetBrowser
 from .editor_console_navigation21 import source_location_from_exception
@@ -14,6 +13,8 @@ from .editor_creator_frontend21 import EditorCreatorFrontendController21, TkCrea
 from .editor_diagnostics import EditorConsole, EditorProfiler
 from .editor_frontend import TkEditorApp
 from .editor_gameplay_tooling21 import EditorGameplayTooling21
+from .editor_physics_frontend21 import TkPhysicsEditorApp21
+from .editor_physics_tooling21 import EditorPhysicsTooling21, EditorPhysicsToolingError
 from .editor_preview import EditorPreviewSession
 from .editor_project_authoring21 import EditorProjectAuthoring21
 from .editor_render_backend21 import EditorRenderBackend21, EditorRenderBackendUnavailable
@@ -72,9 +73,9 @@ class EditorProjectSession:
     The session composes the existing toolkit-neutral editor models into a safe creator workflow:
     manifest validation, multi-scene authoring, portable editor-state persistence, asset browsing,
     typed multi-selection, component/prefab authoring, production viewport interaction, gameplay
-    input/settings and animation authoring, diagnostics, deterministic recovery and the Tk desktop
-    shell. Scene, gameplay, animation and editor-state writes are explicit and stay inside the
-    project root.
+    input/settings, animation and physics/collision authoring, diagnostics, deterministic recovery
+    and the Tk desktop shell. Scene, gameplay, animation, physics and editor-state writes are
+    explicit and stay inside the project root.
     """
 
     def __init__(
@@ -88,6 +89,7 @@ class EditorProjectSession:
         authoring: EditorProjectAuthoring21,
         gameplay: EditorGameplayTooling21,
         animation: EditorAnimationTooling21,
+        physics: EditorPhysicsTooling21,
         asset_browser: EditorAssetBrowser,
         console: EditorConsole,
         profiler: EditorProfiler,
@@ -101,6 +103,7 @@ class EditorProjectSession:
         self.authoring = authoring
         self.gameplay = gameplay
         self.animation = animation
+        self.physics = physics
         self.asset_browser = asset_browser
         self.console = console
         self.profiler = profiler
@@ -166,6 +169,7 @@ class EditorProjectSession:
         profiler = EditorProfiler(Profiler())
         gameplay = EditorGameplayTooling21(manifest.root)
         animation = EditorAnimationTooling21(manifest.root)
+        physics = EditorPhysicsTooling21(manifest.root)
         authoring = EditorProjectAuthoring21(
             workspace,
             serializer=serializer,
@@ -211,6 +215,7 @@ class EditorProjectSession:
             authoring=authoring,
             gameplay=gameplay,
             animation=animation,
+            physics=physics,
             asset_browser=asset_browser,
             console=console,
             profiler=profiler,
@@ -240,17 +245,25 @@ class EditorProjectSession:
             entity_count=len(active_scene.entities),
             asset_count=asset_frame.total_files,
             open_scenes=len(self.scenes.scene_paths),
-            dirty=self.scenes.dirty or self.gameplay.dirty or self.animation.dirty,
+            dirty=(
+                self.scenes.dirty
+                or self.gameplay.dirty
+                or self.animation.dirty
+                or self.physics.dirty
+            ),
             recovery_available=self.scenes.recovery_available,
         )
 
     def save(self) -> EditorProjectState:
         gameplay_was_dirty = self.gameplay.dirty
         animation_was_dirty = self.animation.dirty
+        physics_was_dirty = self.physics.dirty
         if gameplay_was_dirty:
             self.gameplay.save()
         if animation_was_dirty:
             self.animation.save()
+        if physics_was_dirty:
+            self.physics.save()
         state = self.scenes.save_all(self.state_path)
         self.scene_path = self.manifest.root / PurePosixPath(self.scenes.active_path)
         self.console.write(
@@ -265,6 +278,11 @@ class EditorProjectSession:
         if animation_was_dirty:
             self.console.write(
                 f"Saved animation asset {self.animation.relative_path}",
+                source="swireditor",
+            )
+        if physics_was_dirty:
+            self.console.write(
+                f"Saved physics configuration {self.physics.relative_path}",
                 source="swireditor",
             )
         return state
@@ -304,11 +322,12 @@ class EditorProjectSession:
                 self.enable_live_viewport()
             except EditorRenderBackendUnavailable as exc:
                 self.console.write(str(exc), level="warning", source="renderer")
-            app = TkAnimationEditorApp21(
+            app = TkPhysicsEditorApp21(
                 self.controller,
                 project_root=self.manifest.root,
                 gameplay=self.gameplay,
                 animation=self.animation,
+                physics=self.physics,
                 title=f"SwirEditor 2.1 — {self.manifest.name}",
             )
             self._install_file_menu(app)
@@ -363,6 +382,7 @@ class EditorProjectSession:
             OSError,
             SceneSerializationError,
             EditorAnimationToolingError,
+            EditorPhysicsToolingError,
             TypeError,
             ValueError,
         ) as exc:
@@ -370,7 +390,12 @@ class EditorProjectSession:
             app.messagebox.showerror("SwirEditor — Save failed", str(exc))
 
     def _close_from_ui(self, app: TkEditorApp) -> None:
-        if self.scenes.dirty or self.gameplay.dirty or self.animation.dirty:
+        if (
+            self.scenes.dirty
+            or self.gameplay.dirty
+            or self.animation.dirty
+            or self.physics.dirty
+        ):
             decision = app.messagebox.askyesnocancel(
                 "SwirEditor — Unsaved changes",
                 "Save project changes before closing?",
@@ -385,6 +410,7 @@ class EditorProjectSession:
                     OSError,
                     SceneSerializationError,
                     EditorAnimationToolingError,
+                    EditorPhysicsToolingError,
                     TypeError,
                     ValueError,
                 ) as exc:
