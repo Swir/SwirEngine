@@ -21,16 +21,18 @@ MILESTONE_LABEL = "2.1 SWIREDITOR"
 MEASURED_SCOPE = "SwirEngine 2.1 — SwirEditor & Creator Workflow"
 RELEASE_STATUS = "Source development · no SwirEngine 2.1 release published"
 README_STATUS_HEADING = "## 📊 Project status"
+README_PROGRESS_START = "<!-- SWIR-PYPI-PROGRESS:START -->"
+README_PROGRESS_END = "<!-- SWIR-PYPI-PROGRESS:END -->"
 README_CARD_EMBED = (
-    '<img width="100%" src="assets/readme/progress-card.svg" '
+    "<img width=\"100%\" src='assets/readme/progress-card.svg' "
     'alt="SwirEngine 2.1 SwirEditor roadmap progress" />'
 )
-RETIRED_PYPI_BLOCK_RE = re.compile(
-    r"<!-- SWIR-PYPI-PROGRESS:START -->.*?<!-- SWIR-PYPI-PROGRESS:END -->\n*",
+README_PROGRESS_BLOCK_RE = re.compile(
+    rf"{re.escape(README_PROGRESS_START)}.*?{re.escape(README_PROGRESS_END)}\n*",
     re.DOTALL,
 )
 README_PROGRESS_SVG_RE = re.compile(
-    r'<img[^>\n]*src="assets/readme/progress-(?:card|mini)\.svg"[^>\n]*/?>\n*',
+    r"<img[^>\n]*src=(?:\"|')assets/readme/progress-(?:card|mini)\.svg(?:\"|')[^>\n]*/?>\n*",
     re.IGNORECASE,
 )
 
@@ -203,9 +205,13 @@ def render_template() -> str:
 '''
 
 
+def _readme_progress_block() -> str:
+    return f"{README_PROGRESS_START}\n{README_CARD_EMBED}\n{README_PROGRESS_END}"
+
+
 def _expected_readme(readme: str, data: ProgressData) -> str:
-    del data  # README embeds the deterministic card; card text is generated from the same data.
-    readme = RETIRED_PYPI_BLOCK_RE.sub("", readme)
+    del data  # Card text is generated deterministically from the same roadmap data.
+    readme = README_PROGRESS_BLOCK_RE.sub("", readme)
     readme = README_PROGRESS_SVG_RE.sub("", readme)
     lines = readme.splitlines()
     anchor_index = next(
@@ -217,7 +223,7 @@ def _expected_readme(readme: str, data: ProgressData) -> str:
     content_index = anchor_index + 1
     while content_index < len(lines) and not lines[content_index].strip():
         content_index += 1
-    lines[anchor_index + 1 : content_index] = ["", README_CARD_EMBED, ""]
+    lines[anchor_index + 1 : content_index] = ["", _readme_progress_block(), ""]
     trailing_newline = "\n" if readme.endswith("\n") else ""
     return "\n".join(lines) + trailing_newline
 
