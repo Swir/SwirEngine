@@ -120,6 +120,30 @@ class EditorGameplayTooling21:
         self._actions = self._actions.replace_action(action, tuple(bindings))
         return self.snapshot()
 
+    def add_binding(
+        self,
+        action: str,
+        binding: InputBinding,
+    ) -> EditorGameplaySnapshot21:
+        """Append one validated binding while preserving the action's existing controls."""
+
+        if not isinstance(binding, InputBinding):
+            raise TypeError("binding must be an InputBinding")
+        return self.replace_action(action, (*self._actions.bindings(action), binding))
+
+    def remove_binding(self, action: str, index: int) -> EditorGameplaySnapshot21:
+        """Remove one binding without bypassing required UI-navigation validation."""
+
+        if isinstance(index, bool) or not isinstance(index, int):
+            raise TypeError("binding index must be an integer")
+        bindings = list(self._actions.bindings(action))
+        if not bindings:
+            raise EditorGameplayToolingError(f"{action!r} has no bindings to remove")
+        if index < 0 or index >= len(bindings):
+            raise IndexError("binding index is outside the action binding list")
+        del bindings[index]
+        return self.replace_action(action, bindings)
+
     def bind_key(self, action: str, key: str) -> EditorGameplaySnapshot21:
         return self.replace_action(action, (InputBinding("key", key),))
 
