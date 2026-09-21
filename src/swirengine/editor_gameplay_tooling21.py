@@ -100,8 +100,8 @@ class EditorGameplayTooling21:
     def reload(self) -> EditorGameplaySnapshot21:
         # Revalidate the physical targets on every disk operation. A project may be opened from
         # an untrusted checkout where a config directory is replaced by a symlink after startup.
-        self.controls_target
-        self.settings_target
+        _project_target(self.root, self.controls_path, label="controls path")
+        _project_target(self.root, self.settings_path, label="settings path")
         defaults = ProjectShippingDefaults.load(
             self.root,
             input_path=self.controls_path,
