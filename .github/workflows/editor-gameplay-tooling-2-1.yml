@@ -9,14 +9,9 @@ on:
       - "src/swirengine/input/**"
       - "tests/test_editor_app_2_1.py"
       - "tests/test_editor_gameplay_tooling_2_1.py"
-      - "tests/test_progress_svg_presentation.py"
       - "tests/test_input_ui_settings_1_9.py"
-      - "tools/generate_progress_svg.py"
       - ".github/workflows/editor-gameplay-tooling-2-1.yml"
       - "pyproject.toml"
-      - "ROADMAP_2_1.md"
-      - "README.md"
-      - "assets/readme/progress-*.svg"
   workflow_dispatch:
 
 jobs:
@@ -35,7 +30,6 @@ jobs:
           tests/test_editor_app_2_1.py
           tests/test_editor_gameplay_tooling_2_1.py
           tests/test_input_ui_settings_1_9.py
-          tests/test_progress_svg_presentation.py
       - name: Strict Ruff gate
         run: >-
           ruff check
@@ -43,8 +37,6 @@ jobs:
           src/swirengine/editor_gameplay_tooling21.py
           tests/test_editor_app_2_1.py
           tests/test_editor_gameplay_tooling_2_1.py
-          tests/test_progress_svg_presentation.py
-          tools/generate_progress_svg.py
       - name: Compile gameplay tooling files
         run: >-
           python -m compileall -q
@@ -52,7 +44,3 @@ jobs:
           src/swirengine/editor_gameplay_tooling21.py
           tests/test_editor_app_2_1.py
           tests/test_editor_gameplay_tooling_2_1.py
-          tests/test_progress_svg_presentation.py
-          tools/generate_progress_svg.py
-      - name: Progress presentation drift check
-        run: python tools/generate_progress_svg.py --check
