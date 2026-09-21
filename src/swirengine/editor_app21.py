@@ -7,13 +7,11 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 from .assets import AssetManager
 from .core.scene import Scene
 from .editor_assets import EditorAssetBrowser
-from .editor_console_navigation21 import (
-    TkConsoleNavigationEditorApp21,
-    source_location_from_exception,
-)
+from .editor_console_navigation21 import source_location_from_exception
 from .editor_creator_frontend21 import EditorCreatorFrontendController21, TkCreatorEditorApp21
 from .editor_diagnostics import EditorConsole, EditorProfiler
 from .editor_frontend import TkEditorApp
+from .editor_gameplay_frontend21 import TkGameplayEditorApp21
 from .editor_gameplay_tooling21 import EditorGameplayTooling21
 from .editor_preview import EditorPreviewSession
 from .editor_project_authoring21 import EditorProjectAuthoring21
@@ -292,9 +290,10 @@ class EditorProjectSession:
                 self.enable_live_viewport()
             except EditorRenderBackendUnavailable as exc:
                 self.console.write(str(exc), level="warning", source="renderer")
-            app = TkConsoleNavigationEditorApp21(
+            app = TkGameplayEditorApp21(
                 self.controller,
                 project_root=self.manifest.root,
+                gameplay=self.gameplay,
                 title=f"SwirEditor 2.1 — {self.manifest.name}",
             )
             self._install_file_menu(app)
