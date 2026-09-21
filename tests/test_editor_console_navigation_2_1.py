@@ -79,7 +79,7 @@ def test_project_runtime_error_is_routed_with_source_location(
     source.parent.mkdir(parents=True, exist_ok=True)
     source.write_text("def explode(_dt):\n    raise RuntimeError('project boom')\n", encoding="utf-8")
     module = _load_source_module(source, "_swir_console_location_player")
-    explode = getattr(module, "explode")
+    explode = module.explode
     assert callable(explode)
 
     session = EditorProjectSession.open(root)
