@@ -4,12 +4,14 @@ on:
   pull_request:
     paths:
       - "src/swirengine/editor_app21.py"
+      - "src/swirengine/editor_console_navigation21.py"
       - "src/swirengine/editor_preview.py"
       - "src/swirengine/editor_runtime.py"
       - "src/swirengine/editor_frontend.py"
       - "src/swirengine/editor_diagnostics.py"
       - "src/swirengine/profiler.py"
       - "tests/test_editor_app_2_1.py"
+      - "tests/test_editor_console_navigation_2_1.py"
       - "tests/test_editor_preview.py"
       - "tests/test_editor_runtime.py"
       - "tests/test_editor_frontend.py"
@@ -40,22 +42,29 @@ jobs:
           tests/test_editor_preview.py
           tests/test_editor_frontend.py
           tests/test_editor_diagnostics.py
+          tests/test_editor_console_navigation_2_1.py
           tests/test_editor_play_debug_2_1.py
           tests/test_editor_app_2_1.py
       - name: Strict Ruff gate
         run: >-
           ruff check
           src/swirengine/editor_app21.py
+          src/swirengine/editor_console_navigation21.py
+          src/swirengine/editor_diagnostics.py
           src/swirengine/editor_preview.py
           src/swirengine/profiler.py
+          tests/test_editor_console_navigation_2_1.py
           tests/test_editor_play_debug_2_1.py
           tests/test_editor_app_2_1.py
       - name: Compile play debug files
         run: >-
           python -m compileall -q
           src/swirengine/editor_app21.py
+          src/swirengine/editor_console_navigation21.py
+          src/swirengine/editor_diagnostics.py
           src/swirengine/editor_preview.py
           src/swirengine/profiler.py
+          tests/test_editor_console_navigation_2_1.py
           tests/test_editor_play_debug_2_1.py
           tests/test_editor_app_2_1.py
       - name: Progress presentation drift check

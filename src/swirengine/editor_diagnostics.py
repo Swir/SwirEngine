@@ -20,6 +20,13 @@ class EditorConsoleEntry:
     level: str
     message: str
     source: str = "runtime"
+    path: str | None = None
+    line: int | None = None
+    column: int | None = None
+
+    @property
+    def has_source_location(self) -> bool:
+        return self.path is not None
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +61,8 @@ class _EditorLoggingHandler(logging.Handler):
             level=record.levelname.lower(),
             source=record.name or "logging",
             timestamp=record.created,
+            path=record.pathname or None,
+            line=record.lineno if record.lineno > 0 else None,
         )
 
 
@@ -62,7 +71,9 @@ class EditorConsole:
 
     Messages can be pushed directly or captured from the standard ``logging`` module through
     ``logging_handler``. Filtering is snapshot-based, so GUI front-ends never need to mutate or
-    iterate over the live deque while game/runtime threads are producing messages.
+    iterate over the live deque while game/runtime threads are producing messages. Optional source
+    locations let creator front-ends provide safe click-through navigation without parsing message
+    strings.
     """
 
     def __init__(self, *, history: int = 1000) -> None:
@@ -90,6 +101,9 @@ class EditorConsole:
         level: str = "info",
         source: str = "runtime",
         timestamp: float | None = None,
+        path: str | None = None,
+        line: int | None = None,
+        column: int | None = None,
     ) -> EditorConsoleEntry:
         normalized_level = level.strip().lower()
         if normalized_level not in _CONSOLE_LEVELS:
@@ -97,6 +111,15 @@ class EditorConsole:
         normalized_source = source.strip()
         if not normalized_source:
             raise ValueError("console source cannot be empty")
+        normalized_path = None if path is None else str(path).strip()
+        if normalized_path == "":
+            raise ValueError("console source path cannot be empty")
+        if line is not None and line < 1:
+            raise ValueError("console source line must be at least 1")
+        if column is not None and column < 1:
+            raise ValueError("console source column must be at least 1")
+        if normalized_path is None and (line is not None or column is not None):
+            raise ValueError("console source line/column requires a source path")
         entry_timestamp = time.time() if timestamp is None else float(timestamp)
         entry_message = str(message)
         with self._lock:
@@ -106,6 +129,9 @@ class EditorConsole:
                 normalized_level,
                 entry_message,
                 normalized_source,
+                normalized_path,
+                line,
+                column,
             )
             self._next_sequence += 1
             self._entries.append(entry)
@@ -148,6 +174,7 @@ class EditorConsole:
                 not normalized_query
                 or normalized_query in entry.message.casefold()
                 or normalized_query in entry.source.casefold()
+                or (entry.path is not None and normalized_query in entry.path.casefold())
             )
         )
         if limit is not None:
