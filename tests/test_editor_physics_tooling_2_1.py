@@ -5,10 +5,6 @@ from pathlib import Path
 
 import pytest
 
-from swirengine.physics.collision2d import BoxCollider2D
-from swirengine.physics.collision3d import BoxCollider3D, SphereCollider3D
-from swirengine.physics.dynamics3d import PhysicsBody3D
-from swirengine.physics.rigidbody2d import RigidBody2D
 from swirengine.editor_physics_tooling21 import (
     PHYSICS_ASSET_FORMAT,
     PHYSICS_ASSET_VERSION,
@@ -16,6 +12,10 @@ from swirengine.editor_physics_tooling21 import (
     EditorPhysicsToolingError,
     PhysicsBodySpec21,
 )
+from swirengine.physics.collision2d import BoxCollider2D
+from swirengine.physics.collision3d import BoxCollider3D, SphereCollider3D
+from swirengine.physics.dynamics3d import PhysicsBody3D
+from swirengine.physics.rigidbody2d import RigidBody2D
 
 
 def test_physics_authoring_round_trip_builds_real_2d_and_3d_runtime_bodies(
