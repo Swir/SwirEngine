@@ -4,9 +4,13 @@ on:
   pull_request:
     paths:
       - "src/swirengine/editor_animation_tooling21.py"
+      - "src/swirengine/editor_animation_frontend21.py"
+      - "src/swirengine/editor_app21.py"
+      - "src/swirengine/editor_gameplay_frontend21.py"
       - "src/swirengine/animation15.py"
       - "src/swirengine/animation_runtime.py"
       - "tests/test_editor_animation_tooling_2_1.py"
+      - "tests/test_editor_animation_frontend_2_1.py"
       - ".github/workflows/editor-animation-tooling-2-1.yml"
       - "pyproject.toml"
   workflow_dispatch:
@@ -27,13 +31,21 @@ jobs:
           tests/test_animation.py
           tests/test_animation_runtime.py
           tests/test_editor_animation_tooling_2_1.py
+          tests/test_editor_animation_frontend_2_1.py
+          tests/test_editor_gameplay_frontend_2_1.py
       - name: Strict Ruff gate
         run: >-
           ruff check
           src/swirengine/editor_animation_tooling21.py
+          src/swirengine/editor_animation_frontend21.py
+          src/swirengine/editor_app21.py
           tests/test_editor_animation_tooling_2_1.py
+          tests/test_editor_animation_frontend_2_1.py
       - name: Compile animation authoring files
         run: >-
           python -m compileall -q
           src/swirengine/editor_animation_tooling21.py
+          src/swirengine/editor_animation_frontend21.py
+          src/swirengine/editor_app21.py
           tests/test_editor_animation_tooling_2_1.py
+          tests/test_editor_animation_frontend_2_1.py
