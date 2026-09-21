@@ -32,6 +32,7 @@ README_PROGRESS_SVG_RE = re.compile(
 )
 README_STATUS_HEADING = "## 📊 Project status"
 README_PROGRESS_PLACEHOLDER = "<!-- SWIR-CANONICAL-PROGRESS-BLOCK -->"
+ASCII_BAR_WIDTH = 30
 
 MILESTONE_RE = re.compile(r"^- \[(?P<state>[ xX])\] \*\*(?P<number>\d+)\.", re.MULTILINE)
 SUMMARY_RE = re.compile(
@@ -202,14 +203,34 @@ def render_template() -> str:
 '''
 
 
+def _render_ascii_bar(data: ProgressData) -> str:
+    if data.fraction is None:
+        filled = 0
+    elif data.completed >= data.total:
+        filled = ASCII_BAR_WIDTH
+    else:
+        filled = min(
+            ASCII_BAR_WIDTH - 1,
+            max(0, math.floor(data.fraction * ASCII_BAR_WIDTH + 1e-12)),
+        )
+    return "#" * filled + "-" * (ASCII_BAR_WIDTH - filled)
+
+
+def _ascii_text(value: str) -> str:
+    return value.replace("—", "-").encode("ascii", "replace").decode("ascii")
+
+
 def render_readme_progress(data: ProgressData) -> str:
-    alt = (
-        f"{data.scope} — {data.display_percentage} "
-        f"({data.counter}), {data.status}"
-    )
+    scope = _ascii_text(data.scope)
+    bar = _render_ascii_bar(data)
     return (
         f"{PYPI_PROGRESS_START}\n"
-        f'<img width="100%" src="{CARD_PATH.as_posix()}" alt="{escape(alt, quote=True)}" />\n'
+        "```text\n"
+        f"Scope: {scope}\n"
+        f"Progress: [{bar}] {data.display_percentage}\n"
+        f"Counter: {data.counter}\n"
+        f"Status: {data.status}\n"
+        "```\n"
         f"{PYPI_PROGRESS_END}"
     )
 
@@ -233,7 +254,7 @@ def _expected_readme(readme: str, data: ProgressData) -> str:
         None,
     )
     if anchor_index is None:
-        raise ValueError("README is missing the project status heading for SVG progress")
+        raise ValueError("README is missing the project status heading for PyPI progress")
     lines[anchor_index + 1 : anchor_index + 1] = ["", block]
     trailing_newline = "\n" if readme.endswith("\n") else ""
     return "\n".join(lines) + trailing_newline
@@ -277,7 +298,7 @@ def generate(*, check: bool = False, status_path: Path = STATUS_PATH) -> int:
             path.write_text(expected, encoding="utf-8")
 
     if not README_PATH.is_file():
-        raise ValueError("README.md is required for the SwirEngine SVG progress card")
+        raise ValueError("README.md is required for the SwirEngine PyPI progress block")
     readme = README_PATH.read_text(encoding="utf-8")
     expected_readme = _expected_readme(readme, data)
     if check:
