@@ -150,11 +150,31 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
 
     _require(
         readme.count(PYPI_PROGRESS_START) == 1 and readme.count(PYPI_PROGRESS_END) == 1,
-        "README keeps exactly one deterministic SVG progress block",
+        "README keeps exactly one deterministic PyPI ASCII progress block",
         checks,
     )
+    progress_match = PYPI_PROGRESS_RE.search(readme)
+    _require(progress_match is not None, "README PyPI progress block is well formed", checks)
+    progress_block = progress_match.group(0) if progress_match is not None else ""
+    _require(
+        progress_block.count("```text") == 1 and progress_block.count("```") == 2,
+        "README PyPI progress block uses exactly one fenced text block",
+        checks,
+    )
+    _require(
+        "Progress:" in progress_block and "Counter:" in progress_block,
+        "README PyPI progress block exposes progress and counter",
+        checks,
+    )
+    _require(
+        "<img" not in progress_block and ".svg" not in progress_block,
+        "README PyPI progress block contains no graphical progress asset",
+        checks,
+    )
+    _require(progress_block.isascii(), "README PyPI progress block is ASCII-only", checks)
+
     presentation_surfaces = [
-        ("README", readme),
+        ("README", _without_approved_pypi_progress(readme)),
         ("2.0 roadmap", roadmap_text),
     ]
     if published_20 and post_release_status:
@@ -177,8 +197,8 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
         checks,
     )
     _require(
-        readme.count('src="assets/readme/progress-card.svg"') == 1,
-        "README embeds exactly one canonical progress card SVG",
+        'src="assets/readme/progress-card.svg"' not in readme,
+        "README uses the PyPI-safe ASCII surface instead of the canonical progress card SVG",
         checks,
     )
     _require(
