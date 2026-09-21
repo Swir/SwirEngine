@@ -62,8 +62,6 @@ class EditorGameplayTooling21:
         self.root = Path(project_root).expanduser().resolve()
         self.controls_path = _project_relative_path(controls_path, label="controls path")
         self.settings_path = _project_relative_path(settings_path, label="settings path")
-        self._controls_target = self.root / PurePosixPath(self.controls_path)
-        self._settings_target = self.root / PurePosixPath(self.settings_path)
         self._actions = ProductionActionMap.standard()
         self._settings = GameSettings()
         self._saved_fingerprint = (self._actions.fingerprint, self._settings.fingerprint)
@@ -79,11 +77,11 @@ class EditorGameplayTooling21:
 
     @property
     def controls_target(self) -> Path:
-        return self._controls_target
+        return _project_target(self.root, self.controls_path, label="controls path")
 
     @property
     def settings_target(self) -> Path:
-        return self._settings_target
+        return _project_target(self.root, self.settings_path, label="settings path")
 
     @property
     def dirty(self) -> bool:
@@ -100,6 +98,10 @@ class EditorGameplayTooling21:
         )
 
     def reload(self) -> EditorGameplaySnapshot21:
+        # Revalidate the physical targets on every disk operation. A project may be opened from
+        # an untrusted checkout where a config directory is replaced by a symlink after startup.
+        self.controls_target
+        self.settings_target
         defaults = ProjectShippingDefaults.load(
             self.root,
             input_path=self.controls_path,
@@ -207,10 +209,13 @@ class EditorGameplayTooling21:
 
         Each target is written atomically by the underlying shipping implementation. Input is
         written first so malformed bindings cannot leave a newly changed settings file behind.
+        Physical targets are resolved immediately before writing to reject symlink escapes.
         """
 
-        self._actions.save(self._controls_target)
-        SettingsStore(GameSettings(), self._settings_target).save(self._settings)
+        controls_target = self.controls_target
+        settings_target = self.settings_target
+        self._actions.save(controls_target)
+        SettingsStore(GameSettings(), settings_target).save(self._settings)
         self._saved_fingerprint = self._fingerprint()
         return self.snapshot()
 
@@ -254,3 +259,14 @@ def _project_relative_path(value: str | Path, *, label: str) -> str:
     ):
         raise EditorGameplayToolingError(f"{label} must stay project-relative")
     return posix.as_posix()
+
+
+def _project_target(root: Path, relative: str, *, label: str) -> Path:
+    """Resolve a project config target while rejecting symlink/physical root escapes."""
+
+    resolved = (root / PurePosixPath(relative)).resolve(strict=False)
+    try:
+        resolved.relative_to(root)
+    except ValueError as exc:
+        raise EditorGameplayToolingError(f"{label} escapes the project root") from exc
+    return resolved

@@ -180,6 +180,24 @@ def test_gameplay_tooling_rejects_paths_outside_project(tmp_path: Path) -> None:
         EditorGameplayTooling21(tmp_path, settings_path="C:\\settings.json")
 
 
+def test_gameplay_tooling_revalidates_symlink_targets_before_save(tmp_path: Path) -> None:
+    tooling = EditorGameplayTooling21(tmp_path)
+    outside = tmp_path.parent / f"{tmp_path.name}-outside-config"
+    outside.mkdir()
+    config = tmp_path / "config"
+    try:
+        config.symlink_to(outside, target_is_directory=True)
+    except OSError:
+        pytest.skip("directory symlinks are unavailable on this runner")
+
+    tooling.bind_key("pause", "p")
+    with pytest.raises(EditorGameplayToolingError, match="escapes the project root"):
+        tooling.save()
+
+    assert not (outside / "controls.json").exists()
+    assert not (outside / "settings.json").exists()
+
+
 def test_gameplay_tooling_writes_canonical_shipping_envelopes(tmp_path: Path) -> None:
     tooling = EditorGameplayTooling21(tmp_path)
     tooling.bind_key("jump", "space")
