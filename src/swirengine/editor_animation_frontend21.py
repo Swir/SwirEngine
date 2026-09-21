@@ -2,14 +2,11 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from .animation15 import AnimationPose, InterpolationMode
-from .editor_animation_tooling21 import (
-    AnimationClipSnapshot21,
-    EditorAnimationTooling21,
-    EditorAnimationToolingError,
-)
+from .editor_animation_tooling21 import EditorAnimationTooling21, EditorAnimationToolingError
 from .editor_gameplay_frontend21 import TkGameplayEditorApp21
 from .editor_viewport_frontend21 import EditorProductionViewportController21
 
@@ -162,7 +159,12 @@ class EditorAnimationPanelController21:
         self._status = f"Updated interpolation for {binding}"
         return self.frame()
 
-    def set_keyframe(self, binding: str, time: float, value: Any) -> AnimationPanelFrame21:
+    def set_keyframe(
+        self,
+        binding: str,
+        time: float,
+        value: Any,
+    ) -> AnimationPanelFrame21:
         self.tooling.set_keyframe(binding, time, value)
         self._clear_preview()
         self._status = f"Set keyframe on {binding} at {float(time):g}s"
@@ -244,13 +246,24 @@ class TkAnimationEditorApp21(TkGameplayEditorApp21):
             ("Duration", self._animation_duration_var),
         )
         for row, (label, variable) in enumerate(fields):
-            self.ttk.Label(header, text=label).grid(row=row, column=0, sticky="w", pady=3)
-            self.ttk.Entry(header, textvariable=variable).grid(
-                row=row, column=1, columnspan=5, sticky="ew", pady=3
+            self.ttk.Label(header, text=label).grid(
+                row=row,
+                column=0,
+                sticky="w",
+                pady=3,
             )
-        self.ttk.Checkbutton(header, text="Loop", variable=self._animation_loop_var).grid(
-            row=3, column=0, sticky="w", pady=(6, 0)
-        )
+            self.ttk.Entry(header, textvariable=variable).grid(
+                row=row,
+                column=1,
+                columnspan=5,
+                sticky="ew",
+                pady=3,
+            )
+        self.ttk.Checkbutton(
+            header,
+            text="Loop",
+            variable=self._animation_loop_var,
+        ).grid(row=3, column=0, sticky="w", pady=(6, 0))
         for column in range(6):
             header.columnconfigure(column, weight=1 if column == 1 else 0)
 
@@ -262,7 +275,10 @@ class TkAnimationEditorApp21(TkGameplayEditorApp21):
             ("Apply Clip", self._animation_apply_clip),
             ("Save", self._animation_save),
         ):
-            self.ttk.Button(buttons, text=label, command=command).pack(side="left", padx=(0, 6))
+            self.ttk.Button(buttons, text=label, command=command).pack(
+                side="left",
+                padx=(0, 6),
+            )
 
         tracks = self.ttk.LabelFrame(window, text="Tracks", padding=8)
         tracks.pack(fill="both", expand=True, padx=12, pady=8)
@@ -292,26 +308,39 @@ class TkAnimationEditorApp21(TkGameplayEditorApp21):
             ("Set Keyframe…", self._animation_set_keyframe),
             ("Remove Keyframe…", self._animation_remove_keyframe),
         ):
-            self.ttk.Button(actions, text=label, command=command).pack(side="left", padx=(0, 6))
+            self.ttk.Button(actions, text=label, command=command).pack(
+                side="left",
+                padx=(0, 6),
+            )
 
         preview = self.ttk.LabelFrame(window, text="Runtime preview", padding=8)
         preview.pack(fill="x", padx=12, pady=(0, 8))
-        self.ttk.Entry(preview, width=10, textvariable=self._animation_preview_time_var).pack(
-            side="left"
-        )
-        self.ttk.Button(preview, text="Sample", command=self._animation_sample).pack(
-            side="left", padx=(6, 10)
-        )
+        self.ttk.Entry(
+            preview,
+            width=10,
+            textvariable=self._animation_preview_time_var,
+        ).pack(side="left")
+        self.ttk.Button(
+            preview,
+            text="Sample",
+            command=self._animation_sample,
+        ).pack(side="left", padx=(6, 10))
         self._animation_preview_var = self.tk.StringVar(value="No preview sample")
         self.ttk.Label(preview, textvariable=self._animation_preview_var).pack(
-            side="left", fill="x", expand=True
+            side="left",
+            fill="x",
+            expand=True,
         )
 
         footer = self.ttk.Frame(window, padding=(12, 0, 12, 12))
         footer.pack(fill="x")
         self._animation_status_var = self.tk.StringVar()
         self.ttk.Label(footer, textvariable=self._animation_status_var).pack(side="left")
-        self.ttk.Button(footer, text="Close", command=self._close_animation_panel).pack(side="right")
+        self.ttk.Button(
+            footer,
+            text="Close",
+            command=self._close_animation_panel,
+        ).pack(side="right")
         self._refresh_animation_panel()
 
     def _selected_animation_binding(self) -> str | None:
@@ -329,7 +358,9 @@ class TkAnimationEditorApp21(TkGameplayEditorApp21):
         if self._animation_path_var is not None:
             self._animation_path_var.set(frame.path or "")
             self._animation_name_var.set(frame.name or "")
-            self._animation_duration_var.set("" if frame.duration is None else f"{frame.duration:g}")
+            self._animation_duration_var.set(
+                "" if frame.duration is None else f"{frame.duration:g}"
+            )
             self._animation_loop_var.set(frame.loop)
         tree = self._animation_track_tree
         if tree is not None:
@@ -354,10 +385,10 @@ class TkAnimationEditorApp21(TkGameplayEditorApp21):
             if frame.preview_time is None:
                 self._animation_preview_var.set("No preview sample")
             else:
-                self._animation_preview_var.set(
-                    f"t={frame.preview_time:g}s  "
-                    + ", ".join(f"{key}={value!r}" for key, value in frame.preview_values)
+                values = ", ".join(
+                    f"{key}={value!r}" for key, value in frame.preview_values
                 )
+                self._animation_preview_var.set(f"t={frame.preview_time:g}s  {values}")
         if self._animation_status_var is not None:
             dirty = " · unsaved" if frame.dirty else ""
             self._animation_status_var.set(self.animation_controller.status + dirty)
@@ -365,32 +396,43 @@ class TkAnimationEditorApp21(TkGameplayEditorApp21):
     def _animation_new(self) -> None:
         from tkinter import simpledialog
 
-        name = simpledialog.askstring("New animation", "Clip name:", parent=self._animation_window)
+        name = simpledialog.askstring(
+            "New animation",
+            "Clip name:",
+            parent=self._animation_window,
+        )
         if not name:
             return
         duration = simpledialog.askfloat(
-            "New animation", "Duration (seconds):", initialvalue=1.0, minvalue=0.000001,
+            "New animation",
+            "Duration (seconds):",
+            initialvalue=1.0,
+            minvalue=0.000001,
             parent=self._animation_window,
         )
         if duration is None:
             return
-        self._animation_action(lambda: self.animation_controller.new_clip(name, duration=duration))
+        self._animation_action(
+            lambda: self.animation_controller.new_clip(name, duration=duration)
+        )
 
     def _animation_open(self) -> None:
         from tkinter import filedialog
 
+        root = self.animation_controller.tooling.project_root
         path = filedialog.askopenfilename(
             parent=self._animation_window,
             title="Open SwirEngine animation",
-            filetypes=(("SwirEngine animation", "*.swiranim.json"), ("JSON", "*.json")),
-            initialdir=str(self.animation_controller.tooling.project_root),
+            filetypes=(
+                ("SwirEngine animation", "*.swiranim.json"),
+                ("JSON", "*.json"),
+            ),
+            initialdir=str(root),
         )
         if not path:
             return
         try:
-            relative = str(self.animation_controller.tooling.project_root.joinpath(".").resolve())
-            absolute = self.animation_controller.tooling.project_root.__class__(path).resolve()
-            project_relative = absolute.relative_to(relative).as_posix()
+            project_relative = Path(path).resolve().relative_to(root).as_posix()
         except (OSError, ValueError):
             self.messagebox.showerror(
                 "SwirEditor — Animation",
@@ -405,8 +447,9 @@ class TkAnimationEditorApp21(TkGameplayEditorApp21):
             frame = self.animation_controller.frame()
             if frame.name is None:
                 raise EditorAnimationToolingError("create or open an animation clip first")
+            duration = float(self._animation_duration_var.get())
+            self.animation_controller.set_duration(duration)
             self.animation_controller.rename_clip(self._animation_name_var.get())
-            self.animation_controller.set_duration(float(self._animation_duration_var.get()))
             self.animation_controller.set_loop(bool(self._animation_loop_var.get()))
 
         self._animation_action(action)
@@ -417,16 +460,26 @@ class TkAnimationEditorApp21(TkGameplayEditorApp21):
     def _animation_add_track(self) -> None:
         from tkinter import simpledialog
 
-        binding = simpledialog.askstring("Add track", "Binding:", parent=self._animation_window)
+        binding = simpledialog.askstring(
+            "Add track",
+            "Binding:",
+            parent=self._animation_window,
+        )
         if not binding:
             return
         raw = simpledialog.askstring(
-            "Add track", "Initial value (JSON):", initialvalue="0.0", parent=self._animation_window
+            "Add track",
+            "Initial value (JSON):",
+            initialvalue="0.0",
+            parent=self._animation_window,
         )
         if raw is None:
             return
         self._animation_action(
-            lambda: self.animation_controller.add_track(binding, initial_value=parse_animation_value21(raw))
+            lambda: self.animation_controller.add_track(
+                binding,
+                initial_value=parse_animation_value21(raw),
+            )
         )
 
     def _animation_remove_track(self) -> None:
@@ -442,11 +495,16 @@ class TkAnimationEditorApp21(TkGameplayEditorApp21):
         if binding is None:
             return
         value = simpledialog.askstring(
-            "Interpolation", "Mode (linear / step):", initialvalue="linear", parent=self._animation_window
+            "Interpolation",
+            "Mode (linear / step):",
+            initialvalue="linear",
+            parent=self._animation_window,
         )
         if not value:
             return
-        self._animation_action(lambda: self.animation_controller.set_interpolation(binding, value))
+        self._animation_action(
+            lambda: self.animation_controller.set_interpolation(binding, value)
+        )
 
     def _animation_set_keyframe(self) -> None:
         from tkinter import simpledialog
@@ -454,14 +512,27 @@ class TkAnimationEditorApp21(TkGameplayEditorApp21):
         binding = self._selected_animation_binding()
         if binding is None:
             return
-        time = simpledialog.askfloat("Keyframe", "Time (seconds):", minvalue=0.0, parent=self._animation_window)
+        time = simpledialog.askfloat(
+            "Keyframe",
+            "Time (seconds):",
+            minvalue=0.0,
+            parent=self._animation_window,
+        )
         if time is None:
             return
-        raw = simpledialog.askstring("Keyframe", "Value (JSON):", parent=self._animation_window)
+        raw = simpledialog.askstring(
+            "Keyframe",
+            "Value (JSON):",
+            parent=self._animation_window,
+        )
         if raw is None:
             return
         self._animation_action(
-            lambda: self.animation_controller.set_keyframe(binding, time, parse_animation_value21(raw))
+            lambda: self.animation_controller.set_keyframe(
+                binding,
+                time,
+                parse_animation_value21(raw),
+            )
         )
 
     def _animation_remove_keyframe(self) -> None:
@@ -470,21 +541,34 @@ class TkAnimationEditorApp21(TkGameplayEditorApp21):
         binding = self._selected_animation_binding()
         if binding is None:
             return
-        time = simpledialog.askfloat("Remove keyframe", "Time (seconds):", minvalue=0.0, parent=self._animation_window)
+        time = simpledialog.askfloat(
+            "Remove keyframe",
+            "Time (seconds):",
+            minvalue=0.0,
+            parent=self._animation_window,
+        )
         if time is None:
             return
-        self._animation_action(lambda: self.animation_controller.remove_keyframe(binding, time))
+        self._animation_action(
+            lambda: self.animation_controller.remove_keyframe(binding, time)
+        )
 
     def _animation_sample(self) -> None:
         self._animation_action(
-            lambda: self.animation_controller.sample(float(self._animation_preview_time_var.get()))
+            lambda: self.animation_controller.sample(
+                float(self._animation_preview_time_var.get())
+            )
         )
 
     def _animation_action(self, action: Any) -> None:
         try:
             action()
         except (EditorAnimationToolingError, TypeError, ValueError, OSError) as exc:
-            self.messagebox.showerror("SwirEditor — Animation", str(exc), parent=self._animation_window)
+            self.messagebox.showerror(
+                "SwirEditor — Animation",
+                str(exc),
+                parent=self._animation_window,
+            )
             return
         self._refresh_animation_panel()
 
