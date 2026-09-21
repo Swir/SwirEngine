@@ -36,7 +36,7 @@ class PhysicsBodySpec21:
     shape: PhysicsShape21
     body_type: PhysicsBodyType21 = "dynamic"
     size: tuple[float, ...] = (1.0, 1.0)
-    offset: tuple[float, ...] = (0.0, 0.0)
+    offset: tuple[float, ...] | None = None
     mass: float = 1.0
     gravity_scale: float = 1.0
     linear_damping: float = 0.0
@@ -69,7 +69,12 @@ class PhysicsBodySpec21:
         expected_size = 1 if self.shape == "sphere" else (2 if self.dimension == "2d" else 3)
         expected_offset = 2 if self.dimension == "2d" else 3
         size = _float_tuple(self.size, expected_size, label="size")
-        offset = _float_tuple(self.offset, expected_offset, label="offset")
+        default_offset = (0.0, 0.0) if self.dimension == "2d" else (0.0, 0.0, 0.0)
+        offset = _float_tuple(
+            default_offset if self.offset is None else self.offset,
+            expected_offset,
+            label="offset",
+        )
         if any(value <= 0.0 for value in size):
             raise EditorPhysicsToolingError("collider dimensions must be greater than zero")
         object.__setattr__(self, "size", size)
