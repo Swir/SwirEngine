@@ -1,0 +1,46 @@
+name: Editor Gameplay Tooling 2.1 Validation
+
+on:
+  pull_request:
+    paths:
+      - "src/swirengine/editor_app21.py"
+      - "src/swirengine/editor_gameplay_tooling21.py"
+      - "src/swirengine/shipping19.py"
+      - "src/swirengine/input/**"
+      - "tests/test_editor_app_2_1.py"
+      - "tests/test_editor_gameplay_tooling_2_1.py"
+      - "tests/test_input_ui_settings_1_9.py"
+      - ".github/workflows/editor-gameplay-tooling-2-1.yml"
+      - "pyproject.toml"
+  workflow_dispatch:
+
+jobs:
+  gameplay-tooling-contract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Gameplay tooling regression suite
+        run: >-
+          pytest -q
+          tests/test_editor_app_2_1.py
+          tests/test_editor_gameplay_tooling_2_1.py
+          tests/test_input_ui_settings_1_9.py
+      - name: Strict Ruff gate
+        run: >-
+          ruff check
+          src/swirengine/editor_app21.py
+          src/swirengine/editor_gameplay_tooling21.py
+          tests/test_editor_app_2_1.py
+          tests/test_editor_gameplay_tooling_2_1.py
+      - name: Compile gameplay tooling files
+        run: >-
+          python -m compileall -q
+          src/swirengine/editor_app21.py
+          src/swirengine/editor_gameplay_tooling21.py
+          tests/test_editor_app_2_1.py
+          tests/test_editor_gameplay_tooling_2_1.py
