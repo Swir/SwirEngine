@@ -18,12 +18,9 @@ POST_RELEASE_STATUS = "docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md"
 POST_RELEASE_MINI = "../assets/readme/progress-2-0-audit-mini.svg"
 ARCHIVED_POST_RELEASE_TITLE = "# SwirEngine 2.0 — Archived Post-Release Audit Snapshot"
 ARCHIVED_POST_RELEASE_MARKER = "It is no longer an active progress scope."
-PYPI_PROGRESS_START = "<!-- SWIR-PYPI-PROGRESS:START -->"
-PYPI_PROGRESS_END = "<!-- SWIR-PYPI-PROGRESS:END -->"
-PYPI_PROGRESS_RE = re.compile(
-    rf"{re.escape(PYPI_PROGRESS_START)}.*?{re.escape(PYPI_PROGRESS_END)}",
-    re.DOTALL,
-)
+ACTIVE_PROGRESS_CARD = "assets/readme/progress-card.svg"
+ACTIVE_PROGRESS_MINI = "assets/readme/progress-mini.svg"
+LEGACY_PROGRESS_MARKER = "SWIR-PYPI-PROGRESS"
 
 REQUIRED_DOCS = (
     "docs/API_STABILITY.md",
@@ -79,10 +76,6 @@ def parse_roadmap(text: str) -> RoadmapState:
     return RoadmapState(completed, remaining, total, percent)
 
 
-def _without_approved_pypi_progress(text: str) -> str:
-    return PYPI_PROGRESS_RE.sub("", text)
-
-
 def legacy_progress_meter_lines(text: str) -> tuple[str, ...]:
     matches: list[str] = []
     for raw in text.splitlines():
@@ -106,6 +99,24 @@ def _require(condition: bool, message: str, checks: list[str]) -> None:
     if not condition:
         raise AssertionError(message)
     checks.append(message)
+
+
+def _readme_progress_card_count(readme: str) -> int:
+    return readme.count(f"]({ACTIVE_PROGRESS_CARD})") + readme.count(
+        f'src="{ACTIVE_PROGRESS_CARD}"'
+    )
+
+
+def _embeds_progress_template(text: str) -> bool:
+    return any(
+        token in text
+        for token in (
+            'src="assets/readme/progress-template.svg"',
+            'src="../assets/readme/progress-template.svg"',
+            "(assets/readme/progress-template.svg)",
+            "(../assets/readme/progress-template.svg)",
+        )
+    )
 
 
 def audit(root: Path | None = None, *, require_final: bool = False) -> AuditReport:
@@ -149,24 +160,6 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
     post_release_active = published_20 and bool(post_release_status) and not post_release_archived
 
     _require(
-        readme.count(PYPI_PROGRESS_START) == 1 and readme.count(PYPI_PROGRESS_END) == 1,
-        "README keeps exactly one approved deterministic PyPI progress fallback",
-        checks,
-    )
-    presentation_surfaces = [
-        ("README", _without_approved_pypi_progress(readme)),
-        ("2.0 roadmap", roadmap_text),
-    ]
-    if published_20 and post_release_status:
-        presentation_surfaces.append(("post-release audit", post_release_status))
-    for label, text in presentation_surfaces:
-        _require(
-            legacy_progress_meter_lines(text) == (),
-            f"{label} contains no legacy character progress meter",
-            checks,
-        )
-
-    _require(
         "<!-- SWIR-README-STANDARD:v2 -->" in readme,
         "README tracks SWIR README PRO v2",
         checks,
@@ -177,11 +170,36 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
         checks,
     )
     _require(
-        'src="assets/readme/progress-card.svg"' not in readme
-        and 'src="assets/readme/progress-mini.svg"' not in readme,
-        "README keeps project progress PyPI-safe without SVG progress embeds",
+        _readme_progress_card_count(readme) == 1,
+        "README embeds exactly one active progress-card.svg",
         checks,
     )
+    _require(
+        ACTIVE_PROGRESS_MINI not in readme,
+        "README does not duplicate the active roadmap mini graphic",
+        checks,
+    )
+    _require(
+        LEGACY_PROGRESS_MARKER not in readme,
+        "README does not restore the retired text progress marker",
+        checks,
+    )
+
+    presentation_surfaces = [("README", readme), ("2.0 roadmap", roadmap_text)]
+    if published_20 and post_release_status:
+        presentation_surfaces.append(("post-release audit", post_release_status))
+    for label, text in presentation_surfaces:
+        _require(
+            legacy_progress_meter_lines(text) == (),
+            f"{label} contains no legacy character progress meter",
+            checks,
+        )
+        _require(
+            not _embeds_progress_template(text),
+            f"{label} does not embed progress-template.svg as live project data",
+            checks,
+        )
+
     if published_20:
         _require(
             bool(post_release_status),
@@ -189,7 +207,7 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
             checks,
         )
         _require(
-            "progress-mini.svg" not in roadmap_text,
+            ACTIVE_PROGRESS_MINI not in roadmap_text,
             "historical 2.0 roadmap does not embed the active progress mini graphic",
             checks,
         )
@@ -200,13 +218,8 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
                 checks,
             )
             _require(
-                'src="../assets/readme/progress-mini.svg"' not in post_release_status,
+                ACTIVE_PROGRESS_MINI not in post_release_status,
                 "archived post-release audit does not reuse the active 2.1 mini graphic",
-                checks,
-            )
-            _require(
-                "progress-template.svg" not in post_release_status,
-                "archived post-release audit does not embed the progress template as data",
                 checks,
             )
         elif post_release_active:
@@ -216,23 +229,19 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
                 checks,
             )
             _require(
-                'src="../assets/readme/progress-mini.svg"' not in post_release_status,
+                ACTIVE_PROGRESS_MINI not in post_release_status,
                 "post-release audit does not reuse the active 2.1 mini graphic",
-                checks,
-            )
-            _require(
-                "progress-template.svg" not in post_release_status,
-                "active post-release audit does not embed the progress template as data",
                 checks,
             )
         else:
             _require(False, "published 2.0 post-release audit state is neither active nor archived", checks)
     else:
         _require(
-            'src="assets/readme/progress-mini.svg"' in roadmap_text,
-            "active 2.0 roadmap embeds the compact progress SVG before publication",
+            roadmap_text.count(ACTIVE_PROGRESS_MINI) == 1,
+            "active 2.0 roadmap embeds exactly one compact progress SVG before publication",
             checks,
         )
+
     for relative in (
         "assets/readme/progress-card.svg",
         "assets/readme/progress-mini.svg",
@@ -371,8 +380,8 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
                 )
         else:
             _require(
-                "10/10 milestones = 100.0%" in readme,
-                "README reports verified 10/10 2.0 progress",
+                _readme_progress_card_count(readme) == 1,
+                "README exposes one verified SVG progress card at finalization",
                 checks,
             )
             _require(
@@ -402,8 +411,8 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
             checks,
         )
         _require(
-            "9/10 milestones = 90.0%" in readme,
-            "README reports the verified pre-release 9/10 state",
+            _readme_progress_card_count(readme) == 1,
+            "README exposes one verified SVG progress card during preflight",
             checks,
         )
         _require(
