@@ -26,7 +26,9 @@
 
 ## 📊 Project status
 
-<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.1 SwirEditor roadmap progress" />
+<!-- SWIR-PYPI-PROGRESS:START -->
+<img width="100%" src='assets/readme/progress-card.svg' alt="SwirEngine 2.1 SwirEditor roadmap progress" />
+<!-- SWIR-PYPI-PROGRESS:END -->
 
 **Active verified development scope:** SwirEngine 2.1 — SwirEditor & Creator Workflow  
 **2.1 roadmap:** **7/10 milestones = 70.0% — IN PROGRESS**  
