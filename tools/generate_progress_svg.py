@@ -31,6 +31,7 @@ README_PROGRESS_SVG_RE = re.compile(
     re.IGNORECASE,
 )
 README_STATUS_HEADING = "## 📊 Project status"
+README_PROGRESS_PLACEHOLDER = "<!-- SWIR-CANONICAL-PROGRESS-BLOCK -->"
 
 MILESTONE_RE = re.compile(r"^- \[(?P<state>[ xX])\] \*\*(?P<number>\d+)\.", re.MULTILINE)
 SUMMARY_RE = re.compile(
@@ -219,10 +220,13 @@ def _expected_readme(readme: str, data: ProgressData) -> str:
     if starts != ends or starts > 1:
         raise ValueError("README must contain at most one well-formed SWIR progress block")
 
+    block = render_readme_progress(data)
     if starts == 1:
-        readme = PYPI_BLOCK_RE.sub("", readme, count=1)
-    readme = README_PROGRESS_SVG_RE.sub("", readme)
+        readme = PYPI_BLOCK_RE.sub(README_PROGRESS_PLACEHOLDER, readme, count=1)
+        readme = README_PROGRESS_SVG_RE.sub("", readme)
+        return readme.replace(README_PROGRESS_PLACEHOLDER, block, 1)
 
+    readme = README_PROGRESS_SVG_RE.sub("", readme)
     lines = readme.splitlines()
     anchor_index = next(
         (index for index, line in enumerate(lines) if line.strip() == README_STATUS_HEADING),
@@ -230,7 +234,7 @@ def _expected_readme(readme: str, data: ProgressData) -> str:
     )
     if anchor_index is None:
         raise ValueError("README is missing the project status heading for SVG progress")
-    lines[anchor_index + 1 : anchor_index + 1] = ["", render_readme_progress(data)]
+    lines[anchor_index + 1 : anchor_index + 1] = ["", block]
     trailing_newline = "\n" if readme.endswith("\n") else ""
     return "\n".join(lines) + trailing_newline
 
