@@ -7,7 +7,13 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
-from .animation15 import AnimationClip, AnimationKeyframe, AnimationPose, AnimationTrack, InterpolationMode
+from .animation15 import (
+    AnimationClip,
+    AnimationKeyframe,
+    AnimationPose,
+    AnimationTrack,
+    InterpolationMode,
+)
 
 ANIMATION_ASSET_FORMAT = "swirengine-animation-clip"
 ANIMATION_ASSET_VERSION = 1
