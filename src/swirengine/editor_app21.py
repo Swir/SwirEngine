@@ -14,6 +14,7 @@ from .editor_console_navigation21 import (
 from .editor_creator_frontend21 import EditorCreatorFrontendController21, TkCreatorEditorApp21
 from .editor_diagnostics import EditorConsole, EditorProfiler
 from .editor_frontend import TkEditorApp
+from .editor_gameplay_tooling21 import EditorGameplayTooling21
 from .editor_preview import EditorPreviewSession
 from .editor_project_authoring21 import EditorProjectAuthoring21
 from .editor_render_backend21 import EditorRenderBackend21, EditorRenderBackendUnavailable
@@ -71,9 +72,9 @@ class EditorProjectSession:
 
     The session composes the existing toolkit-neutral editor models into a safe creator workflow:
     manifest validation, multi-scene authoring, portable editor-state persistence, asset browsing,
-    typed multi-selection, component/prefab authoring, production viewport interaction,
-    diagnostics, deterministic recovery and the Tk desktop shell. Scene and editor-state writes
-    are explicit and stay inside the project root.
+    typed multi-selection, component/prefab authoring, production viewport interaction, gameplay
+    input/settings authoring, diagnostics, deterministic recovery and the Tk desktop shell. Scene,
+    gameplay and editor-state writes are explicit and stay inside the project root.
     """
 
     def __init__(
@@ -85,6 +86,7 @@ class EditorProjectSession:
         state_path: Path,
         workspace: EditorWorkspace,
         authoring: EditorProjectAuthoring21,
+        gameplay: EditorGameplayTooling21,
         asset_browser: EditorAssetBrowser,
         console: EditorConsole,
         profiler: EditorProfiler,
@@ -96,6 +98,7 @@ class EditorProjectSession:
         self.state_path = state_path
         self.workspace = workspace
         self.authoring = authoring
+        self.gameplay = gameplay
         self.asset_browser = asset_browser
         self.console = console
         self.profiler = profiler
@@ -159,6 +162,7 @@ class EditorProjectSession:
         asset_browser = EditorAssetBrowser(AssetManager(manifest.root / "assets"))
         console = EditorConsole()
         profiler = EditorProfiler(Profiler())
+        gameplay = EditorGameplayTooling21(manifest.root)
         authoring = EditorProjectAuthoring21(
             workspace,
             serializer=serializer,
@@ -202,6 +206,7 @@ class EditorProjectSession:
             state_path=state_path,
             workspace=workspace,
             authoring=authoring,
+            gameplay=gameplay,
             asset_browser=asset_browser,
             console=console,
             profiler=profiler,
@@ -231,17 +236,25 @@ class EditorProjectSession:
             entity_count=len(active_scene.entities),
             asset_count=asset_frame.total_files,
             open_scenes=len(self.scenes.scene_paths),
-            dirty=self.scenes.dirty,
+            dirty=self.scenes.dirty or self.gameplay.dirty,
             recovery_available=self.scenes.recovery_available,
         )
 
     def save(self) -> EditorProjectState:
+        gameplay_was_dirty = self.gameplay.dirty
+        if gameplay_was_dirty:
+            self.gameplay.save()
         state = self.scenes.save_all(self.state_path)
         self.scene_path = self.manifest.root / PurePosixPath(self.scenes.active_path)
         self.console.write(
             f"Saved {len(self.scenes.scene_paths)} open scene(s)",
             source="swireditor",
         )
+        if gameplay_was_dirty:
+            self.console.write(
+                "Saved gameplay input and settings configuration",
+                source="swireditor",
+            )
         return state
 
     def enable_live_viewport(
@@ -337,7 +350,7 @@ class EditorProjectSession:
             app.messagebox.showerror("SwirEditor — Save failed", str(exc))
 
     def _close_from_ui(self, app: TkEditorApp) -> None:
-        if self.scenes.dirty:
+        if self.scenes.dirty or self.gameplay.dirty:
             decision = app.messagebox.askyesnocancel(
                 "SwirEditor — Unsaved changes",
                 "Save project changes before closing?",
