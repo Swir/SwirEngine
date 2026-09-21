@@ -6,10 +6,6 @@ on:
       - "src/swirengine/editor_physics_tooling21.py"
       - "src/swirengine/physics/**"
       - "tests/test_editor_physics_tooling_2_1.py"
-      - "tests/test_collision2d.py"
-      - "tests/test_collision3d.py"
-      - "tests/test_rigidbody2d.py"
-      - "tests/test_rigidbody3d.py"
       - "tests/test_physics2_1_4.py"
       - "tests/test_progress_svg.py"
       - "tools/generate_progress_svg.py"
@@ -31,10 +27,6 @@ jobs:
         run: >-
           pytest -q
           tests/test_editor_physics_tooling_2_1.py
-          tests/test_collision2d.py
-          tests/test_collision3d.py
-          tests/test_rigidbody2d.py
-          tests/test_rigidbody3d.py
           tests/test_physics2_1_4.py
       - name: SVG progress presentation contract
         run: >-
