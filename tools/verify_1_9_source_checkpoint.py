@@ -26,6 +26,10 @@ ARCHIVED_POST_RELEASE_TITLE = "# SwirEngine 2.0 — Archived Post-Release Audit 
 ARCHIVED_POST_RELEASE_MARKER = "It is no longer an active progress scope."
 PYPI_PROGRESS_START = "<!-- SWIR-PYPI-PROGRESS:START -->"
 PYPI_PROGRESS_END = "<!-- SWIR-PYPI-PROGRESS:END -->"
+PYPI_PROGRESS_RE = re.compile(
+    rf"{re.escape(PYPI_PROGRESS_START)}.*?{re.escape(PYPI_PROGRESS_END)}",
+    re.DOTALL,
+)
 
 STABLE_PUBLIC_VERSION = "1.5.0"
 FORWARD_PUBLIC_VERSION = "2.0.0"
@@ -257,6 +261,27 @@ def _embeds_progress_template(text: str) -> bool:
     )
 
 
+def _without_approved_pypi_progress(text: str) -> str:
+    return PYPI_PROGRESS_RE.sub("", text, count=1)
+
+
+def _verify_pypi_progress_block(readme: str) -> None:
+    if readme.count(PYPI_PROGRESS_START) != 1 or readme.count(PYPI_PROGRESS_END) != 1:
+        raise CheckpointError("README.md must keep exactly one deterministic PyPI ASCII progress block")
+    match = PYPI_PROGRESS_RE.search(readme)
+    if match is None:
+        raise CheckpointError("README.md PyPI progress block is malformed")
+    block = match.group(0)
+    if block.count("```text") != 1 or block.count("```") != 2:
+        raise CheckpointError("README.md PyPI progress block must use exactly one fenced text block")
+    if "Progress:" not in block or "Counter:" not in block:
+        raise CheckpointError("README.md PyPI progress block must expose progress and counter")
+    if "<img" in block or ".svg" in block:
+        raise CheckpointError("README.md PyPI progress block must not contain graphical progress assets")
+    if not block.isascii():
+        raise CheckpointError("README.md PyPI progress block must be ASCII-only")
+
+
 def _reject_legacy_meter(label: str, text: str) -> None:
     if LEGACY_PROGRESS_RE.search(text):
         raise CheckpointError(f"{label} must not contain a legacy ASCII/Unicode progress meter")
@@ -294,15 +319,14 @@ def _verify_visual_contract() -> None:
         raise CheckpointError("README.md must retain SWIR README standard v2")
     if not roadmap.startswith("<!-- SWIR-PROGRESS-SVG-PRO:v1 -->"):
         raise CheckpointError("ROADMAP_1_9.md must retain the SVG progress standard marker")
-    if readme.count(PYPI_PROGRESS_START) != 1 or readme.count(PYPI_PROGRESS_END) != 1:
-        raise CheckpointError("README.md must keep exactly one deterministic progress block")
-    if readme.count('src="assets/readme/progress-card.svg"') != 1:
-        raise CheckpointError("README.md must embed exactly one canonical progress card SVG")
+    _verify_pypi_progress_block(readme)
+    if 'src="assets/readme/progress-card.svg"' in readme:
+        raise CheckpointError("README.md must use the PyPI-safe ASCII surface, not progress-card.svg")
     if 'src="assets/readme/progress-mini.svg"' in readme:
         raise CheckpointError("README.md must not duplicate the authoritative roadmap progress mini")
     if _embeds_progress_template(readme) or _embeds_progress_template(roadmap):
         raise CheckpointError("progress-template.svg is a template and must never be embedded as real data")
-    _reject_legacy_meter("README.md", readme)
+    _reject_legacy_meter("README.md", _without_approved_pypi_progress(readme))
     _reject_legacy_meter("ROADMAP_1_9.md", roadmap)
 
     if not ACTIVE_20_ROADMAP.is_file():
