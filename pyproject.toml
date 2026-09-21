@@ -75,6 +75,8 @@ target-version = "py310"
 "src/swirengine/diagnostics19.py" = ["B009", "SIM101"]
 # GPU timing providers are third-party/backend boundaries; failures are deliberately contained.
 "src/swirengine/render_timing18.py" = ["BLE001"]
+# Parsed animation JSON rejects unsupported value shapes as domain values, not argument types.
+"src/swirengine/editor_animation_frontend21.py" = ["TRY004"]
 # Imported NeonRoboRush demo sources keep their compact gameplay code until their own cleanup pass.
 "demo_projects/NeonRoboRush_v8_16bit/NeonRoboRush_v8_16bit/main.py" = ["RUF059", "PERF102"]
 "demo_projects/NeonRoboRush_v9_32bit/NeonRoboRush_v9_32bit/main.py" = ["RUF059"]
