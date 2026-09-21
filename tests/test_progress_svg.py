@@ -12,6 +12,9 @@ from tools.generate_progress_svg import (
     COMPAT_MINI_PATH,
     MINI_PATH,
     README_CARD_EMBED,
+    README_PROGRESS_BLOCK_RE,
+    README_PROGRESS_END,
+    README_PROGRESS_START,
     STATUS_PATH,
     TEMPLATE_PATH,
     ProgressData,
@@ -68,32 +71,36 @@ def test_active_2_1_math_matches_canonical_assets() -> None:
 def test_readme_uses_one_deterministic_svg_card_without_legacy_meter() -> None:
     readme = README_PATH.read_text(encoding="utf-8")
 
-    assert readme.count(README_CARD_EMBED) == 1
-    assert readme.count('src="assets/readme/progress-card.svg"') == 1
-    assert 'src="assets/readme/progress-mini.svg"' not in readme
-    assert "SWIR-PYPI-PROGRESS" not in readme
+    assert readme.count(README_PROGRESS_START) == 1
+    assert readme.count(README_PROGRESS_END) == 1
+    block = README_PROGRESS_BLOCK_RE.search(readme)
+    assert block is not None
+    assert README_CARD_EMBED in block.group(0)
+    assert readme.count("assets/readme/progress-card.svg") == 1
+    assert "assets/readme/progress-mini.svg" not in readme
     assert not LEGACY_PROGRESS_RE.search(readme)
 
 
-def test_generator_removes_legacy_meter_and_restores_svg_card() -> None:
+def test_generator_replaces_legacy_meter_with_svg_card_and_preserves_markers() -> None:
     data = ProgressData(6, 10, "ROADMAP_2_1.md")
     legacy = (
         "## 📊 Project status\n\n"
-        "<!-- SWIR-PYPI-PROGRESS:START -->\n"
+        f"{README_PROGRESS_START}\n"
         "```text\n"
         "[##################------------] 60.0%\n"
         "6 / 10 milestones\n"
         "```\n"
-        "<!-- SWIR-PYPI-PROGRESS:END -->\n\n"
+        f"{README_PROGRESS_END}\n\n"
         "Other status text.\n"
     )
 
     expected = _expected_readme(legacy, data)
 
-    assert "SWIR-PYPI-PROGRESS" not in expected
+    assert expected.count(README_PROGRESS_START) == 1
+    assert expected.count(README_PROGRESS_END) == 1
     assert not LEGACY_PROGRESS_RE.search(expected)
     assert expected.count(README_CARD_EMBED) == 1
-    assert 'src="assets/readme/progress-mini.svg"' not in expected
+    assert "assets/readme/progress-mini.svg" not in expected
     assert "Other status text." in expected
     assert _expected_readme(expected, data) == expected
 
