@@ -20,18 +20,15 @@ PROJECT_NAME = "SwirEngine"
 MILESTONE_LABEL = "2.1 SWIREDITOR"
 MEASURED_SCOPE = "SwirEngine 2.1 — SwirEditor & Creator Workflow"
 RELEASE_STATUS = "Source development · no SwirEngine 2.1 release published"
-PYPI_PROGRESS_START = "<!-- SWIR-PYPI-PROGRESS:START -->"
-PYPI_PROGRESS_END = "<!-- SWIR-PYPI-PROGRESS:END -->"
-PYPI_BAR_WIDTH = 30
-PYPI_BLOCK_RE = re.compile(
-    rf"{re.escape(PYPI_PROGRESS_START)}.*?{re.escape(PYPI_PROGRESS_END)}",
-    re.DOTALL,
+README_CARD_REF = CARD_PATH.as_posix()
+ROADMAP_MINI_REF = MINI_PATH.as_posix()
+TEMPLATE_REF = TEMPLATE_PATH.as_posix()
+LEGACY_PROGRESS_MARKER = "SWIR-PYPI-PROGRESS"
+LEGACY_METER_RE = re.compile(
+    r"(?m)^[ \t]*(?:```(?:text)?[ \t]*\n)?"
+    r"[ \t]*\[[#=\-█▓▒░■□▰▱▮▯▉▊▋▌▍▎▏]{5,}\]"
+    r"[ \t]+\d+(?:\.\d+)?%[ \t]*(?:\n```)?[ \t]*$"
 )
-README_PROGRESS_SVG_RE = re.compile(
-    r'<img[^>\n]*src="assets/readme/progress-(?:card|mini)\.svg"[^>\n]*/?>\n*',
-    re.IGNORECASE,
-)
-README_STATUS_HEADING = "## 📊 Project status"
 
 MILESTONE_RE = re.compile(r"^- \[(?P<state>[ xX])\] \*\*(?P<number>\d+)\.", re.MULTILINE)
 SUMMARY_RE = re.compile(
@@ -202,48 +199,6 @@ def render_template() -> str:
 '''
 
 
-def render_pypi_progress(data: ProgressData) -> str:
-    if data.fraction is None:
-        body = "Progress: N/A\nN/A milestones"
-    else:
-        filled = min(PYPI_BAR_WIDTH, max(0, int(data.fraction * PYPI_BAR_WIDTH + 0.5)))
-        bar = "#" * filled + "-" * (PYPI_BAR_WIDTH - filled)
-        body = f"[{bar}] {data.display_percentage}\n{data.counter}"
-    return (
-        f"{PYPI_PROGRESS_START}\n"
-        "```text\n"
-        f"{body}\n"
-        "```\n"
-        f"{PYPI_PROGRESS_END}"
-    )
-
-
-def _expected_readme(readme: str, data: ProgressData) -> str:
-    starts = readme.count(PYPI_PROGRESS_START)
-    ends = readme.count(PYPI_PROGRESS_END)
-    if starts != ends or starts > 1:
-        raise ValueError("README must contain at most one well-formed SWIR PyPI progress block")
-
-    # SwirEngine's README is also rendered on PyPI, where repository SVG progress
-    # is not reliable. Keep those SVG assets for roadmap/status tooling but remove
-    # progress SVG embeds from the README itself.
-    readme = README_PROGRESS_SVG_RE.sub("", readme)
-    block = render_pypi_progress(data)
-    if starts == 1:
-        return PYPI_BLOCK_RE.sub(block, readme, count=1)
-
-    lines = readme.splitlines()
-    anchor_index = next(
-        (index for index, line in enumerate(lines) if line.strip() == README_STATUS_HEADING),
-        None,
-    )
-    if anchor_index is None:
-        raise ValueError("README is missing the project status heading for ASCII progress")
-    lines[anchor_index + 1 : anchor_index + 1] = ["", block]
-    trailing_newline = "\n" if readme.endswith("\n") else ""
-    return "\n".join(lines) + trailing_newline
-
-
 def _validate_svg(svg: str) -> None:
     root = ET.fromstring(svg)
     view_box = root.attrib.get("viewBox", "").split()
@@ -269,8 +224,27 @@ def expected_outputs(data: ProgressData) -> dict[Path, str]:
     return outputs
 
 
+def validate_presentation(readme: str, roadmap: str) -> None:
+    if readme.count(README_CARD_REF) != 1:
+        raise ValueError("README must embed exactly one active progress card SVG")
+    if ROADMAP_MINI_REF in readme:
+        raise ValueError("README must not duplicate the active mini progress SVG")
+    if roadmap.count(ROADMAP_MINI_REF) != 1:
+        raise ValueError("active roadmap must embed exactly one progress mini SVG")
+    if README_CARD_REF in roadmap:
+        raise ValueError("active roadmap must not duplicate the README progress card SVG")
+    if TEMPLATE_REF in readme or TEMPLATE_REF in roadmap:
+        raise ValueError("progress template must never be embedded as live project data")
+    for label, text in (("README", readme), ("active roadmap", roadmap)):
+        if LEGACY_PROGRESS_MARKER in text:
+            raise ValueError(f"{label} contains a forbidden legacy progress marker")
+        if LEGACY_METER_RE.search(text):
+            raise ValueError(f"{label} contains a forbidden legacy ASCII/Unicode progress meter")
+
+
 def generate(*, check: bool = False, status_path: Path = STATUS_PATH) -> int:
-    data = parse_progress(status_path.read_text(encoding="utf-8"), source=status_path.as_posix())
+    roadmap = status_path.read_text(encoding="utf-8")
+    data = parse_progress(roadmap, source=status_path.as_posix())
     stale: list[Path] = []
     for path, expected in expected_outputs(data).items():
         if check:
@@ -282,14 +256,9 @@ def generate(*, check: bool = False, status_path: Path = STATUS_PATH) -> int:
             path.write_text(expected, encoding="utf-8")
 
     if not README_PATH.is_file():
-        raise ValueError("README.md is required for the SwirEngine PyPI-safe ASCII progress block")
+        raise ValueError("README.md is required for active progress presentation validation")
     readme = README_PATH.read_text(encoding="utf-8")
-    expected_readme = _expected_readme(readme, data)
-    if check:
-        if readme != expected_readme:
-            stale.append(README_PATH)
-    elif readme != expected_readme:
-        README_PATH.write_text(expected_readme, encoding="utf-8")
+    validate_presentation(readme, roadmap)
 
     if stale:
         print("stale SWIR active progress presentation:")
@@ -302,7 +271,9 @@ def generate(*, check: bool = False, status_path: Path = STATUS_PATH) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Generate deterministic active SwirEngine progress presentation")
+    parser = argparse.ArgumentParser(
+        description="Generate deterministic active SwirEngine SVG-only progress presentation"
+    )
     parser.add_argument("--check", action="store_true", help="fail when committed progress output is stale")
     parser.add_argument("--status", type=Path, default=STATUS_PATH, help="authoritative active roadmap")
     args = parser.parse_args(argv)
