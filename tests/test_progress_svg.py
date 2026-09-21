@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from tools.generate_progress_svg import (
+    ASCII_BAR_WIDTH,
     CARD_PATH,
     COMPAT_CARD_PATH,
     COMPAT_MINI_PATH,
@@ -45,6 +46,10 @@ def _gradient_fill_width(svg: str) -> float | None:
     return None
 
 
+def _without_pypi_progress(text: str) -> str:
+    return PYPI_BLOCK_RE.sub("", text, count=1)
+
+
 def test_active_2_1_math_matches_canonical_assets() -> None:
     data = parse_progress((ROOT / STATUS_PATH).read_text(encoding="utf-8"))
 
@@ -68,7 +73,7 @@ def test_active_2_1_math_matches_canonical_assets() -> None:
     assert outputs[COMPAT_MINI_PATH] == mini
 
 
-def test_readme_svg_progress_is_single_deterministic_surface() -> None:
+def test_readme_pypi_ascii_progress_is_single_deterministic_surface() -> None:
     data = parse_progress((ROOT / STATUS_PATH).read_text(encoding="utf-8"))
     readme = README_PATH.read_text(encoding="utf-8")
 
@@ -80,32 +85,41 @@ def test_readme_svg_progress_is_single_deterministic_surface() -> None:
     assert block == render_readme_progress(data)
     assert block.startswith(PYPI_PROGRESS_START)
     assert block.endswith(PYPI_PROGRESS_END)
+    assert block.count("```text") == 1
+    assert block.count("```") == 2
     assert data.display_percentage in block
     assert data.counter in block
-    assert block.count('src="assets/readme/progress-card.svg"') == 1
-    assert 'src="assets/readme/progress-mini.svg"' not in block
-    assert not LEGACY_PROGRESS_RE.search(block)
+    assert "<img" not in block
+    assert ".svg" not in block
+    fenced_text = block.split("```text\n", 1)[1].split("\n```", 1)[0]
+    assert fenced_text.isascii()
+    expected_filled = data.completed * ASCII_BAR_WIDTH // data.total
+    if data.completed < data.total:
+        expected_filled = min(ASCII_BAR_WIDTH - 1, expected_filled)
+    expected_bar = "#" * expected_filled + "-" * (ASCII_BAR_WIDTH - expected_filled)
+    assert f"[{expected_bar}] {data.display_percentage}" in block
 
 
-def test_generator_replaces_legacy_marker_content_with_svg_card() -> None:
+def test_generator_restores_pypi_ascii_block_and_removes_readme_progress_svgs() -> None:
     data = ProgressData(6, 10, "ROADMAP_2_1.md")
-    legacy = (
+    noncompliant = (
         "## 📊 Project status\n\n"
         f"{PYPI_PROGRESS_START}\n"
-        "```text\n[##################------------] 60.0%\n6 / 10 milestones\n```\n"
+        '<img width="100%" src="assets/readme/progress-card.svg" alt="wrong" />\n'
         f"{PYPI_PROGRESS_END}\n\n"
         '<img width="100%" src="assets/readme/progress-mini.svg" alt="duplicate" />\n\n'
         "Other status text.\n"
     )
 
-    expected = _expected_readme(legacy, data)
+    expected = _expected_readme(noncompliant, data)
 
-    assert expected.count('src="assets/readme/progress-card.svg"') == 1
-    assert 'src="assets/readme/progress-mini.svg"' not in expected
+    assert "assets/readme/progress-card.svg" not in expected
+    assert "assets/readme/progress-mini.svg" not in expected
     assert expected.count(PYPI_PROGRESS_START) == 1
     assert expected.count(PYPI_PROGRESS_END) == 1
     assert render_readme_progress(data) in expected
-    assert not LEGACY_PROGRESS_RE.search(expected)
+    assert "[##################------------] 60.0%" in expected
+    assert "Counter: 6 / 10 milestones" in expected
     assert "Other status text." in expected
 
 
@@ -119,8 +133,8 @@ def test_maintained_progress_surfaces_are_nonduplicated_and_scoped() -> None:
     assert "<!-- SWIR-README-STANDARD:v2 -->" in readme
     assert roadmap.startswith("<!-- SWIR-PROGRESS-SVG-PRO:v1 -->")
 
+    assert not LEGACY_PROGRESS_RE.search(_without_pypi_progress(readme))
     for path, text in (
-        (README_PATH, readme),
         (ROOT / STATUS_PATH, roadmap),
         (ARCHIVED_2_0_AUDIT_PATH, archived_audit),
         (HISTORICAL_2_0_PATH, historical_2_0),
@@ -130,7 +144,7 @@ def test_maintained_progress_surfaces_are_nonduplicated_and_scoped() -> None:
         assert 'src="assets/readme/progress-template.svg"' not in text
         assert 'src="../assets/readme/progress-template.svg"' not in text
 
-    assert readme.count("assets/readme/progress-card.svg") == 1
+    assert "assets/readme/progress-card.svg" not in readme
     assert "assets/readme/progress-mini.svg" not in readme
     assert roadmap.count("assets/readme/progress-mini.svg") == 1
     assert "progress-card.svg" not in roadmap
@@ -182,8 +196,9 @@ def test_unknown_denominator_renders_na_without_fake_progress() -> None:
     assert "N/A" in card
     assert "N/A" in mini
     assert "N/A" in readme
-    assert 'src="assets/readme/progress-card.svg"' in readme
-    assert not LEGACY_PROGRESS_RE.search(readme)
+    assert f"[{'-' * ASCII_BAR_WIDTH}] N/A" in readme
+    assert "<img" not in readme
+    assert ".svg" not in readme
     assert _gradient_fill_width(card) is None
     assert _gradient_fill_width(mini) is None
 

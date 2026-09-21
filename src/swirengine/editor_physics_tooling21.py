@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import tempfile
 from dataclasses import asdict, dataclass, field, replace
@@ -476,7 +477,7 @@ def _finite_float(value: Any, *, label: str) -> float:
         number = float(value)
     except (TypeError, ValueError) as exc:
         raise EditorPhysicsToolingError(f"{label} must be a finite number") from exc
-    if number != number or number in (float("inf"), float("-inf")):
+    if not math.isfinite(number):
         raise EditorPhysicsToolingError(f"{label} must be a finite number")
     return number
 

@@ -27,7 +27,12 @@
 ## 📊 Project status
 
 <!-- SWIR-PYPI-PROGRESS:START -->
-<img width="100%" src="assets/readme/progress-card.svg" alt="SwirEngine 2.1 — SwirEditor &amp; Creator Workflow — 70.0% (7 / 10 milestones), IN PROGRESS" />
+```text
+Scope: SwirEngine 2.1 - SwirEditor & Creator Workflow
+Progress: [#####################---------] 70.0%
+Counter: 7 / 10 milestones
+Status: IN PROGRESS
+```
 <!-- SWIR-PYPI-PROGRESS:END -->
 
 **Active verified development scope:** SwirEngine 2.1 — SwirEditor & Creator Workflow  
@@ -180,7 +185,7 @@ python tools/verify_performance_evidence_2_0.py --output build/performance-evide
 python tools/verify_release_safety_2_0.py
 ```
 
-`tools/generate_progress_svg.py` deterministically derives the active README progress card and the authoritative roadmap mini from the same verified 2.1 checklist, while keeping the reusable template labelled as template-only data. Presentation tests verify source math, accessible text, SVG fill geometry, one card per README scope, one mini per roadmap scope and the absence of legacy ASCII/Unicode progress meters.
+`tools/generate_progress_svg.py` deterministically derives the PyPI-safe README ASCII progress block and the internal/roadmap SVG assets from the same verified 2.1 checklist. Presentation tests verify source math, the exact ASCII percentage/counter, the absence of README progress SVGs, bounded SVG fill geometry, the single roadmap mini, the template contract and legacy-meter cleanup outside the explicit PyPI exception.
 
 ## 🧱 Architecture and technology
 
