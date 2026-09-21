@@ -20,21 +20,18 @@ PROJECT_NAME = "SwirEngine"
 MILESTONE_LABEL = "2.1 SWIREDITOR"
 MEASURED_SCOPE = "SwirEngine 2.1 — SwirEditor & Creator Workflow"
 RELEASE_STATUS = "Source development · no SwirEngine 2.1 release published"
-README_STATUS_HEADING = "## 📊 Project status"
-README_PROGRESS_START = "<!-- SWIR-PYPI-PROGRESS:START -->"
-README_PROGRESS_END = "<!-- SWIR-PYPI-PROGRESS:END -->"
-README_CARD_EMBED = (
-    "<img width=\"100%\" src='assets/readme/progress-card.svg' "
-    'alt="SwirEngine 2.1 SwirEditor roadmap progress" />'
-)
-README_PROGRESS_BLOCK_RE = re.compile(
-    rf"{re.escape(README_PROGRESS_START)}.*?{re.escape(README_PROGRESS_END)}\n*",
+PYPI_PROGRESS_START = "<!-- SWIR-PYPI-PROGRESS:START -->"
+PYPI_PROGRESS_END = "<!-- SWIR-PYPI-PROGRESS:END -->"
+PYPI_BAR_WIDTH = 30
+PYPI_BLOCK_RE = re.compile(
+    rf"{re.escape(PYPI_PROGRESS_START)}.*?{re.escape(PYPI_PROGRESS_END)}",
     re.DOTALL,
 )
 README_PROGRESS_SVG_RE = re.compile(
-    r"<img[^>\n]*src=(?:\"|')assets/readme/progress-(?:card|mini)\.svg(?:\"|')[^>\n]*/?>\n*",
+    r'<img[^>\n]*src="assets/readme/progress-(?:card|mini)\.svg"[^>\n]*/?>\n*',
     re.IGNORECASE,
 )
+README_STATUS_HEADING = "## 📊 Project status"
 
 MILESTONE_RE = re.compile(r"^- \[(?P<state>[ xX])\] \*\*(?P<number>\d+)\.", re.MULTILINE)
 SUMMARY_RE = re.compile(
@@ -205,25 +202,44 @@ def render_template() -> str:
 '''
 
 
-def _readme_progress_block() -> str:
-    return f"{README_PROGRESS_START}\n{README_CARD_EMBED}\n{README_PROGRESS_END}"
+def render_pypi_progress(data: ProgressData) -> str:
+    if data.fraction is None:
+        body = "Progress: N/A\nN/A milestones"
+    else:
+        filled = min(PYPI_BAR_WIDTH, max(0, int(data.fraction * PYPI_BAR_WIDTH + 0.5)))
+        bar = "#" * filled + "-" * (PYPI_BAR_WIDTH - filled)
+        body = f"[{bar}] {data.display_percentage}\n{data.counter}"
+    return (
+        f"{PYPI_PROGRESS_START}\n"
+        "```text\n"
+        f"{body}\n"
+        "```\n"
+        f"{PYPI_PROGRESS_END}"
+    )
 
 
 def _expected_readme(readme: str, data: ProgressData) -> str:
-    del data  # Card text is generated deterministically from the same roadmap data.
-    readme = README_PROGRESS_BLOCK_RE.sub("", readme)
+    starts = readme.count(PYPI_PROGRESS_START)
+    ends = readme.count(PYPI_PROGRESS_END)
+    if starts != ends or starts > 1:
+        raise ValueError("README must contain at most one well-formed SWIR PyPI progress block")
+
+    # SwirEngine's README is also rendered on PyPI, where repository SVG progress
+    # is not reliable. Keep those SVG assets for roadmap/status tooling but remove
+    # progress SVG embeds from the README itself.
     readme = README_PROGRESS_SVG_RE.sub("", readme)
+    block = render_pypi_progress(data)
+    if starts == 1:
+        return PYPI_BLOCK_RE.sub(block, readme, count=1)
+
     lines = readme.splitlines()
     anchor_index = next(
         (index for index, line in enumerate(lines) if line.strip() == README_STATUS_HEADING),
         None,
     )
     if anchor_index is None:
-        raise ValueError("README is missing the project status heading for SVG progress")
-    content_index = anchor_index + 1
-    while content_index < len(lines) and not lines[content_index].strip():
-        content_index += 1
-    lines[anchor_index + 1 : content_index] = ["", _readme_progress_block(), ""]
+        raise ValueError("README is missing the project status heading for ASCII progress")
+    lines[anchor_index + 1 : anchor_index + 1] = ["", block]
     trailing_newline = "\n" if readme.endswith("\n") else ""
     return "\n".join(lines) + trailing_newline
 
@@ -266,7 +282,7 @@ def generate(*, check: bool = False, status_path: Path = STATUS_PATH) -> int:
             path.write_text(expected, encoding="utf-8")
 
     if not README_PATH.is_file():
-        raise ValueError("README.md is required for the SwirEngine SVG progress card")
+        raise ValueError("README.md is required for the SwirEngine PyPI-safe ASCII progress block")
     readme = README_PATH.read_text(encoding="utf-8")
     expected_readme = _expected_readme(readme, data)
     if check:
@@ -286,20 +302,9 @@ def generate(*, check: bool = False, status_path: Path = STATUS_PATH) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="Generate deterministic active SwirEngine progress presentation"
-    )
-    parser.add_argument(
-        "--check",
-        action="store_true",
-        help="fail when committed progress output is stale",
-    )
-    parser.add_argument(
-        "--status",
-        type=Path,
-        default=STATUS_PATH,
-        help="authoritative active roadmap",
-    )
+    parser = argparse.ArgumentParser(description="Generate deterministic active SwirEngine progress presentation")
+    parser.add_argument("--check", action="store_true", help="fail when committed progress output is stale")
+    parser.add_argument("--status", type=Path, default=STATUS_PATH, help="authoritative active roadmap")
     args = parser.parse_args(argv)
     return generate(check=args.check, status_path=args.status)
 
