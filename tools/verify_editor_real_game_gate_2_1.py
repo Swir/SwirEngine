@@ -24,9 +24,9 @@ from swirengine.serialization import SceneSerializer
 
 _EXPECTED_FIXTURES = ["2d-game", "3d-game", "multiplayer-game"]
 _AUTHORED_X = {
-    "2d-game": 16.0,
-    "3d-game": 32.0,
-    "multiplayer-game": 48.0,
+    "2d-game": 16,
+    "3d-game": 32,
+    "multiplayer-game": 48,
 }
 
 
