@@ -1,0 +1,76 @@
+name: Editor UI HUD Tooling 2.1
+
+on:
+  pull_request:
+    paths:
+      - "src/swirengine/ui.py"
+      - "src/swirengine/editor_asset_app21.py"
+      - "src/swirengine/editor_integrated_session21.py"
+      - "src/swirengine/editor_ui_frontend21.py"
+      - "src/swirengine/editor_ui_tooling21.py"
+      - "tests/test_editor_ui_hud_tooling_2_1.py"
+      - "tests/test_editor_ui_hud_session_2_1.py"
+      - "tests/test_ui.py"
+      - "tests/test_progress_svg.py"
+      - "tools/generate_progress_svg.py"
+      - "README.md"
+      - "ROADMAP_2_1.md"
+      - ".github/workflows/editor-ui-hud-tooling-2-1.yml"
+  push:
+    branches:
+      - "feature/2.1-ui-hud-creator-tooling"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: UI HUD authoring / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13", "3.14"]
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+      - name: Install CPython 3.14 native build prerequisites
+        if: matrix.python-version == '3.14'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev
+      - name: Install development dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Run UI HUD editor and runtime tests
+        run: >-
+          pytest -q
+          tests/test_editor_ui_hud_tooling_2_1.py
+          tests/test_editor_ui_hud_session_2_1.py
+          tests/test_ui.py
+      - name: Verify progress presentation contract
+        run: >-
+          pytest -q tests/test_progress_svg.py &&
+          python tools/generate_progress_svg.py --check
+      - name: Strict Ruff gate
+        run: >-
+          ruff check
+          src/swirengine/editor_asset_app21.py
+          src/swirengine/editor_integrated_session21.py
+          src/swirengine/editor_ui_frontend21.py
+          src/swirengine/editor_ui_tooling21.py
+          tests/test_editor_ui_hud_tooling_2_1.py
+          tests/test_editor_ui_hud_session_2_1.py
+      - name: Compile UI HUD authoring files
+        run: >-
+          python -m compileall -q
+          src/swirengine/editor_asset_app21.py
+          src/swirengine/editor_integrated_session21.py
+          src/swirengine/editor_ui_frontend21.py
+          src/swirengine/editor_ui_tooling21.py
+          tests/test_editor_ui_hud_tooling_2_1.py
+          tests/test_editor_ui_hud_session_2_1.py
