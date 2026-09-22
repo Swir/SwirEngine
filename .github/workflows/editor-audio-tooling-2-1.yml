@@ -4,9 +4,12 @@ on:
   pull_request:
     paths:
       - "src/swirengine/audio.py"
+      - "src/swirengine/editor_asset_app21.py"
       - "src/swirengine/editor_audio_frontend21.py"
       - "src/swirengine/editor_audio_tooling21.py"
+      - "src/swirengine/editor_integrated_session21.py"
       - "src/swirengine/editor_navigation_frontend21.py"
+      - "tests/test_editor_audio_session_2_1.py"
       - "tests/test_editor_audio_tooling_2_1.py"
       - "tests/test_progress_svg.py"
       - "tools/generate_progress_svg.py"
@@ -47,6 +50,7 @@ jobs:
         run: >-
           pytest -q
           tests/test_editor_audio_tooling_2_1.py
+          tests/test_editor_audio_session_2_1.py
           tests/test_audio.py
       - name: Verify progress presentation contract
         run: >-
@@ -55,12 +59,18 @@ jobs:
       - name: Strict Ruff gate
         run: >-
           ruff check
+          src/swirengine/editor_asset_app21.py
           src/swirengine/editor_audio_frontend21.py
           src/swirengine/editor_audio_tooling21.py
+          src/swirengine/editor_integrated_session21.py
           tests/test_editor_audio_tooling_2_1.py
+          tests/test_editor_audio_session_2_1.py
       - name: Compile audio authoring files
         run: >-
           python -m compileall -q
+          src/swirengine/editor_asset_app21.py
           src/swirengine/editor_audio_frontend21.py
           src/swirengine/editor_audio_tooling21.py
+          src/swirengine/editor_integrated_session21.py
           tests/test_editor_audio_tooling_2_1.py
+          tests/test_editor_audio_session_2_1.py
