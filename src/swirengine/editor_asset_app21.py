@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from .editor_app21 import EditorProjectOpenError, _build_parser
+from .editor_app21 import EditorProjectOpenError, EditorProjectSession, _build_parser
 from .editor_asset_drop21 import TkNativeDropAssetPipelineEditorApp21
 from .editor_asset_formats21 import create_format_aware_editor_asset_pipeline21
 from .editor_asset_frontend21 import EditorAssetWorkflow21
@@ -15,11 +15,10 @@ class TkIntegratedEditorApp21(TkAudioEditorApp21, TkNativeDropAssetPipelineEdito
     """Unified SwirEditor shell for gameplay creator tools and the production asset pipeline."""
 
 
-def run_editor_session21(session: EditorIntegratedProjectSession21) -> None:
+def run_editor_session21(session: EditorProjectSession) -> None:
     """Run one fully integrated SwirEditor 2.1 creator session."""
 
-    if not isinstance(session, EditorIntegratedProjectSession21):
-        raise TypeError("session must be an EditorIntegratedProjectSession21")
+    session = EditorIntegratedProjectSession21.adopt(session)
     backend = create_format_aware_editor_asset_pipeline21(session.asset_browser.manager)
     workflow = EditorAssetWorkflow21(backend, session.asset_browser)
     try:
