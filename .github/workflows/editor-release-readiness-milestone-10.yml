@@ -1,0 +1,162 @@
+name: Editor Release Readiness Milestone 10
+
+on:
+  pull_request:
+    paths:
+      - "README.md"
+      - "ROADMAP_2_1.md"
+      - "pyproject.toml"
+      - "docs/MIGRATING_TO_2_1.md"
+      - "docs/RELEASE_GATE_2_1.md"
+      - "src/swirengine/**"
+      - "examples/2d_game_demo/**"
+      - "examples/3d_game_demo/**"
+      - "examples/multiplayer_game_demo/**"
+      - "tools/generate_progress_svg.py"
+      - "tools/verify_2_1_release_readiness.py"
+      - "tools/verify_editor_real_game_gate_2_1.py"
+      - "tools/verify_platform_matrix_2_0.py"
+      - "tools/verify_clean_wheel_2_0.py"
+      - "tools/verify_packaging_shipping_2_0.py"
+      - "tools/verify_performance_evidence_2_0.py"
+      - "tools/verify_release_safety_2_0.py"
+      - "tests/test_release_readiness_2_1.py"
+      - "tests/test_editor_real_game_gate_2_1.py"
+      - "tests/test_progress_svg.py"
+      - ".github/workflows/editor-release-readiness-milestone-10.yml"
+  push:
+    branches:
+      - "feature/2.1-milestone-10-release-readiness"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: editor-release-readiness-m10-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  preflight-contract:
+    name: M10 release-readiness preflight
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Install build and development tooling
+        run: >-
+          python -m pip install --upgrade pip setuptools wheel build &&
+          python -m pip install -e ".[dev]"
+      - name: Verify M10 release-readiness contract
+        run: python tools/verify_2_1_release_readiness.py
+      - name: Verify PyPI-safe progress contract
+        run: >-
+          python -m pytest -q tests/test_progress_svg.py tests/test_release_readiness_2_1.py &&
+          python tools/generate_progress_svg.py --check
+      - name: Verify real-game editor acceptance remains green
+        run: >-
+          python -m pytest -q tests/test_editor_real_game_gate_2_1.py &&
+          python tools/verify_editor_real_game_gate_2_1.py
+      - name: Build exact-source wheel and sdist
+        run: python -m build --sdist --wheel --outdir dist
+      - name: Verify wheel/sdist inventories and clean installs
+        run: >-
+          python tools/verify_packaging_shipping_2_0.py
+          --dist-dir dist
+          --expected-system Linux
+          --expected-python 3.13
+      - name: Verify public API compatibility floor
+        run: python tools/verify_2_0_public_api.py
+      - name: Verify performance evidence
+        run: >-
+          python tools/verify_performance_evidence_2_0.py
+          --output build/performance-evidence-2-1-preflight.json
+      - name: Verify release-safety boundaries
+        run: python tools/verify_release_safety_2_0.py
+      - name: Refuse premature 2.1 tag
+        shell: bash
+        run: test -z "$(git tag --list 'v2.1.0')"
+      - name: Strict Ruff gate
+        run: >-
+          python -m ruff check
+          tools/verify_2_1_release_readiness.py
+          tests/test_release_readiness_2_1.py
+      - name: Compile M10 readiness surfaces
+        run: >-
+          python -m compileall -q
+          tools/verify_2_1_release_readiness.py
+          tests/test_release_readiness_2_1.py
+
+  supported-platforms:
+    name: ${{ matrix.os }} / Python ${{ matrix.python-version }} / M10
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest, macos-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Linux CPython 3.14 native prerequisites
+        if: runner.os == 'Linux' && matrix.python-version == '3.14'
+        run: sudo apt-get update && sudo apt-get install -y libx11-dev libgl-dev libegl-dev
+      - name: Install build tooling
+        run: python -m pip install --upgrade pip setuptools wheel build
+      - name: Build Windows CPython 3.14 renderer-native wheels
+        if: runner.os == 'Windows' && matrix.python-version == '3.14'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force native-wheels | Out-Null
+          python -m pip wheel --no-deps --no-binary=:all: moderngl==5.12.0 -w native-wheels
+          python -m pip wheel --no-deps --no-binary=:all: glcontext==3.0.0 -w native-wheels
+          $native = Get-ChildItem native-wheels\*.whl | ForEach-Object { $_.FullName }
+          python -m pip install $native
+      - name: Install source development package
+        run: python -m pip install -e ".[dev]"
+      - name: Verify source platform contract
+        run: >-
+          python tools/verify_platform_matrix_2_0.py
+          --expected-system "${{ runner.os }}"
+          --expected-python "${{ matrix.python-version }}"
+      - name: Run M10 compatibility regressions
+        run: >-
+          python -m pytest -q
+          tests/test_release_readiness_2_1.py
+          tests/test_editor_real_game_gate_2_1.py
+      - name: Verify M10 readiness contract on this cell
+        run: python tools/verify_2_1_release_readiness.py
+      - name: Build standard wheel
+        if: runner.os != 'Windows' || matrix.python-version != '3.14'
+        run: python -m build --wheel --outdir dist
+      - name: Build Windows CPython 3.14 vendored wheel
+        if: runner.os == 'Windows' && matrix.python-version == '3.14'
+        shell: pwsh
+        run: |
+          python -m build --wheel --outdir dist-base
+          $base = (Get-ChildItem dist-base\swirengine-*.whl).FullName
+          $moderngl = (Get-ChildItem native-wheels\moderngl-*.whl).FullName
+          $glcontext = (Get-ChildItem native-wheels\glcontext-*.whl).FullName
+          python tools/build_vendored_wheel.py --base $base --vendor $moderngl --vendor $glcontext --tag cp314-cp314-win_amd64 --output-dir dist
+      - name: Verify clean wheel install
+        if: runner.os != 'Windows' || matrix.python-version != '3.14'
+        run: >-
+          python tools/verify_clean_wheel_2_0.py
+          --wheel-dir dist
+          --expected-system "${{ runner.os }}"
+          --expected-python "${{ matrix.python-version }}"
+      - name: Verify clean Windows CPython 3.14 vendored wheel
+        if: runner.os == 'Windows' && matrix.python-version == '3.14'
+        run: >-
+          python tools/verify_clean_wheel_2_0.py
+          --wheel-dir dist
+          --expected-system Windows
+          --expected-python 3.14
+          --require-vendored-native
