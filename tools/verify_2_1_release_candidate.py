@@ -25,11 +25,17 @@ def _project_version(pyproject: str) -> str | None:
     return version_match.group(1) if version_match else None
 
 
+def _runtime_version(init_text: str) -> str | None:
+    match = re.search(r'^__version__\s*=\s*"([^"]+)"\s*$', init_text, re.M)
+    return match.group(1) if match else None
+
+
 def check_release_candidate(root: Path = ROOT) -> list[str]:
     errors: list[str] = []
 
     required = (
         "pyproject.toml",
+        "src/swirengine/__init__.py",
         "ROADMAP_2_1.md",
         "README.md",
         "RELEASE_NOTES_2_1.md",
@@ -49,6 +55,8 @@ def check_release_candidate(root: Path = ROOT) -> list[str]:
     pyproject = texts["pyproject.toml"]
     if _project_version(pyproject) != EXPECTED_VERSION:
         errors.append(f"pyproject project version must be exactly {EXPECTED_VERSION}")
+    if _runtime_version(texts["src/swirengine/__init__.py"]) != EXPECTED_VERSION:
+        errors.append(f"runtime __version__ must be exactly {EXPECTED_VERSION}")
     if 'requires-python = ">=3.10,<3.15"' not in pyproject:
         errors.append("pyproject must retain the verified CPython 3.10-3.14 package range")
 
@@ -81,9 +89,9 @@ def check_release_candidate(root: Path = ROOT) -> list[str]:
 
     if "Latest public stable release:** **SwirEngine 2.0.0" not in readme:
         errors.append("README must keep public stable truth at SwirEngine 2.0.0 before publication")
-    if 'swirengine==2.0.0' not in readme:
+    if "swirengine==2.0.0" not in readme:
         errors.append("README must keep the stable 2.0.0 install example before publication")
-    if 'swirengine==2.1.0' in readme:
+    if "swirengine==2.1.0" in readme:
         errors.append("README must not advertise a PyPI 2.1.0 install before publication")
 
     notes = texts["RELEASE_NOTES_2_1.md"]
