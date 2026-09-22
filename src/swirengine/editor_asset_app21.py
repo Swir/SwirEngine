@@ -8,10 +8,10 @@ from .editor_asset_formats21 import create_format_aware_editor_asset_pipeline21
 from .editor_asset_frontend21 import EditorAssetWorkflow21
 from .editor_integrated_session21 import EditorIntegratedProjectSession21
 from .editor_render_backend21 import EditorRenderBackendUnavailable
-from .editor_ui_frontend21 import TkUIHudEditorApp21
+from .editor_save_profile_frontend21 import TkSaveProfileEditorApp21
 
 
-class TkIntegratedEditorApp21(TkUIHudEditorApp21, TkNativeDropAssetPipelineEditorApp21):
+class TkIntegratedEditorApp21(TkSaveProfileEditorApp21, TkNativeDropAssetPipelineEditorApp21):
     """Unified SwirEditor shell for gameplay creator tools and the production asset pipeline."""
 
 
@@ -36,6 +36,7 @@ def run_editor_session21(session: EditorProjectSession) -> None:
             navigation=session.navigation,
             audio=session.audio,
             ui_hud=session.ui_hud,
+            save_profile=session.save_profile,
             title=f"SwirEditor 2.1 — {session.manifest.name}",
         )
         session._install_file_menu(app)
@@ -43,6 +44,7 @@ def run_editor_session21(session: EditorProjectSession) -> None:
         session.console.write("Asset Pipeline 2.1 attached", source="assets")
         session.console.write("Audio creator tooling attached", source="audio")
         session.console.write("UI/HUD creator tooling attached", source="ui")
+        session.console.write("Save/Profile creator tooling attached", source="save")
         app.run()
     finally:
         workflow.shutdown()
