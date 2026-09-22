@@ -4,7 +4,6 @@ import json
 import subprocess
 import sys
 
-
 _EXPECTED_FIXTURES = ["2d-game", "3d-game", "multiplayer-game"]
 
 
