@@ -6,6 +6,10 @@ from typing import Any
 from .editor_animation_tooling21 import EditorAnimationToolingError
 from .editor_app21 import EditorProjectSession, EditorProjectSummary
 from .editor_audio_tooling21 import EditorAudioTooling21, EditorAudioToolingError
+from .editor_build_export_tooling21 import (
+    EditorBuildExportTooling21,
+    EditorBuildExportToolingError,
+)
 from .editor_navigation_tooling21 import EditorNavigationToolingError
 from .editor_physics_tooling21 import EditorPhysicsToolingError
 from .editor_save_profile_tooling21 import (
@@ -24,6 +28,7 @@ _SAVE_ERRORS = (
     EditorAudioToolingError,
     EditorUIHudToolingError,
     EditorSaveProfileToolingError,
+    EditorBuildExportToolingError,
     TypeError,
     ValueError,
 )
@@ -37,6 +42,10 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
         self.audio = EditorAudioTooling21(self.manifest.root)
         self.ui_hud = EditorUIHudTooling21(self.manifest.root)
         self.save_profile = EditorSaveProfileTooling21(
+            self.manifest.root,
+            project_name=self.manifest.name,
+        )
+        self.build_export = EditorBuildExportTooling21(
             self.manifest.root,
             project_name=self.manifest.name,
         )
@@ -57,6 +66,10 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
             integrated.manifest.root,
             project_name=integrated.manifest.name,
         )
+        integrated.build_export = EditorBuildExportTooling21(
+            integrated.manifest.root,
+            project_name=integrated.manifest.name,
+        )
         return integrated
 
     def summary(self) -> EditorProjectSummary:
@@ -68,6 +81,7 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
                 or self.audio.dirty
                 or self.ui_hud.dirty
                 or self.save_profile.dirty
+                or self.build_export.dirty
             ),
         )
 
@@ -75,12 +89,15 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
         audio_was_dirty = self.audio.dirty
         ui_hud_was_dirty = self.ui_hud.dirty
         save_profile_was_dirty = self.save_profile.dirty
+        build_export_was_dirty = self.build_export.dirty
         if audio_was_dirty:
             self.audio.save()
         if ui_hud_was_dirty:
             self.ui_hud.save()
         if save_profile_was_dirty:
             self.save_profile.save()
+        if build_export_was_dirty:
+            self.build_export.save()
         state = super().save()
         if audio_was_dirty:
             self.console.write(
@@ -95,6 +112,11 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
         if save_profile_was_dirty:
             self.console.write(
                 f"Saved save/profile configuration {self.save_profile.relative_path}",
+                source="swireditor",
+            )
+        if build_export_was_dirty:
+            self.console.write(
+                f"Saved build/export configuration {self.build_export.relative_path}",
                 source="swireditor",
             )
         return state
@@ -114,6 +136,7 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
             or self.audio.dirty
             or self.ui_hud.dirty
             or self.save_profile.dirty
+            or self.build_export.dirty
         )
 
     def _save_from_ui(self, app: Any) -> None:
