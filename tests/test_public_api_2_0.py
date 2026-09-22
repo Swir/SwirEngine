@@ -18,6 +18,7 @@ from tools.verify_2_0_public_api import (
     read_project_version,
     read_static_all,
     read_static_all_text,
+    validate_source_version,
     verify,
 )
 
@@ -74,26 +75,30 @@ def test_published_baseline_exports_resolve_from_current_package() -> None:
     assert missing == []
 
 
-def test_source_version_matches_milestone_10_release_phase() -> None:
+def test_source_version_preserves_2_0_floor_after_milestone_10() -> None:
     roadmap = (ROOT / "ROADMAP_2_0.md").read_text(encoding="utf-8")
-    expected = expected_candidate_version(roadmap)
+    phase_version = expected_candidate_version(roadmap)
+    project_version = read_project_version(ROOT / "pyproject.toml")
+    module_version = read_module_version(INIT_PATH)
 
     assert PUBLIC_VERSION_FLOOR == "1.5.0"
     assert FINAL_VERSION == "2.0.0"
-    assert expected in {PUBLIC_VERSION_FLOOR, FINAL_VERSION}
-    assert read_project_version(ROOT / "pyproject.toml") == expected
-    assert read_module_version(INIT_PATH) == expected
-    assert swirengine.__version__ == expected
+    assert phase_version in {PUBLIC_VERSION_FLOOR, FINAL_VERSION}
+    validate_source_version(roadmap, project_version, module_version)
+    assert project_version == module_version == swirengine.__version__
+    if phase_version == FINAL_VERSION:
+        assert tuple(map(int, project_version.split("."))) >= (2, 0, 0)
+    else:
+        assert project_version == PUBLIC_VERSION_FLOOR
 
 
 @REQUIRES_BASELINE
 def test_verifier_reports_complete_m1_evidence() -> None:
     evidence = verify(ROOT)
-    roadmap = (ROOT / "ROADMAP_2_0.md").read_text(encoding="utf-8")
-    expected = expected_candidate_version(roadmap)
+    project_version = read_project_version(ROOT / "pyproject.toml")
 
     assert "baseline=1.5.0" in evidence
     assert "baseline-root-exports=271" in evidence
     assert any(item.startswith("additive-root-exports=") for item in evidence)
-    assert f"project-version={expected}" in evidence
+    assert f"project-version={project_version}" in evidence
     assert "migration-ledger=present" in evidence
