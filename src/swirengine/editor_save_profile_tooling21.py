@@ -191,6 +191,8 @@ class EditorSaveProfileTooling21:
         """Exercise real background save/load using the shipping runtime."""
         runtime = self._config.open_runtime(user_data_root=user_data_root, profile=profile)
         probe = {"editor_probe": True, "format_version": _FORMAT_VERSION}
+        expected = dict(self._config.defaults or {})
+        expected.update(probe)
         try:
             runtime.submit_manual(
                 "editor-preview",
@@ -199,7 +201,7 @@ class EditorSaveProfileTooling21:
             )
             runtime.run_until_idle(timeout=5.0)
             loaded = runtime.load("editor-preview")
-            if loaded.data != probe:
+            if loaded.data != expected:
                 raise EditorSaveProfileToolingError("runtime save/profile validation mismatch")
         finally:
             runtime.shutdown(wait=True, cancel_pending=True)
