@@ -1,12 +1,19 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
+
+import pytest
 
 from swirengine.editor_build_export_frontend21 import (
     EditorBuildExportPanelController21,
     TkBuildExportEditorApp21,
+    _parse_metadata_text,
 )
-from swirengine.editor_build_export_tooling21 import EditorBuildExportTooling21
+from swirengine.editor_build_export_tooling21 import (
+    EditorBuildExportTooling21,
+    EditorBuildExportToolingError,
+)
 from swirengine.exporting import ExportTarget, PackagingProfile
 
 
@@ -31,6 +38,10 @@ def test_build_export_controller_exposes_exact_shipping_plan(tmp_path: Path) -> 
     assert frame.active_profile == "desktop"
     assert frame.target == "windows"
     assert frame.app_name == "Neon Game"
+    assert frame.entrypoint == "main.py"
+    assert frame.icon is None
+    assert frame.metadata == ()
+    assert frame.output_root == "dist"
     assert frame.planned_file_count == 3
     assert frame.native_build_planned
     assert not frame.experimental
@@ -64,6 +75,89 @@ def test_build_export_controller_authors_profiles_and_preserves_runtime_fields(
     assert not tooling.config.active.console
     assert tooling.config.active.metadata == {"channel": "preview"}
     assert tooling.dirty
+
+
+def test_creator_configuration_round_trips_into_shipping_manifest(tmp_path: Path) -> None:
+    root = _project(tmp_path)
+    tooling = EditorBuildExportTooling21(root, project_name="Neon Game")
+    controller = EditorBuildExportPanelController21(tooling)
+
+    controller.set_output_root("artifacts/export")
+    frame = controller.configure_active_profile(
+        name="shipping",
+        target=ExportTarget.LINUX,
+        entrypoint="main.py",
+        app_name="neon-game",
+        icon="assets/icon.png",
+        onefile=True,
+        console=False,
+        metadata={"channel": "preview", "build": "creator"},
+    )
+    saved = controller.save()
+
+    assert frame.active_profile == "shipping"
+    assert frame.profile_names == ("shipping",)
+    assert frame.entrypoint == "main.py"
+    assert frame.icon == "assets/icon.png"
+    assert frame.metadata == (("build", "creator"), ("channel", "preview"))
+    assert frame.onefile
+    assert not frame.console
+    assert frame.output_root == "artifacts/export"
+    assert not saved.dirty
+
+    reloaded = EditorBuildExportPanelController21(
+        EditorBuildExportTooling21(root, project_name="Neon Game")
+    )
+    restored = reloaded.frame()
+    assert restored.active_profile == "shipping"
+    assert restored.icon == "assets/icon.png"
+    assert restored.metadata == (("build", "creator"), ("channel", "preview"))
+    assert restored.onefile
+    assert not restored.console
+    assert restored.output_root == "artifacts/export"
+
+    artifact = reloaded.stage()
+    payload = json.loads(Path(artifact.manifest).read_text(encoding="utf-8"))
+    assert artifact.checksums_verified
+    assert "assets/icon.png" in payload["files"]
+    assert payload["metadata"] == {"channel": "preview", "build": "creator"}
+
+
+def test_creator_configuration_rejects_invalid_icon_without_mutating_profile(
+    tmp_path: Path,
+) -> None:
+    root = _project(tmp_path)
+    tooling = EditorBuildExportTooling21(root, project_name="Neon Game")
+    controller = EditorBuildExportPanelController21(tooling)
+    before = tooling.snapshot()
+
+    with pytest.raises(FileNotFoundError):
+        controller.configure_active_profile(
+            name="shipping",
+            target=ExportTarget.LINUX,
+            entrypoint="main.py",
+            app_name="neon-game",
+            icon="assets/missing.png",
+            onefile=False,
+            console=True,
+            metadata={},
+        )
+
+    after = tooling.snapshot()
+    assert after.config == before.config
+    assert after.dirty == before.dirty
+
+
+def test_creator_metadata_parser_is_strict_and_deterministic() -> None:
+    assert _parse_metadata_text("") == {}
+    assert _parse_metadata_text('{"channel": "preview", "build": "creator"}') == {
+        "channel": "preview",
+        "build": "creator",
+    }
+    with pytest.raises(EditorBuildExportToolingError, match="JSON object"):
+        _parse_metadata_text('["preview"]')
+    with pytest.raises(EditorBuildExportToolingError, match="keys and values"):
+        _parse_metadata_text('{"build": 21}')
 
 
 def test_stage_artifact_inspection_detects_checksum_regression(tmp_path: Path) -> None:
