@@ -139,13 +139,14 @@ class EditorUIHudTooling21:
         offset: tuple[float, float] = (24.0, 24.0),
     ) -> EditorUIHudSnapshot21:
         current = self._require(name)
-        if new_name in self._elements:
-            raise EditorUIHudToolingError(f"UI element {new_name!r} already exists")
+        normalized_name = _name(new_name, "UI element name")
+        if normalized_name in self._elements:
+            raise EditorUIHudToolingError(f"UI element {normalized_name!r} already exists")
         if len(offset) != 2:
             raise EditorUIHudToolingError("UI duplicate offset must contain two values")
         dx = _finite(offset[0], "UI duplicate x offset")
         dy = _finite(offset[1], "UI duplicate y offset")
-        duplicate = replace(current, name=new_name, x=current.x + dx, y=current.y + dy)
+        duplicate = replace(current, name=normalized_name, x=current.x + dx, y=current.y + dy)
         self._elements[duplicate.name] = duplicate
         return self.snapshot()
 
