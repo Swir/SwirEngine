@@ -108,6 +108,8 @@ def check_release_candidate(root: Path = ROOT) -> list[str]:
     required_workflow_tokens = (
         "permissions:",
         "contents: read",
+        "push:",
+        '"release/**"',
         "verify_2_1_release_candidate.py",
         "verify_2_1_release_readiness.py",
         "python -m build",
@@ -125,6 +127,7 @@ def check_release_candidate(root: Path = ROOT) -> list[str]:
             errors.append(f"candidate workflow is missing required token: {token}")
 
     forbidden_publish_tokens = (
+        "pull_request:",
         "pypa/gh-action-pypi-publish",
         "twine upload",
         "gh release create",
@@ -134,7 +137,7 @@ def check_release_candidate(root: Path = ROOT) -> list[str]:
     )
     for token in forbidden_publish_tokens:
         if token in workflow:
-            errors.append(f"candidate workflow must be non-publishing; forbidden token: {token}")
+            errors.append(f"candidate workflow must be release-branch-scoped and non-publishing; forbidden token: {token}")
 
     return errors
 

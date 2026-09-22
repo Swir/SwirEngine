@@ -1,21 +1,6 @@
 name: SwirEngine 2.1 Release Candidate Gate
 
 on:
-  pull_request:
-    paths:
-      - "pyproject.toml"
-      - "README.md"
-      - "ROADMAP_2_1.md"
-      - "RELEASE_NOTES_2_1.md"
-      - "docs/RELEASE_GATE_2_1.md"
-      - "tools/verify_2_1_release_candidate.py"
-      - "tools/verify_2_1_release_readiness.py"
-      - "tools/verify_clean_wheel_2_0.py"
-      - "tools/build_vendored_wheel.py"
-      - "tests/test_verify_2_1_release_candidate.py"
-      - ".github/workflows/release-candidate-2.1.yml"
-      - "src/**"
-      - "demo_projects/**"
   push:
     branches:
       - "release/**"
