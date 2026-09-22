@@ -13,7 +13,8 @@ from .editor_creator_frontend21 import EditorCreatorFrontendController21, TkCrea
 from .editor_diagnostics import EditorConsole, EditorProfiler
 from .editor_frontend import TkEditorApp
 from .editor_gameplay_tooling21 import EditorGameplayTooling21
-from .editor_physics_frontend21 import TkPhysicsEditorApp21
+from .editor_navigation_frontend21 import TkNavigationEditorApp21
+from .editor_navigation_tooling21 import EditorNavigationTooling21, EditorNavigationToolingError
 from .editor_physics_tooling21 import EditorPhysicsTooling21, EditorPhysicsToolingError
 from .editor_preview import EditorPreviewSession
 from .editor_project_authoring21 import EditorProjectAuthoring21
@@ -73,9 +74,9 @@ class EditorProjectSession:
     The session composes the existing toolkit-neutral editor models into a safe creator workflow:
     manifest validation, multi-scene authoring, portable editor-state persistence, asset browsing,
     typed multi-selection, component/prefab authoring, production viewport interaction, gameplay
-    input/settings, animation and physics/collision authoring, diagnostics, deterministic recovery
-    and the Tk desktop shell. Scene, gameplay, animation, physics and editor-state writes are
-    explicit and stay inside the project root.
+    input/settings, animation, physics/collision and navigation/AI authoring, diagnostics,
+    deterministic recovery and the Tk desktop shell. Scene, gameplay, animation, physics,
+    navigation and editor-state writes are explicit and stay inside the project root.
     """
 
     def __init__(
@@ -90,6 +91,7 @@ class EditorProjectSession:
         gameplay: EditorGameplayTooling21,
         animation: EditorAnimationTooling21,
         physics: EditorPhysicsTooling21,
+        navigation: EditorNavigationTooling21,
         asset_browser: EditorAssetBrowser,
         console: EditorConsole,
         profiler: EditorProfiler,
@@ -104,6 +106,7 @@ class EditorProjectSession:
         self.gameplay = gameplay
         self.animation = animation
         self.physics = physics
+        self.navigation = navigation
         self.asset_browser = asset_browser
         self.console = console
         self.profiler = profiler
@@ -170,6 +173,7 @@ class EditorProjectSession:
         gameplay = EditorGameplayTooling21(manifest.root)
         animation = EditorAnimationTooling21(manifest.root)
         physics = EditorPhysicsTooling21(manifest.root)
+        navigation = EditorNavigationTooling21(manifest.root)
         authoring = EditorProjectAuthoring21(
             workspace,
             serializer=serializer,
@@ -216,6 +220,7 @@ class EditorProjectSession:
             gameplay=gameplay,
             animation=animation,
             physics=physics,
+            navigation=navigation,
             asset_browser=asset_browser,
             console=console,
             profiler=profiler,
@@ -250,6 +255,7 @@ class EditorProjectSession:
                 or self.gameplay.dirty
                 or self.animation.dirty
                 or self.physics.dirty
+                or self.navigation.dirty
             ),
             recovery_available=self.scenes.recovery_available,
         )
@@ -258,12 +264,15 @@ class EditorProjectSession:
         gameplay_was_dirty = self.gameplay.dirty
         animation_was_dirty = self.animation.dirty
         physics_was_dirty = self.physics.dirty
+        navigation_was_dirty = self.navigation.dirty
         if gameplay_was_dirty:
             self.gameplay.save()
         if animation_was_dirty:
             self.animation.save()
         if physics_was_dirty:
             self.physics.save()
+        if navigation_was_dirty:
+            self.navigation.save()
         state = self.scenes.save_all(self.state_path)
         self.scene_path = self.manifest.root / PurePosixPath(self.scenes.active_path)
         self.console.write(
@@ -283,6 +292,11 @@ class EditorProjectSession:
         if physics_was_dirty:
             self.console.write(
                 f"Saved physics configuration {self.physics.relative_path}",
+                source="swireditor",
+            )
+        if navigation_was_dirty:
+            self.console.write(
+                f"Saved navigation configuration {self.navigation.relative_path}",
                 source="swireditor",
             )
         return state
@@ -322,12 +336,13 @@ class EditorProjectSession:
                 self.enable_live_viewport()
             except EditorRenderBackendUnavailable as exc:
                 self.console.write(str(exc), level="warning", source="renderer")
-            app = TkPhysicsEditorApp21(
+            app = TkNavigationEditorApp21(
                 self.controller,
                 project_root=self.manifest.root,
                 gameplay=self.gameplay,
                 animation=self.animation,
                 physics=self.physics,
+                navigation=self.navigation,
                 title=f"SwirEditor 2.1 — {self.manifest.name}",
             )
             self._install_file_menu(app)
@@ -383,6 +398,7 @@ class EditorProjectSession:
             SceneSerializationError,
             EditorAnimationToolingError,
             EditorPhysicsToolingError,
+            EditorNavigationToolingError,
             TypeError,
             ValueError,
         ) as exc:
@@ -395,6 +411,7 @@ class EditorProjectSession:
             or self.gameplay.dirty
             or self.animation.dirty
             or self.physics.dirty
+            or self.navigation.dirty
         ):
             decision = app.messagebox.askyesnocancel(
                 "SwirEditor — Unsaved changes",
@@ -411,6 +428,7 @@ class EditorProjectSession:
                     SceneSerializationError,
                     EditorAnimationToolingError,
                     EditorPhysicsToolingError,
+                    EditorNavigationToolingError,
                     TypeError,
                     ValueError,
                 ) as exc:
