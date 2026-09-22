@@ -41,6 +41,7 @@ def test_milestone_9_build_export_real_game_gate() -> None:
         assert item["checksums_verified"] is True
         assert item["icon_configured"] is True
         assert item["metadata_verified"] is True
+        assert item["creator_configured"] is True
         assert item["profile_roundtrip"] is True
         assert item["native_build_planned"] is True
         _assert_sha256(item["fingerprint"])

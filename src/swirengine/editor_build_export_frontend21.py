@@ -12,7 +12,13 @@ from .editor_build_export_tooling21 import (
 )
 from .editor_save_profile_frontend21 import TkSaveProfileEditorApp21
 from .editor_viewport_frontend21 import EditorProductionViewportController21
-from .exporting import ExportResult, ExportTarget, NativeBuildResult, PackagingProfile
+from .exporting import (
+    ExportResult,
+    ExportTarget,
+    NativeBuildResult,
+    PackagingProfile,
+    ProjectExporter,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,6 +27,12 @@ class BuildExportPanelFrame21:
     profile_names: tuple[str, ...]
     target: str
     app_name: str
+    entrypoint: str
+    icon: str | None
+    metadata: tuple[tuple[str, str], ...]
+    onefile: bool
+    console: bool
+    output_root: str
     output_dir: str
     planned_file_count: int
     experimental: bool
@@ -68,6 +80,12 @@ class EditorBuildExportPanelController21:
             profile_names=tuple(item.name for item in config.profiles),
             target=profile.target.value,
             app_name=profile.effective_app_name,
+            entrypoint=profile.entrypoint,
+            icon=profile.icon,
+            metadata=tuple(sorted(profile.metadata.items())),
+            onefile=profile.onefile,
+            console=profile.console,
+            output_root=config.output_root,
             output_dir=str(plan.output_dir),
             planned_file_count=len(plan.files),
             experimental=plan.experimental,
@@ -95,6 +113,53 @@ class EditorBuildExportPanelController21:
         if select:
             self.tooling.select_profile(profile.name)
         self._status = f"Updated export profile {profile.name}"
+        return self.frame()
+
+    def configure_active_profile(
+        self,
+        *,
+        name: str,
+        target: ExportTarget,
+        entrypoint: str,
+        app_name: str,
+        icon: str | None,
+        onefile: bool,
+        console: bool,
+        metadata: dict[str, str],
+    ) -> BuildExportPanelFrame21:
+        """Apply creator-authored shipping fields without bypassing PackagingProfile."""
+
+        current = self.tooling.config.active
+        clean_name = name.strip()
+        if clean_name != current.name and any(
+            profile.name == clean_name for profile in self.tooling.config.profiles
+        ):
+            raise EditorBuildExportToolingError(
+                f"export profile already exists: {clean_name}"
+            )
+        profile = PackagingProfile(
+            name=clean_name,
+            target=target,
+            entrypoint=entrypoint.strip(),
+            app_name=app_name.strip() or None,
+            include=current.include,
+            exclude=current.exclude,
+            icon=(icon.strip() or None) if icon is not None else None,
+            onefile=bool(onefile),
+            console=bool(console),
+            metadata=dict(metadata),
+        )
+        output_root = self.tooling.project_root / self.tooling.config.output_root
+        ProjectExporter(self.tooling.project_root).plan(
+            profile,
+            output_root / f"{profile.effective_app_name}-{profile.target.value}",
+        )
+        previous_name = current.name
+        self.tooling.upsert_profile(profile)
+        self.tooling.select_profile(profile.name)
+        if previous_name != profile.name:
+            self.tooling.remove_profile(previous_name)
+        self._status = f"Configured export profile {profile.name}"
         return self.frame()
 
     def remove_profile(self, name: str) -> BuildExportPanelFrame21:
@@ -289,8 +354,8 @@ class TkBuildExportEditorApp21(TkSaveProfileEditorApp21):
 
         window = self.tk.Toplevel(self.root)
         window.title("SwirEditor — Build / Export")
-        window.geometry("780x500")
-        window.minsize(680, 430)
+        window.geometry("940x680")
+        window.minsize(780, 560)
         window.transient(self.root)
         window.protocol("WM_DELETE_WINDOW", self._close_build_export_panel)
         self._build_export_window = window
@@ -301,41 +366,55 @@ class TkBuildExportEditorApp21(TkSaveProfileEditorApp21):
             ("active_profile", "Active profile"),
             ("target", "Target"),
             ("app_name", "Application"),
-            ("output_dir", "Output"),
+            ("entrypoint", "Entrypoint"),
+            ("icon", "Icon"),
+            ("metadata", "Metadata"),
+            ("onefile", "One-file build"),
+            ("console", "Console"),
+            ("output_root", "Output root"),
+            ("output_dir", "Resolved output"),
             ("planned_file_count", "Planned files"),
             ("native_build_planned", "Native build plan"),
             ("experimental", "Experimental target"),
         )
         for row, (key, label) in enumerate(fields):
             self.ttk.Label(body, text=f"{label}:").grid(
-                row=row, column=0, sticky="w", padx=(0, 12), pady=5
+                row=row, column=0, sticky="w", padx=(0, 12), pady=4
             )
             variable = self.tk.StringVar()
             self._build_export_vars[key] = variable
-            self.ttk.Label(body, textvariable=variable).grid(
-                row=row, column=1, sticky="w", pady=5
+            self.ttk.Label(body, textvariable=variable, wraplength=680).grid(
+                row=row, column=1, sticky="w", pady=4
             )
 
         actions = self.ttk.Frame(body)
         actions.grid(row=len(fields), column=0, columnspan=2, sticky="ew", pady=(18, 8))
-        for label, command in (
+        action_specs = (
             ("Select Profile…", self._build_export_select_profile),
             ("Edit Profile…", self._build_export_edit_profile),
+            ("Output Root…", self._build_export_output_root),
             ("Preflight", self._build_export_preflight),
             ("Stage Export", self._build_export_stage),
             ("Inspect Artifact", self._build_export_inspect),
             ("Build Native", self._build_export_native),
             ("Save Config", self._build_export_save),
-        ):
-            self.ttk.Button(actions, text=label, command=command).pack(
-                side="left", padx=(0, 6)
+        )
+        for index, (label, command) in enumerate(action_specs):
+            self.ttk.Button(actions, text=label, command=command).grid(
+                row=index // 4,
+                column=index % 4,
+                sticky="ew",
+                padx=(0, 6),
+                pady=(0, 6),
             )
+        for column in range(4):
+            actions.columnconfigure(column, weight=1)
 
         self._build_export_vars["status"] = self.tk.StringVar()
         self.ttk.Label(
             body,
             textvariable=self._build_export_vars["status"],
-            wraplength=700,
+            wraplength=860,
         ).grid(
             row=len(fields) + 1,
             column=0,
@@ -349,14 +428,22 @@ class TkBuildExportEditorApp21(TkSaveProfileEditorApp21):
             sticky="e",
             pady=(18, 0),
         )
+        body.columnconfigure(1, weight=1)
         self._refresh_build_export_panel()
 
     def _refresh_build_export_panel(self) -> None:
         frame = self.build_export_controller.frame()
+        metadata = ", ".join(f"{key}={value}" for key, value in frame.metadata) or "(none)"
         values = {
             "active_profile": frame.active_profile,
             "target": frame.target,
             "app_name": frame.app_name,
+            "entrypoint": frame.entrypoint,
+            "icon": frame.icon or "(none)",
+            "metadata": metadata,
+            "onefile": "yes" if frame.onefile else "no",
+            "console": "yes" if frame.console else "no",
+            "output_root": frame.output_root,
             "output_dir": frame.output_dir,
             "planned_file_count": str(frame.planned_file_count),
             "native_build_planned": "yes" if frame.native_build_planned else "no",
@@ -413,6 +500,14 @@ class TkBuildExportEditorApp21(TkSaveProfileEditorApp21):
         )
         if target_text is None:
             return
+        entrypoint = simpledialog.askstring(
+            "Build / Export profile",
+            "Project-relative entrypoint:",
+            initialvalue=current.entrypoint,
+            parent=self._build_export_window,
+        )
+        if entrypoint is None:
+            return
         app_name = simpledialog.askstring(
             "Build / Export profile",
             "Application name:",
@@ -421,29 +516,74 @@ class TkBuildExportEditorApp21(TkSaveProfileEditorApp21):
         )
         if app_name is None:
             return
+        icon = simpledialog.askstring(
+            "Build / Export profile",
+            "Project-relative icon path (blank = none):",
+            initialvalue=current.icon or "",
+            parent=self._build_export_window,
+        )
+        if icon is None:
+            return
+        metadata_text = simpledialog.askstring(
+            "Build / Export profile",
+            "Metadata JSON object (string values):",
+            initialvalue=json.dumps(current.metadata, ensure_ascii=False, sort_keys=True),
+            parent=self._build_export_window,
+        )
+        if metadata_text is None:
+            return
+        onefile = self.messagebox.askyesnocancel(
+            "Build / Export profile",
+            "Build a one-file executable?\n"
+            f"Current: {'yes' if current.onefile else 'no'}",
+            parent=self._build_export_window,
+        )
+        if onefile is None:
+            return
+        console = self.messagebox.askyesnocancel(
+            "Build / Export profile",
+            "Keep a console window for the native build?\n"
+            f"Current: {'yes' if current.console else 'no'}",
+            parent=self._build_export_window,
+        )
+        if console is None:
+            return
         try:
             target = ExportTarget(target_text.strip().lower())
-        except ValueError:
+            metadata = _parse_metadata_text(metadata_text)
+        except (EditorBuildExportToolingError, ValueError) as exc:
             self.messagebox.showerror(
                 "SwirEditor — Build / Export",
-                f"Unknown export target: {target_text}",
+                str(exc),
                 parent=self._build_export_window,
             )
             return
-        profile = PackagingProfile(
-            name=name.strip(),
-            target=target,
-            entrypoint=current.entrypoint,
-            app_name=app_name.strip(),
-            include=current.include,
-            exclude=current.exclude,
-            icon=current.icon,
-            onefile=current.onefile,
-            console=current.console,
-            metadata=dict(current.metadata),
-        )
         self._build_export_action(
-            lambda: self.build_export_controller.upsert_profile(profile)
+            lambda: self.build_export_controller.configure_active_profile(
+                name=name,
+                target=target,
+                entrypoint=entrypoint,
+                app_name=app_name,
+                icon=icon,
+                onefile=onefile,
+                console=console,
+                metadata=metadata,
+            )
+        )
+
+    def _build_export_output_root(self) -> None:
+        from tkinter import simpledialog
+
+        output_root = simpledialog.askstring(
+            "Build / Export output",
+            "Project-relative output root:",
+            initialvalue=self.build_export_controller.tooling.config.output_root,
+            parent=self._build_export_window,
+        )
+        if output_root is None:
+            return
+        self._build_export_action(
+            lambda: self.build_export_controller.set_output_root(output_root)
         )
 
     def _build_export_preflight(self) -> None:
@@ -483,6 +623,28 @@ class TkBuildExportEditorApp21(TkSaveProfileEditorApp21):
             self._build_export_window.destroy()
         self._build_export_window = None
         self._build_export_vars.clear()
+
+
+def _parse_metadata_text(text: str) -> dict[str, str]:
+    value = text.strip()
+    if not value:
+        return {}
+    try:
+        payload = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise EditorBuildExportToolingError(
+            f"metadata must be valid JSON: {exc.msg}"
+        ) from exc
+    if not isinstance(payload, dict):
+        raise EditorBuildExportToolingError("metadata must be a JSON object")
+    metadata: dict[str, str] = {}
+    for key, item in payload.items():
+        if not isinstance(key, str) or not isinstance(item, str):
+            raise EditorBuildExportToolingError(
+                "metadata keys and values must be strings"
+            )
+        metadata[key] = item
+    return metadata
 
 
 def _sha256(path: Path) -> str:
