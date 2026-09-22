@@ -74,8 +74,9 @@ def _validate_fixture(
     if title is None:
         raise RuntimeError(f"{spec.name} editor did not load the authored title scene")
 
-    selected = session.controller.select(session.workspace.inspector.key_for(title))
-    if selected != session.workspace.inspector.key_for(title):
+    title_key = session.workspace.inspector.key_for(title)
+    selected = session.controller.select(title_key)
+    if selected is not title:
         raise RuntimeError(f"{spec.name} creator selection did not bind to the title object")
 
     authored_x = _AUTHORED_X[spec.name]
