@@ -17,6 +17,7 @@ def _project(tmp_path: Path) -> Path:
     assets = root / "assets"
     assets.mkdir()
     (assets / "hero.txt").write_text("hero\n", encoding="utf-8")
+    (assets / "icon.png").write_bytes(b"test-icon\n")
     return root
 
 
@@ -30,10 +31,10 @@ def test_build_export_controller_exposes_exact_shipping_plan(tmp_path: Path) -> 
     assert frame.active_profile == "desktop"
     assert frame.target == "windows"
     assert frame.app_name == "Neon Game"
-    assert frame.planned_file_count == 2
+    assert frame.planned_file_count == 3
     assert frame.native_build_planned
     assert not frame.experimental
-    assert "2 files" in controller.status
+    assert "3 files" in controller.status
 
 
 def test_build_export_controller_authors_profiles_and_preserves_runtime_fields(
@@ -73,7 +74,7 @@ def test_stage_artifact_inspection_detects_checksum_regression(tmp_path: Path) -
 
     report = controller.stage()
 
-    assert report.file_count == 2
+    assert report.file_count == 3
     assert report.total_bytes > 0
     assert report.checksums_verified
     assert report.missing_files == ()
