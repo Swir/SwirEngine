@@ -21,7 +21,7 @@ SwirEngine 2.1 focuses on **SwirEditor & Creator Workflow**. The finite 2.1 sour
 
 - CPython: 3.10, 3.11, 3.12, 3.13 and 3.14, 64-bit environments only where the repository matrix verifies them.
 - Package range: `requires-python = ">=3.10,<3.15"`.
-- Stable compatibility is preserved unless a documented 2.1 migration requires otherwise; see `docs/MIGRATING_2_0_TO_2_1.md`.
+- Stable compatibility is preserved unless a documented 2.1 migration requires otherwise; see `docs/MIGRATING_TO_2_1.md`.
 
 ## Release gate
 

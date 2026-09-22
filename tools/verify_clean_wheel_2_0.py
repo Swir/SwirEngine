@@ -52,6 +52,11 @@ def main() -> int:
         required=True,
     )
     parser.add_argument("--require-vendored-native", action="store_true")
+    parser.add_argument(
+        "--verify-cli21",
+        action="store_true",
+        help="also require the guarded SwirEngine 2.1 CLI candidate surface",
+    )
     args = parser.parse_args()
 
     wheel_dir = args.wheel_dir.resolve()
@@ -100,6 +105,19 @@ def main() -> int:
             probe.append("--require-vendored-native")
         _run(probe, env=clean_env, cwd=env_root)
 
+        if args.verify_cli21:
+            version_probe = (
+                "from importlib.metadata import version; import swirengine; "
+                "assert version('swirengine') == '2.1.0'; "
+                "assert swirengine.__version__ == '2.1.0'; print(version('swirengine'))"
+            )
+            _run([str(python), "-c", version_probe], env=clean_env, cwd=env_root)
+            _run(
+                [str(python), "-m", "swirengine.cli21", "--help"],
+                env=clean_env,
+                cwd=env_root,
+            )
+
         runtime_env = dict(clean_env)
         runtime_env["SWIR_GAME_DEMO_HEADLESS"] = "1"
         _run(
@@ -114,9 +132,9 @@ def main() -> int:
         )
 
     print(
-        "SwirEngine 2.0 clean-wheel platform gate OK: "
+        "SwirEngine clean-wheel platform gate OK: "
         f"wheel={wheel.name}, system={args.expected_system}, python={args.expected_python}, "
-        f"vendored_native={args.require_vendored_native}"
+        f"vendored_native={args.require_vendored_native}, cli21={args.verify_cli21}"
     )
     return 0
 

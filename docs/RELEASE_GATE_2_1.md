@@ -66,7 +66,7 @@ post-merge workflow set without failures. The active source roadmap is therefore
 
 ## Phase C — publication decision
 
-Publication remains a separate guarded decision after Milestone 10 acceptance. Phase C starts
+Publication is a separate guarded decision after Milestone 10 acceptance. Phase C starts
 with a **non-publishing release candidate**. Candidate preparation may set source package metadata
 to `2.1.0`, but it must not change README public-stable claims or advertise a PyPI 2.1.0 install
 until actual publication and post-publication verification succeed.
@@ -81,7 +81,8 @@ considered:
    yet published.
 4. Exact-source wheel and sdist artifacts build successfully and the installed distribution
    reports version `2.1.0`.
-5. Clean wheel installs pass on the supported Windows/Linux/macOS CPython 3.10–3.14 matrix.
+5. Clean wheel installs pass on the supported Windows/Linux/macOS CPython 3.10–3.14 matrix,
+   including the existing vendored native renderer path for Windows x86-64 CPython 3.14.
 6. Candidate workflow permissions remain read-only and contain no PyPI upload, tag creation or
    GitHub Release creation capability.
 7. The normal exact-head repository matrix remains green, including representative real-game,
