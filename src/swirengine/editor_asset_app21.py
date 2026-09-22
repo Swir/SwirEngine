@@ -2,18 +2,24 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from .editor_app21 import EditorProjectOpenError, EditorProjectSession, _build_parser
+from .editor_app21 import EditorProjectOpenError, _build_parser
 from .editor_asset_drop21 import TkNativeDropAssetPipelineEditorApp21
 from .editor_asset_formats21 import create_format_aware_editor_asset_pipeline21
 from .editor_asset_frontend21 import EditorAssetWorkflow21
+from .editor_audio_frontend21 import TkAudioEditorApp21
+from .editor_integrated_session21 import EditorIntegratedProjectSession21
 from .editor_render_backend21 import EditorRenderBackendUnavailable
 
 
-def run_editor_session21(session: EditorProjectSession) -> None:
-    """Run one SwirEditor session with the 2.1 asset workflow attached."""
+class TkIntegratedEditorApp21(TkAudioEditorApp21, TkNativeDropAssetPipelineEditorApp21):
+    """Unified SwirEditor shell for gameplay creator tools and the production asset pipeline."""
 
-    if not isinstance(session, EditorProjectSession):
-        raise TypeError("session must be an EditorProjectSession")
+
+def run_editor_session21(session: EditorIntegratedProjectSession21) -> None:
+    """Run one fully integrated SwirEditor 2.1 creator session."""
+
+    if not isinstance(session, EditorIntegratedProjectSession21):
+        raise TypeError("session must be an EditorIntegratedProjectSession21")
     backend = create_format_aware_editor_asset_pipeline21(session.asset_browser.manager)
     workflow = EditorAssetWorkflow21(backend, session.asset_browser)
     try:
@@ -21,14 +27,21 @@ def run_editor_session21(session: EditorProjectSession) -> None:
             session.enable_live_viewport()
         except EditorRenderBackendUnavailable as exc:
             session.console.write(str(exc), level="warning", source="renderer")
-        app = TkNativeDropAssetPipelineEditorApp21(
+        app = TkIntegratedEditorApp21(
             session.controller,
             workflow,
+            project_root=session.manifest.root,
+            gameplay=session.gameplay,
+            animation=session.animation,
+            physics=session.physics,
+            navigation=session.navigation,
+            audio=session.audio,
             title=f"SwirEditor 2.1 — {session.manifest.name}",
         )
         session._install_file_menu(app)
         session._schedule_recovery(app)
         session.console.write("Asset Pipeline 2.1 attached", source="assets")
+        session.console.write("Audio creator tooling attached", source="audio")
         app.run()
     finally:
         workflow.shutdown()
@@ -36,11 +49,11 @@ def run_editor_session21(session: EditorProjectSession) -> None:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """SwirEditor 2.1 entry point with the production asset workflow."""
+    """SwirEditor 2.1 entry point with the integrated production creator workflow."""
 
     args = _build_parser().parse_args(None if argv is None else list(argv))
     try:
-        session = EditorProjectSession.open(
+        session = EditorIntegratedProjectSession21.open(
             args.project,
             scene=args.scene,
             restore_state=not args.fresh_layout,
