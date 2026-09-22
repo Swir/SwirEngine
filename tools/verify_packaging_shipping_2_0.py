@@ -41,6 +41,15 @@ class ArtifactSet:
     sdist_sha256: str
 
 
+def _release_tuple(value: str) -> tuple[int, int, int]:
+    match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", value)
+    if match is None:
+        raise PackagingShippingError(
+            f"project version must be a simple X.Y.Z value, found {value!r}"
+        )
+    return tuple(int(part) for part in match.groups())
+
+
 def _candidate_version(root: Path = ROOT) -> str:
     project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     project_version = str(project["version"])
@@ -61,13 +70,18 @@ def _candidate_version(root: Path = ROOT) -> str:
     )
     if final_checked == final_open:
         raise PackagingShippingError("Milestone 10 must appear exactly once as checked or unchecked")
-    expected = "2.0.0" if final_checked else "1.5.0"
-    if project_version != expected:
+    if final_open:
+        if project_version != "1.5.0":
+            raise PackagingShippingError(
+                "project version disagrees with pre-2.0 release phase: "
+                f"expected 1.5.0, found {project_version}"
+            )
+    elif _release_tuple(project_version) < (2, 0, 0):
         raise PackagingShippingError(
-            "project version disagrees with Milestone 10 release phase: "
-            f"expected {expected}, found {project_version}"
+            "post-2.0 source version regressed below the published 2.0.0 floor: "
+            f"found {project_version}"
         )
-    return expected
+    return project_version
 
 
 EXPECTED_VERSION = _candidate_version()
@@ -333,7 +347,7 @@ def _normalize_expected_system(value: str) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Verify SwirEngine 2.0 wheel/sdist inventories and clean installed "
+            "Verify SwirEngine 2.0+ wheel/sdist inventories and clean installed "
             "2D/3D/multiplayer runtime outside the development checkout"
         )
     )
@@ -361,13 +375,13 @@ def main() -> int:
     _inspect_wheel(artifacts.wheel)
     _inspect_sdist(artifacts.sdist)
 
-    with tempfile.TemporaryDirectory(prefix="swirengine-2.0-packaging-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="swirengine-packaging-") as temporary:
         root = Path(temporary)
         _verify_clean_install(artifacts.wheel, root=root, label="wheel")
         _verify_clean_install(artifacts.sdist, root=root, label="sdist")
 
     print(
-        "SwirEngine 2.0 packaging artifact gate OK: "
+        "SwirEngine packaging artifact gate OK: "
         f"version={EXPECTED_VERSION}, system={expected_system}, python={current_python}, "
         f"wheel={artifacts.wheel.name}:{artifacts.wheel_sha256}, "
         f"sdist={artifacts.sdist.name}:{artifacts.sdist_sha256}"
