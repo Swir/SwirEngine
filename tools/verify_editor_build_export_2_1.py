@@ -6,11 +6,15 @@ import argparse
 import base64
 import hashlib
 import json
-import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from verify_real_game_production_1_9 import FIXTURES, _host_target, _prepare_project
+from verify_real_game_production_1_9 import (
+    FIXTURES,
+    FixtureSpec,
+    _host_target,
+    _prepare_project,
+)
 
 from swirengine.editor_build_export_frontend21 import EditorBuildExportPanelController21
 from swirengine.editor_build_export_tooling21 import EditorBuildExportTooling21
@@ -58,9 +62,12 @@ def _profile_for_fixture(name: str, files: tuple[str, ...]) -> PackagingProfile:
     )
 
 
-def _validate_fixture(repository: Path, workspace: Path, fixture: object) -> dict[str, object]:
-    name = str(getattr(fixture, "name"))
-    files = tuple(str(value) for value in getattr(fixture, "files"))
+def _validate_fixture(
+    repository: Path,
+    workspace: Path,
+    fixture: FixtureSpec,
+) -> dict[str, object]:
+    name = fixture.name
     project_root = workspace / name
     _prepare_project(repository, project_root, fixture)
     icon_path = project_root / _ICON_PATH
@@ -68,7 +75,7 @@ def _validate_fixture(repository: Path, workspace: Path, fixture: object) -> dic
     icon_path.write_bytes(_ICON_BYTES)
 
     tooling = EditorBuildExportTooling21(project_root, project_name=f"SwirEngine-{name}")
-    profile = _profile_for_fixture(name, files)
+    profile = _profile_for_fixture(name, fixture.files)
     tooling.upsert_profile(profile)
     tooling.select_profile(profile.name)
     tooling.save()
