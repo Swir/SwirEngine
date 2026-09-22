@@ -36,6 +36,13 @@ def _module_path(module_name: str) -> str:
     return "<built-in>" if file_name is None else str(Path(file_name).resolve())
 
 
+def _release_tuple(value: str) -> tuple[int, int, int]:
+    match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", value)
+    if match is None:
+        raise RuntimeError(f"project version must be a simple X.Y.Z value, found {value!r}")
+    return tuple(int(part) for part in match.groups())
+
+
 def _candidate_version(root: Path = ROOT) -> str:
     project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     project_version = str(project["version"])
@@ -56,13 +63,18 @@ def _candidate_version(root: Path = ROOT) -> str:
     )
     if final_checked == final_open:
         raise RuntimeError("Milestone 10 must appear exactly once as checked or unchecked")
-    expected = "2.0.0" if final_checked else "1.5.0"
-    if project_version != expected:
+    if final_open:
+        if project_version != "1.5.0":
+            raise RuntimeError(
+                "project version disagrees with pre-2.0 release phase: "
+                f"expected 1.5.0, found {project_version}"
+            )
+    elif _release_tuple(project_version) < (2, 0, 0):
         raise RuntimeError(
-            "project version disagrees with Milestone 10 release phase: "
-            f"expected {expected}, found {project_version}"
+            "post-2.0 source version regressed below the published 2.0.0 floor: "
+            f"found {project_version}"
         )
-    return expected
+    return project_version
 
 
 def verify(
@@ -107,7 +119,7 @@ def verify(
     package_version = version("swirengine")
     if package_version != expected_package_version:
         raise RuntimeError(
-            "installed package version disagrees with the active 2.0 release phase: "
+            "installed package version disagrees with current source metadata: "
             f"expected {expected_package_version}, found {package_version}"
         )
     requires_python = _requires_python()
@@ -147,7 +159,7 @@ def verify(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Verify the SwirEngine 2.0 OS/Python runtime cell")
+    parser = argparse.ArgumentParser(description="Verify the SwirEngine 2.0 OS/Python runtime floor")
     parser.add_argument(
         "--expected-system",
         choices=sorted(SUPPORTED_SYSTEMS | frozenset(_SYSTEM_ALIASES)),
