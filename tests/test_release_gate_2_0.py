@@ -13,7 +13,7 @@ def test_release_candidate_contract_matches_current_repository_phase():
     require_final = MILESTONE_10 in roadmap
     report = audit(ROOT, require_final=require_final)
     if require_final:
-        assert report.version == "2.0.0"
+        assert tuple(map(int, report.version.split("."))) >= (2, 0, 0)
         assert report.roadmap.completed == 10
         assert report.roadmap.remaining == 0
         assert report.roadmap.percent == 100.0

@@ -73,7 +73,7 @@ jobs:
       - name: Verify 2.0 preflight/final contract
         shell: bash
         run: |
-          if grep -q 'version = "2.0.0"' pyproject.toml; then
+          if grep -Fq -- '- [x] **10. SwirEngine 2.0 Final Release Gate & Public Verification**' ROADMAP_2_0.md; then
             python tools/verify_2_0_release_candidate.py --require-final
           else
             python tools/verify_2_0_release_candidate.py

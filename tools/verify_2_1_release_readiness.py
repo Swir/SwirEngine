@@ -10,6 +10,7 @@ except ModuleNotFoundError:  # Python 3.10
     import tomli as tomllib
 
 EXPECTED_STABLE_VERSION = "2.0.0"
+EXPECTED_CANDIDATE_VERSION = "2.1.0"
 EXPECTED_PYTHON_RANGE = ">=3.10,<3.15"
 EXPECTED_COMPLETED = 10
 EXPECTED_TOTAL = 10
@@ -158,8 +159,14 @@ def audit(root: Path | None = None) -> ReadinessReport:
     project = tomllib.loads(_read(root, "pyproject.toml"))["project"]
     version = str(project["version"])
     _require(
-        version == EXPECTED_STABLE_VERSION,
-        "2.1 milestone acceptance keeps package metadata at the published 2.0.0 stable version",
+        version in {EXPECTED_STABLE_VERSION, EXPECTED_CANDIDATE_VERSION},
+        "2.1 source readiness permits only published stable 2.0.0 or guarded candidate 2.1.0 metadata",
+        checks,
+    )
+    init_text = _read(root, "src/swirengine/__init__.py")
+    _require(
+        f'__version__ = "{version}"' in init_text,
+        "runtime __version__ matches current source package metadata",
         checks,
     )
     _require(
@@ -194,6 +201,14 @@ def audit(root: Path | None = None) -> ReadinessReport:
         "README separates 2.1 roadmap completion from public release",
         checks,
     )
+
+    if version == EXPECTED_CANDIDATE_VERSION:
+        notes = _read(root, "RELEASE_NOTES_2_1.md")
+        _require(
+            "NOT PUBLISHED" in notes,
+            "2.1 candidate metadata remains explicitly non-published before Phase C publication",
+            checks,
+        )
 
     urls = project.get("urls", {})
     _require(
@@ -236,7 +251,7 @@ def main() -> int:
     report = audit()
     print(
         "SwirEngine 2.1 milestone acceptance OK: "
-        f"stable={report.version}, roadmap={report.roadmap.completed}/{report.roadmap.total}, "
+        f"source-version={report.version}, roadmap={report.roadmap.completed}/{report.roadmap.total}, "
         f"progress={report.roadmap.percent:.1f}%, checks={len(report.checks)}"
     )
     return 0

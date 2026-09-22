@@ -4,10 +4,32 @@ from pathlib import Path
 import swirengine
 
 
-def _expected_candidate_version() -> str:
-    roadmap = Path("ROADMAP_2_0.md").read_text(encoding="utf-8")
-    final_complete = "- [x] **10. SwirEngine 2.0 Final Release Gate & Public Verification**" in roadmap
-    return "2.0.0" if final_complete else "1.5.0"
+PUBLIC_STABLE_VERSION = "2.0.0"
+CANDIDATE_VERSION = "2.1.0"
+
+
+def _allowed_source_versions() -> set[str]:
+    roadmap_20 = Path("ROADMAP_2_0.md").read_text(encoding="utf-8")
+    final_complete = "- [x] **10. SwirEngine 2.0 Final Release Gate & Public Verification**" in roadmap_20
+    if not final_complete:
+        return {"1.5.0"}
+
+    allowed = {PUBLIC_STABLE_VERSION}
+    roadmap_21 = Path("ROADMAP_2_1.md")
+    notes_21 = Path("RELEASE_NOTES_2_1.md")
+    gate_21 = Path("docs/RELEASE_GATE_2_1.md")
+    if roadmap_21.is_file() and notes_21.is_file() and gate_21.is_file():
+        roadmap_text = roadmap_21.read_text(encoding="utf-8")
+        notes_text = notes_21.read_text(encoding="utf-8")
+        gate_text = gate_21.read_text(encoding="utf-8")
+        guarded_candidate = (
+            "Current verified progress: 10/10 milestones = 100.0%." in roadmap_text
+            and "NOT PUBLISHED" in notes_text
+            and "## Phase C — publication decision" in gate_text
+        )
+        if guarded_candidate:
+            allowed.add(CANDIDATE_VERSION)
+    return allowed
 
 
 def test_package_version_matches_installed_metadata():
@@ -20,8 +42,13 @@ def test_public_api_exports_are_unique_and_resolvable():
     assert missing == []
 
 
-def test_candidate_version_matches_milestone_10_release_phase():
-    assert swirengine.__version__ == _expected_candidate_version()
+def test_source_version_matches_guarded_release_phase():
+    allowed = _allowed_source_versions()
+    assert swirengine.__version__ in allowed
+    if swirengine.__version__ == CANDIDATE_VERSION:
+        readme = Path("README.md").read_text(encoding="utf-8")
+        assert "**Latest public stable release:** **SwirEngine 2.0.0**" in readme
+        assert "swirengine==2.1.0" not in readme
 
 
 def test_supported_python_range_is_explicit():
@@ -38,7 +65,7 @@ def test_readme_preserves_locked_1_5_evidence_after_2_0_publication():
     assert "`v1.5.0`" in readme
     assert "| 1.5 |" in readme
     assert "released/locked" in readme
-    if swirengine.__version__ == "2.0.0":
+    if tuple(map(int, swirengine.__version__.split("."))) >= (2, 0, 0):
         assert "SwirEngine 2.0.0" in readme
         assert "**Latest public stable release:** **SwirEngine 2.0.0**" in readme
         assert "64-bit CPython 3.10–3.14" in readme

@@ -523,4 +523,4 @@ __all__ = [
     "visibility_bounds_for",
 ]
 
-__version__ = "2.0.0"
+__version__ = "2.1.0"
