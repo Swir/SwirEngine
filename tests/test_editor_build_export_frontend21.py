@@ -82,7 +82,6 @@ def test_creator_configuration_round_trips_into_shipping_manifest(tmp_path: Path
     tooling = EditorBuildExportTooling21(root, project_name="Neon Game")
     controller = EditorBuildExportPanelController21(tooling)
 
-    controller.set_output_root("artifacts/export")
     frame = controller.configure_active_profile(
         name="shipping",
         target=ExportTarget.LINUX,
@@ -102,7 +101,7 @@ def test_creator_configuration_round_trips_into_shipping_manifest(tmp_path: Path
     assert frame.metadata == (("build", "creator"), ("channel", "preview"))
     assert frame.onefile
     assert not frame.console
-    assert frame.output_root == "artifacts/export"
+    assert frame.output_root == "dist"
     assert not saved.dirty
 
     reloaded = EditorBuildExportPanelController21(
@@ -114,7 +113,7 @@ def test_creator_configuration_round_trips_into_shipping_manifest(tmp_path: Path
     assert restored.metadata == (("build", "creator"), ("channel", "preview"))
     assert restored.onefile
     assert not restored.console
-    assert restored.output_root == "artifacts/export"
+    assert restored.output_root == "dist"
 
     artifact = reloaded.stage()
     payload = json.loads(Path(artifact.manifest).read_text(encoding="utf-8"))
