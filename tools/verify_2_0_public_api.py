@@ -129,6 +129,34 @@ def expected_candidate_version(roadmap_text: str) -> str:
     return FINAL_VERSION if final_checked else PUBLIC_VERSION_FLOOR
 
 
+def _release_tuple(value: str) -> tuple[int, int, int]:
+    match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", value)
+    if match is None:
+        raise ValueError(f"release version must be a simple X.Y.Z value, found {value!r}")
+    return tuple(int(part) for part in match.groups())
+
+
+def validate_source_version(roadmap_text: str, project_version: str, module_version: str) -> None:
+    phase_version = expected_candidate_version(roadmap_text)
+    if project_version != module_version:
+        raise ValueError(
+            "project/runtime version mismatch: "
+            f"project={project_version}, module={module_version}"
+        )
+    if phase_version == PUBLIC_VERSION_FLOOR:
+        if project_version != PUBLIC_VERSION_FLOOR:
+            raise ValueError(
+                "pre-2.0 source must remain on the published 1.5.0 floor; "
+                f"found {project_version}"
+            )
+        return
+    if _release_tuple(project_version) < _release_tuple(FINAL_VERSION):
+        raise ValueError(
+            "post-Milestone-10 source cannot regress below the published 2.0.0 floor; "
+            f"found {project_version}"
+        )
+
+
 def verify(root: Path = ROOT) -> list[str]:
     manifest_path = root / "docs" / "public_api_2_0.json"
     init_path = root / "src" / "swirengine" / "__init__.py"
@@ -163,19 +191,14 @@ def verify(root: Path = ROOT) -> list[str]:
     current_exports = read_static_all(init_path)
     missing = [name for name in baseline_exports if name not in current_exports]
     if missing:
-        raise ValueError(f"2.0 source removed published 1.5.0 root exports: {missing}")
+        raise ValueError(f"current source removed published 1.5.0 root exports: {missing}")
 
     migration = migration_path.read_text(encoding="utf-8")
     api_stability = api_stability_path.read_text(encoding="utf-8")
     roadmap = roadmap_path.read_text(encoding="utf-8")
     project_version = read_project_version(pyproject_path)
     module_version = read_module_version(init_path)
-    expected_version = expected_candidate_version(roadmap)
-    if project_version != expected_version or module_version != expected_version:
-        raise ValueError(
-            "candidate version does not match the Milestone 10 release phase; "
-            f"expected={expected_version}, project={project_version}, module={module_version}"
-        )
+    validate_source_version(roadmap, project_version, module_version)
 
     required_references = {
         "migration guide": (migration, "public_api_2_0.json"),
