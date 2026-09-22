@@ -27,6 +27,7 @@ on:
   push:
     branches:
       - "feature/2.1-milestone-10-release-readiness"
+      - "chore/2.1-milestone-10-acceptance"
 
 permissions:
   contents: read
@@ -36,8 +37,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  preflight-contract:
-    name: M10 release-readiness preflight
+  acceptance-contract:
+    name: M10 release-readiness acceptance
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -50,7 +51,7 @@ jobs:
         run: >-
           python -m pip install --upgrade pip setuptools wheel build &&
           python -m pip install -e ".[dev]"
-      - name: Verify M10 release-readiness contract
+      - name: Verify M10 acceptance contract
         run: python tools/verify_2_1_release_readiness.py
       - name: Verify PyPI-safe progress contract
         run: >-
@@ -73,7 +74,7 @@ jobs:
       - name: Verify performance evidence
         run: >-
           python tools/verify_performance_evidence_2_0.py
-          --output build/performance-evidence-2-1-preflight.json
+          --output build/performance-evidence-2-1-acceptance.json
       - name: Verify release-safety boundaries
         run: python tools/verify_release_safety_2_0.py
       - name: Refuse premature 2.1 tag
@@ -84,7 +85,7 @@ jobs:
           python -m ruff check
           tools/verify_2_1_release_readiness.py
           tests/test_release_readiness_2_1.py
-      - name: Compile M10 readiness surfaces
+      - name: Compile M10 acceptance surfaces
         run: >-
           python -m compileall -q
           tools/verify_2_1_release_readiness.py
@@ -131,7 +132,7 @@ jobs:
           python -m pytest -q
           tests/test_release_readiness_2_1.py
           tests/test_editor_real_game_gate_2_1.py
-      - name: Verify M10 readiness contract on this cell
+      - name: Verify M10 acceptance contract on this cell
         run: python tools/verify_2_1_release_readiness.py
       - name: Build standard wheel
         if: runner.os != 'Windows' || matrix.python-version != '3.14'
