@@ -57,18 +57,49 @@ claim is allowed.
 Reaching 100% means the named 2.1 creator/editor roadmap scope has verified acceptance evidence.
 It is not a claim of literal software perfection and it does not itself publish a release.
 
+### Accepted Phase B evidence
+
+PR #213 completed the exact-head acceptance matrix and was merged to `main` as
+`09f9b43ef68402f4faa3cd09edad98d859c1bd34`. The resulting `main` then completed its full
+post-merge workflow set without failures. The active source roadmap is therefore accepted at
+**10/10 = 100.0%**, while public stable remains SwirEngine 2.0.0.
+
 ## Phase C — publication decision
 
-Publication is a separate guarded decision after Milestone 10 acceptance. Any future 2.1 public
-version requires exact-source version metadata, immutable tag handling, wheel/sdist and
-clean-install verification, supported-platform validation, checksums/provenance, accurate release
-notes and public-index post-publication verification. Existing published tags and files remain
-immutable.
+Publication remains a separate guarded decision after Milestone 10 acceptance. Phase C starts
+with a **non-publishing release candidate**. Candidate preparation may set source package metadata
+to `2.1.0`, but it must not change README public-stable claims or advertise a PyPI 2.1.0 install
+until actual publication and post-publication verification succeed.
+
+The exact release-candidate head must prove all of the following before any tag or upload is
+considered:
+
+1. `tools/verify_2_1_release_candidate.py` passes and enforces source version `2.1.0`, accepted
+   `10/10 = 100.0%` roadmap math, the PyPI-safe ASCII README exception and non-publishing safety.
+2. `tools/verify_2_1_release_readiness.py` still passes on the exact candidate source.
+3. `RELEASE_NOTES_2_1.md` accurately describes the candidate and explicitly states that it is not
+   yet published.
+4. Exact-source wheel and sdist artifacts build successfully and the installed distribution
+   reports version `2.1.0`.
+5. Clean wheel installs pass on the supported Windows/Linux/macOS CPython 3.10–3.14 matrix.
+6. Candidate workflow permissions remain read-only and contain no PyPI upload, tag creation or
+   GitHub Release creation capability.
+7. The normal exact-head repository matrix remains green, including representative real-game,
+   export/build, compatibility, performance, release-safety and documentation/progress checks.
+
+The release-candidate artifacts are evidence only. They are short-lived workflow artifacts, not
+public release assets.
+
+Only after the final candidate head is fully green may a separate publication change introduce
+or invoke guarded immutable tag/release/PyPI mechanics. That publication step must bind assets to
+the accepted source, generate/check checksums or provenance, preserve existing published tags and
+files, and perform public-index post-publication verification before SwirEngine 2.1 is described
+as released.
 
 No source-only green CI result may be described as a successful public release.
 
 ## Failure policy
 
-Any RED check on the Phase B acceptance head blocks merge and keeps the accepted milestone state
-off `main`. Fix the smallest justified defect, re-run the exact-head matrix, and do not widen
-feature scope while an acceptance regression is active.
+Any RED check on a Phase B acceptance or Phase C candidate head blocks merge/publication. Fix the
+smallest justified defect, re-run the exact-head matrix, and do not widen feature scope while a
+release regression is active. Published tags and release files are immutable.
