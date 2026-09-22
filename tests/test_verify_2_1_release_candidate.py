@@ -50,6 +50,7 @@ jobs:
 def _write_candidate(root: Path) -> None:
     files = {
         "pyproject.toml": """[project]\nname = \"swirengine\"\nversion = \"2.1.0\"\nrequires-python = \">=3.10,<3.15\"\n""",
+        "src/swirengine/__init__.py": '__version__ = "2.1.0"\n',
         "ROADMAP_2_1.md": ROADMAP,
         "README.md": README,
         "RELEASE_NOTES_2_1.md": (
@@ -94,6 +95,16 @@ def test_release_candidate_contract_rejects_wrong_project_version(tmp_path: Path
     errors = check_release_candidate(tmp_path)
 
     assert any("version must be exactly 2.1.0" in error for error in errors)
+
+
+def test_release_candidate_contract_rejects_runtime_version_drift(tmp_path: Path) -> None:
+    _write_candidate(tmp_path)
+    init_path = tmp_path / "src/swirengine/__init__.py"
+    init_path.write_text('__version__ = "2.0.0"\n', encoding="utf-8")
+
+    errors = check_release_candidate(tmp_path)
+
+    assert any("runtime __version__ must be exactly 2.1.0" in error for error in errors)
 
 
 def test_release_candidate_contract_rejects_publish_capability(tmp_path: Path) -> None:
