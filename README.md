@@ -10,7 +10,7 @@
 [![PyPI](https://img.shields.io/pypi/v/swirengine?style=for-the-badge&color=02050A&logo=pypi&logoColor=62E5FF)](https://pypi.org/project/swirengine/)
 ![Python](https://img.shields.io/badge/Python-3.10--3.14%2064--bit%20CPython%20verified%20matrix-02050A?style=for-the-badge&logo=python&logoColor=62E5FF)
 ![Status](https://img.shields.io/badge/STATUS-2.0.0%20PUBLISHED-02050A?style=for-the-badge&logoColor=62E5FF)
-![Development](https://img.shields.io/badge/2.1%20ROADMAP-9%2F10-02050A?style=for-the-badge&logoColor=62E5FF)
+![Development](https://img.shields.io/badge/2.1%20ROADMAP-10%2F10-02050A?style=for-the-badge&logoColor=62E5FF)
 ![License](https://img.shields.io/badge/LICENSE-MIT-02050A?style=for-the-badge&logo=opensourceinitiative&logoColor=62E5FF)
 
 [![Author](https://img.shields.io/badge/Author-Swir-0088FF?style=flat-square&logo=github)](https://github.com/Swir)
@@ -29,20 +29,20 @@
 <!-- SWIR-PYPI-PROGRESS:START -->
 ```text
 Scope: SwirEngine 2.1 - SwirEditor & Creator Workflow
-Progress: [###########################---] 90.0%
-Counter: 9 / 10 milestones
-Status: IN PROGRESS
+Progress: [##############################] 100.0%
+Counter: 10 / 10 milestones
+Status: COMPLETE
 ```
 <!-- SWIR-PYPI-PROGRESS:END -->
 
 **Active verified development scope:** SwirEngine 2.1 — SwirEditor & Creator Workflow  
-**2.1 roadmap:** **9/10 milestones = 90.0% — IN PROGRESS**  
-**2.1 beta-ready gate:** **NO**  
+**2.1 roadmap:** **10/10 milestones = 100.0% — COMPLETE**  
+**2.1 beta-ready gate:** **YES — roadmap acceptance complete; publication pending**  
 **Latest public stable release:** **SwirEngine 2.0.0**  
 **Release date:** **2026-09-19**  
 **Release source:** immutable tag **`v2.0.0`** from commit **`3fe0ff11e09ca0b4a9abcb2b757c12514100bc59`**
 
-SwirEngine 2.0.0 is publicly released on GitHub and PyPI. The public 2.0.0 package remains the stable release while source development proceeds through the dedicated [`ROADMAP_2_1.md`](ROADMAP_2_1.md). Milestones 1–9 now provide the project-backed SwirEditor session, Project Hub, scene-authoring/recovery, typed Inspector multi-selection, component and prefab authoring, the production 2D/3D viewport, integrated asset import/reimport and content validation, the verified Play/Pause/Stop/Step loop with isolated runtime state, Console source navigation, Profiler integration, diagnostics and failure-safe recovery, runtime-backed gameplay tooling for input/rebinding, display/accessibility settings, animation, physics/collision, navigation/AI, audio, UI/HUD and save/profile workflows, plus the creator-facing Build/Export Wizard with profile-aware staging, host-native build planning, icon/metadata configuration, artifact inspection and truthful platform gating. Milestone 9 was accepted only after the representative 2D/3D/multiplayer export gate and the complete exact-head pull-request workflow matrix passed.
+SwirEngine 2.0.0 is publicly released on GitHub and PyPI and remains the latest public stable package. The finite [`ROADMAP_2_1.md`](ROADMAP_2_1.md) source-development scope is complete: milestones 1–9 established the project-backed SwirEditor, authoring, runtime-backed gameplay tooling and creator-facing Build/Export workflow, while Milestone 10 drove representative 2D, 3D and multiplayer fixtures through the editor and requalified exact-source packaging, compatibility, performance, release-safety and the supported Windows/Linux/macOS CPython 3.10–3.14 matrix. Phase A acceptance evidence is anchored to exact preflight head `7b7cecb02b0d573d72cc55ec34ecfd307492f3ff`. No SwirEngine 2.1 tag, package version or public release is implied by roadmap completion.
 
 Stable 2.0 maintenance is no longer tracked as a separate active progress scope. Historical audit evidence remains preserved, and concrete regressions, compatibility failures, security/safety issues or release-blocking defects still reopen focused maintenance when discovered.
 
@@ -128,15 +128,17 @@ game.run()
 
 ## 🧭 Active development and stable maintenance
 
-SwirEngine has one active verified development scope:
+SwirEngine has one completed source-development scope awaiting a separate publication decision:
 
-- [`ROADMAP_2_1.md`](ROADMAP_2_1.md) — active **2.1 SwirEditor & Creator Workflow**, currently **9/10 = 90.0%** and **BETA READY: NO**.
+- [`ROADMAP_2_1.md`](ROADMAP_2_1.md) — **2.1 SwirEditor & Creator Workflow**, **10/10 = 100.0%**, source roadmap complete; publication pending.
 
 Historical release-development detail remains preserved in [`ROADMAP_2_0.md`](ROADMAP_2_0.md), which is **10/10 = 100.0%** only for its named source-development scope. The former 2.0 post-release audit is retained as a historical verification snapshot rather than a parallel active roadmap.
 
 ### Key documentation
 
-- [`ROADMAP_2_1.md`](ROADMAP_2_1.md) — active 2.1 editor/creator roadmap
+- [`ROADMAP_2_1.md`](ROADMAP_2_1.md) — completed 2.1 editor/creator source roadmap
+- [`docs/MIGRATING_TO_2_1.md`](docs/MIGRATING_TO_2_1.md) — 2.0 → 2.1 migration guidance for source development
+- [`docs/RELEASE_GATE_2_1.md`](docs/RELEASE_GATE_2_1.md) — 2.1 milestone acceptance and publication boundary
 - [`ROADMAP_2_0.md`](ROADMAP_2_0.md) — historical 2.0 source-development roadmap
 - [`docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md`](docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md) — archived post-release verification snapshot
 - [`docs/SWIRENGINE_2_0_RUNTIME_LIFECYCLE_AUDIT.md`](docs/SWIRENGINE_2_0_RUNTIME_LIFECYCLE_AUDIT.md) — verified 2.0 lifecycle evidence
@@ -176,6 +178,7 @@ pytest
 ruff check src tests examples demo_projects tools
 python -m compileall -q src tests examples demo_projects tools
 python tools/generate_progress_svg.py --check
+python tools/verify_2_1_release_readiness.py
 python tools/verify_2_0_release_candidate.py --require-final
 python tools/verify_creator_workflow_2_0.py
 python tools/verify_runtime_scalability_2_0.py
@@ -201,7 +204,7 @@ Engineering quality is evaluated against complete games, public installation, re
 - The 2D, 3D and multiplayer game demos remain source-only integration fixtures.
 - The published 1.5.0 `swirengine.__all__` surface remains the documented starting compatibility floor for 2.0 migration validation.
 - Breaking post-2.0 changes require explicit engineering justification, migration documentation and tests.
-- SwirEngine 2.1 is source development only until its own release gate is complete; no release is implied by roadmap progress.
+- SwirEngine 2.1 roadmap acceptance is complete, but publication remains a separate guarded decision; no 2.1 release is implied by 100% roadmap progress.
 - A completed historical roadmap does not imply literal perfection; concrete stable-line regressions still reopen focused maintenance.
 
 ## 🗺 Roadmaps and active development
@@ -220,11 +223,11 @@ Engineering quality is evaluated against complete games, public installation, re
 | 1.9 | [`ROADMAP_1_9.md`](ROADMAP_1_9.md) | 10/10 = 100.0%, source-only checkpoint |
 | 2.0 | [`ROADMAP_2_0.md`](ROADMAP_2_0.md) | 10/10 = 100.0%, released 2026-09-19 |
 | 2.0 post-release | [`docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md`](docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md) | 5/10 = 50.0%, archived snapshot |
-| **2.1** | **[`ROADMAP_2_1.md`](ROADMAP_2_1.md)** | **9/10 = 90.0%, active development** |
+| **2.1** | **[`ROADMAP_2_1.md`](ROADMAP_2_1.md)** | **10/10 = 100.0%, source roadmap complete; publication pending** |
 
 ## ⚠️ Current limitations
 
-- SwirEngine 2.1 milestone 10 remains open; the final real-game editor/release-readiness gate is the remaining finite 2.1 roadmap scope.
+- The SwirEngine 2.1 source roadmap is complete, but no 2.1 public release has been published; publication remains a separate Phase C decision with its own exact-source release gate.
 - The verified base-engine matrix covers only the maintained 64-bit hosted runner architectures exercised by CI; 32-bit Python, PyPy, free-threaded CPython and unverified architectures are not claimed.
 - Optional extras such as audio require their own dependency/runtime evidence beyond the base-engine support matrix.
 - Desktop build plans are host-native; unsupported cross-compilation is intentionally rejected.

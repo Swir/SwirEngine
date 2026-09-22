@@ -11,8 +11,9 @@ except ModuleNotFoundError:  # Python 3.10
 
 EXPECTED_STABLE_VERSION = "2.0.0"
 EXPECTED_PYTHON_RANGE = ">=3.10,<3.15"
-EXPECTED_COMPLETED = 9
+EXPECTED_COMPLETED = 10
 EXPECTED_TOTAL = 10
+ACCEPTED_PREFLIGHT_HEAD = "7b7cecb02b0d573d72cc55ec34ecfd307492f3ff"
 ASCII_BAR_WIDTH = 30
 PYPI_PROGRESS_START = "<!-- SWIR-PYPI-PROGRESS:START -->"
 PYPI_PROGRESS_END = "<!-- SWIR-PYPI-PROGRESS:END -->"
@@ -28,8 +29,8 @@ SUMMARY_RE = re.compile(
     r"Current verified progress:\s*(?P<done>\d+)/(?P<total>\d+)\s+milestones\s*=\s*"
     r"(?P<percent>\d+(?:\.\d+)?)%\."
 )
-M10_OPEN_RE = re.compile(
-    r"^- \[ \] \*\*10\. Real-game editor gate and 2\.1 release readiness\.\*\*",
+M10_CLOSED_RE = re.compile(
+    r"^- \[[xX]\] \*\*10\. Real-game editor gate and 2\.1 release readiness\.\*\*",
     re.MULTILINE,
 )
 
@@ -112,19 +113,20 @@ def parse_roadmap(text: str) -> RoadmapState:
     return RoadmapState(completed=completed, total=total, percent=percent)
 
 
-def require_preflight_roadmap(text: str, state: RoadmapState) -> None:
+def require_accepted_roadmap(text: str, state: RoadmapState) -> None:
     if state.completed != EXPECTED_COMPLETED or state.total != EXPECTED_TOTAL:
-        raise AssertionError(
-            "2.1 release-readiness preflight must remain at 9/10 until final M10 acceptance"
-        )
-    if len(M10_OPEN_RE.findall(text)) != 1:
-        raise AssertionError("Milestone 10 must remain open exactly once during preflight")
+        raise AssertionError("2.1 milestone acceptance requires exactly 10/10 verified milestones")
+    if len(M10_CLOSED_RE.findall(text)) != 1:
+        raise AssertionError("Milestone 10 must be accepted exactly once in the final 2.1 roadmap")
+    if ACCEPTED_PREFLIGHT_HEAD not in text:
+        raise AssertionError("Milestone 10 acceptance must cite the exact green Phase A preflight head")
 
 
 def expected_pypi_progress(state: RoadmapState) -> str:
     filled = state.completed * ASCII_BAR_WIDTH // state.total
     if state.completed < state.total:
         filled = min(ASCII_BAR_WIDTH - 1, filled)
+    status = "COMPLETE" if state.completed >= state.total else "IN PROGRESS"
     bar = "#" * filled + "-" * (ASCII_BAR_WIDTH - filled)
     return (
         f"{PYPI_PROGRESS_START}\n"
@@ -132,7 +134,7 @@ def expected_pypi_progress(state: RoadmapState) -> str:
         "Scope: SwirEngine 2.1 - SwirEditor & Creator Workflow\n"
         f"Progress: [{bar}] {state.percent:.1f}%\n"
         f"Counter: {state.completed} / {state.total} milestones\n"
-        "Status: IN PROGRESS\n"
+        f"Status: {status}\n"
         "```\n"
         f"{PYPI_PROGRESS_END}"
     )
@@ -157,7 +159,7 @@ def audit(root: Path | None = None) -> ReadinessReport:
     version = str(project["version"])
     _require(
         version == EXPECTED_STABLE_VERSION,
-        "2.1 preflight keeps package metadata at the published 2.0.0 stable version",
+        "2.1 milestone acceptance keeps package metadata at the published 2.0.0 stable version",
         checks,
     )
     _require(
@@ -175,8 +177,8 @@ def audit(root: Path | None = None) -> ReadinessReport:
 
     roadmap_text = _read(root, "ROADMAP_2_1.md")
     state = parse_roadmap(roadmap_text)
-    require_preflight_roadmap(roadmap_text, state)
-    checks.append("2.1 roadmap remains truthfully frozen at 9/10 preflight")
+    require_accepted_roadmap(roadmap_text, state)
+    checks.append("2.1 roadmap has exact green Phase A evidence and 10/10 milestone acceptance")
 
     readme = _read(root, "README.md")
     validate_pypi_progress(readme, state)
@@ -187,20 +189,21 @@ def audit(root: Path | None = None) -> ReadinessReport:
         checks,
     )
     _require(
-        "SwirEngine 2.1 is source development only until its own release gate is complete" in readme,
-        "README keeps 2.1 publication explicitly gated",
+        "SwirEngine 2.1 roadmap acceptance is complete, but publication remains a separate guarded decision"
+        in readme,
+        "README separates 2.1 roadmap completion from public release",
         checks,
     )
 
     urls = project.get("urls", {})
     _require(
         str(urls.get("Roadmap", "")).endswith("ROADMAP_2_0.md"),
-        "primary package roadmap remains the published stable 2.0 roadmap during preflight",
+        "primary package roadmap remains the published stable 2.0 roadmap before publication",
         checks,
     )
     _require(
         str(urls.get("2.1 Roadmap", "")).endswith("ROADMAP_2_1.md"),
-        "package metadata exposes the active 2.1 roadmap separately",
+        "package metadata exposes the completed 2.1 source roadmap separately",
         checks,
     )
 
@@ -216,8 +219,13 @@ def audit(root: Path | None = None) -> ReadinessReport:
     )
     gate = _read(root, "docs/RELEASE_GATE_2_1.md")
     _require(
-        "9/10 = 90.0%" in gate and "does not publish" in gate.lower(),
-        "2.1 release gate preserves the 90% preflight and no-publication boundary",
+        ACCEPTED_PREFLIGHT_HEAD in gate and "10/10 = 100.0%" in gate,
+        "2.1 release gate records the accepted preflight head and Phase B milestone target",
+        checks,
+    )
+    _require(
+        "Publication is a separate guarded decision" in gate,
+        "2.1 release gate keeps publication separate from milestone acceptance",
         checks,
     )
 
@@ -227,7 +235,7 @@ def audit(root: Path | None = None) -> ReadinessReport:
 def main() -> int:
     report = audit()
     print(
-        "SwirEngine 2.1 release-readiness preflight OK: "
+        "SwirEngine 2.1 milestone acceptance OK: "
         f"stable={report.version}, roadmap={report.roadmap.completed}/{report.roadmap.total}, "
         f"progress={report.roadmap.percent:.1f}%, checks={len(report.checks)}"
     )
