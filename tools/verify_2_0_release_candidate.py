@@ -95,6 +95,13 @@ def legacy_progress_meter_lines(text: str) -> tuple[str, ...]:
     return tuple(matches)
 
 
+def _release_tuple(value: str) -> tuple[int, int, int]:
+    match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", value)
+    if match is None:
+        raise AssertionError(f"package version must be a simple X.Y.Z value, found {value!r}")
+    return tuple(int(part) for part in match.groups())
+
+
 def _read(root: Path, relative: str) -> str:
     path = root / relative
     if not path.is_file():
@@ -136,16 +143,16 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
     post_release_status = (
         post_release_path.read_text(encoding="utf-8") if post_release_path.is_file() else ""
     )
-    published_20 = (
-        version == TARGET_VERSION
-        and "STATUS-2.0.0%20PUBLISHED" in readme
-        and "**Latest public stable release:** **SwirEngine 2.0.0**" in readme
-    )
-    post_release_archived = (
-        published_20
-        and ARCHIVED_POST_RELEASE_TITLE in post_release_status
+    archived_publication_evidence = (
+        ARCHIVED_POST_RELEASE_TITLE in post_release_status
         and ARCHIVED_POST_RELEASE_MARKER in post_release_status
     )
+    current_publication_evidence = (
+        "STATUS-2.0.0%20PUBLISHED" in readme
+        and "SwirEngine 2.0.0 is publicly released on GitHub and PyPI" in readme
+    )
+    published_20 = archived_publication_evidence or current_publication_evidence
+    post_release_archived = published_20 and archived_publication_evidence
     post_release_active = published_20 and bool(post_release_status) and not post_release_archived
 
     _require(
@@ -350,14 +357,21 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
     if require_final:
         _require(
             roadmap.completed == EXPECTED_TOTAL and roadmap.remaining == 0,
-            "final 2.0 release requires exactly 10/10 milestones",
+            "final/published 2.0 contract requires exactly 10/10 milestones",
             checks,
         )
-        _require(version == TARGET_VERSION, f"final package version is {TARGET_VERSION}", checks)
+        if published_20:
+            _require(
+                _release_tuple(version) >= _release_tuple(TARGET_VERSION),
+                "post-publication source cannot regress below SwirEngine 2.0.0",
+                checks,
+            )
+        else:
+            _require(version == TARGET_VERSION, f"final package version is {TARGET_VERSION}", checks)
         urls = project.get("urls", {})
         _require(
             str(urls.get("Roadmap", "")).endswith("/ROADMAP_2_0.md"),
-            "project metadata points at the 2.0 roadmap",
+            "project metadata preserves the published 2.0 roadmap as primary release history",
             checks,
         )
         if published_20:
@@ -367,18 +381,8 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
                 checks,
             )
             _require(
-                "STATUS-2.0.0%20PUBLISHED" in readme,
-                "README identifies 2.0.0 as the published stable release",
-                checks,
-            )
-            _require(
-                "**Latest public stable release:** **SwirEngine 2.0.0**" in readme,
-                "README identifies 2.0.0 as the latest public stable release",
-                checks,
-            )
-            _require(
-                "SwirEngine 2.0.0 is publicly released on GitHub and PyPI" in readme,
-                "README records successful public GitHub/PyPI publication",
+                archived_publication_evidence or "STATUS-2.0.0%20PUBLISHED" in readme,
+                "repository preserves evidence that 2.0.0 was published",
                 checks,
             )
             if post_release_archived:
@@ -446,7 +450,7 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Verify the SwirEngine 2.0 final release-candidate contract."
+        description="Verify the SwirEngine 2.0 final/published release contract."
     )
     parser.add_argument("--require-final", action="store_true")
     args = parser.parse_args()
@@ -457,7 +461,7 @@ def main() -> int:
         return 1
     print(
         "SwirEngine 2.0 release contract OK: "
-        f"version={report.version}, roadmap={report.roadmap.completed}/{report.roadmap.total} "
+        f"current-version={report.version}, roadmap={report.roadmap.completed}/{report.roadmap.total} "
         f"({report.roadmap.percent:.1f}%), checks={len(report.checks)}"
     )
     return 0
