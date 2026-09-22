@@ -1,0 +1,116 @@
+name: SwirEngine 2.1 Release Candidate Gate
+
+on:
+  pull_request:
+    paths:
+      - "pyproject.toml"
+      - "README.md"
+      - "ROADMAP_2_1.md"
+      - "RELEASE_NOTES_2_1.md"
+      - "docs/RELEASE_GATE_2_1.md"
+      - "tools/verify_2_1_release_candidate.py"
+      - "tools/verify_2_1_release_readiness.py"
+      - "tests/test_verify_2_1_release_candidate.py"
+      - ".github/workflows/release-candidate-2.1.yml"
+      - "src/**"
+      - "demo_projects/**"
+  push:
+    branches:
+      - "release/**"
+    paths:
+      - "pyproject.toml"
+      - "README.md"
+      - "ROADMAP_2_1.md"
+      - "RELEASE_NOTES_2_1.md"
+      - "docs/RELEASE_GATE_2_1.md"
+      - "tools/verify_2_1_release_candidate.py"
+      - "tools/verify_2_1_release_readiness.py"
+      - "tests/test_verify_2_1_release_candidate.py"
+      - ".github/workflows/release-candidate-2.1.yml"
+      - "src/**"
+      - "demo_projects/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  candidate-contract:
+    name: Candidate contract and source readiness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install verification dependencies
+        run: python -m pip install --upgrade pip "pytest>=8,<10" "ruff>=0.16,<0.17" "build>=1.2,<2"
+      - name: Verify candidate publication contract
+        run: python tools/verify_2_1_release_candidate.py
+      - name: Verify accepted 2.1 source readiness
+        run: python tools/verify_2_1_release_readiness.py
+      - name: Test candidate contract regressions
+        run: python -m pytest -q tests/test_verify_2_1_release_candidate.py
+      - name: Lint candidate verifier and tests
+        run: python -m ruff check tools/verify_2_1_release_candidate.py tests/test_verify_2_1_release_candidate.py
+      - name: Build exact-source wheel and sdist
+        run: python -m build
+      - name: Verify artifact set
+        run: >-
+          python -c "from pathlib import Path; files=list(Path('dist').iterdir());
+          assert len(list(Path('dist').glob('*.whl'))) == 1;
+          assert len(list(Path('dist').glob('*.tar.gz'))) == 1;
+          print('\n'.join(str(p) for p in sorted(files)))"
+      - name: Preserve candidate artifacts for inspection
+        uses: actions/upload-artifact@v4
+        with:
+          name: swirengine-2.1.0-candidate
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  clean-install-matrix:
+    name: Clean install ${{ matrix.os }} / CPython ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Build candidate on the target interpreter
+        run: |
+          python -m pip install --upgrade pip "build>=1.2,<2"
+          python -m build
+      - name: Install exact wheel into a clean virtual environment
+        run: >-
+          python -c "import glob,subprocess,sys,venv; from pathlib import Path;
+          target=Path('.candidate-venv'); venv.EnvBuilder(with_pip=True, clear=True).create(target);
+          exe=target/('Scripts/python.exe' if sys.platform == 'win32' else 'bin/python');
+          wheels=glob.glob('dist/*.whl'); assert len(wheels) == 1, wheels;
+          subprocess.check_call([str(exe), '-m', 'pip', 'install', '--upgrade', 'pip']);
+          subprocess.check_call([str(exe), '-m', 'pip', 'install', wheels[0]]);
+          subprocess.check_call([str(exe), '-c',
+          'from importlib.metadata import version; import swirengine; assert version(\"swirengine\") == \"2.1.0\"; print(version(\"swirengine\"))'])"
+      - name: Verify installed CLI entry points
+        run: >-
+          python -c "import subprocess,sys; from pathlib import Path;
+          target=Path('.candidate-venv'); exe=target/('Scripts/python.exe' if sys.platform == 'win32' else 'bin/python');
+          subprocess.check_call([str(exe), '-m', 'swirengine.cli21', '--help'])"
+
+  non-publishing-safety:
+    name: Non-publishing safety lock
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Confirm candidate workflow cannot publish
+        run: python tools/verify_2_1_release_candidate.py
