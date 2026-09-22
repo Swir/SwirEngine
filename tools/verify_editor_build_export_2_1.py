@@ -76,9 +76,33 @@ def _validate_fixture(
 
     tooling = EditorBuildExportTooling21(project_root, project_name=f"SwirEngine-{name}")
     profile = _profile_for_fixture(name, fixture.files)
-    tooling.upsert_profile(profile)
-    tooling.select_profile(profile.name)
-    tooling.save()
+    seed_profile = PackagingProfile(
+        name=profile.name,
+        target=profile.target,
+        entrypoint=profile.entrypoint,
+        app_name=profile.app_name,
+        include=profile.include,
+        exclude=profile.exclude,
+    )
+    tooling.upsert_profile(seed_profile)
+    tooling.select_profile(seed_profile.name)
+    controller = EditorBuildExportPanelController21(tooling)
+    authored = controller.configure_active_profile(
+        name=profile.name,
+        target=profile.target,
+        entrypoint=profile.entrypoint,
+        app_name=profile.effective_app_name,
+        icon=profile.icon,
+        onefile=profile.onefile,
+        console=profile.console,
+        metadata=profile.metadata,
+    )
+    controller.save()
+
+    if authored.icon != _ICON_PATH:
+        raise RuntimeError(f"{name} creator configuration did not retain the authored icon")
+    if dict(authored.metadata) != profile.metadata:
+        raise RuntimeError(f"{name} creator configuration did not retain authored metadata")
 
     # The creator-authored profile must survive disk round-trip before any shipping claim.
     reloaded = EditorBuildExportTooling21(project_root, project_name=f"SwirEngine-{name}")
@@ -123,6 +147,7 @@ def _validate_fixture(
         "sha256": checksums,
         "metadata": payload["metadata"],
         "icon": active.icon,
+        "creator_configured": True,
         "native_build_planned": frame.native_build_planned,
         "checksums_verified": artifact.checksums_verified,
     }
@@ -134,6 +159,7 @@ def _validate_fixture(
         "checksums_verified": artifact.checksums_verified,
         "icon_configured": active.icon == _ICON_PATH,
         "metadata_verified": payload["metadata"] == profile.metadata,
+        "creator_configured": True,
         "profile_roundtrip": active == profile,
         "native_build_planned": frame.native_build_planned,
         "fingerprint": _fingerprint(portable_evidence),
