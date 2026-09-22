@@ -8,15 +8,29 @@ from .editor_app21 import EditorProjectSession, EditorProjectSummary
 from .editor_audio_tooling21 import EditorAudioTooling21, EditorAudioToolingError
 from .editor_navigation_tooling21 import EditorNavigationToolingError
 from .editor_physics_tooling21 import EditorPhysicsToolingError
+from .editor_ui_tooling21 import EditorUIHudTooling21, EditorUIHudToolingError
 from .serialization import SceneSerializationError
+
+_SAVE_ERRORS = (
+    OSError,
+    SceneSerializationError,
+    EditorAnimationToolingError,
+    EditorPhysicsToolingError,
+    EditorNavigationToolingError,
+    EditorAudioToolingError,
+    EditorUIHudToolingError,
+    TypeError,
+    ValueError,
+)
 
 
 class EditorIntegratedProjectSession21(EditorProjectSession):
-    """SwirEditor project session that persists creator audio with the rest of the project."""
+    """SwirEditor project session that persists integrated creator tooling."""
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.audio = EditorAudioTooling21(self.manifest.root)
+        self.ui_hud = EditorUIHudTooling21(self.manifest.root)
 
     @classmethod
     def adopt(cls, session: EditorProjectSession) -> EditorIntegratedProjectSession21:
@@ -29,20 +43,32 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
         integrated = cls.__new__(cls)
         integrated.__dict__.update(session.__dict__)
         integrated.audio = EditorAudioTooling21(integrated.manifest.root)
+        integrated.ui_hud = EditorUIHudTooling21(integrated.manifest.root)
         return integrated
 
     def summary(self) -> EditorProjectSummary:
         summary = super().summary()
-        return replace(summary, dirty=summary.dirty or self.audio.dirty)
+        return replace(
+            summary,
+            dirty=summary.dirty or self.audio.dirty or self.ui_hud.dirty,
+        )
 
     def save(self):
         audio_was_dirty = self.audio.dirty
+        ui_hud_was_dirty = self.ui_hud.dirty
         if audio_was_dirty:
             self.audio.save()
+        if ui_hud_was_dirty:
+            self.ui_hud.save()
         state = super().save()
         if audio_was_dirty:
             self.console.write(
                 f"Saved audio configuration {self.audio.relative_path}",
+                source="swireditor",
+            )
+        if ui_hud_was_dirty:
+            self.console.write(
+                f"Saved UI/HUD configuration {self.ui_hud.relative_path}",
                 source="swireditor",
             )
         return state
@@ -52,47 +78,48 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
 
         run_editor_session21(self)
 
-    def _base_dirty(self) -> bool:
+    def _all_dirty(self) -> bool:
         return bool(
             self.scenes.dirty
             or self.gameplay.dirty
             or self.animation.dirty
             or self.physics.dirty
             or self.navigation.dirty
+            or self.audio.dirty
+            or self.ui_hud.dirty
         )
+
+    def _save_from_ui(self, app: Any) -> None:
+        try:
+            self.save()
+        except _SAVE_ERRORS as exc:
+            self.console.write(str(exc), level="error", source="swireditor")
+            app.messagebox.showerror(
+                "SwirEditor — Save failed",
+                str(exc),
+                parent=app.root,
+            )
 
     def _close_from_ui(self, app: Any) -> None:
-        if not self.audio.dirty or self._base_dirty():
-            super()._close_from_ui(app)
-            return
-
-        decision = app.messagebox.askyesnocancel(
-            "SwirEditor — Unsaved changes",
-            "Save project changes before closing?",
-            parent=app.root,
-        )
-        if decision is None:
-            return
-        if decision:
-            try:
-                self.save()
-            except (
-                OSError,
-                SceneSerializationError,
-                EditorAnimationToolingError,
-                EditorPhysicsToolingError,
-                EditorNavigationToolingError,
-                EditorAudioToolingError,
-                TypeError,
-                ValueError,
-            ) as exc:
-                self.console.write(str(exc), level="error", source="swireditor")
-                app.messagebox.showerror(
-                    "SwirEditor — Save failed",
-                    str(exc),
-                    parent=app.root,
-                )
+        if self._all_dirty():
+            decision = app.messagebox.askyesnocancel(
+                "SwirEditor — Unsaved changes",
+                "Save project changes before closing?",
+                parent=app.root,
+            )
+            if decision is None:
                 return
-        else:
-            self.scenes.discard_recovery()
+            if decision:
+                try:
+                    self.save()
+                except _SAVE_ERRORS as exc:
+                    self.console.write(str(exc), level="error", source="swireditor")
+                    app.messagebox.showerror(
+                        "SwirEditor — Save failed",
+                        str(exc),
+                        parent=app.root,
+                    )
+                    return
+            else:
+                self.scenes.discard_recovery()
         app.close()
