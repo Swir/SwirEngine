@@ -105,7 +105,7 @@ def _validate_fixture(
     files_payload = payload.get("files")
     checksums = payload.get("sha256")
     if not isinstance(files_payload, list) or not isinstance(checksums, dict):
-        raise RuntimeError(f"{name} staged manifest is missing deterministic file evidence")
+        raise TypeError(f"{name} staged manifest is missing deterministic file evidence")
     if _ICON_PATH not in files_payload:
         raise RuntimeError(f"{name} authored icon was not shipped")
     if payload.get("metadata") != profile.metadata:
