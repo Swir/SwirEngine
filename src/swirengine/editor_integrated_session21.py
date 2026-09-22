@@ -18,6 +18,19 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
         super().__init__(**kwargs)
         self.audio = EditorAudioTooling21(self.manifest.root)
 
+    @classmethod
+    def adopt(cls, session: EditorProjectSession) -> EditorIntegratedProjectSession21:
+        """Promote an already-open Project Hub session without reopening project resources."""
+
+        if isinstance(session, cls):
+            return session
+        if not isinstance(session, EditorProjectSession):
+            raise TypeError("session must be an EditorProjectSession")
+        integrated = cls.__new__(cls)
+        integrated.__dict__.update(session.__dict__)
+        integrated.audio = EditorAudioTooling21(integrated.manifest.root)
+        return integrated
+
     def summary(self) -> EditorProjectSummary:
         summary = super().summary()
         return replace(summary, dirty=summary.dirty or self.audio.dirty)
