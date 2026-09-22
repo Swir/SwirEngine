@@ -28,7 +28,7 @@ def run_editor_session21(session: EditorProjectSession) -> None:
             session.console.write(str(exc), level="warning", source="renderer")
         app = TkIntegratedEditorApp21(
             session.controller,
-            workflow,
+            asset_workflow=workflow,
             project_root=session.manifest.root,
             gameplay=session.gameplay,
             animation=session.animation,
