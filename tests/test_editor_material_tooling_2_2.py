@@ -88,6 +88,20 @@ def test_material_tooling_reports_missing_assets_and_blocks_path_escape(tmp_path
         EditorMaterialTooling22(tmp_path, path="../materials.json")
 
 
+def test_material_assets_root_cannot_be_symlinked_outside_project(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    outside = tmp_path / "outside"
+    project.mkdir()
+    outside.mkdir()
+    try:
+        (project / "assets").symlink_to(outside, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("directory symlinks are unavailable on this runner")
+
+    with pytest.raises(EditorMaterialToolingError, match="must resolve inside"):
+        EditorMaterialTooling22(project)
+
+
 def test_material_asset_symlink_cannot_escape_assets(tmp_path: Path) -> None:
     assets = tmp_path / "assets"
     outside = tmp_path / "outside"
