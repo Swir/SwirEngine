@@ -6,17 +6,17 @@ from .editor_app21 import EditorProjectOpenError, EditorProjectSession, _build_p
 from .editor_asset_drop21 import TkNativeDropAssetPipelineEditorApp21
 from .editor_asset_formats21 import create_format_aware_editor_asset_pipeline21
 from .editor_asset_frontend21 import EditorAssetWorkflow21
-from .editor_build_export_frontend21 import TkBuildExportEditorApp21
 from .editor_integrated_session21 import EditorIntegratedProjectSession21
+from .editor_material_frontend22 import TkMaterialEditorApp22
 from .editor_render_backend21 import EditorRenderBackendUnavailable
 
 
-class TkIntegratedEditorApp21(TkBuildExportEditorApp21, TkNativeDropAssetPipelineEditorApp21):
+class TkIntegratedEditorApp21(TkMaterialEditorApp22, TkNativeDropAssetPipelineEditorApp21):
     """Unified SwirEditor shell for gameplay creator tools and the production asset pipeline."""
 
 
 def run_editor_session21(session: EditorProjectSession) -> None:
-    """Run one fully integrated SwirEditor 2.1 creator session."""
+    """Run one fully integrated SwirEditor creator session with 2.2 production tooling."""
 
     session = EditorIntegratedProjectSession21.adopt(session)
     backend = create_format_aware_editor_asset_pipeline21(session.asset_browser.manager)
@@ -38,7 +38,9 @@ def run_editor_session21(session: EditorProjectSession) -> None:
             ui_hud=session.ui_hud,
             save_profile=session.save_profile,
             build_export=session.build_export,
-            title=f"SwirEditor 2.1 — {session.manifest.name}",
+            materials=session.materials,
+            material_preview_viewport=session.controller.preview.viewport,
+            title=f"SwirEditor 2.2 — {session.manifest.name}",
         )
         session._install_file_menu(app)
         session._schedule_recovery(app)
@@ -47,6 +49,7 @@ def run_editor_session21(session: EditorProjectSession) -> None:
         session.console.write("UI/HUD creator tooling attached", source="ui")
         session.console.write("Save/Profile creator tooling attached", source="save")
         session.console.write("Build/Export Wizard attached", source="build")
+        session.console.write("Material/Shader Editor 2.2 attached", source="materials")
         app.run()
     finally:
         workflow.shutdown()
@@ -54,7 +57,7 @@ def run_editor_session21(session: EditorProjectSession) -> None:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """SwirEditor 2.1 entry point with the integrated production creator workflow."""
+    """SwirEditor entry point with the integrated production creator workflow."""
 
     args = _build_parser().parse_args(None if argv is None else list(argv))
     try:
@@ -70,7 +73,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.headless:
         summary = session.summary()
-        print(f"SwirEditor 2.1 project: {summary.project_name} ({summary.mode})")
+        print(f"SwirEditor project: {summary.project_name} ({summary.mode})")
         print(
             f"Scene: {summary.scene_path} "
             f"({summary.object_count} objects, {summary.entity_count} entities)"
