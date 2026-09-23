@@ -93,6 +93,7 @@ def test_historical_1_4_tag_bridge_only_targets_exact_verified_main_commit() -> 
 
 def test_current_release_workflow_preserves_trusted_publisher_without_rewriting_history() -> None:
     workflow = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
+    historical = (ROOT / ".github/workflows/release-2.0.yml").read_text(encoding="utf-8")
     trigger_section = workflow.split("jobs:", 1)[0]
 
     assert "pypa/gh-action-pypi-publish@release/v1" in workflow
@@ -100,9 +101,11 @@ def test_current_release_workflow_preserves_trusted_publisher_without_rewriting_
     assert "environment: pypi" in workflow
     assert "skip-existing: true" not in workflow
     assert "workflow_dispatch:" in trigger_section
-    assert "RELEASE_TAG: v2.0.0" in trigger_section
-    assert "RELEASE_SHA: 4c219f3bed4c107c612a58fa2fb1f1362b4dfc46" in trigger_section
-    assert 'ref: "refs/tags/v2.0.0"' in workflow
+    assert "RELEASE_TAG: v2.1.0" in trigger_section
+    assert "verify_2_1_publication.py" in workflow
+    assert 'branches:\n      - "release/2.1.0-publication"' in trigger_section
+    assert 'ref: "refs/tags/v2.0.0"' in historical
+    assert "verify_2_0_release_candidate.py --require-final" in historical
     assert "git push --force" not in workflow
     assert "git tag -f" not in workflow
 
