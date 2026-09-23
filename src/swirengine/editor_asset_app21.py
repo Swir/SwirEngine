@@ -7,11 +7,11 @@ from .editor_asset_drop21 import TkNativeDropAssetPipelineEditorApp21
 from .editor_asset_formats21 import create_format_aware_editor_asset_pipeline21
 from .editor_asset_frontend21 import EditorAssetWorkflow21
 from .editor_integrated_session21 import EditorIntegratedProjectSession21
-from .editor_material_frontend22 import TkMaterialEditorApp22
 from .editor_render_backend21 import EditorRenderBackendUnavailable
+from .editor_visual_scripting_frontend22 import TkVisualScriptEditorApp22
 
 
-class TkIntegratedEditorApp21(TkMaterialEditorApp22, TkNativeDropAssetPipelineEditorApp21):
+class TkIntegratedEditorApp21(TkVisualScriptEditorApp22, TkNativeDropAssetPipelineEditorApp21):
     """Unified SwirEditor shell for gameplay creator tools and the production asset pipeline."""
 
 
@@ -40,6 +40,7 @@ def run_editor_session21(session: EditorProjectSession) -> None:
             build_export=session.build_export,
             materials=session.materials,
             material_preview_viewport=session.controller.preview.viewport,
+            visual_scripts=session.visual_scripts,
             title=f"SwirEditor 2.2 — {session.manifest.name}",
         )
         session._install_file_menu(app)
@@ -50,6 +51,7 @@ def run_editor_session21(session: EditorProjectSession) -> None:
         session.console.write("Save/Profile creator tooling attached", source="save")
         session.console.write("Build/Export Wizard attached", source="build")
         session.console.write("Material/Shader Editor 2.2 attached", source="materials")
+        session.console.write("Visual Scripting / Node Graph 2.2 attached", source="logic")
         app.run()
     finally:
         workflow.shutdown()
