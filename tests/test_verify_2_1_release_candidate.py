@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 from pathlib import Path
 
+import pytest
+
 from tools.verify_2_1_release_candidate import check_release_candidate
+
+ROOT = Path(__file__).resolve().parents[1]
 
 ROADMAP = """# SwirEngine 2.1
 
@@ -50,6 +56,16 @@ jobs:
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
 """
 
+HISTORICAL_COMPATIBILITY_COMMANDS = (
+    ("tools/verify_1_3_release_candidate.py", "--require-complete"),
+    ("tools/verify_1_4_release_candidate.py", "--require-complete"),
+    ("tools/verify_1_5_release_candidate.py", "--require-complete"),
+    ("tools/verify_1_6_source_checkpoint.py", "--require-complete"),
+    ("tools/verify_1_7_source_checkpoint.py", "--require-complete"),
+    ("tools/verify_1_8_source_checkpoint.py", "--require-complete"),
+    ("tools/verify_1_9_source_checkpoint.py", "--require-complete"),
+)
+
 
 def _write_candidate(root: Path) -> None:
     files = {
@@ -73,6 +89,19 @@ def _write_candidate(root: Path) -> None:
 def test_release_candidate_contract_accepts_non_publishing_candidate(tmp_path: Path) -> None:
     _write_candidate(tmp_path)
     assert check_release_candidate(tmp_path) == []
+
+
+@pytest.mark.parametrize("command", HISTORICAL_COMPATIBILITY_COMMANDS)
+def test_release_candidate_preserves_locked_historical_contracts(command: tuple[str, str]) -> None:
+    result = subprocess.run(
+        [sys.executable, *command],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_release_candidate_contract_rejects_svg_inside_pypi_block(tmp_path: Path) -> None:
