@@ -4,7 +4,6 @@ from pathlib import Path
 
 from tools.verify_2_1_release_candidate import check_release_candidate
 
-
 ROADMAP = """# SwirEngine 2.1
 
 Current verified progress: 10/10 milestones = 100.0%.

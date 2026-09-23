@@ -21,12 +21,14 @@ def _project_version(pyproject: str) -> str | None:
     project_match = re.search(r"(?ms)^\[project\]\s*(.*?)(?=^\[|\Z)", pyproject)
     if project_match is None:
         return None
-    version_match = re.search(r'^version\s*=\s*"([^"]+)"\s*$', project_match.group(1), re.M)
+    version_match = re.search(
+        r'^version\s*=\s*"([^"]+)"\s*$', project_match.group(1), re.MULTILINE
+    )
     return version_match.group(1) if version_match else None
 
 
 def _runtime_version(init_text: str) -> str | None:
-    match = re.search(r'^__version__\s*=\s*"([^"]+)"\s*$', init_text, re.M)
+    match = re.search(r'^__version__\s*=\s*"([^"]+)"\s*$', init_text, re.MULTILINE)
     return match.group(1) if match else None
 
 
@@ -137,7 +139,10 @@ def check_release_candidate(root: Path = ROOT) -> list[str]:
     )
     for token in forbidden_publish_tokens:
         if token in workflow:
-            errors.append(f"candidate workflow must be release-branch-scoped and non-publishing; forbidden token: {token}")
+            errors.append(
+                "candidate workflow must be release-branch-scoped and non-publishing; "
+                f"forbidden token: {token}"
+            )
 
     return errors
 
