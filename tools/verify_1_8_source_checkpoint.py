@@ -182,9 +182,14 @@ def _two_point_one_candidate_ready() -> bool:
 
 
 def _two_point_one_published() -> bool:
-    if not _two_point_one_accepted() or not RELEASE_NOTES_21.is_file() or not README.is_file():
+    readme_path = ROOT / "README.md"
+    if (
+        not _two_point_one_accepted()
+        or not RELEASE_NOTES_21.is_file()
+        or not readme_path.is_file()
+    ):
         return False
-    readme = _text(README)
+    readme = _text(readme_path)
     notes = _text(RELEASE_NOTES_21)
     return (
         "STATUS-2.1.0%20PUBLISHED" in readme
