@@ -14,7 +14,9 @@ on:
       - "tools/verify_2_1_release_readiness.py"
       - "tools/verify_clean_wheel_2_0.py"
       - "tools/build_vendored_wheel.py"
+      - "tools/release_evidence_2_1.py"
       - "tests/test_verify_2_1_release_candidate.py"
+      - "tests/test_release_evidence_2_1.py"
       - ".github/workflows/release-candidate-2.1.yml"
       - "src/**"
       - "demo_projects/**"
@@ -39,10 +41,18 @@ jobs:
         run: python tools/verify_2_1_release_candidate.py
       - name: Verify accepted 2.1 source readiness
         run: python tools/verify_2_1_release_readiness.py
-      - name: Test candidate contract regressions
-        run: python -m pytest -q tests/test_verify_2_1_release_candidate.py
-      - name: Lint candidate verifier and tests
-        run: python -m ruff check tools/verify_2_1_release_candidate.py tests/test_verify_2_1_release_candidate.py
+      - name: Test candidate and release-evidence regressions
+        run: >-
+          python -m pytest -q
+          tests/test_verify_2_1_release_candidate.py
+          tests/test_release_evidence_2_1.py
+      - name: Lint candidate verifier, evidence tooling and tests
+        run: >-
+          python -m ruff check
+          tools/verify_2_1_release_candidate.py
+          tools/release_evidence_2_1.py
+          tests/test_verify_2_1_release_candidate.py
+          tests/test_release_evidence_2_1.py
       - name: Build exact-source wheel and sdist
         run: python -m build
       - name: Verify artifact set
@@ -116,6 +126,14 @@ jobs:
           --expected-python 3.14
           --require-vendored-native
           --verify-cli21
+      - name: Preserve Windows CPython 3.14 candidate wheel
+        if: runner.os == 'Windows' && matrix.python-version == '3.14'
+        uses: actions/upload-artifact@v4
+        with:
+          name: swirengine-2.1.0-candidate-win-cp314
+          path: dist/*.whl
+          if-no-files-found: error
+          retention-days: 7
 
   non-publishing-safety:
     name: Non-publishing safety lock
@@ -127,3 +145,44 @@ jobs:
           python-version: "3.13"
       - name: Confirm candidate workflow cannot publish
         run: python tools/verify_2_1_release_candidate.py
+
+  release-evidence:
+    name: Deterministic checksums and candidate provenance
+    needs: [candidate-contract, clean-install-matrix, non-publishing-safety]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Download portable candidate wheel and sdist
+        uses: actions/download-artifact@v4
+        with:
+          name: swirengine-2.1.0-candidate
+          path: dist
+      - name: Download Windows CPython 3.14 candidate wheel
+        uses: actions/download-artifact@v4
+        with:
+          name: swirengine-2.1.0-candidate-win-cp314
+          path: dist
+      - name: Generate deterministic SHA256SUMS and release-provenance.json
+        run: >-
+          python tools/release_evidence_2_1.py generate
+          --dist-dir dist
+          --source-sha "${GITHUB_SHA}"
+          --require-windows-cp314
+      - name: Verify exact-head release evidence
+        run: >-
+          python tools/release_evidence_2_1.py verify
+          --dist-dir dist
+          --source-sha "${GITHUB_SHA}"
+          --require-windows-cp314
+      - name: Preserve exact-head candidate release evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: swirengine-2.1.0-release-evidence
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7

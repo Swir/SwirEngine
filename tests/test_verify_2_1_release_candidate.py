@@ -54,6 +54,11 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+  release-evidence:
+    steps:
+      - run: python tools/release_evidence_2_1.py generate --require-windows-cp314
+      - run: echo "SHA256SUMS release-provenance.json"
+      - run: echo "swirengine-2.1.0-candidate-win-cp314"
 """
 
 HISTORICAL_COMPATIBILITY_COMMANDS = (
@@ -79,6 +84,7 @@ def _write_candidate(root: Path) -> None:
         ),
         "docs/RELEASE_GATE_2_1.md": "Phase C publication decision remains separate.\n",
         ".github/workflows/release-candidate-2.1.yml": WORKFLOW,
+        "tools/release_evidence_2_1.py": "# deterministic release evidence tool\n",
     }
     for relative, content in files.items():
         path = root / relative
@@ -158,3 +164,18 @@ def test_release_candidate_contract_rejects_publish_capability(tmp_path: Path) -
     errors = check_release_candidate(tmp_path)
 
     assert any("non-publishing" in error for error in errors)
+
+
+def test_release_candidate_contract_requires_exact_head_release_evidence(
+    tmp_path: Path,
+) -> None:
+    _write_candidate(tmp_path)
+    workflow = tmp_path / ".github/workflows/release-candidate-2.1.yml"
+    workflow.write_text(
+        WORKFLOW.replace("  release-evidence:\n", "  evidence-disabled:\n"),
+        encoding="utf-8",
+    )
+
+    errors = check_release_candidate(tmp_path)
+
+    assert any("release-evidence:" in error for error in errors)
