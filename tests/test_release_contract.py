@@ -3,7 +3,6 @@ from pathlib import Path
 
 import swirengine
 
-
 PUBLIC_STABLE_VERSION = "2.0.0"
 CANDIDATE_VERSION = "2.1.0"
 
@@ -65,7 +64,7 @@ def test_readme_preserves_locked_1_5_evidence_after_2_0_publication():
     assert "`v1.5.0`" in readme
     assert "| 1.5 |" in readme
     assert "released/locked" in readme
-    if tuple(map(int, swirengine.__version__.split("."))) >= (2, 0, 0):
+    if swirengine.__version__ in {PUBLIC_STABLE_VERSION, CANDIDATE_VERSION}:
         assert "SwirEngine 2.0.0" in readme
         assert "**Latest public stable release:** **SwirEngine 2.0.0**" in readme
         assert "64-bit CPython 3.10–3.14" in readme

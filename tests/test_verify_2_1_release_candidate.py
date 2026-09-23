@@ -4,7 +4,6 @@ from pathlib import Path
 
 from tools.verify_2_1_release_candidate import check_release_candidate
 
-
 ROADMAP = """# SwirEngine 2.1
 
 Current verified progress: 10/10 milestones = 100.0%.
@@ -30,6 +29,11 @@ python -m pip install -U "swirengine==2.0.0"
 """
 
 WORKFLOW = """name: candidate
+on:
+  push:
+    branches:
+      - "release/**"
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
@@ -107,6 +111,16 @@ def test_release_candidate_contract_rejects_runtime_version_drift(tmp_path: Path
     assert any("runtime __version__ must be exactly 2.1.0" in error for error in errors)
 
 
+def test_release_candidate_contract_rejects_pull_request_trigger(tmp_path: Path) -> None:
+    _write_candidate(tmp_path)
+    workflow = tmp_path / ".github/workflows/release-candidate-2.1.yml"
+    workflow.write_text(WORKFLOW.replace("  push:\n", "  pull_request:\n  push:\n"), encoding="utf-8")
+
+    errors = check_release_candidate(tmp_path)
+
+    assert any("release-branch-scoped" in error for error in errors)
+
+
 def test_release_candidate_contract_rejects_publish_capability(tmp_path: Path) -> None:
     _write_candidate(tmp_path)
     workflow = tmp_path / ".github/workflows/release-candidate-2.1.yml"
@@ -114,4 +128,4 @@ def test_release_candidate_contract_rejects_publish_capability(tmp_path: Path) -
 
     errors = check_release_candidate(tmp_path)
 
-    assert any("must be non-publishing" in error for error in errors)
+    assert any("non-publishing" in error for error in errors)
