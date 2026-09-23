@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from tools.verify_2_1_publication import verify as verify_publication
 from tools.verify_2_1_release_candidate import check_release_candidate
 from tools.verify_2_1_release_readiness import (
     PYPI_BLOCK_RE,
@@ -22,7 +23,11 @@ def test_repository_passes_2_1_milestone_acceptance() -> None:
 
     assert report.version in {"2.0.0", "2.1.0"}
     if report.version == "2.1.0":
-        assert check_release_candidate(ROOT) == []
+        notes = (ROOT / "RELEASE_NOTES_2_1.md").read_text(encoding="utf-8")
+        if "NOT PUBLISHED" in notes:
+            assert check_release_candidate(ROOT) == []
+        else:
+            assert verify_publication(ROOT) == []
     assert report.roadmap.completed == 10
     assert report.roadmap.total == 10
     assert report.roadmap.percent == pytest.approx(100.0)
