@@ -44,7 +44,7 @@ jobs:
         shell: bash
         run: |
           version="$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")"
-          if [ "$version" = "2.0.0" ]; then
+          if python -c "import sys; v=tuple(map(int, sys.argv[1].split('.'))); raise SystemExit(0 if v >= (2, 0, 0) else 1)" "$version"; then
             python tools/verify_2_0_release_candidate.py --require-final
           else
             python tools/verify_2_0_release_candidate.py
