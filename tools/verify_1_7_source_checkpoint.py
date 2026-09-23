@@ -122,16 +122,36 @@ def _two_point_zero_finalized(root: Path) -> bool:
     )
 
 
-def _two_point_one_candidate_ready(root: Path) -> bool:
+def _two_point_one_accepted(root: Path) -> bool:
     roadmap = root / "ROADMAP_2_1.md"
-    notes = root / "RELEASE_NOTES_2_1.md"
-    if not roadmap.is_file() or not notes.is_file():
+    if not roadmap.is_file():
         return False
-    roadmap_text = roadmap.read_text(encoding="utf-8")
+    return "Current verified progress: 10/10 milestones = 100.0%." in roadmap.read_text(
+        encoding="utf-8"
+    )
+
+
+def _two_point_one_candidate_ready(root: Path) -> bool:
+    notes = root / "RELEASE_NOTES_2_1.md"
+    return (
+        _two_point_one_accepted(root)
+        and notes.is_file()
+        and "NOT PUBLISHED" in notes.read_text(encoding="utf-8")
+    )
+
+
+def _two_point_one_published(root: Path) -> bool:
+    readme = root / "README.md"
+    notes = root / "RELEASE_NOTES_2_1.md"
+    if not _two_point_one_accepted(root) or not readme.is_file() or not notes.is_file():
+        return False
+    readme_text = readme.read_text(encoding="utf-8")
     notes_text = notes.read_text(encoding="utf-8")
     return (
-        "Current verified progress: 10/10 milestones = 100.0%." in roadmap_text
-        and "NOT PUBLISHED" in notes_text
+        "STATUS-2.1.0%20PUBLISHED" in readme_text
+        and "**Latest public stable release:** **SwirEngine 2.1.0**" in readme_text
+        and notes_text.startswith("# SwirEngine 2.1.0 Release Notes")
+        and "NOT PUBLISHED" not in notes_text
     )
 
 
@@ -170,7 +190,7 @@ def validate_checkpoint(root: Path = PROJECT_ROOT, *, require_complete: bool = F
     allowed_versions = {STABLE_PUBLIC_VERSION}
     if _two_point_zero_finalized(root):
         allowed_versions.add(FORWARD_PUBLIC_VERSION)
-    if _two_point_one_candidate_ready(root):
+    if _two_point_one_candidate_ready(root) or _two_point_one_published(root):
         allowed_versions.add(CANDIDATE_VERSION)
     _assert(
         project_version in allowed_versions,
