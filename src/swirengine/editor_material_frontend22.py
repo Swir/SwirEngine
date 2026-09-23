@@ -157,7 +157,6 @@ class EditorMaterialPanelController22:
             self._selected = names[0] if names else None
         if self._selected is None:
             return MaterialEditorFrame22(None, names, snapshot.dirty)
-
         missing = self.tooling.missing_assets(self._selected)
         diagnostics = tuple(f"Missing asset: {path}" for path in missing)
         return MaterialEditorFrame22(
@@ -370,15 +369,10 @@ class EditorMaterialPanelController22:
         if not isinstance(image, EditorViewportImage):
             raise TypeError("material preview renderer returned an invalid viewport image")
 
-        diagnostics: list[str] = []
         if preview.shader_material is not None:
-            diagnostics.append(
-                "Custom shader preview uses the shipping ShaderMesh3D renderer path."
-            )
+            diagnostic = "Custom shader preview uses the shipping ShaderMesh3D renderer path."
         else:
-            diagnostics.append(
-                "Material preview uses the shipping Mesh3D/PBR renderer path."
-            )
+            diagnostic = "Material preview uses the shipping Mesh3D/PBR renderer path."
         self._status = f"Rendered live preview for {selected.name}"
         return MaterialLivePreview22(
             selected.name,
@@ -386,7 +380,7 @@ class EditorMaterialPanelController22:
             type(preview_object).__name__,
             preview.shader_material is not None,
             preview.fingerprint,
-            tuple(diagnostics),
+            (diagnostic,),
         )
 
     def save(self) -> MaterialEditorFrame22:
@@ -529,10 +523,7 @@ class TkMaterialEditorApp22(TkBuildExportEditorApp21):
 
     def _close_material_editor(self) -> None:
         if self._material_window is not None:
-            try:
-                self._material_window.destroy()
-            except Exception:
-                pass
+            self._material_window.destroy()
         self._material_window = None
         self._material_preview_photo = None
 
@@ -670,8 +661,8 @@ class TkMaterialEditorApp22(TkBuildExportEditorApp21):
         try:
             payload = json.loads(text)
             if not isinstance(payload, dict):
-                raise ValueError("surface JSON must be an object")
-        except (json.JSONDecodeError, ValueError) as exc:
+                raise TypeError("surface JSON must be an object")
+        except (json.JSONDecodeError, TypeError) as exc:
             self.messagebox.showerror(
                 "SwirEditor — Material",
                 str(exc),
@@ -720,12 +711,11 @@ class TkMaterialEditorApp22(TkBuildExportEditorApp21):
             initialvalue="true",
             parent=self._material_window,
         )
-        if text is None:
-            return
-        self._material_json_action(
-            text,
-            lambda value: self.material_editor_controller.set_shader_define(name, value),
-        )
+        if text is not None:
+            self._material_json_action(
+                text,
+                lambda value: self.material_editor_controller.set_shader_define(name, value),
+            )
 
     def _material_hook(self) -> None:
         from tkinter import simpledialog
@@ -766,12 +756,11 @@ class TkMaterialEditorApp22(TkBuildExportEditorApp21):
             initialvalue="1.0",
             parent=self._material_window,
         )
-        if text is None:
-            return
-        self._material_json_action(
-            text,
-            lambda value: self.material_editor_controller.set_shader_uniform(name, value),
-        )
+        if text is not None:
+            self._material_json_action(
+                text,
+                lambda value: self.material_editor_controller.set_shader_uniform(name, value),
+            )
 
     def _material_validate(self) -> None:
         self._material_action(self.material_editor_controller.validate)
