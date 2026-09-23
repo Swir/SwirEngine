@@ -254,7 +254,7 @@ class EditorMaterialTooling22:
         spec = self._require(name)
         missing: list[str] = []
         for value in _asset_values(spec):
-            if not (self.assets_root / PurePosixPath(value)).is_file():
+            if not self._asset_target(value).is_file():
                 missing.append(value)
         return tuple(sorted(set(missing)))
 
@@ -344,7 +344,17 @@ class EditorMaterialTooling22:
     def _runtime_asset(self, value: str | None) -> Path | None:
         if value is None:
             return None
-        return (self.assets_root / PurePosixPath(value)).resolve()
+        return self._asset_target(value)
+
+    def _asset_target(self, value: str) -> Path:
+        target = (self.assets_root / PurePosixPath(value)).resolve()
+        try:
+            target.relative_to(self.assets_root)
+        except ValueError as exc:
+            raise EditorMaterialToolingError(
+                f"material asset {value!r} resolves outside the project assets directory"
+            ) from exc
+        return target
 
 
 def _decode(payload: Any) -> tuple[MaterialAssetSpec22, ...]:
