@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ROADMAP = ROOT / "ROADMAP_1_9.md"
 ACTIVE_20_ROADMAP = ROOT / "ROADMAP_2_0.md"
 ACTIVE_21_ROADMAP = ROOT / "ROADMAP_2_1.md"
+RELEASE_NOTES_21 = ROOT / "RELEASE_NOTES_2_1.md"
 POST_RELEASE_STATUS = ROOT / "docs" / "SWIRENGINE_2_0_POST_RELEASE_AUDIT.md"
 README = ROOT / "README.md"
 PYPROJECT = ROOT / "pyproject.toml"
@@ -33,6 +34,7 @@ PYPI_PROGRESS_RE = re.compile(
 
 STABLE_PUBLIC_VERSION = "1.5.0"
 FORWARD_PUBLIC_VERSION = "2.0.0"
+CANDIDATE_VERSION = "2.1.0"
 EXPECTED_MILESTONES = 10
 
 MILESTONE_RE = re.compile(r"^- \[([ xX])\] \*\*(\d+)\.", re.MULTILINE)
@@ -184,6 +186,15 @@ def _two_point_zero_finalized() -> bool:
     )
 
 
+def _two_point_one_candidate_ready() -> bool:
+    if not ACTIVE_21_ROADMAP.is_file() or not RELEASE_NOTES_21.is_file():
+        return False
+    return (
+        "Current verified progress: 10/10 milestones = 100.0%." in _text(ACTIVE_21_ROADMAP)
+        and "NOT PUBLISHED" in _text(RELEASE_NOTES_21)
+    )
+
+
 def _current_public_version() -> str:
     match = VERSION_RE.search(_text(PYPROJECT))
     if match is None:
@@ -192,7 +203,10 @@ def _current_public_version() -> str:
 
 
 def _two_point_zero_published() -> bool:
-    if _current_public_version() != FORWARD_PUBLIC_VERSION:
+    current = _current_public_version()
+    if current not in {FORWARD_PUBLIC_VERSION, CANDIDATE_VERSION}:
+        return False
+    if current == CANDIDATE_VERSION and not _two_point_one_candidate_ready():
         return False
     readme = _text(README)
     return (
@@ -221,9 +235,11 @@ def _verify_public_version() -> str:
     allowed = {STABLE_PUBLIC_VERSION}
     if _two_point_zero_finalized():
         allowed.add(FORWARD_PUBLIC_VERSION)
+    if _two_point_one_candidate_ready():
+        allowed.add(CANDIDATE_VERSION)
     if version not in allowed:
         raise CheckpointError(
-            "locked 1.9 history permits only the current public line or finalized 2.0: "
+            "locked 1.9 history permits only the current public line, finalized 2.0, or accepted non-published 2.1 candidate: "
             f"allowed={sorted(allowed)}, found {version}"
         )
     return version
@@ -473,7 +489,7 @@ def main() -> int:
         f"mode={mode} roadmap={state.completed}/{state.total} "
         f"progress={state.declared_percent:.1f}% public-version={public_version}"
     )
-    if public_version == FORWARD_PUBLIC_VERSION and _two_point_zero_finalized():
+    if _two_point_zero_published():
         print("2.0-readiness: final release candidate")
         print("Release/PyPI: SwirEngine 2.0 published; 1.9 remains historical source-only")
     else:
