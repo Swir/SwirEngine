@@ -13,6 +13,7 @@ except ModuleNotFoundError:  # Python 3.10 compatibility
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 STABLE_PUBLIC_VERSION = "1.5.0"
 FORWARD_PUBLIC_VERSION = "2.0.0"
+CANDIDATE_VERSION = "2.1.0"
 EXPECTED_MILESTONES = 10
 
 MILESTONE_RE = re.compile(r"^- \[([ x])\] \*\*(\d+)\.", re.MULTILINE)
@@ -121,6 +122,19 @@ def _two_point_zero_finalized(root: Path) -> bool:
     )
 
 
+def _two_point_one_candidate_ready(root: Path) -> bool:
+    roadmap = root / "ROADMAP_2_1.md"
+    notes = root / "RELEASE_NOTES_2_1.md"
+    if not roadmap.is_file() or not notes.is_file():
+        return False
+    roadmap_text = roadmap.read_text(encoding="utf-8")
+    notes_text = notes.read_text(encoding="utf-8")
+    return (
+        "Current verified progress: 10/10 milestones = 100.0%." in roadmap_text
+        and "NOT PUBLISHED" in notes_text
+    )
+
+
 def _assert_locked_roadmap(root: Path, version: str) -> None:
     text = _read_text(root, f"ROADMAP_{version.replace('.', '_')}.md")
     _assert("100.0%" in text, f"locked {version} roadmap must preserve its 100.0% completion marker")
@@ -156,6 +170,8 @@ def validate_checkpoint(root: Path = PROJECT_ROOT, *, require_complete: bool = F
     allowed_versions = {STABLE_PUBLIC_VERSION}
     if _two_point_zero_finalized(root):
         allowed_versions.add(FORWARD_PUBLIC_VERSION)
+    if _two_point_one_candidate_ready(root):
+        allowed_versions.add(CANDIDATE_VERSION)
     _assert(
         project_version in allowed_versions,
         f"pyproject.toml must preserve the locked 1.7 history under {sorted(allowed_versions)}; found {project_version}",
