@@ -164,6 +164,12 @@ class EditorMaterialTooling22:
     ) -> None:
         self.project_root = Path(project_root).expanduser().resolve()
         self.assets_root = (self.project_root / "assets").resolve()
+        try:
+            self.assets_root.relative_to(self.project_root)
+        except ValueError as exc:
+            raise EditorMaterialToolingError(
+                "project assets directory must resolve inside the project root"
+            ) from exc
         self.relative_path = _relative_path(path)
         self._materials: dict[str, MaterialAssetSpec22] = {}
         self._saved_fingerprint = self._fingerprint()
