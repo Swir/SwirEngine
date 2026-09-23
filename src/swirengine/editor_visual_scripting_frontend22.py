@@ -9,7 +9,7 @@ from .editor_visual_scripting22 import (
     EditorVisualScriptingError22,
     EditorVisualScriptingTooling22,
 )
-from .visual_scripting22 import GraphExecutionContext22, GraphExecutionResult22, NODE_TYPES_22
+from .visual_scripting22 import NODE_TYPES_22, GraphExecutionContext22, GraphExecutionResult22
 
 
 @dataclass(frozen=True, slots=True)
