@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -67,16 +68,17 @@ def test_acceptance_rejects_svg_inside_pypi_progress_block() -> None:
     roadmap = (ROOT / "ROADMAP_2_1.md").read_text(encoding="utf-8")
     state = parse_roadmap(roadmap)
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    expected = expected_pypi_progress(state)
+    match = PYPI_BLOCK_RE.search(readme)
+    assert match is not None
     graphical = (
         "<!-- SWIR-PYPI-PROGRESS:START -->\n"
         '<img src="assets/readme/progress-card.svg" alt="progress" />\n'
         "<!-- SWIR-PYPI-PROGRESS:END -->"
     )
-    broken = readme.replace(expected, graphical, 1)
+    broken = readme[: match.start()] + graphical + readme[match.end() :]
 
     with pytest.raises(AssertionError, match="must exactly match"):
-        validate_pypi_progress(broken, state)
+        validate_pypi_progress(broken, state, root=ROOT)
 
 
 def test_acceptance_rejects_ascii_counter_drift() -> None:
@@ -85,15 +87,16 @@ def test_acceptance_rejects_ascii_counter_drift() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     match = PYPI_BLOCK_RE.search(readme)
     assert match is not None
-    broken_block = match.group(0).replace(
-        "Counter: 10 / 10 milestones",
-        "Counter: 9 / 10 milestones",
-        1,
+    broken_block = re.sub(
+        r"Counter: \d+ / \d+ milestones",
+        "Counter: 999 / 999 milestones",
+        match.group(0),
+        count=1,
     )
     broken = readme[: match.start()] + broken_block + readme[match.end() :]
 
     with pytest.raises(AssertionError, match="must exactly match"):
-        validate_pypi_progress(broken, state)
+        validate_pypi_progress(broken, state, root=ROOT)
 
 
 def test_acceptance_ascii_block_is_complete_and_pypi_safe() -> None:

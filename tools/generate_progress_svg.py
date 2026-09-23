@@ -8,18 +8,18 @@ from dataclasses import dataclass
 from html import escape
 from pathlib import Path
 
-STATUS_PATH = Path("ROADMAP_2_1.md")
+STATUS_PATH = Path("ROADMAP_2_2.md")
 README_PATH = Path("README.md")
 CARD_PATH = Path("assets/readme/progress-card.svg")
 MINI_PATH = Path("assets/readme/progress-mini.svg")
 TEMPLATE_PATH = Path("assets/readme/progress-template.svg")
-COMPAT_CARD_PATH = Path("assets/readme/progress-2-1-card.svg")
-COMPAT_MINI_PATH = Path("assets/readme/progress-2-1-mini.svg")
+COMPAT_CARD_PATH = Path("assets/readme/progress-2-2-card.svg")
+COMPAT_MINI_PATH = Path("assets/readme/progress-2-2-mini.svg")
 
 PROJECT_NAME = "SwirEngine"
-MILESTONE_LABEL = "2.1 SWIREDITOR"
-MEASURED_SCOPE = "SwirEngine 2.1 — SwirEditor & Creator Workflow"
-RELEASE_STATUS = "Source development · no SwirEngine 2.1 release published"
+MILESTONE_LABEL = "2.2 PRODUCTION TOOLS"
+MEASURED_SCOPE = "SwirEngine 2.2 — Production Tools & Visual Creation"
+RELEASE_STATUS = "Public stable SwirEngine 2.1.0 · 2.2 source development"
 PYPI_PROGRESS_START = "<!-- SWIR-PYPI-PROGRESS:START -->"
 PYPI_PROGRESS_END = "<!-- SWIR-PYPI-PROGRESS:END -->"
 PYPI_BLOCK_RE = re.compile(
@@ -79,20 +79,20 @@ def parse_progress(text: str, *, source: str = str(STATUS_PATH)) -> ProgressData
         return ProgressData(0, 0, source)
     numbers = [int(match.group("number")) for match in matches]
     if len(numbers) != len(set(numbers)):
-        raise ValueError("2.1 milestone numbers must be unique")
+        raise ValueError("2.2 milestone numbers must be unique")
 
     completed = sum(match.group("state").lower() == "x" for match in matches)
     data = ProgressData(completed, len(matches), source)
     summary = SUMMARY_RE.search(text)
     if summary is None:
-        raise ValueError("2.1 roadmap is missing the verified progress summary")
+        raise ValueError("2.2 roadmap is missing the verified progress summary")
     expected = data.percentage
     if expected is None:
-        raise ValueError("2.1 roadmap cannot have an empty denominator")
+        raise ValueError("2.2 roadmap cannot have an empty denominator")
     if int(summary.group("done")) != completed or int(summary.group("total")) != data.total:
-        raise ValueError("2.1 roadmap summary disagrees with the milestone checklist")
+        raise ValueError("2.2 roadmap summary disagrees with the milestone checklist")
     if not math.isclose(float(summary.group("percent")), expected, rel_tol=0.0, abs_tol=0.05):
-        raise ValueError("2.1 roadmap percentage disagrees with the milestone checklist")
+        raise ValueError("2.2 roadmap percentage disagrees with the milestone checklist")
     return data
 
 
@@ -113,7 +113,7 @@ def render_card(data: ProgressData) -> str:
         f"Source: {data.source}. {RELEASE_STATUS}."
     )
     return f'''<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="180" viewBox="0 0 1200 180" role="img" aria-labelledby="title desc">
-  <title id="title">{escape(PROJECT_NAME)} 2.1 progress — {escape(data.display_percentage)}</title>
+  <title id="title">{escape(PROJECT_NAME)} 2.2 progress — {escape(data.display_percentage)}</title>
   <desc id="desc">{escape(desc)}</desc>
   <defs>
     <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
@@ -166,7 +166,7 @@ def render_mini(data: ProgressData) -> str:
         )
     desc = f"{PROJECT_NAME}; {data.scope}; {data.display_percentage}; {data.status}; {data.counter}."
     return f'''<svg xmlns="http://www.w3.org/2000/svg" width="900" height="72" viewBox="0 0 900 72" role="img" aria-labelledby="title desc">
-  <title id="title">{escape(PROJECT_NAME)} 2.1 {escape(data.display_percentage)} — {escape(data.status)}</title>
+  <title id="title">{escape(PROJECT_NAME)} 2.2 {escape(data.display_percentage)} — {escape(data.status)}</title>
   <desc id="desc">{escape(desc)}</desc>
   <defs>
     <linearGradient id="progressGradient" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0088FF"/><stop offset="1" stop-color="#62E5FF"/></linearGradient>

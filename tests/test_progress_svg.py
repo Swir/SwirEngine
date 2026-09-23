@@ -50,10 +50,10 @@ def _without_pypi_progress(text: str) -> str:
     return PYPI_BLOCK_RE.sub("", text, count=1)
 
 
-def test_active_2_1_math_matches_canonical_assets() -> None:
+def test_active_2_2_math_matches_canonical_assets() -> None:
     data = parse_progress((ROOT / STATUS_PATH).read_text(encoding="utf-8"))
 
-    assert STATUS_PATH.as_posix() == "ROADMAP_2_1.md"
+    assert STATUS_PATH.as_posix() == "ROADMAP_2_2.md"
     assert data.total == 10
     assert data.percentage == pytest.approx((data.completed / data.total) * 100.0)
     assert generate(check=True) == 0
@@ -64,9 +64,15 @@ def test_active_2_1_math_matches_canonical_assets() -> None:
 
     card = outputs[CARD_PATH]
     mini = outputs[MINI_PATH]
-    assert _gradient_fill_width(card) == pytest.approx(1100.0 * data.completed / data.total)
-    assert _gradient_fill_width(mini) == pytest.approx(700.0 * data.completed / data.total)
-    assert "SwirEngine 2.1 — SwirEditor &amp; Creator Workflow" in card
+    expected_card_fill = (
+        None if data.completed == 0 else pytest.approx(1100.0 * data.completed / data.total)
+    )
+    expected_mini_fill = (
+        None if data.completed == 0 else pytest.approx(700.0 * data.completed / data.total)
+    )
+    assert _gradient_fill_width(card) == expected_card_fill
+    assert _gradient_fill_width(mini) == expected_mini_fill
+    assert "SwirEngine 2.2 — Production Tools &amp; Visual Creation" in card
     assert data.counter in card
     assert data.display_percentage in card
     assert outputs[COMPAT_CARD_PATH] == card
@@ -101,7 +107,7 @@ def test_readme_pypi_ascii_progress_is_single_deterministic_surface() -> None:
 
 
 def test_generator_restores_pypi_ascii_block_and_removes_readme_progress_svgs() -> None:
-    data = ProgressData(6, 10, "ROADMAP_2_1.md")
+    data = ProgressData(6, 10, "ROADMAP_2_2.md")
     noncompliant = (
         "## 📊 Project status\n\n"
         f"{PYPI_PROGRESS_START}\n"

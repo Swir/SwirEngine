@@ -27,6 +27,7 @@ def test_publication_contract_rejects_svg_inside_pypi_block(tmp_path: Path) -> N
         "README.md",
         "RELEASE_NOTES_2_1.md",
         "ROADMAP_2_1.md",
+        "ROADMAP_2_2.md",
         ".github/workflows/release.yml",
     ):
         source = root / rel

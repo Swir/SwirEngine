@@ -10,14 +10,22 @@ except ModuleNotFoundError:  # pragma: no cover - exercised on CPython 3.10
 
 PROGRESS_START = "<!-- SWIR-PYPI-PROGRESS:START -->"
 PROGRESS_END = "<!-- SWIR-PYPI-PROGRESS:END -->"
-EXPECTED_BLOCK = """<!-- SWIR-PYPI-PROGRESS:START -->
-```text
-Scope: SwirEngine 2.1 - SwirEditor & Creator Workflow
-Progress: [##############################] 100.0%
-Counter: 10 / 10 milestones
-Status: COMPLETE
-```
-<!-- SWIR-PYPI-PROGRESS:END -->"""
+
+
+def _expected_active_block(root: Path) -> str:
+    try:
+        from tools.generate_progress_svg import STATUS_PATH, parse_progress, render_readme_progress
+    except ImportError:  # pragma: no cover - direct script execution
+        from generate_progress_svg import STATUS_PATH, parse_progress, render_readme_progress
+
+    source = root / STATUS_PATH
+    if not source.is_file():
+        raise FileNotFoundError(f"active progress source is missing: {STATUS_PATH.as_posix()}")
+    data = parse_progress(
+        source.read_text(encoding="utf-8"),
+        source=STATUS_PATH.as_posix(),
+    )
+    return render_readme_progress(data)
 
 
 def verify(root: Path) -> list[str]:
@@ -33,8 +41,18 @@ def verify(root: Path) -> list[str]:
 
     if readme.count(PROGRESS_START) != 1 or readme.count(PROGRESS_END) != 1:
         errors.append("README must contain exactly one SWIR-PYPI-PROGRESS marker pair")
-    elif EXPECTED_BLOCK not in readme:
-        errors.append("README PyPI progress block must be the deterministic 100.0% ASCII block")
+    else:
+        try:
+            expected_block = _expected_active_block(root)
+        except (FileNotFoundError, ValueError) as exc:
+            errors.append(str(exc))
+        else:
+            start = readme.index(PROGRESS_START)
+            end = readme.index(PROGRESS_END, start) + len(PROGRESS_END)
+            if readme[start:end] != expected_block:
+                errors.append(
+                    "README PyPI progress block must match the deterministic active-roadmap ASCII block"
+                )
 
     if "Latest public stable release:** **SwirEngine 2.1.0" not in readme:
         errors.append("README must identify SwirEngine 2.1.0 as the public stable release")

@@ -10,7 +10,7 @@
 [![PyPI](https://img.shields.io/pypi/v/swirengine?style=for-the-badge&color=02050A&logo=pypi&logoColor=62E5FF)](https://pypi.org/project/swirengine/)
 ![Python](https://img.shields.io/badge/Python-3.10--3.14%2064--bit%20CPython%20verified%20matrix-02050A?style=for-the-badge&logo=python&logoColor=62E5FF)
 ![Status](https://img.shields.io/badge/STATUS-2.1.0%20PUBLISHED-02050A?style=for-the-badge&logoColor=62E5FF)
-![Development](https://img.shields.io/badge/2.1%20ROADMAP-10%2F10-02050A?style=for-the-badge&logoColor=62E5FF)
+![Development](https://img.shields.io/badge/2.2%20ROADMAP-0%2F10-02050A?style=for-the-badge&logoColor=62E5FF)
 ![License](https://img.shields.io/badge/LICENSE-MIT-02050A?style=for-the-badge&logo=opensourceinitiative&logoColor=62E5FF)
 
 [![Author](https://img.shields.io/badge/Author-Swir-0088FF?style=flat-square&logo=github)](https://github.com/Swir)
@@ -18,7 +18,7 @@
 
 <br>
 
-[**Install**](#-install) · [**Quick Start**](#-quick-start) · [**2.1 Roadmap**](ROADMAP_2_1.md) · [**Examples**](#-real-game-integration-fixtures) · [**Releases**](https://github.com/Swir/SwirEngine/releases)
+[**Install**](#-install) · [**Quick Start**](#-quick-start) · [**2.2 Roadmap**](ROADMAP_2_2.md) · [**Examples**](#-real-game-integration-fixtures) · [**Releases**](https://github.com/Swir/SwirEngine/releases)
 
 </div>
 
@@ -28,23 +28,23 @@
 
 <!-- SWIR-PYPI-PROGRESS:START -->
 ```text
-Scope: SwirEngine 2.1 - SwirEditor & Creator Workflow
-Progress: [##############################] 100.0%
-Counter: 10 / 10 milestones
-Status: COMPLETE
+Scope: SwirEngine 2.2 - Production Tools & Visual Creation
+Progress: [------------------------------] 0.0%
+Counter: 0 / 10 milestones
+Status: IN PROGRESS
 ```
 <!-- SWIR-PYPI-PROGRESS:END -->
 
-**Active verified development scope:** SwirEngine 2.1 — SwirEditor & Creator Workflow  
-**2.1 roadmap:** **10/10 milestones = 100.0% — COMPLETE**  
+**Active verified development scope:** SwirEngine 2.2 — Production Tools & Visual Creation  
+**2.2 roadmap:** **0/10 milestones = 0.0% — IN PROGRESS**  
 **2.1 release:** **PUBLISHED — GitHub Release and PyPI verified**  
 **Latest public stable release:** **SwirEngine 2.1.0**  
 **Release date:** **2026-09-23**  
 **Release source:** immutable tag **`v2.1.0`**; exact source identity is preserved by release provenance and SHA-256 checksums.
 
-SwirEngine 2.1.0 is publicly released on GitHub and PyPI and is the current stable package. The finite [`ROADMAP_2_1.md`](ROADMAP_2_1.md) scope is complete at 10/10: it delivers the project-backed SwirEditor, multi-scene authoring, runtime-backed gameplay tooling, production viewport, asset workflows, Play/Debug/Profiler, Build/Export Wizard and verified 2D, 3D and multiplayer shipping paths. Release artifacts are bound to the immutable `v2.1.0` source and accompanied by deterministic SHA-256 checksums and provenance.
+SwirEngine 2.1.0 is publicly released on GitHub and PyPI and remains the current stable package. Active source development now follows [`ROADMAP_2_2.md`](ROADMAP_2_2.md): **Production Tools & Visual Creation**, beginning with runtime-backed material/shader authoring before the later visual editor, node graph, world, animation, VFX, lighting, UI and multiplayer tooling milestones. The completed 2.1 roadmap and immutable release artifacts remain preserved as release evidence.
 
-Stable 2.0 maintenance is no longer tracked as a separate active progress scope. Historical audit evidence remains preserved, and concrete regressions, compatibility failures, security/safety issues or release-blocking defects still reopen focused maintenance when discovered.
+Published 2.1.0 remains the stable compatibility baseline while 2.2 develops on a separate finite roadmap. Concrete regressions, compatibility failures, security/safety issues or release-blocking defects still take priority over 2.2 feature work.
 
 ## ✨ Highlights
 
@@ -128,14 +128,16 @@ game.run()
 
 ## 🧭 Active development and stable maintenance
 
-SwirEngine 2.1.0 is the current public stable release. Its completed source roadmap remains preserved as verification evidence while the next development roadmap is defined:
+SwirEngine 2.1.0 is the current public stable release. Active development has moved to a new finite roadmap:
 
-- [`ROADMAP_2_1.md`](ROADMAP_2_1.md) — **2.1 SwirEditor & Creator Workflow**, **10/10 = 100.0%**, source roadmap complete; publication pending.
+- [`ROADMAP_2_2.md`](ROADMAP_2_2.md) — **2.2 Production Tools & Visual Creation**, **0/10 = 0.0%**, Milestone 1 material/shader authoring foundation in progress.
+- [`ROADMAP_2_1.md`](ROADMAP_2_1.md) — **2.1 SwirEditor & Creator Workflow**, **10/10 = 100.0%**, released and frozen except for regressions.
 
 Historical release-development detail remains preserved in [`ROADMAP_2_0.md`](ROADMAP_2_0.md), which is **10/10 = 100.0%** only for its named source-development scope. The former 2.0 post-release audit is retained as a historical verification snapshot rather than a parallel active roadmap.
 
 ### Key documentation
 
+- [`ROADMAP_2_2.md`](ROADMAP_2_2.md) — active 2.2 Production Tools & Visual Creation roadmap
 - [`ROADMAP_2_1.md`](ROADMAP_2_1.md) — completed 2.1 editor/creator source roadmap
 - [`docs/MIGRATING_TO_2_1.md`](docs/MIGRATING_TO_2_1.md) — 2.0 → 2.1 migration guidance for source development
 - [`docs/RELEASE_GATE_2_1.md`](docs/RELEASE_GATE_2_1.md) — 2.1 milestone acceptance and publication boundary
@@ -188,7 +190,7 @@ python tools/verify_performance_evidence_2_0.py --output build/performance-evide
 python tools/verify_release_safety_2_0.py
 ```
 
-`tools/generate_progress_svg.py` deterministically derives the PyPI-safe README ASCII progress block and the internal/roadmap SVG assets from the same verified 2.1 checklist. Presentation tests verify source math, the exact ASCII percentage/counter, the absence of README progress SVGs, bounded SVG fill geometry, the single roadmap mini, the template contract and legacy-meter cleanup outside the explicit PyPI exception.
+`tools/generate_progress_svg.py` deterministically derives the PyPI-safe README ASCII progress block and the internal/roadmap SVG assets from the same verified 2.2 checklist. Presentation tests verify source math, the exact ASCII percentage/counter, the absence of README progress SVGs, bounded SVG fill geometry, the single roadmap mini, the template contract and legacy-meter cleanup outside the explicit PyPI exception.
 
 ## 🧱 Architecture and technology
 
@@ -198,13 +200,14 @@ Engineering quality is evaluated against complete games, public installation, re
 
 ## 🔒 API and release policy
 
-- `v1.4.0`, `v1.5.0` and `v2.0.0` are immutable published releases; release history is not rewritten.
+- `v1.4.0`, `v1.5.0`, `v2.0.0` and `v2.1.0` are immutable published releases; release history is not rewritten.
 - **2.1.0 is the latest public stable package.**
 - 1.6, 1.7, 1.8 and 1.9 remain completed source-only checkpoints and were never published as releases.
 - The 2D, 3D and multiplayer game demos remain source-only integration fixtures.
 - The published 1.5.0 `swirengine.__all__` surface remains the documented starting compatibility floor for 2.0 migration validation.
 - Breaking post-2.0 changes require explicit engineering justification, migration documentation and tests.
 - SwirEngine 2.1.0 is published from its guarded release gate; the 10/10 roadmap remains the preserved acceptance record for that release.
+- SwirEngine 2.2 is source development only until its own finite roadmap and guarded release gate are complete.
 - A completed historical roadmap does not imply literal perfection; concrete stable-line regressions still reopen focused maintenance.
 
 ## 🗺 Roadmaps and active development
@@ -223,11 +226,12 @@ Engineering quality is evaluated against complete games, public installation, re
 | 1.9 | [`ROADMAP_1_9.md`](ROADMAP_1_9.md) | 10/10 = 100.0%, source-only checkpoint |
 | 2.0 | [`ROADMAP_2_0.md`](ROADMAP_2_0.md) | 10/10 = 100.0%, released 2026-09-19 |
 | 2.0 post-release | [`docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md`](docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md) | 5/10 = 50.0%, archived snapshot |
-| **2.1** | **[`ROADMAP_2_1.md`](ROADMAP_2_1.md)** | **10/10 = 100.0%, released 2026-09-23** |
+| 2.1 | [`ROADMAP_2_1.md`](ROADMAP_2_1.md) | 10/10 = 100.0%, released 2026-09-23 |
+| **2.2** | **[`ROADMAP_2_2.md`](ROADMAP_2_2.md)** | **0/10 = 0.0%, active development** |
 
 ## ⚠️ Current limitations
 
-- SwirEngine 2.1.0 is published; future feature work must begin under a new explicit roadmap rather than silently widening the completed 2.1 scope.
+- SwirEngine 2.2 is active source development at 0/10; Milestone 1 material/shader authoring is not counted complete until exact-head acceptance evidence is green.
 - The verified base-engine matrix covers only the maintained 64-bit hosted runner architectures exercised by CI; 32-bit Python, PyPy, free-threaded CPython and unverified architectures are not claimed.
 - Optional extras such as audio require their own dependency/runtime evidence beyond the base-engine support matrix.
 - Desktop build plans are host-native; unsupported cross-compilation is intentionally rejected.
