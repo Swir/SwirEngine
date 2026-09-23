@@ -64,8 +64,14 @@ def test_active_2_2_math_matches_canonical_assets() -> None:
 
     card = outputs[CARD_PATH]
     mini = outputs[MINI_PATH]
-    assert _gradient_fill_width(card) == pytest.approx(1100.0 * data.completed / data.total)
-    assert _gradient_fill_width(mini) == pytest.approx(700.0 * data.completed / data.total)
+    expected_card_fill = (
+        None if data.completed == 0 else pytest.approx(1100.0 * data.completed / data.total)
+    )
+    expected_mini_fill = (
+        None if data.completed == 0 else pytest.approx(700.0 * data.completed / data.total)
+    )
+    assert _gradient_fill_width(card) == expected_card_fill
+    assert _gradient_fill_width(mini) == expected_mini_fill
     assert "SwirEngine 2.2 — Production Tools &amp; Visual Creation" in card
     assert data.counter in card
     assert data.display_percentage in card
