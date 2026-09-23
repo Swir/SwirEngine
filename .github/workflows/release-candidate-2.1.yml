@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - "release/**"
+      - "!release/2.1.0-publication"
     paths:
       - "pyproject.toml"
       - "README.md"
