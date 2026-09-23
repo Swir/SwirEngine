@@ -6,7 +6,7 @@
 
 SwirEngine 2.2 starts after the public SwirEngine 2.1.0 creator-workflow release. The target is a finite production-tools release: creators should be able to author more of a complete 2D/3D/multiplayer game visually while the generated data remains backed by shipping runtime systems.
 
-Current verified progress: 1/10 milestones = 10.0%.
+Current verified progress: 2/10 milestones = 20.0%.
 
 ## Product rules
 
@@ -20,7 +20,7 @@ Current verified progress: 1/10 milestones = 10.0%.
 ## Milestones
 
 - [x] **1. Material/Shader authoring foundation.** Add deterministic project material assets, runtime-backed PBR material round-trip, safe shader variant authoring, asset validation, project-session dirty/save/reopen integration and focused regression coverage.
-- [ ] **2. Material/Shader Editor and live preview.** Add creator-facing material/shader panels, texture/uniform/hook editing, presets, validation diagnostics and a live preview path using the shipping renderer.
+- [x] **2. Material/Shader Editor and live preview.** Add creator-facing material/shader panels, texture/uniform/hook editing, presets, validation diagnostics and a live preview path using the shipping renderer.
 - [ ] **3. Visual Scripting / Node Graph foundation.** Add a deterministic node-graph asset model, typed pins, validated graph compilation/execution and editor authoring for gameplay logic without weakening the Python scripting path.
 - [ ] **4. World/Terrain authoring.** Integrate terrain sculpt/paint data, foliage placement, LOD controls and world-streaming authoring with large-world runtime validation.
 - [ ] **5. Animation State Machine + Blend Tree Editor.** Add visual state/transition authoring, blend trees, parameter inspection and runtime-backed preview/debugging over the shipping animation systems.
@@ -42,3 +42,16 @@ Milestone 1 may be checked only when the exact implementation head proves all of
 6. Focused tests, the progress generator/check and the normal exact-head repository matrix are green.
 
 Milestone 1 accepted on 2026-09-23 after PR #219 exact head `15c17b642cc38a196bd9d21dc9919e146159644f` completed the full pull-request workflow matrix green and post-merge `main` commit `980ad5e3e092c37b099b671b1475d5140d9bfdfc` completed its triggered workflow set without failures.
+
+## Milestone 2 acceptance gate
+
+Milestone 2 may be checked only when the exact implementation head proves all of the following:
+
+1. Material/shader authoring is available through the unified SwirEditor creator shell rather than a disconnected editor-only prototype.
+2. Presets and creator-facing editing cover runtime-backed surface fields, texture slots, safe shader defines, hooks and uniforms with actionable validation.
+3. The live preview path renders through the shipping 3D runtime (`Mesh3D` / `ShaderMesh3D`) and fails closed when renderer prerequisites or material assets are unavailable.
+4. Material edits reuse the deterministic Milestone 1 project asset model and preserve dirty/save/reopen behavior.
+5. Focused controller/runtime integration regressions, CLI compatibility coverage, the progress contract and the normal exact-head repository matrix are green.
+6. Post-merge `main` completes its triggered workflow set without failures before the roadmap counter advances.
+
+Milestone 2 accepted on 2026-09-23 after PR #221 exact head `8f5848608419dd69903bf4d1cc2277275ca262d7` completed all 20 triggered pull-request workflows successfully. The accepted implementation merged to `main` as `117d9749000730a398b033b3579e20c7c39e88d8`, and all 12 triggered post-merge workflow runs completed successfully before this acceptance record advanced the roadmap to 2/10.
