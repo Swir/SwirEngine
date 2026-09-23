@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from swirengine import __version__
 from swirengine.cli21 import editor_entry
 from swirengine.cli21 import main as cli_main
 from swirengine.project_hub21 import EditorProjectHub, RecentProjectsStore
@@ -73,7 +74,7 @@ def test_swirengine_editor_subcommand_uses_same_headless_editor_flow(
 
 def test_unified_cli_delegates_established_commands(capsys) -> None:
     assert cli_main(["info"]) == 0
-    assert "SwirEngine 2.0.0" in capsys.readouterr().out
+    assert f"SwirEngine {__version__}" in capsys.readouterr().out
 
 
 def test_standalone_editor_entry_uses_same_headless_router(

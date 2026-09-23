@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from tools.verify_2_1_release_candidate import check_release_candidate
 from tools.verify_2_1_release_readiness import (
     PYPI_BLOCK_RE,
     audit,
@@ -19,7 +20,9 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_repository_passes_2_1_milestone_acceptance() -> None:
     report = audit(ROOT)
 
-    assert report.version == "2.0.0"
+    assert report.version in {"2.0.0", "2.1.0"}
+    if report.version == "2.1.0":
+        assert check_release_candidate(ROOT) == []
     assert report.roadmap.completed == 10
     assert report.roadmap.total == 10
     assert report.roadmap.percent == pytest.approx(100.0)
