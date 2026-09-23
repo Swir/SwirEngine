@@ -20,9 +20,11 @@ on:
       - "tools/verify_packaging_shipping_2_0.py"
       - "tools/verify_performance_evidence_2_0.py"
       - "tools/verify_release_safety_2_0.py"
+      - "tools/verify_public_release_2_1.py"
       - "tests/test_release_readiness_2_1.py"
       - "tests/test_editor_real_game_gate_2_1.py"
       - "tests/test_progress_svg.py"
+      - "tests/test_public_release_verifier_2_1.py"
       - ".github/workflows/editor-release-readiness-milestone-10.yml"
   push:
     branches:
@@ -77,9 +79,22 @@ jobs:
           --output build/performance-evidence-2-1-acceptance.json
       - name: Verify release-safety boundaries
         run: python tools/verify_release_safety_2_0.py
-      - name: Refuse premature 2.1 tag
+      - name: Verify 2.1 tag publication boundary
         shell: bash
-        run: test -z "$(git tag --list 'v2.1.0')"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          remote_tag="$(git ls-remote origin refs/tags/v2.1.0 | awk '{print $1}')"
+          if [ -n "$remote_tag" ]; then
+            python tools/verify_public_release_2_1.py --skip-install
+          else
+            if grep -Fq "**2.1 release:** **PUBLISHED" README.md; then
+              echo "README claims 2.1 is published but immutable v2.1.0 is absent."
+              exit 1
+            fi
+            echo "v2.1.0 is absent; premature publication boundary remains preserved."
+          fi
       - name: Strict Ruff gate
         run: >-
           python -m ruff check

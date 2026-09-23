@@ -3,8 +3,13 @@ name: Post-release 2.1 Public Verification
 on:
   pull_request:
     paths:
+      - "README.md"
+      - "ROADMAP_2_1.md"
+      - "pyproject.toml"
       - "tools/verify_public_release_2_1.py"
       - "tests/test_public_release_verifier_2_1.py"
+      - ".github/workflows/editor-release-readiness-milestone-10.yml"
+      - ".github/workflows/release.yml"
       - ".github/workflows/post-release-2-1.yml"
   workflow_dispatch:
 
