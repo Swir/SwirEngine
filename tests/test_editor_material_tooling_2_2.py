@@ -88,6 +88,27 @@ def test_material_tooling_reports_missing_assets_and_blocks_path_escape(tmp_path
         EditorMaterialTooling22(tmp_path, path="../materials.json")
 
 
+def test_material_asset_symlink_cannot_escape_assets(tmp_path: Path) -> None:
+    assets = tmp_path / "assets"
+    outside = tmp_path / "outside"
+    assets.mkdir()
+    outside.mkdir()
+    (outside / "secret.png").write_bytes(b"outside")
+    link = assets / "linked"
+    try:
+        link.symlink_to(outside, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("directory symlinks are unavailable on this runner")
+
+    tooling = EditorMaterialTooling22(tmp_path)
+    tooling.create_material("escaped", texture="linked/secret.png")
+
+    with pytest.raises(EditorMaterialToolingError, match="resolves outside"):
+        tooling.missing_assets("escaped")
+    with pytest.raises(EditorMaterialToolingError, match="resolves outside"):
+        tooling.preview("escaped")
+
+
 def test_material_shader_authoring_reuses_shipping_safety_policy(tmp_path: Path) -> None:
     tooling = EditorMaterialTooling22(tmp_path)
 
