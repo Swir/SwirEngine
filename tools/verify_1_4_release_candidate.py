@@ -13,7 +13,14 @@ except ModuleNotFoundError:  # Python 3.10
 TARGET_VERSION = "1.4.0"
 PREVIOUS_STABLE_VERSION = "1.3.0"
 FORWARD_VERSION = "2.0.0"
-ACTIVE_STABLE_VERSIONS = {PREVIOUS_STABLE_VERSION, TARGET_VERSION, "1.5.0", FORWARD_VERSION}
+CANDIDATE_VERSION = "2.1.0"
+ACTIVE_STABLE_VERSIONS = {
+    PREVIOUS_STABLE_VERSION,
+    TARGET_VERSION,
+    "1.5.0",
+    FORWARD_VERSION,
+    CANDIDATE_VERSION,
+}
 EXPECTED_TOTAL = 10
 EXPECTED_PYTHON_RANGE = ">=3.10,<3.15"
 REQUIRED_1_4_DOCS = (
@@ -107,7 +114,7 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
     else:
         _require(
             str(urls.get("1.4 Roadmap", "")).endswith("/ROADMAP_1_4.md"),
-            "later stable metadata preserves the locked 1.4 roadmap link",
+            "later stable/candidate metadata preserves the locked 1.4 roadmap link",
             checks,
         )
 
@@ -149,8 +156,8 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             checks,
         )
         _require(
-            version in {TARGET_VERSION, "1.5.0", FORWARD_VERSION},
-            "complete 1.4 compatibility contract permits the 1.4 publication or later verified stable lines",
+            version in {TARGET_VERSION, "1.5.0", FORWARD_VERSION, CANDIDATE_VERSION},
+            "complete 1.4 compatibility contract permits the 1.4 publication or later verified stable/candidate lines",
             checks,
         )
     else:
@@ -241,7 +248,7 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         )
 
     trigger_section = release.split("jobs:", 1)[0]
-    if version == FORWARD_VERSION:
+    if version in {FORWARD_VERSION, CANDIDATE_VERSION}:
         _require(
             "workflow_dispatch:" in trigger_section,
             "2.0 publication recovery remains manually dispatchable",
