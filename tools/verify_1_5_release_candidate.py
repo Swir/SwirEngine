@@ -170,8 +170,10 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             )
         else:
             _require(
-                str(urls.get("Roadmap", "")).endswith("/ROADMAP_2_0.md"),
-                "later metadata keeps the published 2.0 roadmap as the primary historical release roadmap",
+                str(urls.get("Roadmap", "")).endswith(
+                    "/ROADMAP_2_1.md" if version == CANDIDATE_VERSION else "/ROADMAP_2_0.md"
+                ),
+                "later metadata points at the active verified release roadmap",
                 checks,
             )
             _require(
@@ -286,31 +288,67 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             )
         else:
             trigger_section = release.split("jobs:", 1)[0]
-            for token in (
-                "verify_2_0_release_candidate.py --require-final",
-                "pypa/gh-action-pypi-publish@release/v1",
-                "id-token: write",
-                "environment: pypi",
-                "RELEASE_TAG: v2.0.0",
-                "RELEASE_SHA: 4c219f3bed4c107c612a58fa2fb1f1362b4dfc46",
-                'ref: "refs/tags/v2.0.0"',
-                "https://pypi.org/pypi/swirengine/2.0.0/json",
-            ):
-                _require(token in release, f"2.0 recovery publication workflow includes {token}", checks)
+            if version == FORWARD_VERSION:
+                for token in (
+                    "verify_2_0_release_candidate.py --require-final",
+                    "pypa/gh-action-pypi-publish@release/v1",
+                    "id-token: write",
+                    "environment: pypi",
+                    "RELEASE_TAG: v2.0.0",
+                    "RELEASE_SHA: 4c219f3bed4c107c612a58fa2fb1f1362b4dfc46",
+                    'ref: "refs/tags/v2.0.0"',
+                    "https://pypi.org/pypi/swirengine/2.0.0/json",
+                ):
+                    _require(
+                        token in release,
+                        f"2.0 recovery publication workflow includes {token}",
+                        checks,
+                    )
+                _require(
+                    "branches:\n      - main" in trigger_section
+                    and 'paths:\n      - ".github/workflows/release.yml"' in trigger_section,
+                    "2.0 automatic recovery is limited to the release workflow change on main",
+                    checks,
+                )
+            else:
+                historical_release = _read(root, ".github/workflows/release-2.0.yml")
+                for token in (
+                    'ref: "refs/tags/v2.0.0"',
+                    "verify_2_0_release_candidate.py --require-final",
+                    "swirengine==2.0.0",
+                    "pypa/gh-action-pypi-publish@release/v1",
+                ):
+                    _require(
+                        token in historical_release,
+                        f"historical 2.0 publication workflow preserves {token}",
+                        checks,
+                    )
+                for token in (
+                    "RELEASE_TAG: v2.1.0",
+                    "verify_2_1_publication.py",
+                    "verify_2_1_release_readiness.py",
+                    "pypa/gh-action-pypi-publish@release/v1",
+                    "environment: pypi",
+                    "id-token: write",
+                ):
+                    _require(
+                        token in release,
+                        f"current 2.1 publication workflow includes {token}",
+                        checks,
+                    )
+                _require(
+                    'branches:\n      - "release/2.1.0-publication"' in trigger_section,
+                    "2.1 publication workflow is isolated to the dedicated publication branch",
+                    checks,
+                )
             _require(
                 "workflow_dispatch:" in trigger_section,
-                "2.0 recovery publication remains manually dispatchable",
-                checks,
-            )
-            _require(
-                "branches:\n      - main" in trigger_section
-                and 'paths:\n      - ".github/workflows/release.yml"' in trigger_section,
-                "2.0 automatic recovery is limited to the release workflow change on main",
+                "current publication workflow remains manually dispatchable",
                 checks,
             )
             _require(
                 "git push --force" not in release and "git tag -f" not in release,
-                "2.0 recovery cannot rewrite the immutable release tag",
+                "current publication workflow cannot rewrite immutable release tags",
                 checks,
             )
 
