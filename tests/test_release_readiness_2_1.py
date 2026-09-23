@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from tools.verify_2_1_release_candidate import check_release_candidate
 from tools.verify_2_1_release_readiness import (
     PYPI_BLOCK_RE,
     audit,
@@ -19,7 +20,9 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_repository_passes_2_1_milestone_acceptance() -> None:
     report = audit(ROOT)
 
-    assert report.version == "2.0.0"
+    assert report.version in {"2.0.0", "2.1.0"}
+    if report.version == "2.1.0":
+        assert check_release_candidate(ROOT) == []
     assert report.roadmap.completed == 10
     assert report.roadmap.total == 10
     assert report.roadmap.percent == pytest.approx(100.0)
@@ -99,3 +102,11 @@ def test_acceptance_ascii_block_is_complete_and_pypi_safe() -> None:
     assert expected.isascii()
     assert "<img" not in expected
     assert ".svg" not in expected
+
+
+def test_ci_uses_published_2_0_contract_for_2_x_candidates() -> None:
+    workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+
+    assert "v >= (2, 0, 0)" in workflow
+    assert "verify_2_0_release_candidate.py --require-final" in workflow
+    assert "else\n            python tools/verify_2_0_release_candidate.py" in workflow

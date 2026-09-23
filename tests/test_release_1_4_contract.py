@@ -6,13 +6,14 @@ from demo_projects.neon_frontier_1_4.run_game import run_headless_probe
 from tools.verify_1_4_release_candidate import TARGET_VERSION, audit, parse_roadmap
 
 ROOT = Path(__file__).resolve().parents[1]
+SUPPORTED_CURRENT_SOURCE_VERSIONS = {TARGET_VERSION, "1.5.0", "2.0.0", "2.1.0"}
 
 
 def test_locked_1_4_contract_is_complete_on_supported_stable_lines() -> None:
     report = audit(ROOT, require_complete=True)
 
     assert TARGET_VERSION == "1.4.0"
-    assert report.version in {TARGET_VERSION, "1.5.0", "2.0.0"}
+    assert report.version in SUPPORTED_CURRENT_SOURCE_VERSIONS
     assert report.roadmap.total == 10
     assert report.roadmap.completed == 10
     assert report.roadmap.remaining == 0
@@ -71,6 +72,9 @@ def test_locked_hardening_workflow_keeps_real_render_packaging_and_performance_g
     assert "PyInstaller" in workflow
     assert "NeonFrontier14.exe" in workflow
     assert "SWIR_DEMO_RUNTIME_PROBE" in workflow
+    assert "v >= (2, 0, 0)" in workflow
+    assert "verify_2_0_release_candidate.py --require-final" in workflow
+    assert "(2,0,0) <= current < (3,0,0)" in workflow
 
 
 def test_historical_1_4_tag_bridge_only_targets_exact_verified_main_commit() -> None:
@@ -109,8 +113,12 @@ def test_current_metadata_remains_compatible_with_locked_1_4_artifacts() -> None
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     notes = (ROOT / "RELEASE_NOTES_1_4.md").read_text(encoding="utf-8")
 
-    assert any(f'version = "{version}"' in pyproject for version in ("1.4.0", "1.5.0", "2.0.0"))
-    assert any(f'__version__ = "{version}"' in init_text for version in ("1.4.0", "1.5.0", "2.0.0"))
+    assert any(
+        f'version = "{version}"' in pyproject for version in SUPPORTED_CURRENT_SOURCE_VERSIONS
+    )
+    assert any(
+        f'__version__ = "{version}"' in init_text for version in SUPPORTED_CURRENT_SOURCE_VERSIONS
+    )
     assert "`v1.4.0`" in readme
     assert "| 1.4 |" in readme
     assert "released/locked" in readme

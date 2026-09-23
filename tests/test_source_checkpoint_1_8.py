@@ -68,9 +68,9 @@ def test_roadmap_has_exactly_ten_ordered_milestones() -> None:
     assert [int(number) for _, number in milestones] == list(range(1, 11))
 
 
-def test_public_package_version_preserves_historical_freeze_or_finalized_2_0() -> None:
+def test_source_version_preserves_finalized_2_0_compatibility() -> None:
     version = current_version()
-    if version == "2.0.0":
+    if version in {"2.0.0", "2.1.0"}:
         assert two_point_zero_finalized()
     else:
         assert version == "1.5.0"
