@@ -10,26 +10,21 @@ The `.swirterrain` asset model is deterministic and versioned. Sculpting tracks 
 
 `TerrainAuthoringAsset.from_swirterrain_bytes()` validates the format/version and reconstructs height, material, splat, foliage and streaming data. Serializing an unchanged restored asset yields the same canonical bytes, so project diffs and build inputs remain deterministic.
 
-## Editor workflow
+## Unified SwirEditor workflow
 
-A creator document can be opened or created with `TerrainEditorSession`. The session exposes sculpt/undo/redo, paint, foliage placement, save/reload, a deterministic dirty state and a runtime preview backed by the shipping `HeightmapTerrain` implementation. The editor session never writes outside the terrain asset root.
+`EditorTerrainTooling22` is attached to `EditorIntegratedProjectSession21`, so terrain edits participate in the same dirty/save/close contract as scenes, materials and visual scripts. The `World` menu opens the integrated terrain window in the standard SwirEditor shell.
+
+The terrain window provides project asset creation/selection, a mouse-driven heightmap canvas, raise/lower/flatten/smooth brushes, material-layer painting, foliage placement, undo/redo, reload/save and runtime preview diagnostics. Runtime preview is built from the shipping `HeightmapTerrain` and authored `LargeWorld` streaming settings rather than editor-only mock state.
 
 ```python
-from swirengine.terrain_authoring22 import (
-    TerrainAuthoringAsset,
-    TerrainEditorSession,
-    TerrainProjectStore,
-)
+from swirengine.editor_terrain22 import EditorTerrainPanelController22, EditorTerrainTooling22
 
-store = TerrainProjectStore(project_root)
-session = TerrainEditorSession.create(
-    store,
-    "world/main.swirterrain",
-    TerrainAuthoringAsset.flat(257, 257),
-)
-session.sculpt(x=64.0, z=64.0, radius=12.0, strength=2.5)
-preview = session.runtime_preview()
-session.save()
+terrain = EditorTerrainTooling22(project_root)
+panel = EditorTerrainPanelController22(terrain)
+panel.create("world/main.swirterrain", width=257, height=257)
+panel.sculpt(x=64.0, z=64.0, radius=12.0, strength=2.5)
+panel.paint(1, x=64.0, z=64.0, radius=8.0, strength=0.5)
+panel.save()
 ```
 
 Milestone progress remains 3/10 on `main` until the complete M4 exact-head matrix, merge, post-merge validation and formal acceptance evidence are green.
