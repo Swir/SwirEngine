@@ -16,11 +16,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ROADMAP = ROOT / "ROADMAP_1_8.md"
 ACTIVE_20_ROADMAP = ROOT / "ROADMAP_2_0.md"
+ACTIVE_21_ROADMAP = ROOT / "ROADMAP_2_1.md"
+RELEASE_NOTES_21 = ROOT / "RELEASE_NOTES_2_1.md"
 PYPROJECT = ROOT / "pyproject.toml"
 WORKFLOWS = ROOT / ".github" / "workflows"
 
 STABLE_PUBLIC_VERSION = "1.5.0"
 FORWARD_PUBLIC_VERSION = "2.0.0"
+CANDIDATE_VERSION = "2.1.0"
 EXPECTED_MILESTONES = 10
 
 MILESTONE_RE = re.compile(r"^- \[([ xX])\] \*\*(\d+)\.", re.MULTILINE)
@@ -163,6 +166,15 @@ def _two_point_zero_finalized() -> bool:
     )
 
 
+def _two_point_one_candidate_ready() -> bool:
+    if not ACTIVE_21_ROADMAP.is_file() or not RELEASE_NOTES_21.is_file():
+        return False
+    return (
+        "Current verified progress: 10/10 milestones = 100.0%." in _text(ACTIVE_21_ROADMAP)
+        and "NOT PUBLISHED" in _text(RELEASE_NOTES_21)
+    )
+
+
 def _current_public_version() -> str:
     pyproject = _text(PYPROJECT)
     match = VERSION_RE.search(pyproject)
@@ -176,9 +188,11 @@ def _verify_public_version() -> str:
     allowed = {STABLE_PUBLIC_VERSION}
     if _two_point_zero_finalized():
         allowed.add(FORWARD_PUBLIC_VERSION)
+    if _two_point_one_candidate_ready():
+        allowed.add(CANDIDATE_VERSION)
     if version not in allowed:
         raise CheckpointError(
-            "locked 1.8 history permits only the current public line or finalized 2.0: "
+            "locked 1.8 history permits only the current public line, finalized 2.0, or accepted non-published 2.1 candidate: "
             f"allowed={sorted(allowed)}, found {version}"
         )
     return version
