@@ -141,15 +141,50 @@ def expected_pypi_progress(state: RoadmapState) -> str:
     )
 
 
-def validate_pypi_progress(readme: str, state: RoadmapState) -> None:
+def _active_pypi_progress(root: Path) -> str:
+    """Return the exact README progress block from the repository's active roadmap source."""
+
+    try:
+        from tools.generate_progress_svg import STATUS_PATH, parse_progress, render_readme_progress
+    except ImportError:  # pragma: no cover - direct script execution
+        from generate_progress_svg import STATUS_PATH, parse_progress, render_readme_progress
+
+    status_path = root / STATUS_PATH
+    if not status_path.is_file():
+        raise AssertionError(f"active progress source is missing: {STATUS_PATH.as_posix()}")
+    data = parse_progress(
+        status_path.read_text(encoding="utf-8"),
+        source=STATUS_PATH.as_posix(),
+    )
+    return render_readme_progress(data)
+
+
+def validate_pypi_progress(
+    readme: str,
+    state: RoadmapState,
+    *,
+    root: Path | None = None,
+) -> None:
+    """Validate current PyPI progress without rewriting historical 2.1 acceptance evidence."""
+
     if readme.count(PYPI_PROGRESS_START) != 1 or readme.count(PYPI_PROGRESS_END) != 1:
         raise AssertionError("README must keep exactly one SWIR-PYPI-PROGRESS block")
+    repository_root = Path(root or Path(__file__).resolve().parents[1]).resolve()
+    expected = _active_pypi_progress(repository_root)
     match = PYPI_BLOCK_RE.search(readme)
-    if match is None or match.group(0) != expected_pypi_progress(state):
-        raise AssertionError("README PyPI progress block must exactly match ROADMAP_2_1.md")
+    if match is None or match.group(0) != expected:
+        raise AssertionError(
+            "README PyPI progress block must exactly match the active roadmap source"
+        )
     block = match.group(0)
     if not block.isascii() or "<img" in block or ".svg" in block:
         raise AssertionError("README PyPI progress block must be deterministic plain ASCII")
+
+    # The historical 2.1 state remains independently required at 10/10 by
+    # require_accepted_roadmap(); current README progress may legitimately move
+    # to a newer finite roadmap after the immutable 2.1 publication.
+    if state.completed != EXPECTED_COMPLETED or state.total != EXPECTED_TOTAL:
+        raise AssertionError("historical 2.1 acceptance state must remain exactly 10/10")
 
 
 def audit(root: Path | None = None) -> ReadinessReport:
@@ -189,8 +224,10 @@ def audit(root: Path | None = None) -> ReadinessReport:
 
     readme = _read(root, "README.md")
     notes = _read(root, "RELEASE_NOTES_2_1.md")
-    validate_pypi_progress(readme, state)
-    checks.append("README PyPI ASCII progress matches the authoritative 2.1 roadmap")
+    validate_pypi_progress(readme, state, root=root)
+    checks.append(
+        "README PyPI ASCII progress matches the current active roadmap while 2.1 acceptance stays frozen"
+    )
 
     publication_final = (
         version == EXPECTED_CANDIDATE_VERSION
