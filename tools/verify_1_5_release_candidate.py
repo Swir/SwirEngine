@@ -13,6 +13,7 @@ except ModuleNotFoundError:  # Python 3.10
 TARGET_VERSION = "1.5.0"
 PREVIOUS_STABLE_VERSION = "1.4.0"
 FORWARD_VERSION = "2.0.0"
+CANDIDATE_VERSION = "2.1.0"
 EXPECTED_TOTAL = 10
 EXPECTED_PYTHON_RANGE = ">=3.10,<3.15"
 REQUIRED_DOCS = (
@@ -154,7 +155,7 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         )
         allowed_versions = {TARGET_VERSION}
         if forward_finalized:
-            allowed_versions.add(FORWARD_VERSION)
+            allowed_versions.update({FORWARD_VERSION, CANDIDATE_VERSION})
         _require(
             version in allowed_versions,
             f"current package version preserves completed 1.5 history: {sorted(allowed_versions)}",
@@ -170,12 +171,12 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         else:
             _require(
                 str(urls.get("Roadmap", "")).endswith("/ROADMAP_2_0.md"),
-                "forward 2.0 metadata points at the active 2.0 roadmap",
+                "later metadata keeps the published 2.0 roadmap as the primary historical release roadmap",
                 checks,
             )
             _require(
                 str(urls.get("1.5 Roadmap", "")).endswith("/ROADMAP_1_5.md"),
-                "forward 2.0 metadata preserves the historical 1.5 roadmap URL",
+                "later metadata preserves the historical 1.5 roadmap URL",
                 checks,
             )
     else:
@@ -186,7 +187,7 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         )
         allowed_versions = {PREVIOUS_STABLE_VERSION, TARGET_VERSION}
         if forward_finalized:
-            allowed_versions.add(FORWARD_VERSION)
+            allowed_versions.update({FORWARD_VERSION, CANDIDATE_VERSION})
         _require(
             version in allowed_versions,
             f"package version is valid for 1.5 hardening/history: {version}",
