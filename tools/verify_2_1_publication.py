@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import sys
-import tomllib
 from pathlib import Path
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - exercised on CPython 3.10
+    import tomli as tomllib
 
 PROGRESS_START = "<!-- SWIR-PYPI-PROGRESS:START -->"
 PROGRESS_END = "<!-- SWIR-PYPI-PROGRESS:END -->"
