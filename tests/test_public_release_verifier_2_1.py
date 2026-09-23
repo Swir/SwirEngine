@@ -28,8 +28,12 @@ def _release() -> dict[str, object]:
         "tag_name": "v2.1.0",
         "draft": False,
         "prerelease": False,
-        "assets": [{"name": name} for name in sorted(EXPECTED_RELEASE_ASSETS)],
+        "assets_url": "https://api.github.com/example/assets",
     }
+
+
+def _assets() -> list[dict[str, str]]:
+    return [{"name": name} for name in sorted(EXPECTED_RELEASE_ASSETS)]
 
 
 def test_pypi_requires_python_comparison_is_order_insensitive() -> None:
@@ -50,12 +54,11 @@ def test_pypi_rejects_missing_distribution() -> None:
 
 
 def test_github_state_accepts_exact_immutable_release() -> None:
-    assert validate_github_state(_tag(), _release(), EXPECTED_SOURCE_SHA) == []
+    assert validate_github_state(_tag(), _release(), _assets(), EXPECTED_SOURCE_SHA) == []
 
 
 def test_github_state_rejects_wrong_tag_target_and_missing_asset() -> None:
-    release = _release()
-    release["assets"] = release["assets"][:-1]  # type: ignore[index]
-    errors = validate_github_state(_tag("0" * 40), release, EXPECTED_SOURCE_SHA)
+    assets = _assets()[:-1]
+    errors = validate_github_state(_tag("0" * 40), _release(), assets, EXPECTED_SOURCE_SHA)
     assert any("does not resolve" in error for error in errors)
     assert any("missing assets" in error for error in errors)
