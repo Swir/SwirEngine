@@ -102,3 +102,11 @@ def test_acceptance_ascii_block_is_complete_and_pypi_safe() -> None:
     assert expected.isascii()
     assert "<img" not in expected
     assert ".svg" not in expected
+
+
+def test_ci_uses_published_2_0_contract_for_2_x_candidates() -> None:
+    workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+
+    assert "v >= (2, 0, 0)" in workflow
+    assert "verify_2_0_release_candidate.py --require-final" in workflow
+    assert "else\n            python tools/verify_2_0_release_candidate.py" in workflow
