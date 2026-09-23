@@ -72,6 +72,9 @@ def test_locked_hardening_workflow_keeps_real_render_packaging_and_performance_g
     assert "PyInstaller" in workflow
     assert "NeonFrontier14.exe" in workflow
     assert "SWIR_DEMO_RUNTIME_PROBE" in workflow
+    assert "v >= (2, 0, 0)" in workflow
+    assert "verify_2_0_release_candidate.py --require-final" in workflow
+    assert "(2,0,0) <= current < (3,0,0)" in workflow
 
 
 def test_historical_1_4_tag_bridge_only_targets_exact_verified_main_commit() -> None:
