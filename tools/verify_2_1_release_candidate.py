@@ -8,6 +8,7 @@ EXPECTED_VERSION = "2.1.0"
 PROGRESS_START = "<!-- SWIR-PYPI-PROGRESS:START -->"
 PROGRESS_END = "<!-- SWIR-PYPI-PROGRESS:END -->"
 WORKFLOW = ".github/workflows/release-candidate-2.1.yml"
+EVIDENCE_TOOL = "tools/release_evidence_2_1.py"
 
 
 def _read(root: Path, relative: str) -> str:
@@ -43,6 +44,7 @@ def check_release_candidate(root: Path = ROOT) -> list[str]:
         "RELEASE_NOTES_2_1.md",
         "docs/RELEASE_GATE_2_1.md",
         WORKFLOW,
+        EVIDENCE_TOOL,
     )
     texts: dict[str, str] = {}
     for relative in required:
@@ -123,6 +125,12 @@ def check_release_candidate(root: Path = ROOT) -> list[str]:
         "ubuntu-latest",
         "windows-latest",
         "macos-latest",
+        "release-evidence:",
+        "release_evidence_2_1.py",
+        "--require-windows-cp314",
+        "SHA256SUMS",
+        "release-provenance.json",
+        "swirengine-2.1.0-candidate-win-cp314",
     )
     for token in required_workflow_tokens:
         if token not in workflow:
