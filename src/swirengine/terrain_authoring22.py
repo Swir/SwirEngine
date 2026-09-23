@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from math import floor, isfinite, sqrt
-from pathlib import PurePosixPath
-from typing import Literal
+from pathlib import Path, PurePosixPath
+from typing import Any, Literal
 
 import numpy as np
 
@@ -89,6 +90,7 @@ class TerrainAuthoringAsset:
         if not np.all(np.isfinite(heights)):
             raise ValueError("terrain heights must be finite")
         self.heights = np.ascontiguousarray(heights.copy())
+        self.layers = tuple(self.layers)
         self.foliage = list(self.foliage)
         if self.splat is not None:
             splat = np.asarray(self.splat, dtype="f4")
@@ -113,6 +115,97 @@ class TerrainAuthoringAsset:
             raise ValueError("flat terrain requires finite value and dimensions >= 2")
         heights = np.full((height, width), value, dtype="f4")
         return cls(heights, config=config or TerrainConfig())
+
+    @classmethod
+    def from_swirterrain_bytes(cls, data: bytes | str) -> TerrainAuthoringAsset:
+        try:
+            text = data.decode("utf-8") if isinstance(data, bytes) else data
+            payload = json.loads(text)
+            if not isinstance(payload, Mapping):
+                raise ValueError("terrain payload root must be an object")
+            if payload.get("format") != cls.FORMAT:
+                raise ValueError("unsupported terrain asset format")
+            if payload.get("version") != cls.VERSION:
+                raise ValueError("unsupported terrain asset version")
+
+            config_data = cls._mapping(payload, "config")
+            config = TerrainConfig(
+                cell_size=float(config_data["cell_size"]),
+                height_scale=float(config_data["height_scale"]),
+                chunk_cells=int(config_data["chunk_cells"]),
+                lod_steps=tuple(int(value) for value in config_data["lod_steps"]),
+                lod_distances=tuple(float(value) for value in config_data["lod_distances"]),
+                mesh_cache_size=int(config_data["mesh_cache_size"]),
+            )
+            layers_data = payload.get("layers")
+            if not isinstance(layers_data, list):
+                raise ValueError("terrain layers must be an array")
+            layers = tuple(
+                TerrainMaterialLayer(
+                    name=str(cls._mapping_value(item, "name")),
+                    albedo=cls._optional_string(item, "albedo"),
+                    normal=cls._optional_string(item, "normal"),
+                    uv_scale=float(cls._mapping_value(item, "uv_scale")),
+                    roughness=float(cls._mapping_value(item, "roughness")),
+                    metallic=float(cls._mapping_value(item, "metallic")),
+                )
+                for item in layers_data
+            )
+            foliage_data = payload.get("foliage")
+            if not isinstance(foliage_data, list):
+                raise ValueError("terrain foliage must be an array")
+            foliage = [
+                FoliagePlacement(
+                    asset=str(cls._mapping_value(item, "asset")),
+                    x=float(cls._mapping_value(item, "x")),
+                    z=float(cls._mapping_value(item, "z")),
+                    yaw=float(cls._mapping_value(item, "yaw")),
+                    scale=float(cls._mapping_value(item, "scale")),
+                )
+                for item in foliage_data
+            ]
+            streaming_data = cls._mapping(payload, "streaming")
+            streaming = WorldStreamingAuthoring(
+                active_radius_chunks=int(streaming_data["active_radius_chunks"]),
+                preload_radius_chunks=int(streaming_data["preload_radius_chunks"]),
+                retention_radius_chunks=int(streaming_data["retention_radius_chunks"]),
+                max_activations_per_update=int(streaming_data["max_activations_per_update"]),
+            )
+            heights = np.asarray(payload["heights"], dtype="f4")
+            splat_payload = payload.get("splat")
+            splat = None if splat_payload is None else np.asarray(splat_payload, dtype="f4")
+            return cls(
+                heights,
+                config=config,
+                layers=layers,
+                splat=splat,
+                foliage=foliage,
+                streaming=streaming,
+            )
+        except (KeyError, TypeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ValueError("invalid .swirterrain payload") from exc
+
+    @staticmethod
+    def _mapping(payload: Mapping[str, Any], key: str) -> Mapping[str, Any]:
+        value = payload[key]
+        if not isinstance(value, Mapping):
+            raise ValueError(f"terrain {key} must be an object")
+        return value
+
+    @staticmethod
+    def _mapping_value(payload: object, key: str) -> Any:
+        if not isinstance(payload, Mapping):
+            raise ValueError("terrain list entries must be objects")
+        return payload[key]
+
+    @classmethod
+    def _optional_string(cls, payload: object, key: str) -> str | None:
+        value = cls._mapping_value(payload, key)
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise ValueError(f"terrain {key} must be a string or null")
+        return value
 
     def sculpt(
         self,
@@ -279,6 +372,9 @@ class TerrainAuthoringAsset:
         }
         return json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n"
 
+    def to_swirterrain_bytes(self) -> bytes:
+        return self.canonical_json().encode("utf-8")
+
     def _normalize_splat(self) -> None:
         assert self.splat is not None
         totals = self.splat.sum(axis=2, keepdims=True)
@@ -329,3 +425,131 @@ class TerrainAuthoringSession:
         self.asset.apply_stroke(stroke)
         self._undo.append(stroke)
         return True
+
+
+class TerrainProjectStore:
+    """Project-scoped deterministic storage for ``assets/terrain/*.swirterrain`` assets."""
+
+    ASSET_ROOT = PurePosixPath("assets/terrain")
+
+    def __init__(self, project_root: str | Path) -> None:
+        self.project_root = Path(project_root).expanduser().resolve()
+        self.asset_root = (self.project_root / "assets" / "terrain").resolve()
+
+    def resolve(self, asset_path: str | Path) -> Path:
+        raw = str(asset_path).replace("\\", "/")
+        relative = PurePosixPath(raw)
+        if not raw or relative.is_absolute() or ".." in relative.parts:
+            raise ValueError("terrain asset path must be project-relative")
+        if relative.parts[:2] == self.ASSET_ROOT.parts:
+            relative = PurePosixPath(*relative.parts[2:])
+        if not relative.parts or relative.suffix != ".swirterrain":
+            raise ValueError("terrain asset path must end with .swirterrain")
+        target = (self.asset_root / Path(*relative.parts)).resolve()
+        try:
+            target.relative_to(self.asset_root)
+        except ValueError as exc:
+            raise ValueError("terrain asset path escapes project assets/terrain") from exc
+        return target
+
+    def save(self, asset_path: str | Path, asset: TerrainAuthoringAsset) -> Path:
+        target = self.resolve(asset_path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary = target.with_name(f".{target.name}.tmp")
+        try:
+            temporary.write_bytes(asset.to_swirterrain_bytes())
+            temporary.replace(target)
+        finally:
+            if temporary.exists():
+                temporary.unlink()
+        return target
+
+    def load(self, asset_path: str | Path) -> TerrainAuthoringAsset:
+        target = self.resolve(asset_path)
+        if not target.is_file():
+            raise FileNotFoundError(target)
+        return TerrainAuthoringAsset.from_swirterrain_bytes(target.read_bytes())
+
+
+class TerrainEditorSession:
+    """Creator-facing terrain document session backed by project storage and runtime preview."""
+
+    def __init__(
+        self,
+        store: TerrainProjectStore,
+        asset_path: str | Path,
+        asset: TerrainAuthoringAsset,
+        *,
+        history_limit: int = 128,
+        saved: bool = False,
+    ) -> None:
+        self.store = store
+        self.asset_path = str(asset_path).replace("\\", "/")
+        self.asset = asset
+        self.history_limit = history_limit
+        self._history = TerrainAuthoringSession(asset, history_limit=history_limit)
+        self._saved_bytes: bytes | None = asset.to_swirterrain_bytes() if saved else None
+        self.store.resolve(self.asset_path)
+
+    @classmethod
+    def create(
+        cls,
+        store: TerrainProjectStore,
+        asset_path: str | Path,
+        asset: TerrainAuthoringAsset,
+        *,
+        history_limit: int = 128,
+    ) -> TerrainEditorSession:
+        return cls(store, asset_path, asset, history_limit=history_limit, saved=False)
+
+    @classmethod
+    def open(
+        cls,
+        store: TerrainProjectStore,
+        asset_path: str | Path,
+        *,
+        history_limit: int = 128,
+    ) -> TerrainEditorSession:
+        return cls(
+            store,
+            asset_path,
+            store.load(asset_path),
+            history_limit=history_limit,
+            saved=True,
+        )
+
+    @property
+    def dirty(self) -> bool:
+        return self._saved_bytes != self.asset.to_swirterrain_bytes()
+
+    @property
+    def project_path(self) -> Path:
+        return self.store.resolve(self.asset_path)
+
+    def sculpt(self, **kwargs) -> TerrainStroke:
+        return self._history.sculpt(**kwargs)
+
+    def paint(self, layer: int, **kwargs) -> int:
+        return self.asset.paint(layer, **kwargs)
+
+    def add_foliage(self, placement: FoliagePlacement) -> None:
+        self.asset.add_foliage(placement)
+
+    def undo(self) -> bool:
+        return self._history.undo()
+
+    def redo(self) -> bool:
+        return self._history.redo()
+
+    def runtime_preview(self) -> HeightmapTerrain:
+        return self.asset.to_runtime()
+
+    def save(self) -> Path:
+        target = self.store.save(self.asset_path, self.asset)
+        self._saved_bytes = self.asset.to_swirterrain_bytes()
+        return target
+
+    def reload(self) -> None:
+        self.asset = self.store.load(self.asset_path)
+        self._history = TerrainAuthoringSession(self.asset, history_limit=self.history_limit)
+        self._saved_bytes = self.asset.to_swirterrain_bytes()
