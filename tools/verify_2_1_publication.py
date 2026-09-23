@@ -10,6 +10,8 @@ except ModuleNotFoundError:  # pragma: no cover - exercised on CPython 3.10
 
 PROGRESS_START = "<!-- SWIR-PYPI-PROGRESS:START -->"
 PROGRESS_END = "<!-- SWIR-PYPI-PROGRESS:END -->"
+
+
 def _expected_active_block(root: Path) -> str:
     try:
         from tools.generate_progress_svg import STATUS_PATH, parse_progress, render_readme_progress
