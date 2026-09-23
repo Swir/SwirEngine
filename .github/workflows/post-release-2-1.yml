@@ -1,0 +1,56 @@
+name: Post-release 2.1 Public Verification
+
+on:
+  pull_request:
+    paths:
+      - "README.md"
+      - "ROADMAP_2_1.md"
+      - "pyproject.toml"
+      - "tools/verify_public_release_2_1.py"
+      - "tests/test_public_release_verifier_2_1.py"
+      - ".github/workflows/editor-release-readiness-milestone-10.yml"
+      - ".github/workflows/release.yml"
+      - ".github/workflows/post-release-2-1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: Public-release verifier contract
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install focused validation tooling
+        run: python -m pip install "pytest>=8,<10" "ruff>=0.16,<0.17"
+      - name: Run verifier regression tests
+        run: python -m pytest -q tests/test_public_release_verifier_2_1.py
+      - name: Lint verifier and regression tests
+        run: python -m ruff check tools/verify_public_release_2_1.py tests/test_public_release_verifier_2_1.py
+
+  public-install:
+    name: Public install ${{ matrix.os }} / CPython ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: "3.13"
+          - os: macos-latest
+            python-version: "3.13"
+          - os: windows-latest
+            python-version: "3.14"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Verify immutable tag, release assets, PyPI metadata and clean public install
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python tools/verify_public_release_2_1.py

@@ -188,37 +188,51 @@ def audit(root: Path | None = None) -> ReadinessReport:
     checks.append("2.1 roadmap has exact green Phase A evidence and 10/10 milestone acceptance")
 
     readme = _read(root, "README.md")
+    notes = _read(root, "RELEASE_NOTES_2_1.md")
     validate_pypi_progress(readme, state)
     checks.append("README PyPI ASCII progress matches the authoritative 2.1 roadmap")
-    _require(
-        "**Latest public stable release:** **SwirEngine 2.0.0**" in readme,
-        "README still names 2.0.0 as the latest public stable release",
-        checks,
-    )
-    _require(
-        "SwirEngine 2.1 roadmap acceptance is complete, but publication remains a separate guarded decision"
-        in readme,
-        "README separates 2.1 roadmap completion from public release",
-        checks,
-    )
 
-    if version == EXPECTED_CANDIDATE_VERSION:
-        notes = _read(root, "RELEASE_NOTES_2_1.md")
+    publication_final = (
+        version == EXPECTED_CANDIDATE_VERSION
+        and "**Latest public stable release:** **SwirEngine 2.1.0**" in readme
+        and notes.startswith("# SwirEngine 2.1.0 Release Notes")
+        and "NOT PUBLISHED" not in notes
+    )
+    if publication_final:
         _require(
-            "NOT PUBLISHED" in notes,
-            "2.1 candidate metadata remains explicitly non-published before Phase C publication",
+            "**2.1 release:** **PUBLISHED — GitHub Release and PyPI verified**" in readme,
+            "README final publication state identifies the verified 2.1 release",
             checks,
         )
+    else:
+        _require(
+            "**Latest public stable release:** **SwirEngine 2.0.0**" in readme,
+            "README keeps 2.0.0 as latest stable before 2.1 publication",
+            checks,
+        )
+        _require(
+            "SwirEngine 2.1 roadmap acceptance is complete, but publication remains a separate guarded decision"
+            in readme,
+            "README separates 2.1 roadmap completion from public release before publication",
+            checks,
+        )
+        if version == EXPECTED_CANDIDATE_VERSION:
+            _require(
+                "NOT PUBLISHED" in notes,
+                "2.1 candidate metadata remains explicitly non-published before Phase C publication",
+                checks,
+            )
 
     urls = project.get("urls", {})
+    expected_roadmap = "ROADMAP_2_1.md" if publication_final else "ROADMAP_2_0.md"
     _require(
-        str(urls.get("Roadmap", "")).endswith("ROADMAP_2_0.md"),
-        "primary package roadmap remains the published stable 2.0 roadmap before publication",
+        str(urls.get("Roadmap", "")).endswith(expected_roadmap),
+        "primary package roadmap matches the current publication phase",
         checks,
     )
     _require(
         str(urls.get("2.1 Roadmap", "")).endswith("ROADMAP_2_1.md"),
-        "package metadata exposes the completed 2.1 source roadmap separately",
+        "package metadata exposes the completed 2.1 source roadmap",
         checks,
     )
 

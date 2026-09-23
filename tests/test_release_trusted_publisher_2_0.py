@@ -3,35 +3,29 @@ from __future__ import annotations
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-WORKFLOW = ROOT / ".github/workflows/release.yml"
-RELEASE_SHA = "4c219f3bed4c107c612a58fa2fb1f1362b4dfc46"
+WORKFLOW = ROOT / ".github/workflows/release-2.0.yml"
 
 
 def _workflow() -> str:
     return WORKFLOW.read_text(encoding="utf-8")
 
 
-def test_recovery_reuses_registered_release_workflow_identity() -> None:
+def test_historical_2_0_publication_keeps_trusted_publisher_contract() -> None:
     workflow = _workflow()
     trigger = workflow.split("jobs:", 1)[0]
 
-    assert "name: Release" in trigger
+    assert "name: Release 2.0" in trigger
     assert "workflow_dispatch:" in trigger
-    assert "branches:\n      - main" in trigger
-    assert 'paths:\n      - ".github/workflows/release.yml"' in trigger
+    assert 'tags:\n      - "v2.0.0"' in trigger
     assert "environment: pypi" in workflow
     assert "id-token: write" in workflow
     assert "pypa/gh-action-pypi-publish@release/v1" in workflow
 
 
-def test_recovery_is_pinned_to_immutable_verified_2_0_source() -> None:
+def test_historical_2_0_publication_is_bound_to_immutable_tag_source() -> None:
     workflow = _workflow()
 
-    assert "RELEASE_TAG: v2.0.0" in workflow
-    assert f"RELEASE_SHA: {RELEASE_SHA}" in workflow
     assert workflow.count('ref: "refs/tags/v2.0.0"') >= 4
-    assert 'test "$(git rev-parse HEAD)" = "$RELEASE_SHA"' in workflow
-    assert 'test "$(git rev-list -n 1 "$RELEASE_TAG")" = "$RELEASE_SHA"' in workflow
     assert "verify_2_0_release_candidate.py --require-final" in workflow
     assert "verify_2_0_public_api.py" in workflow
     assert "verify_platform_matrix_2_0.py" in workflow
@@ -39,15 +33,13 @@ def test_recovery_is_pinned_to_immutable_verified_2_0_source() -> None:
     assert "verify_performance_evidence_2_0.py --validate-only" in workflow
     assert "verify_release_safety_2_0.py" in workflow
     assert "verify_packaging_shipping_2_0.py" in workflow
+    assert 'actual != f"v{version}"' in workflow
+    assert "tag_commit != head_commit" in workflow
 
 
-def test_recovery_fails_closed_and_never_moves_or_overwrites_public_history() -> None:
+def test_historical_2_0_publication_never_rewrites_public_history() -> None:
     workflow = _workflow()
 
-    assert "https://pypi.org/pypi/swirengine/2.0.0/json" in workflow
-    assert "gh release view" in workflow
-    assert "Inconsistent public 2.0.0 state" in workflow
-    assert "Refusing to overwrite or guess recovery semantics" in workflow
     assert "Refuse to replace an existing release" in workflow
     assert "git push --force" not in workflow
     assert "git tag -f" not in workflow
@@ -56,7 +48,7 @@ def test_recovery_fails_closed_and_never_moves_or_overwrites_public_history() ->
     assert "PYPI_API_TOKEN" not in workflow
 
 
-def test_recovery_revalidates_real_game_packaging_and_public_installation() -> None:
+def test_historical_2_0_publication_revalidates_shipping_and_public_installation() -> None:
     workflow = _workflow()
 
     assert "xvfb-run -a python examples/2d_game_demo/run_game.py" in workflow

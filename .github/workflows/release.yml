@@ -1,357 +1,339 @@
-# SwirEngine 2.0.0 Trusted Publishing recovery workflow.
-#
-# PyPI Trusted Publishers bind the publisher identity to the workflow file name.
-# SwirEngine 1.5.0 was successfully published from this historical `release.yml`
-# identity. Keep that registered identity and publish the already-immutable 2.0.0
-# tag without tokens, tag movement, or a weaker release gate.
+# SwirEngine 2.1.0 guarded publication workflow.
+# Reuses the historical release.yml identity required by the configured PyPI Trusted Publisher.
 name: Release
 
 on:
-  workflow_dispatch:
   push:
     branches:
-      - main
+      - "release/2.1.0-publication"
     paths:
-      - ".github/workflows/release.yml"
+      - ".release/publish-2.1.0"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: swirengine-2.0.0-trusted-publication
+  group: swirengine-2.1.0-publication
   cancel-in-progress: false
 
 env:
-  RELEASE_TAG: v2.0.0
-  RELEASE_SHA: 4c219f3bed4c107c612a58fa2fb1f1362b4dfc46
+  RELEASE_VERSION: 2.1.0
+  RELEASE_TAG: v2.1.0
+  EXPECTED_PR_WORKFLOWS: "30"
 
 jobs:
   publication-state:
-    name: Refuse duplicate or partial public state
+    name: Verify immutable target and public state
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     outputs:
-      publish: ${{ steps.state.outputs.publish }}
+      tag_exists: ${{ steps.state.outputs.tag_exists }}
+      release_exists: ${{ steps.state.outputs.release_exists }}
+      pypi_exists: ${{ steps.state.outputs.pypi_exists }}
     steps:
-      - name: Verify immutable release tag and current public state
+      - name: Inspect tag, GitHub Release and PyPI state
         id: state
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-
           remote_tag="$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}.git" "refs/tags/${RELEASE_TAG}" | awk '{print $1}')"
-          if [ -z "$remote_tag" ]; then
-            echo "Missing immutable ${RELEASE_TAG} tag."
+          if [ -n "$remote_tag" ] && [ "$remote_tag" != "$GITHUB_SHA" ]; then
+            echo "Immutable ${RELEASE_TAG} already points to $remote_tag instead of $GITHUB_SHA"
             exit 1
           fi
-          if [ "$remote_tag" != "$RELEASE_SHA" ]; then
-            echo "Immutable ${RELEASE_TAG} moved: expected $RELEASE_SHA, got $remote_tag"
-            exit 1
-          fi
+          if [ -n "$remote_tag" ]; then tag_exists=1; else tag_exists=0; fi
 
-          github_release=0
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            github_release=1
+            release_exists=1
+          else
+            release_exists=0
           fi
 
-          pypi_status="$(curl --silent --show-error --location --retry 3 --retry-all-errors \
-            --output /tmp/swirengine-pypi.json --write-out '%{http_code}' \
-            'https://pypi.org/pypi/swirengine/2.0.0/json' || true)"
+          pypi_status="$(curl --silent --show-error --location --retry 3 --retry-all-errors             --output /tmp/swirengine-pypi.json --write-out '%{http_code}'             "https://pypi.org/pypi/swirengine/${RELEASE_VERSION}/json" || true)"
           case "$pypi_status" in
-            200) pypi_release=1 ;;
-            404) pypi_release=0 ;;
+            200) pypi_exists=1 ;;
+            404) pypi_exists=0 ;;
             *)
               echo "Could not establish public PyPI state (HTTP ${pypi_status:-transport-error})."
               exit 1
               ;;
           esac
 
-          if [ "$github_release" -eq 1 ] && [ "$pypi_release" -eq 1 ]; then
-            echo "SwirEngine 2.0.0 is already public on GitHub and PyPI; no publication is needed."
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+          echo "tag_exists=$tag_exists" >> "$GITHUB_OUTPUT"
+          echo "release_exists=$release_exists" >> "$GITHUB_OUTPUT"
+          echo "pypi_exists=$pypi_exists" >> "$GITHUB_OUTPUT"
 
-          if [ "$github_release" -ne "$pypi_release" ]; then
-            echo "Inconsistent public 2.0.0 state: GitHub Release=$github_release PyPI=$pypi_release"
-            echo "Refusing to overwrite or guess recovery semantics."
-            exit 1
-          fi
-
-          echo "publish=true" >> "$GITHUB_OUTPUT"
-
-  build-release:
-    name: Rebuild and verify exact SwirEngine 2.0.0 tag
+  wait-pr-matrix:
+    name: Require exact-head pull-request matrix
     needs: publication-state
-    if: needs.publication-state.outputs.publish == 'true'
     runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
     steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: "refs/tags/v2.0.0"
-          fetch-depth: 0
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.13"
-      - name: Verify immutable source identity
+      - name: Wait for the exact publication head to be fully green
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
-          test "$(git rev-list -n 1 "$RELEASE_TAG")" = "$RELEASE_SHA"
+          for attempt in $(seq 1 90); do
+            json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${GITHUB_SHA}&event=pull_request&per_page=100")"
+            count="$(jq '.workflow_runs | length' <<<"$json")"
+            incomplete="$(jq '[.workflow_runs[] | select(.status != "completed")] | length' <<<"$json")"
+            bad="$(jq '[.workflow_runs[] | select(.status == "completed" and (.conclusion != "success" and .conclusion != "skipped" and .conclusion != "neutral"))] | length' <<<"$json")"
+            echo "PR workflows: count=$count incomplete=$incomplete bad=$bad"
+            if [ "$bad" -ne 0 ]; then
+              jq -r '.workflow_runs[] | select(.status == "completed" and (.conclusion != "success" and .conclusion != "skipped" and .conclusion != "neutral")) | "(.name): (.conclusion) (.html_url)"' <<<"$json"
+              exit 1
+            fi
+            if [ "$count" -ge "$EXPECTED_PR_WORKFLOWS" ] && [ "$incomplete" -eq 0 ]; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Timed out waiting for the exact-head PR matrix."
+          exit 1
+
+  build-release:
+    name: Build and verify exact SwirEngine 2.1.0 source
+    needs: [publication-state, wait-pr-matrix]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
       - name: Install release validation dependencies
         run: python -m pip install --upgrade pip build twine ".[dev]"
-      - name: Enforce complete 2.0 release contract
-        run: python tools/verify_2_0_release_candidate.py --require-final
-      - name: Re-check 1.5 public API migration floor
-        run: python tools/verify_2_0_public_api.py
-      - name: Re-check supported platform identity
-        run: python tools/verify_platform_matrix_2_0.py --expected-system Linux --expected-python 3.13
-      - name: Re-check representative real-game shipping
-        run: python tools/verify_real_game_shipping_2_0.py
-      - name: Re-check performance evidence contracts
-        run: python tools/verify_performance_evidence_2_0.py --validate-only
-      - name: Re-check export/build integrity and release safety
-        run: python tools/verify_release_safety_2_0.py
+      - name: Enforce publication contract
+        run: python tools/verify_2_1_publication.py
+      - name: Re-check accepted 2.1 source readiness
+        run: python tools/verify_2_1_release_readiness.py
       - name: Run full release tests
         run: python -m pytest -q
       - name: Lint release tree
         run: python -m ruff check src tests examples demo_projects tools
       - name: Compile release tree
         run: python -m compileall -q src tests examples demo_projects tools
-      - name: Build exact tagged wheel and sdist
+      - name: Build exact-source wheel and sdist
         run: python -m build --wheel --sdist --outdir dist
       - name: Validate distribution metadata
         run: python -m twine check dist/*
-      - name: Verify isolated wheel and sdist installs
-        run: >-
-          python tools/verify_packaging_shipping_2_0.py
-          --dist-dir dist
-          --expected-system Linux
-          --expected-python 3.13
-      - name: Verify tag, checkout and package/runtime versions agree
+      - name: Verify portable artifact names
         shell: python
         run: |
-          import os
-          import subprocess
-          import tomllib
           from pathlib import Path
-
-          import swirengine
-
-          version = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
-          tag_commit = subprocess.check_output(
-              ["git", "rev-list", "-n", "1", os.environ["RELEASE_TAG"]], text=True
-          ).strip()
-          head_commit = subprocess.check_output(
-              ["git", "rev-parse", "HEAD"], text=True
-          ).strip()
-          expected_sha = os.environ["RELEASE_SHA"]
-          if (
-              version != "2.0.0"
-              or swirengine.__version__ != version
-              or os.environ["RELEASE_TAG"] != f"v{version}"
-              or tag_commit != expected_sha
-              or head_commit != expected_sha
-          ):
-              raise SystemExit(
-                  "release identity mismatch: "
-                  f"project={version!r}, runtime={swirengine.__version__!r}, "
-                  f"tag_commit={tag_commit!r}, head={head_commit!r}, expected={expected_sha!r}"
-              )
+          wheels = list(Path("dist").glob("swirengine-2.1.0-*.whl"))
+          sdists = list(Path("dist").glob("swirengine-2.1.0.tar.gz"))
+          assert len(wheels) == 1, wheels
+          assert len(sdists) == 1, sdists
       - uses: actions/upload-artifact@v4
         with:
-          name: swirengine-2.0-recovery-dist
+          name: swirengine-2.1.0-publication-portable
           path: dist/*
           if-no-files-found: error
+          retention-days: 7
 
-  runtime-opengl-smoke:
-    name: Re-run real OpenGL 2.0 fixture gate
-    needs: [publication-state, build-release]
-    if: needs.publication-state.outputs.publish == 'true'
-    runs-on: ubuntu-24.04
+  clean-install-matrix:
+    name: Clean install ${{ matrix.os }} / CPython ${{ matrix.python-version }}
+    needs: [publication-state, wait-pr-matrix]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
         with:
-          ref: "refs/tags/v2.0.0"
-      - uses: actions/setup-python@v7
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
-      - run: python -m pip install --upgrade pip ".[dev]"
-      - name: Install software OpenGL/Xvfb runtime
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 libgl-dev libegl-dev
-      - name: Boot 2D integration fixture through real renderer
-        env:
-          LIBGL_ALWAYS_SOFTWARE: "1"
-          MESA_GL_VERSION_OVERRIDE: "3.3"
-          SWIR_GAME_DEMO_SMOKE_FRAMES: "24"
-        run: xvfb-run -a python examples/2d_game_demo/run_game.py
-      - name: Boot 3D integration fixture through real renderer
-        env:
-          LIBGL_ALWAYS_SOFTWARE: "1"
-          MESA_GL_VERSION_OVERRIDE: "3.3"
-          SWIR_GAME_DEMO_SMOKE_FRAMES: "24"
-        run: xvfb-run -a python examples/3d_game_demo/run_game.py
-
-  packaged-demos-windows:
-    name: Re-run packaged Windows 2.0 fixture probes
-    needs: [publication-state, build-release]
-    if: needs.publication-state.outputs.publish == 'true'
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: "refs/tags/v2.0.0"
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.13"
-      - run: python -m pip install --upgrade pip
-      - run: python -m pip install -e . pyinstaller
-      - name: Build 2D one-file executable
-        run: >-
-          python -m PyInstaller --noconfirm --clean --onefile
-          --collect-all glfw --collect-all glcontext
-          --paths examples/2d_game_demo
-          --name SwirEngine2D20 examples/2d_game_demo/run_game.py
-      - name: Probe packaged 2D fixture
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install Linux CPython 3.14 native build prerequisites
+        if: runner.os == 'Linux' && matrix.python-version == '3.14'
+        run: sudo apt-get update && sudo apt-get install -y libx11-dev libgl-dev libegl-dev
+      - name: Install candidate build tooling
+        run: python -m pip install --upgrade pip setuptools wheel "build>=1.2,<2"
+      - name: Build Windows CPython 3.14 renderer-native dependencies
+        if: runner.os == 'Windows' && matrix.python-version == '3.14'
         shell: pwsh
-        env:
-          SWIR_GAME_DEMO_HEADLESS: "1"
         run: |
-          & .\dist\SwirEngine2D20.exe
-          if ($LASTEXITCODE -ne 0) { throw "SwirEngine 2D 2.0 packaged probe failed: $LASTEXITCODE" }
-      - name: Build 3D one-file executable
-        run: >-
-          python -m PyInstaller --noconfirm --clean --onefile
-          --collect-all glfw --collect-all glcontext
-          --paths examples/3d_game_demo
-          --name SwirEngine3D20 examples/3d_game_demo/run_game.py
-      - name: Probe packaged 3D fixture
-        shell: pwsh
-        env:
-          SWIR_GAME_DEMO_HEADLESS: "1"
-        run: |
-          & .\dist\SwirEngine3D20.exe
-          if ($LASTEXITCODE -ne 0) { throw "SwirEngine 3D 2.0 packaged probe failed: $LASTEXITCODE" }
-
-  build-windows-cp314:
-    name: Rebuild Windows CPython 3.14 native wheel
-    needs: [publication-state, build-release]
-    if: needs.publication-state.outputs.publish == 'true'
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: "refs/tags/v2.0.0"
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.14"
-      - name: Install native build tooling
-        run: python -m pip install --upgrade pip setuptools wheel twine
-      - name: Download portable distributions
-        uses: actions/download-artifact@v4
-        with:
-          name: swirengine-2.0-recovery-dist
-          path: dist-base
-      - name: Build native renderer dependencies
-        run: |
+          New-Item -ItemType Directory -Force native-wheels | Out-Null
           python -m pip wheel --no-deps --no-binary=:all: moderngl==5.12.0 -w native-wheels
           python -m pip wheel --no-deps --no-binary=:all: glcontext==3.0.0 -w native-wheels
-      - name: Build CPython 3.14 Windows platform wheel
+          $native = Get-ChildItem native-wheels\*.whl | ForEach-Object { $_.FullName }
+          python -m pip install $native
+      - name: Build standard release wheel
+        if: runner.os != 'Windows' || matrix.python-version != '3.14'
+        run: python -m build --wheel --outdir dist
+      - name: Build Windows CPython 3.14 vendored release wheel
+        if: runner.os == 'Windows' && matrix.python-version == '3.14'
         shell: pwsh
         run: |
-          $base = (Get-ChildItem dist-base\swirengine-2.0.0-py3-none-any.whl).FullName
+          python -m build --wheel --outdir dist-base
+          $base = (Get-ChildItem dist-base\swirengine-2.1.0-*.whl).FullName
           $moderngl = (Get-ChildItem native-wheels\moderngl-*.whl).FullName
           $glcontext = (Get-ChildItem native-wheels\glcontext-*.whl).FullName
-          python tools/build_vendored_wheel.py --base $base --vendor $moderngl --vendor $glcontext --tag cp314-cp314-win_amd64 --output-dir dist-cp314
-      - name: Check native wheel metadata
-        run: python -m twine check dist-cp314/*.whl
-      - name: Verify clean native wheel install
-        shell: pwsh
-        run: |
-          python -m venv .verify314
-          .\.verify314\Scripts\python.exe -m pip install --upgrade pip
-          .\.verify314\Scripts\python.exe -m pip install --find-links dist-cp314 "swirengine==2.0.0"
-          .\.verify314\Scripts\python.exe -c "import sys, swirengine, moderngl, glcontext; assert sys.version_info[:2] == (3, 14); assert swirengine.__version__ == '2.0.0'; assert '_vendor_native' in moderngl.__file__; assert '_vendor_native' in glcontext.__file__; print(sys.version); print(moderngl.__file__); print(glcontext.__file__)"
+          python tools/build_vendored_wheel.py --base $base --vendor $moderngl --vendor $glcontext --tag cp314-cp314-win_amd64 --output-dir dist
+      - name: Verify exact wheel in clean environment and CLI
+        if: runner.os != 'Windows' || matrix.python-version != '3.14'
+        run: >-
+          python tools/verify_clean_wheel_2_0.py
+          --wheel-dir dist
+          --expected-system "${{ runner.os }}"
+          --expected-python "${{ matrix.python-version }}"
+          --verify-cli21
+      - name: Verify Windows CPython 3.14 vendored release wheel and CLI
+        if: runner.os == 'Windows' && matrix.python-version == '3.14'
+        run: >-
+          python tools/verify_clean_wheel_2_0.py
+          --wheel-dir dist
+          --expected-system Windows
+          --expected-python 3.14
+          --require-vendored-native
+          --verify-cli21
+      - name: Preserve Windows CPython 3.14 release wheel
+        if: runner.os == 'Windows' && matrix.python-version == '3.14'
+        uses: actions/upload-artifact@v4
+        with:
+          name: swirengine-2.1.0-publication-win-cp314
+          path: dist/*.whl
+          if-no-files-found: error
+          retention-days: 7
+
+  release-evidence:
+    name: Generate checksums and exact-source provenance
+    needs: [build-release, clean-install-matrix]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/download-artifact@v4
+        with:
+          name: swirengine-2.1.0-publication-portable
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: swirengine-2.1.0-publication-win-cp314
+          path: dist
+      - name: Generate deterministic release evidence
+        run: >-
+          python tools/release_evidence_2_1.py generate
+          --dist-dir dist
+          --source-sha "${GITHUB_SHA}"
+          --require-windows-cp314
+      - name: Verify exact-source release evidence
+        run: >-
+          python tools/release_evidence_2_1.py verify
+          --dist-dir dist
+          --source-sha "${GITHUB_SHA}"
+          --require-windows-cp314
       - uses: actions/upload-artifact@v4
         with:
-          name: swirengine-2.0-recovery-dist-cp314
-          path: dist-cp314/*.whl
+          name: swirengine-2.1.0-publication-assets
+          path: dist/*
           if-no-files-found: error
+          retention-days: 7
+
+  ensure-tag:
+    name: Create immutable v2.1.0 tag
+    needs: [publication-state, release-evidence]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: Create tag only when absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_tag="$(git ls-remote origin "refs/tags/${RELEASE_TAG}" | awk '{print $1}')"
+          if [ -n "$remote_tag" ]; then
+            test "$remote_tag" = "$GITHUB_SHA"
+            echo "${RELEASE_TAG} already exists at the accepted source."
+            exit 0
+          fi
+          git tag "$RELEASE_TAG" "$GITHUB_SHA"
+          git push origin "refs/tags/$RELEASE_TAG"
 
   pypi-publish:
-    name: Publish SwirEngine 2.0.0 through registered Trusted Publisher
-    needs: [publication-state, build-release, runtime-opengl-smoke, packaged-demos-windows, build-windows-cp314]
-    if: needs.publication-state.outputs.publish == 'true'
-    runs-on: ubuntu-latest
+    name: Publish SwirEngine 2.1.0 to PyPI
+    needs: [publication-state, release-evidence, ensure-tag]
+    runs-on: ubuntu-24.04
     environment: pypi
     permissions:
       contents: read
       id-token: write
     steps:
-      - name: Download portable distributions
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
-          name: swirengine-2.0-recovery-dist
-          path: dist
-      - name: Download CPython 3.14 Windows distribution
-        uses: actions/download-artifact@v4
-        with:
-          name: swirengine-2.0-recovery-dist-cp314
-          path: dist
-      - name: Publish package distributions to PyPI
+          name: swirengine-2.1.0-publication-assets
+          path: release-assets
+      - name: Prepare only package distributions for PyPI
+        if: needs.publication-state.outputs.pypi_exists != '1'
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp release-assets/*.whl dist/
+          cp release-assets/*.tar.gz dist/
+      - name: Publish package distributions through registered Trusted Publisher
+        if: needs.publication-state.outputs.pypi_exists != '1'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
+      - name: Preserve an already-published public package
+        if: needs.publication-state.outputs.pypi_exists == '1'
+        run: echo "PyPI already contains SwirEngine 2.1.0; refusing to upload duplicates."
 
   github-release:
-    name: Create GitHub Release 2.0.0 after PyPI publication
-    needs: [publication-state, build-release, runtime-opengl-smoke, packaged-demos-windows, build-windows-cp314, pypi-publish]
-    if: needs.publication-state.outputs.publish == 'true'
-    runs-on: ubuntu-latest
+    name: Create GitHub Release 2.1.0
+    needs: [publication-state, release-evidence, ensure-tag, pypi-publish]
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
         with:
-          ref: "refs/tags/v2.0.0"
-      - name: Download portable distributions
-        uses: actions/download-artifact@v4
+          ref: ${{ github.sha }}
+      - uses: actions/download-artifact@v4
         with:
-          name: swirengine-2.0-recovery-dist
-          path: dist
-      - name: Download CPython 3.14 Windows distribution
-        uses: actions/download-artifact@v4
-        with:
-          name: swirengine-2.0-recovery-dist-cp314
-          path: dist
-      - name: Refuse to replace an existing release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release $RELEASE_TAG already exists; refusing to replace it."
-            exit 1
-          fi
-      - name: Create verified GitHub Release
+          name: swirengine-2.1.0-publication-assets
+          path: release-assets
+      - name: Create verified GitHub Release when absent
+        if: needs.publication-state.outputs.release_exists != '1'
         env:
           GH_TOKEN: ${{ github.token }}
         run: >-
-          gh release create "$RELEASE_TAG" dist/*
+          gh release create "$RELEASE_TAG" release-assets/*
           --verify-tag
-          --title "SwirEngine 2.0.0"
-          --notes-file RELEASE_NOTES_2_0.md
+          --title "SwirEngine 2.1.0"
+          --notes-file RELEASE_NOTES_2_1.md
           --repo "$GITHUB_REPOSITORY"
+      - name: Preserve an already-created GitHub Release
+        if: needs.publication-state.outputs.release_exists == '1'
+        run: echo "GitHub Release v2.1.0 already exists; refusing to replace it."
 
   post-release-public-pypi:
     name: Public PyPI verify / ${{ matrix.os }} / Python ${{ matrix.python-version }}
-    needs: [publication-state, pypi-publish, github-release]
-    if: needs.publication-state.outputs.publish == 'true'
+    needs: [pypi-publish, github-release]
     strategy:
       fail-fast: false
       matrix:
@@ -366,13 +348,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
         with:
-          ref: "refs/tags/v2.0.0"
-      - uses: actions/setup-python@v7
+          ref: "refs/tags/v2.1.0"
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Wait for public PyPI and install only SwirEngine 2.0.0
+      - name: Wait for public PyPI and install only SwirEngine 2.1.0
         shell: python
         run: |
           import json
@@ -384,67 +366,51 @@ jobs:
           import urllib.error
           import urllib.request
 
-          url = "https://pypi.org/pypi/swirengine/2.0.0/json"
+          url = "https://pypi.org/pypi/swirengine/2.1.0/json"
           metadata = None
-          for attempt in range(24):
+          for attempt in range(30):
               try:
                   with urllib.request.urlopen(url, timeout=20) as response:
                       metadata = json.load(response)
                   break
               except (urllib.error.URLError, urllib.error.HTTPError):
-                  if attempt == 23:
+                  if attempt == 29:
                       raise
                   time.sleep(10)
           assert metadata is not None
-          assert metadata["info"]["version"] == "2.0.0"
-          requires_python = {part.strip() for part in metadata["info"]["requires_python"].split(",")}
-          assert requires_python == {">=3.10", "<3.15"}, metadata["info"]["requires_python"]
+          assert metadata["info"]["version"] == "2.1.0"
+          assert metadata["info"]["requires_python"] == ">=3.10,<3.15"
           subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "pip"])
           subprocess.check_call([
-              sys.executable,
-              "-m",
-              "pip",
-              "install",
-              "--no-cache-dir",
-              "--index-url",
-              "https://pypi.org/simple",
-              "swirengine==2.0.0",
+              sys.executable, "-m", "pip", "install", "--no-cache-dir",
+              "--index-url", "https://pypi.org/simple", "swirengine==2.1.0",
           ])
-          with tempfile.TemporaryDirectory(prefix="swir-public-2.0-") as temp:
+          with tempfile.TemporaryDirectory(prefix="swir-public-2.1-") as temp:
               env = dict(os.environ)
               env.pop("PYTHONPATH", None)
               subprocess.check_call(
-                  [sys.executable, "-c", "import swirengine; assert swirengine.__version__ == '2.0.0'; print(swirengine.__file__)"],
-                  cwd=temp,
-                  env=env,
+                  [sys.executable, "-c",
+                   "import swirengine; assert swirengine.__version__ == '2.1.0'; "
+                   "assert all(hasattr(swirengine, n) for n in ('Game','Scene','Color','Vec3')); "
+                   "print(swirengine.__version__, swirengine.__file__)"],
+                  cwd=temp, env=env,
               )
-      - name: Verify public quick-start imports
-        shell: python
-        run: |
-          import swirengine
 
-          for name in ("Game", "Scene", "Color", "Vec3"):
-              assert hasattr(swirengine, name), name
-          assert swirengine.__version__ == "2.0.0"
-          print(swirengine.__version__, swirengine.__file__)
-      - name: Install Linux software OpenGL runtime
-        if: runner.os == 'Linux'
+  final-public-state:
+    name: Verify public tag, release and package
+    needs: [post-release-public-pypi]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Verify immutable tag, GitHub Release and PyPI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 libgl-dev libegl-dev
-      - name: Smoke public package through 2D fixture
-        if: runner.os == 'Linux'
-        env:
-          LIBGL_ALWAYS_SOFTWARE: "1"
-          MESA_GL_VERSION_OVERRIDE: "3.3"
-          SWIR_GAME_DEMO_SMOKE_FRAMES: "12"
-          PYTHONPATH: ""
-        run: xvfb-run -a python examples/2d_game_demo/run_game.py
-      - name: Smoke public package through 3D fixture
-        if: runner.os == 'Linux'
-        env:
-          LIBGL_ALWAYS_SOFTWARE: "1"
-          MESA_GL_VERSION_OVERRIDE: "3.3"
-          SWIR_GAME_DEMO_SMOKE_FRAMES: "12"
-          PYTHONPATH: ""
-        run: xvfb-run -a python examples/3d_game_demo/run_game.py
+          set -euo pipefail
+          remote_tag="$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}.git" "refs/tags/${RELEASE_TAG}" | awk '{print $1}')"
+          test "$remote_tag" = "$GITHUB_SHA"
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null
+          curl --fail --silent --show-error "https://pypi.org/pypi/swirengine/${RELEASE_VERSION}/json" >/dev/null
+          echo "SwirEngine ${RELEASE_VERSION} public release verified."

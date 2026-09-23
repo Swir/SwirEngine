@@ -1,0 +1,5 @@
+SwirEngine 2.1.0 guarded publication trigger
+
+Parent exact-head verification: 18481981bfe9e239a70201e7c52bd2351ce6696c
+Required state before trigger: 38/38 pull-request workflows completed successfully.
+Publication remains guarded by .github/workflows/release.yml exact-head matrix, artifact, clean-install, provenance, PyPI, GitHub Release and post-publication verification gates.

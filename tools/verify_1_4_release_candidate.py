@@ -248,7 +248,7 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         )
 
     trigger_section = release.split("jobs:", 1)[0]
-    if version in {FORWARD_VERSION, CANDIDATE_VERSION}:
+    if version == FORWARD_VERSION:
         _require(
             "workflow_dispatch:" in trigger_section,
             "2.0 publication recovery remains manually dispatchable",
@@ -266,9 +266,30 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             "2.0 recovery is pinned to the immutable verified release source",
             checks,
         )
+    elif version == CANDIDATE_VERSION:
+        historical_release = _read(root, ".github/workflows/release-2.0.yml")
+        for token in (
+            'ref: "refs/tags/v2.0.0"',
+            "verify_2_0_release_candidate.py --require-final",
+            "swirengine==2.0.0",
+            "pypa/gh-action-pypi-publish@release/v1",
+        ):
+            _require(
+                token in historical_release,
+                f"historical 2.0 publication workflow preserves {token}",
+                checks,
+            )
         _require(
-            "git push --force" not in release and "git tag -f" not in release,
-            "2.0 recovery cannot move or rewrite the immutable release tag",
+            "workflow_dispatch:" in trigger_section
+            and "RELEASE_TAG: v2.1.0" in trigger_section
+            and "verify_2_1_publication.py" in release
+            and "verify_2_1_release_readiness.py" in release,
+            "current 2.1 publication workflow is guarded by accepted 2.1 source contracts",
+            checks,
+        )
+        _require(
+            'branches:\n      - "release/2.1.0-publication"' in trigger_section,
+            "2.1 publication workflow is isolated to the dedicated publication branch",
             checks,
         )
     else:
@@ -277,6 +298,11 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             "publication workflow has no main-branch publish trigger",
             checks,
         )
+    _require(
+        "git push --force" not in release and "git tag -f" not in release,
+        "current publication workflow cannot force-move release history",
+        checks,
+    )
 
     ci = _read(root, ".github/workflows/ci.yml")
     _require(

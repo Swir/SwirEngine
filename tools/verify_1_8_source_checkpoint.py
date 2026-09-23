@@ -166,12 +166,36 @@ def _two_point_zero_finalized() -> bool:
     )
 
 
-def _two_point_one_candidate_ready() -> bool:
-    if not ACTIVE_21_ROADMAP.is_file() or not RELEASE_NOTES_21.is_file():
-        return False
+def _two_point_one_accepted() -> bool:
     return (
-        "Current verified progress: 10/10 milestones = 100.0%." in _text(ACTIVE_21_ROADMAP)
+        ACTIVE_21_ROADMAP.is_file()
+        and "Current verified progress: 10/10 milestones = 100.0%." in _text(ACTIVE_21_ROADMAP)
+    )
+
+
+def _two_point_one_candidate_ready() -> bool:
+    return (
+        _two_point_one_accepted()
+        and RELEASE_NOTES_21.is_file()
         and "NOT PUBLISHED" in _text(RELEASE_NOTES_21)
+    )
+
+
+def _two_point_one_published() -> bool:
+    readme_path = ROOT / "README.md"
+    if (
+        not _two_point_one_accepted()
+        or not RELEASE_NOTES_21.is_file()
+        or not readme_path.is_file()
+    ):
+        return False
+    readme = _text(readme_path)
+    notes = _text(RELEASE_NOTES_21)
+    return (
+        "STATUS-2.1.0%20PUBLISHED" in readme
+        and "**Latest public stable release:** **SwirEngine 2.1.0**" in readme
+        and notes.startswith("# SwirEngine 2.1.0 Release Notes")
+        and "NOT PUBLISHED" not in notes
     )
 
 
@@ -188,11 +212,11 @@ def _verify_public_version() -> str:
     allowed = {STABLE_PUBLIC_VERSION}
     if _two_point_zero_finalized():
         allowed.add(FORWARD_PUBLIC_VERSION)
-    if _two_point_one_candidate_ready():
+    if _two_point_one_candidate_ready() or _two_point_one_published():
         allowed.add(CANDIDATE_VERSION)
     if version not in allowed:
         raise CheckpointError(
-            "locked 1.8 history permits only the current public line, finalized 2.0, or accepted non-published 2.1 candidate: "
+            "locked 1.8 history permits only the current public line, finalized 2.0, or accepted/published 2.1: "
             f"allowed={sorted(allowed)}, found {version}"
         )
     return version

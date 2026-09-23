@@ -29,13 +29,21 @@ def test_python_metadata_preserves_2_0_floor_and_supported_range():
     for minor in range(10, 15):
         assert f"Programming Language :: Python :: 3.{minor}" in classifiers
 
-    active_roadmap = (ROOT / "ROADMAP_2_0.md").read_text(encoding="utf-8")
-    assert "# SwirEngine 2.0 Roadmap" in active_roadmap
-    final_complete = "- [x] **10. SwirEngine 2.0 Final Release Gate & Public Verification**" in active_roadmap
+    published_roadmap = (ROOT / "ROADMAP_2_0.md").read_text(encoding="utf-8")
+    assert "# SwirEngine 2.0 Roadmap" in published_roadmap
+    final_complete = (
+        "- [x] **10. SwirEngine 2.0 Final Release Gate & Public Verification**"
+        in published_roadmap
+    )
     version_tuple = tuple(map(int, project["version"].split(".")))
     if final_complete:
         assert version_tuple >= (2, 0, 0)
-        assert project["urls"]["Roadmap"].endswith("/ROADMAP_2_0.md")
+        assert project["urls"]["2.0 Roadmap"].endswith("/ROADMAP_2_0.md")
+        if version_tuple >= (2, 1, 0):
+            assert project["urls"]["Roadmap"].endswith("/ROADMAP_2_1.md")
+            assert project["urls"]["2.1 Roadmap"].endswith("/ROADMAP_2_1.md")
+        else:
+            assert project["urls"]["Roadmap"].endswith("/ROADMAP_2_0.md")
     else:
         assert project["version"] == "1.5.0"
         assert project["urls"]["Roadmap"].endswith("/ROADMAP_1_5.md")

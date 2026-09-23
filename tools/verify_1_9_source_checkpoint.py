@@ -186,12 +186,31 @@ def _two_point_zero_finalized() -> bool:
     )
 
 
-def _two_point_one_candidate_ready() -> bool:
-    if not ACTIVE_21_ROADMAP.is_file() or not RELEASE_NOTES_21.is_file():
-        return False
+def _two_point_one_accepted() -> bool:
     return (
-        "Current verified progress: 10/10 milestones = 100.0%." in _text(ACTIVE_21_ROADMAP)
+        ACTIVE_21_ROADMAP.is_file()
+        and "Current verified progress: 10/10 milestones = 100.0%." in _text(ACTIVE_21_ROADMAP)
+    )
+
+
+def _two_point_one_candidate_ready() -> bool:
+    return (
+        _two_point_one_accepted()
+        and RELEASE_NOTES_21.is_file()
         and "NOT PUBLISHED" in _text(RELEASE_NOTES_21)
+    )
+
+
+def _two_point_one_published() -> bool:
+    if not _two_point_one_accepted() or not RELEASE_NOTES_21.is_file() or not README.is_file():
+        return False
+    readme = _text(README)
+    notes = _text(RELEASE_NOTES_21)
+    return (
+        "STATUS-2.1.0%20PUBLISHED" in readme
+        and "**Latest public stable release:** **SwirEngine 2.1.0**" in readme
+        and notes.startswith("# SwirEngine 2.1.0 Release Notes")
+        and "NOT PUBLISHED" not in notes
     )
 
 
@@ -206,13 +225,18 @@ def _two_point_zero_published() -> bool:
     current = _current_public_version()
     if current not in {FORWARD_PUBLIC_VERSION, CANDIDATE_VERSION}:
         return False
-    if current == CANDIDATE_VERSION and not _two_point_one_candidate_ready():
-        return False
     readme = _text(README)
-    return (
-        "STATUS-2.0.0%20PUBLISHED" in readme
-        and "**Latest public stable release:** **SwirEngine 2.0.0**" in readme
-    )
+    if current == FORWARD_PUBLIC_VERSION:
+        return (
+            "STATUS-2.0.0%20PUBLISHED" in readme
+            and "**Latest public stable release:** **SwirEngine 2.0.0**" in readme
+        )
+    if _two_point_one_candidate_ready():
+        return (
+            "STATUS-2.0.0%20PUBLISHED" in readme
+            and "**Latest public stable release:** **SwirEngine 2.0.0**" in readme
+        )
+    return _two_point_one_published()
 
 
 def _post_release_audit_archived() -> bool:
@@ -235,11 +259,11 @@ def _verify_public_version() -> str:
     allowed = {STABLE_PUBLIC_VERSION}
     if _two_point_zero_finalized():
         allowed.add(FORWARD_PUBLIC_VERSION)
-    if _two_point_one_candidate_ready():
+    if _two_point_one_candidate_ready() or _two_point_one_published():
         allowed.add(CANDIDATE_VERSION)
     if version not in allowed:
         raise CheckpointError(
-            "locked 1.9 history permits only the current public line, finalized 2.0, or accepted non-published 2.1 candidate: "
+            "locked 1.9 history permits only the current public line, finalized 2.0, or accepted/published 2.1: "
             f"allowed={sorted(allowed)}, found {version}"
         )
     return version
