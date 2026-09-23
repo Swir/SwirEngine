@@ -6,7 +6,7 @@
 
 SwirEngine 2.2 starts after the public SwirEngine 2.1.0 creator-workflow release. The target is a finite production-tools release: creators should be able to author more of a complete 2D/3D/multiplayer game visually while the generated data remains backed by shipping runtime systems.
 
-Current verified progress: 0/10 milestones = 0.0%.
+Current verified progress: 1/10 milestones = 10.0%.
 
 ## Product rules
 
@@ -19,7 +19,7 @@ Current verified progress: 0/10 milestones = 0.0%.
 
 ## Milestones
 
-- [ ] **1. Material/Shader authoring foundation.** Add deterministic project material assets, runtime-backed PBR material round-trip, safe shader variant authoring, asset validation, project-session dirty/save/reopen integration and focused regression coverage.
+- [x] **1. Material/Shader authoring foundation.** Add deterministic project material assets, runtime-backed PBR material round-trip, safe shader variant authoring, asset validation, project-session dirty/save/reopen integration and focused regression coverage.
 - [ ] **2. Material/Shader Editor and live preview.** Add creator-facing material/shader panels, texture/uniform/hook editing, presets, validation diagnostics and a live preview path using the shipping renderer.
 - [ ] **3. Visual Scripting / Node Graph foundation.** Add a deterministic node-graph asset model, typed pins, validated graph compilation/execution and editor authoring for gameplay logic without weakening the Python scripting path.
 - [ ] **4. World/Terrain authoring.** Integrate terrain sculpt/paint data, foliage placement, LOD controls and world-streaming authoring with large-world runtime validation.
@@ -41,4 +41,4 @@ Milestone 1 may be checked only when the exact implementation head proves all of
 5. SwirEditor integrated project sessions mark material edits dirty, save them with the project and reopen them without data loss.
 6. Focused tests, the progress generator/check and the normal exact-head repository matrix are green.
 
-Until that evidence is green, active 2.2 progress remains **0/10 = 0.0%**.
+Milestone 1 accepted on 2026-09-23 after PR #219 exact head `15c17b642cc38a196bd9d21dc9919e146159644f` completed the full pull-request workflow matrix green and post-merge `main` commit `980ad5e3e092c37b099b671b1475d5140d9bfdfc` completed its triggered workflow set without failures.
