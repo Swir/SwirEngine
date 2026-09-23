@@ -51,11 +51,11 @@ def validate_pypi_metadata(payload: Mapping[str, Any]) -> list[str]:
         )
 
     urls = payload.get("urls")
-    filenames = {
-        item.get("filename")
-        for item in urls
-        if isinstance(urls, list) and isinstance(item, Mapping)
-    } if isinstance(urls, list) else set()
+    filenames = (
+        {item.get("filename") for item in urls if isinstance(item, Mapping)}
+        if isinstance(urls, list)
+        else set()
+    )
     missing = EXPECTED_DISTRIBUTIONS - filenames
     if missing:
         errors.append(f"PyPI is missing distributions: {sorted(missing)!r}")
@@ -63,7 +63,10 @@ def validate_pypi_metadata(payload: Mapping[str, Any]) -> list[str]:
 
 
 def validate_github_state(
-    tag_payload: Mapping[str, Any], release_payload: Mapping[str, Any], expected_sha: str
+    tag_payload: Mapping[str, Any],
+    release_payload: Mapping[str, Any],
+    release_assets: list[Any],
+    expected_sha: str,
 ) -> list[str]:
     errors: list[str] = []
     tag_object = tag_payload.get("object")
@@ -82,19 +85,14 @@ def validate_github_state(
     if release_payload.get("prerelease") is not False:
         errors.append("GitHub Release is marked as a prerelease")
 
-    assets = release_payload.get("assets")
-    asset_names = {
-        item.get("name")
-        for item in assets
-        if isinstance(assets, list) and isinstance(item, Mapping)
-    } if isinstance(assets, list) else set()
+    asset_names = {item.get("name") for item in release_assets if isinstance(item, Mapping)}
     missing = EXPECTED_RELEASE_ASSETS - asset_names
     if missing:
         errors.append(f"GitHub Release is missing assets: {sorted(missing)!r}")
     return errors
 
 
-def _request_json(url: str, *, token: str | None = None, attempts: int = 6) -> dict[str, Any]:
+def _request_json(url: str, *, token: str | None = None, attempts: int = 6) -> Any:
     headers = {"Accept": "application/vnd.github+json", "User-Agent": "SwirEngine-release-verifier"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
@@ -103,10 +101,7 @@ def _request_json(url: str, *, token: str | None = None, attempts: int = 6) -> d
     for attempt in range(attempts):
         try:
             with urllib.request.urlopen(request, timeout=30) as response:
-                data = json.load(response)
-            if not isinstance(data, dict):
-                raise RuntimeError(f"Expected JSON object from {url}")
-            return data
+                return json.load(response)
         except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError):
             if attempt + 1 == attempts:
                 raise
@@ -114,16 +109,32 @@ def _request_json(url: str, *, token: str | None = None, attempts: int = 6) -> d
     raise AssertionError("unreachable")
 
 
+def _require_mapping(value: Any, *, source: str) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping):
+        raise RuntimeError(f"Expected JSON object from {source}")
+    return value
+
+
+def _require_list(value: Any, *, source: str) -> list[Any]:
+    if not isinstance(value, list):
+        raise RuntimeError(f"Expected JSON array from {source}")
+    return value
+
+
 def verify_public_state(*, expected_sha: str = EXPECTED_SOURCE_SHA) -> list[str]:
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
-    pypi = _request_json(f"https://pypi.org/pypi/swirengine/{VERSION}/json")
-    tag = _request_json(
-        f"https://api.github.com/repos/Swir/SwirEngine/git/ref/tags/{TAG}", token=token
-    )
-    release = _request_json(
-        f"https://api.github.com/repos/Swir/SwirEngine/releases/tags/{TAG}", token=token
-    )
-    return validate_pypi_metadata(pypi) + validate_github_state(tag, release, expected_sha)
+    pypi_url = f"https://pypi.org/pypi/swirengine/{VERSION}/json"
+    tag_url = f"https://api.github.com/repos/Swir/SwirEngine/git/ref/tags/{TAG}"
+    release_url = f"https://api.github.com/repos/Swir/SwirEngine/releases/tags/{TAG}"
+
+    pypi = _require_mapping(_request_json(pypi_url), source=pypi_url)
+    tag = _require_mapping(_request_json(tag_url, token=token), source=tag_url)
+    release = _require_mapping(_request_json(release_url, token=token), source=release_url)
+    assets_url = release.get("assets_url")
+    if not isinstance(assets_url, str) or not assets_url:
+        return validate_pypi_metadata(pypi) + ["GitHub Release has no assets_url"]
+    assets = _require_list(_request_json(assets_url, token=token), source=assets_url)
+    return validate_pypi_metadata(pypi) + validate_github_state(tag, release, assets, expected_sha)
 
 
 def verify_public_install() -> None:
