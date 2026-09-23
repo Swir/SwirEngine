@@ -73,7 +73,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.headless:
         summary = session.summary()
-        print(f"SwirEditor project: {summary.project_name} ({summary.mode})")
+        print(f"SwirEditor 2.1 project: {summary.project_name} ({summary.mode})")
         print(
             f"Scene: {summary.scene_path} "
             f"({summary.object_count} objects, {summary.entity_count} entities)"
