@@ -111,13 +111,13 @@ def _request_json(url: str, *, token: str | None = None, attempts: int = 6) -> A
 
 def _require_mapping(value: Any, *, source: str) -> Mapping[str, Any]:
     if not isinstance(value, Mapping):
-        raise RuntimeError(f"Expected JSON object from {source}")
+        raise TypeError(f"Expected JSON object from {source}")
     return value
 
 
 def _require_list(value: Any, *, source: str) -> list[Any]:
     if not isinstance(value, list):
-        raise RuntimeError(f"Expected JSON array from {source}")
+        raise TypeError(f"Expected JSON array from {source}")
     return value
 
 
@@ -151,21 +151,16 @@ def verify_public_install() -> None:
             f"swirengine=={VERSION}",
         ]
     )
+    probe = (
+        "import swirengine; "
+        "assert swirengine.__version__ == '2.1.0'; "
+        "assert all(hasattr(swirengine, n) for n in ('Game','Scene','Color','Vec3')); "
+        "print(swirengine.__version__, swirengine.__file__)"
+    )
     with tempfile.TemporaryDirectory(prefix="swir-public-2.1-") as temp:
         env = dict(os.environ)
         env.pop("PYTHONPATH", None)
-        subprocess.check_call(
-            [
-                sys.executable,
-                "-c",
-                "import swirengine; "
-                "assert swirengine.__version__ == '2.1.0'; "
-                "assert all(hasattr(swirengine, n) for n in ('Game','Scene','Color','Vec3')); "
-                "print(swirengine.__version__, swirengine.__file__)",
-            ],
-            cwd=temp,
-            env=env,
-        )
+        subprocess.check_call([sys.executable, "-c", probe], cwd=temp, env=env)
 
 
 def main() -> int:
