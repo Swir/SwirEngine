@@ -88,7 +88,7 @@ def test_acceptance_rejects_ascii_counter_drift() -> None:
     match = PYPI_BLOCK_RE.search(readme)
     assert match is not None
     broken_block = re.sub(
-        r"Counter: \\d+ / \\d+ milestones",
+        r"Counter: \d+ / \d+ milestones",
         "Counter: 999 / 999 milestones",
         match.group(0),
         count=1,
