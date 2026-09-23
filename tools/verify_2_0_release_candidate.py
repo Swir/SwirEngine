@@ -369,11 +369,26 @@ def audit(root: Path | None = None, *, require_final: bool = False) -> AuditRepo
         else:
             _require(version == TARGET_VERSION, f"final package version is {TARGET_VERSION}", checks)
         urls = project.get("urls", {})
-        _require(
-            str(urls.get("Roadmap", "")).endswith("/ROADMAP_2_0.md"),
-            "project metadata preserves the published 2.0 roadmap as primary release history",
-            checks,
-        )
+        current_version = _release_tuple(version)
+        if published_20 and current_version > _release_tuple(TARGET_VERSION):
+            current_line = f"{current_version[0]}.{current_version[1]}"
+            current_roadmap = f"/ROADMAP_{current_version[0]}_{current_version[1]}.md"
+            _require(
+                str(urls.get("Roadmap", "")).endswith(current_roadmap),
+                f"post-2.0 source points primary roadmap at current {current_line} roadmap",
+                checks,
+            )
+            _require(
+                str(urls.get("2.0 Roadmap", "")).endswith("/ROADMAP_2_0.md"),
+                "project metadata preserves an explicit published 2.0 roadmap history link",
+                checks,
+            )
+        else:
+            _require(
+                str(urls.get("Roadmap", "")).endswith("/ROADMAP_2_0.md"),
+                "2.0 release metadata points its primary roadmap at ROADMAP_2_0.md",
+                checks,
+            )
         if published_20:
             _require(
                 "Current verified progress: 10/10 milestones = 100.0%." in roadmap_text,
