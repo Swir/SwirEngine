@@ -12,7 +12,14 @@ except ModuleNotFoundError:  # Python 3.10
 
 TARGET_VERSION = "1.3.0"
 CURRENT_STABLE_VERSION = "1.2.0"
-ACTIVE_STABLE_VERSIONS = {CURRENT_STABLE_VERSION, TARGET_VERSION, "1.4.0", "1.5.0", "2.0.0"}
+ACTIVE_STABLE_VERSIONS = {
+    CURRENT_STABLE_VERSION,
+    TARGET_VERSION,
+    "1.4.0",
+    "1.5.0",
+    "2.0.0",
+    "2.1.0",
+}
 EXPECTED_TOTAL = 10
 EXPECTED_PYTHON_RANGE = ">=3.10,<3.15"
 REQUIRED_1_3_DOCS = (
@@ -110,11 +117,7 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
     _require(roadmap.bar in roadmap_text, "roadmap 20-segment bar matches checkboxes", checks)
     _require(f"ROADMAP-{roadmap.percent:.1f}%25" in roadmap_text, "roadmap badge matches checkboxes", checks)
     _require(f"DONE-{roadmap.completed}%2F{roadmap.total}" in roadmap_text, "roadmap completed badge matches checkboxes", checks)
-    _require(
-        f"| **{roadmap.completed}** | **{roadmap.remaining}** | **{roadmap.total}** | **{roadmap.percent:.1f}%** |" in roadmap_text,
-        "roadmap dashboard table matches checkboxes",
-        checks,
-    )
+    _require(f"| **{roadmap.completed}** | **{roadmap.remaining}** | **{roadmap.total}** | **{roadmap.percent:.1f}%** |" in roadmap_text, "roadmap dashboard table matches checkboxes", checks)
 
     if require_complete:
         _require(roadmap.completed == 10 and roadmap.remaining == 0, "release gate requires exactly 10/10 completed deliverables", checks)
@@ -123,18 +126,18 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             _require(version == TARGET_VERSION, f"historical 1.3 publication version is {TARGET_VERSION}", checks)
         else:
             _require(
-                version in {"1.4.0", "1.5.0", "2.0.0"},
-                "later verified stable lines preserve the completed 1.3 compatibility contract",
+                version in {"1.4.0", "1.5.0", "2.0.0", "2.1.0"},
+                "later verified stable/candidate lines preserve the completed 1.3 compatibility contract",
                 checks,
             )
     else:
         _require(roadmap.completed <= 10, "development roadmap cannot exceed 10 deliverables", checks)
 
     readme = _read(root, "README.md")
-    if version == "2.0.0":
+    if version in {"2.0.0", "2.1.0"}:
         _require(
             "64-bit CPython 3.10–3.14" in readme,
-            "current README documents the verified 2.0 Python support matrix",
+            "current README documents the verified 2.x Python support matrix",
             checks,
         )
         _require(
