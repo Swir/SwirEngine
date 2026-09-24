@@ -122,7 +122,7 @@ class TerrainAuthoringAsset:
             text = data.decode("utf-8") if isinstance(data, bytes) else data
             payload = json.loads(text)
             if not isinstance(payload, Mapping):
-                raise ValueError("terrain payload root must be an object")
+                raise TypeError("terrain payload root must be an object")
             if payload.get("format") != cls.FORMAT:
                 raise ValueError("unsupported terrain asset format")
             if payload.get("version") != cls.VERSION:
@@ -139,7 +139,7 @@ class TerrainAuthoringAsset:
             )
             layers_data = payload.get("layers")
             if not isinstance(layers_data, list):
-                raise ValueError("terrain layers must be an array")
+                raise TypeError("terrain layers must be an array")
             layers = tuple(
                 TerrainMaterialLayer(
                     name=str(cls._mapping_value(item, "name")),
@@ -153,7 +153,7 @@ class TerrainAuthoringAsset:
             )
             foliage_data = payload.get("foliage")
             if not isinstance(foliage_data, list):
-                raise ValueError("terrain foliage must be an array")
+                raise TypeError("terrain foliage must be an array")
             foliage = [
                 FoliagePlacement(
                     asset=str(cls._mapping_value(item, "asset")),
@@ -189,13 +189,13 @@ class TerrainAuthoringAsset:
     def _mapping(payload: Mapping[str, Any], key: str) -> Mapping[str, Any]:
         value = payload[key]
         if not isinstance(value, Mapping):
-            raise ValueError(f"terrain {key} must be an object")
+            raise TypeError(f"terrain {key} must be an object")
         return value
 
     @staticmethod
     def _mapping_value(payload: object, key: str) -> Any:
         if not isinstance(payload, Mapping):
-            raise ValueError("terrain list entries must be objects")
+            raise TypeError("terrain list entries must be objects")
         return payload[key]
 
     @classmethod
@@ -204,7 +204,7 @@ class TerrainAuthoringAsset:
         if value is None:
             return None
         if not isinstance(value, str):
-            raise ValueError(f"terrain {key} must be a string or null")
+            raise TypeError(f"terrain {key} must be a string or null")
         return value
 
     def sculpt(
