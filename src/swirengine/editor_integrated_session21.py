@@ -4,6 +4,7 @@ from dataclasses import replace
 from typing import Any
 
 from .editor_animation_tooling21 import EditorAnimationToolingError
+from .editor_animation_workspace22 import AnimationMachineWorkspace22
 from .editor_app21 import EditorProjectSession, EditorProjectSummary
 from .editor_audio_tooling21 import EditorAudioTooling21, EditorAudioToolingError
 from .editor_build_export_tooling21 import (
@@ -61,6 +62,7 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
         self.materials = EditorMaterialTooling22(self.manifest.root)
         self.visual_scripts = EditorVisualScriptingTooling22(self.manifest.root)
         self.terrains = EditorTerrainTooling22(self.manifest.root)
+        self.animation_machines = AnimationMachineWorkspace22(self.manifest.root)
 
     @classmethod
     def adopt(cls, session: EditorProjectSession) -> EditorIntegratedProjectSession21:
@@ -85,6 +87,7 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
         integrated.materials = EditorMaterialTooling22(integrated.manifest.root)
         integrated.visual_scripts = EditorVisualScriptingTooling22(integrated.manifest.root)
         integrated.terrains = EditorTerrainTooling22(integrated.manifest.root)
+        integrated.animation_machines = AnimationMachineWorkspace22(integrated.manifest.root)
         return integrated
 
     def summary(self) -> EditorProjectSummary:
@@ -100,6 +103,7 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
                 or self.materials.dirty
                 or self.visual_scripts.dirty
                 or self.terrains.dirty
+                or self.animation_machines.dirty
             ),
         )
 
@@ -111,6 +115,7 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
         materials_were_dirty = self.materials.dirty
         visual_scripts_were_dirty = self.visual_scripts.dirty
         terrains_were_dirty = self.terrains.dirty
+        animation_machines_were_dirty = self.animation_machines.dirty
         if audio_was_dirty:
             self.audio.save()
         if ui_hud_was_dirty:
@@ -125,6 +130,8 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
             self.visual_scripts.save()
         if terrains_were_dirty:
             self.terrains.save()
+        if animation_machines_were_dirty:
+            self.animation_machines.save()
         state = super().save()
         if audio_was_dirty:
             self.console.write(
@@ -161,6 +168,11 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
                 "Saved terrain assets assets/terrain",
                 source="swireditor",
             )
+        if animation_machines_were_dirty:
+            self.console.write(
+                f"Saved animation machine {self.animation_machines.active_session.asset_name}",
+                source="swireditor",
+            )
         return state
 
     def run(self) -> None:
@@ -182,6 +194,7 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
             or self.materials.dirty
             or self.visual_scripts.dirty
             or self.terrains.dirty
+            or self.animation_machines.dirty
         )
 
     def _save_from_ui(self, app: Any) -> None:
