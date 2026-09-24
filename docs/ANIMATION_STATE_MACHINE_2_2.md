@@ -1,9 +1,9 @@
 # SwirEngine 2.2 — Animation State Machine development slice
 
-This document describes the integrated implementation slices for roadmap milestone 5.
-They are **development evidence**, not milestone acceptance and not a public 2.2 release.
-The authoritative 2.2 roadmap remains at **4/10 = 40.0%** until the complete M5
-acceptance gate is satisfied on an exact green head.
+This document records the accepted implementation evidence for roadmap Milestone 5.
+Milestone 5 is verified at **5/10 = 50.0%** after its exact-head and post-merge
+acceptance gates completed green. This is source-development evidence only; it does not
+publish SwirEngine 2.2 or change the stable 2.1.0 release.
 
 ## Runtime and asset foundation
 
@@ -42,7 +42,7 @@ The controller provides:
 ## Creator asset and resource bindings
 
 A graph stores logical clip IDs rather than copying imported animation data. SwirEditor
-now persists the corresponding project/import resource references in a deterministic
+persists the corresponding project/import resource references in a deterministic
 sidecar named `<graph>.swiranimgraph.resources.json`. Keeping loader-specific source
 references outside the graph schema preserves compatibility with existing
 `swir.animation-machine.v1` assets while still making rig/clip selection durable across
@@ -122,12 +122,16 @@ separately from a graph with no configured references. Unknown clips, invalid co
 kinds and invalid blend-parameter types therefore fail before the asset is treated as
 production ready.
 
-## Current M5 boundary
+## M5 acceptance status
 
-Milestone 5 is still open. The runtime, deterministic graph asset, graph-editing
-controller, interactive SwirEditor canvas, transition/parameter presentation,
-runtime-backed preview/debug controls, rig snapshot, persistent creator-facing rig/clip
-references, production project resolver wiring and source-only walk/run/jump acceptance
-fixture are implemented on the M5 branch. Formal M5 acceptance still requires the complete
-exact-head CI matrix to finish green and the accepted changes to reach `main`. No M6 work
-starts until M5 is formally accepted.
+Milestone 5 is accepted. PRs #227–#231 delivered the runtime, deterministic graph asset,
+graph-editing controller, integrated SwirEditor canvas, transition/parameter presentation,
+runtime-backed preview/debug controls, sampled rig snapshot, persistent creator-facing
+rig/clip references, production project resolver wiring and source-only Walk/Run/Jump
+acceptance fixture. Final PR #231 exact head
+`ac30cb0149099fce7c4eebc9a7cb9f7ba6ebb495` completed all 23 triggered pull-request
+workflows successfully; merged `main` commit
+`8fb851bd6679671d66198721f2a5a535df94c942` then completed all 12 triggered post-merge
+workflows successfully. The authoritative 2.2 roadmap therefore advances to **5/10 =
+50.0%**. No M6 implementation is part of this acceptance record; Particle/VFX Editor is
+the next roadmap milestone.
