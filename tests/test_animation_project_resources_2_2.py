@@ -17,7 +17,7 @@ from swirengine.editor_animation_state_machine22 import (
     TransitionConditionSpec22,
 )
 from swirengine.editor_animation_workspace22 import AnimationMachineWorkspace22
-from swirengine.graphics.gltf_skeletal import load_gltf_skeletal
+from swirengine.graphics.gltf_skeletal import GltfSkeletalAsset, load_gltf_skeletal
 from swirengine.graphics.skeletal import SkeletalAnimationClip3D, Skeleton3D
 
 
@@ -144,7 +144,7 @@ def test_project_resolver_loads_skeleton_and_named_clips_once(tmp_path: Path) ->
     _write_locomotion_gltf(source)
     load_count = 0
 
-    def counted_loader(path: str | Path):
+    def counted_loader(path: str | Path) -> GltfSkeletalAsset:
         nonlocal load_count
         load_count += 1
         return load_gltf_skeletal(path)
@@ -170,7 +170,7 @@ def test_project_resolver_rejects_escape_bad_fragment_and_missing_clip(tmp_path:
         resolver("../outside.gltf#skeleton")
     with pytest.raises(ValueError, match="fragment"):
         resolver("imports/hero.gltf#mesh")
-    with pytest.raises(KeyError, match="Missing"):
+    with pytest.raises(ValueError, match="Missing"):
         resolver("imports/hero.gltf#clip:Missing")
 
 
