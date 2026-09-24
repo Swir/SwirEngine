@@ -13,7 +13,6 @@ from .animation15 import (
 )
 from .animation_state_machine22 import AnimationStateMachinePlayer22
 from .editor_animation_state_machine22 import (
-    AnimationMachineDocument22,
     AnimationMachineEditorSession22,
     AnimationStateNode22,
     AnimationTransitionSpec22,
@@ -21,6 +20,8 @@ from .editor_animation_state_machine22 import (
     TransitionConditionSpec22,
 )
 from .graphics.skeletal import SkeletalAnimationClip3D, SkeletalPose, Skeleton3D
+
+_UNSET = object()
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,7 +79,7 @@ class AnimationMachineEditorFrame22:
 
 
 class AnimationMachinePanelController22:
-    """Toolkit-neutral M5 creator controller for state/transition authoring and preview."""
+    """Toolkit-neutral M5 controller for graph authoring and runtime-backed preview."""
 
     def __init__(self, session: AnimationMachineEditorSession22) -> None:
         if not isinstance(session, AnimationMachineEditorSession22):
@@ -97,68 +98,64 @@ class AnimationMachinePanelController22:
 
     @property
     def selected_state(self) -> AnimationStateNode22:
-        name = self._selected_state
-        if name is None:
+        if self._selected_state is None:
             raise RuntimeError("no animation state is selected")
-        return self._state(name)
+        return self._state(self._selected_state)
 
     def frame(self) -> AnimationMachineEditorFrame22:
         document = self.session.document
-        state_names = {state.name for state in document.states}
-        if self._selected_state not in state_names:
+        names = {state.name for state in document.states}
+        if self._selected_state not in names:
             self._selected_state = document.initial
-        states = tuple(
-            AnimationStateRow22(
-                name=state.name,
-                x=state.x,
-                y=state.y,
-                motion=self._motion_label(state),
-                initial=state.name == document.initial,
-                speed=state.speed,
-                loop=state.loop,
-            )
-            for state in document.states
-        )
-        parameters = tuple(
-            AnimationParameterRow22(parameter.name, parameter.kind.value, parameter.default)
-            for parameter in document.parameters
-        )
-        transitions = tuple(
-            AnimationTransitionRow22(
-                index=index,
-                source=transition.source,
-                target=transition.target,
-                conditions=tuple(self._condition_label(condition) for condition in transition.conditions),
-                duration=transition.duration,
-                exit_time=transition.exit_time,
-                priority=transition.priority,
-            )
-            for index, transition in enumerate(document.transitions)
-        )
         player = self._player
-        preview_parameters: tuple[tuple[str, Any], ...] = ()
-        if player is not None:
-            preview_parameters = tuple(sorted(player.parameters.snapshot().items()))
         return AnimationMachineEditorFrame22(
             asset_name=self.session.asset_name,
             selected_state=self._selected_state,
-            states=states,
-            parameters=parameters,
-            transitions=transitions,
+            states=tuple(
+                AnimationStateRow22(
+                    state.name,
+                    state.x,
+                    state.y,
+                    self._motion_label(state),
+                    state.name == document.initial,
+                    state.speed,
+                    state.loop,
+                )
+                for state in document.states
+            ),
+            parameters=tuple(
+                AnimationParameterRow22(item.name, item.kind.value, item.default)
+                for item in document.parameters
+            ),
+            transitions=tuple(
+                AnimationTransitionRow22(
+                    index,
+                    item.source,
+                    item.target,
+                    tuple(self._condition_label(condition) for condition in item.conditions),
+                    item.duration,
+                    item.exit_time,
+                    item.priority,
+                )
+                for index, item in enumerate(document.transitions)
+            ),
             dirty=self.session.dirty,
             diagnostics=self.diagnostics(),
             preview_active=player is not None,
             preview_state=None if player is None else player.current,
             preview_next_state=None if player is None else player.next_state,
             preview_normalized_time=None if player is None else player.normalized_time,
-            preview_parameters=preview_parameters,
+            preview_parameters=(
+                ()
+                if player is None
+                else tuple(sorted(player.parameters.snapshot().items()))
+            ),
             rig=self._rig_snapshot(),
         )
 
     def select_state(self, name: str) -> AnimationMachineEditorFrame22:
-        state = self._state(name)
-        self._selected_state = state.name
-        self._status = f"Selected animation state {state.name}"
+        self._selected_state = self._state(name).name
+        self._status = f"Selected animation state {self._selected_state}"
         return self.frame()
 
     def add_clip_state(
@@ -214,15 +211,17 @@ class AnimationMachinePanelController22:
         loop: bool | None = None,
     ) -> AnimationMachineEditorFrame22:
         state = self._state(name)
-        updated = replace(
-            state,
-            clip=clip,
-            blend_parameter=None,
-            blend_children=(),
-            speed=state.speed if speed is None else speed,
-            loop=state.loop if loop is None else bool(loop),
+        self._replace_state(
+            state.name,
+            replace(
+                state,
+                clip=clip,
+                blend_parameter=None,
+                blend_children=(),
+                speed=state.speed if speed is None else speed,
+                loop=state.loop if loop is None else bool(loop),
+            ),
         )
-        self._replace_state(name, updated)
         self._status = f"Configured clip motion for {state.name}"
         return self.frame()
 
@@ -237,42 +236,52 @@ class AnimationMachinePanelController22:
     ) -> AnimationMachineEditorFrame22:
         state = self._state(name)
         self._require_numeric_parameter(parameter)
-        updated = replace(
-            state,
-            clip=None,
-            blend_parameter=parameter,
-            blend_children=tuple(children),
-            speed=state.speed if speed is None else speed,
-            loop=state.loop if loop is None else bool(loop),
+        self._replace_state(
+            state.name,
+            replace(
+                state,
+                clip=None,
+                blend_parameter=parameter,
+                blend_children=tuple(children),
+                speed=state.speed if speed is None else speed,
+                loop=state.loop if loop is None else bool(loop),
+            ),
         )
-        self._replace_state(name, updated)
         self._status = f"Configured 1D blend tree for {state.name}"
         return self.frame()
 
     def move_state(self, name: str, x: float, y: float) -> AnimationMachineEditorFrame22:
-        self.session.move_state(name, x, y)
-        self._invalidate_preview()
-        self._status = f"Moved animation state {name}"
+        state = self._state(name)
+        self._replace_state(state.name, replace(state, x=x, y=y))
+        self._status = f"Moved animation state {state.name}"
         return self.frame()
 
     def rename_state(self, name: str, new_name: str) -> AnimationMachineEditorFrame22:
         state = self._state(name)
-        if new_name != state.name:
+        if str(new_name).strip() != state.name:
             self._ensure_new_state(new_name)
         renamed = replace(state, name=new_name)
-        states = tuple(renamed if item.name == state.name else item for item in self.session.document.states)
+        resolved = renamed.name
+        states = tuple(
+            renamed if item.name == state.name else item
+            for item in self.session.document.states
+        )
         transitions = tuple(
             replace(
-                transition,
-                source=new_name if transition.source == state.name else transition.source,
-                target=new_name if transition.target == state.name else transition.target,
+                item,
+                source=resolved if item.source == state.name else item.source,
+                target=resolved if item.target == state.name else item.target,
             )
-            for transition in self.session.document.transitions
+            for item in self.session.document.transitions
         )
-        initial = new_name if self.session.document.initial == state.name else self.session.document.initial
+        initial = (
+            resolved
+            if self.session.document.initial == state.name
+            else self.session.document.initial
+        )
         self._set_document(states=states, transitions=transitions, initial=initial)
-        self._selected_state = new_name
-        self._status = f"Renamed animation state {state.name} → {new_name}"
+        self._selected_state = resolved
+        self._status = f"Renamed animation state {state.name} → {resolved}"
         return self.frame()
 
     def remove_state(self, name: str) -> AnimationMachineEditorFrame22:
@@ -305,55 +314,56 @@ class AnimationMachinePanelController22:
         kind: ParameterKind | str,
         default: Any = None,
     ) -> AnimationMachineEditorFrame22:
-        if any(parameter.name == str(name).strip() for parameter in self.session.document.parameters):
-            raise ValueError(f"animation parameter already exists: {name}")
-        parameter = AnimationParameter(name, kind, default)
+        normalized = str(name).strip()
+        if any(item.name == normalized for item in self.session.document.parameters):
+            raise ValueError(f"animation parameter already exists: {normalized}")
+        parameter = AnimationParameter(normalized, kind, default)
         self._set_document(parameters=(*self.session.document.parameters, parameter))
         self._status = f"Added animation parameter {parameter.name}"
         return self.frame()
 
     def rename_parameter(self, name: str, new_name: str) -> AnimationMachineEditorFrame22:
         parameter = self._parameter(name)
-        normalized = str(new_name).strip()
-        if normalized != parameter.name and any(
-            item.name == normalized for item in self.session.document.parameters
+        replacement = AnimationParameter(new_name, parameter.kind, parameter.default)
+        if replacement.name != parameter.name and any(
+            item.name == replacement.name for item in self.session.document.parameters
         ):
-            raise ValueError(f"animation parameter already exists: {normalized}")
-        replacement = AnimationParameter(normalized, parameter.kind, parameter.default)
+            raise ValueError(f"animation parameter already exists: {replacement.name}")
         parameters = tuple(
             replacement if item.name == parameter.name else item
             for item in self.session.document.parameters
         )
         states = tuple(
-            replace(state, blend_parameter=normalized)
+            replace(state, blend_parameter=replacement.name)
             if state.blend_parameter == parameter.name
             else state
             for state in self.session.document.states
         )
         transitions = tuple(
             replace(
-                transition,
+                item,
                 conditions=tuple(
-                    replace(condition, parameter=normalized)
+                    replace(condition, parameter=replacement.name)
                     if condition.parameter == parameter.name
                     else condition
-                    for condition in transition.conditions
+                    for condition in item.conditions
                 ),
             )
-            for transition in self.session.document.transitions
+            for item in self.session.document.transitions
         )
         self._set_document(parameters=parameters, states=states, transitions=transitions)
-        self._status = f"Renamed animation parameter {parameter.name} → {normalized}"
+        self._status = f"Renamed animation parameter {parameter.name} → {replacement.name}"
         return self.frame()
 
     def set_parameter_default(self, name: str, value: Any) -> AnimationMachineEditorFrame22:
         parameter = self._parameter(name)
         replacement = AnimationParameter(parameter.name, parameter.kind, value)
-        parameters = tuple(
-            replacement if item.name == parameter.name else item
-            for item in self.session.document.parameters
+        self._set_document(
+            parameters=tuple(
+                replacement if item.name == parameter.name else item
+                for item in self.session.document.parameters
+            )
         )
-        self._set_document(parameters=parameters)
         self._status = f"Updated default for animation parameter {parameter.name}"
         return self.frame()
 
@@ -364,15 +374,17 @@ class AnimationMachinePanelController22:
                 raise ValueError(
                     f"animation parameter {parameter.name!r} is used by blend state {state.name!r}"
                 )
-        for transition in self.session.document.transitions:
-            if any(condition.parameter == parameter.name for condition in transition.conditions):
-                raise ValueError(
-                    f"animation parameter {parameter.name!r} is used by a transition"
-                )
-        parameters = tuple(
-            item for item in self.session.document.parameters if item.name != parameter.name
+        if any(
+            condition.parameter == parameter.name
+            for transition in self.session.document.transitions
+            for condition in transition.conditions
+        ):
+            raise ValueError(f"animation parameter {parameter.name!r} is used by a transition")
+        self._set_document(
+            parameters=tuple(
+                item for item in self.session.document.parameters if item.name != parameter.name
+            )
         )
-        self._set_document(parameters=parameters)
         self._status = f"Removed animation parameter {parameter.name}"
         return self.frame()
 
@@ -406,7 +418,7 @@ class AnimationMachinePanelController22:
         target: str | None = None,
         conditions: Sequence[TransitionConditionSpec22] | None = None,
         duration: float | None = None,
-        exit_time: float | None | object = ...,
+        exit_time: object = _UNSET,
         priority: int | None = None,
     ) -> AnimationMachineEditorFrame22:
         transition = self._transition(index)
@@ -415,7 +427,7 @@ class AnimationMachinePanelController22:
             transition.target if target is None else target,
             conditions=transition.conditions if conditions is None else conditions,
             duration=transition.duration if duration is None else duration,
-            exit_time=transition.exit_time if exit_time is ... else exit_time,
+            exit_time=transition.exit_time if exit_time is _UNSET else exit_time,
             priority=transition.priority if priority is None else priority,
         )
         transitions = list(self.session.document.transitions)
@@ -426,30 +438,34 @@ class AnimationMachinePanelController22:
 
     def remove_transition(self, index: int) -> AnimationMachineEditorFrame22:
         transition = self._transition(index)
-        transitions = tuple(
-            item for item_index, item in enumerate(self.session.document.transitions) if item_index != index
+        self._set_document(
+            transitions=tuple(
+                item
+                for item_index, item in enumerate(self.session.document.transitions)
+                if item_index != index
+            )
         )
-        self._set_document(transitions=transitions)
         self._status = f"Removed transition {transition.source} → {transition.target}"
         return self.frame()
 
     def diagnostics(self) -> tuple[str, ...]:
         document = self.session.document
         state_names = {state.name for state in document.states}
-        parameters = {parameter.name: parameter for parameter in document.parameters}
+        parameters = {item.name: item for item in document.parameters}
         issues: list[str] = []
         for state in document.states:
-            if state.blend_parameter is not None:
-                parameter = parameters.get(state.blend_parameter)
-                if parameter is None:
-                    issues.append(
-                        f"state {state.name!r} references unknown blend parameter "
-                        f"{state.blend_parameter!r}"
-                    )
-                elif parameter.kind not in {ParameterKind.FLOAT, ParameterKind.INT}:
-                    issues.append(
-                        f"state {state.name!r} blend parameter {parameter.name!r} must be numeric"
-                    )
+            if state.blend_parameter is None:
+                continue
+            parameter = parameters.get(state.blend_parameter)
+            if parameter is None:
+                issues.append(
+                    f"state {state.name!r} references unknown blend parameter "
+                    f"{state.blend_parameter!r}"
+                )
+            elif parameter.kind not in {ParameterKind.FLOAT, ParameterKind.INT}:
+                issues.append(
+                    f"state {state.name!r} blend parameter {parameter.name!r} must be numeric"
+                )
         probe = AnimationParameters(document.parameters)
         for index, transition in enumerate(document.transitions):
             if transition.source != "*" and transition.source not in state_names:
@@ -486,10 +502,9 @@ class AnimationMachinePanelController22:
         skeleton: Skeleton3D,
         clips: Mapping[str, SkeletalAnimationClip3D],
     ) -> AnimationMachineEditorFrame22:
-        machine = self.session.compile(skeleton, clips)
         self._skeleton = skeleton
         self._clips = dict(clips)
-        self._player = machine.player()
+        self._player = self.session.compile(skeleton, clips).player()
         self._pose = self._player.sample()
         self._status = f"Preview started in {self._player.current}"
         return self.frame()
@@ -518,8 +533,7 @@ class AnimationMachinePanelController22:
         return self.frame()
 
     def trigger_preview(self, name: str) -> AnimationMachineEditorFrame22:
-        player = self._require_player()
-        player.trigger(name)
+        self._require_player().trigger(name)
         self._status = f"Preview trigger {name} armed"
         return self.frame()
 
@@ -541,10 +555,12 @@ class AnimationMachinePanelController22:
         self._invalidate_preview(keep_resources=True)
 
     def _replace_state(self, name: str, replacement: AnimationStateNode22) -> None:
-        states = tuple(
-            replacement if state.name == name else state for state in self.session.document.states
+        self._set_document(
+            states=tuple(
+                replacement if state.name == name else state
+                for state in self.session.document.states
+            )
         )
-        self._set_document(states=states)
 
     def _state(self, name: str) -> AnimationStateNode22:
         normalized = str(name).strip()
@@ -563,10 +579,9 @@ class AnimationMachinePanelController22:
     def _transition(self, index: int) -> AnimationTransitionSpec22:
         if not isinstance(index, int) or isinstance(index, bool):
             raise TypeError("transition index must be int")
-        try:
-            return self.session.document.transitions[index]
-        except IndexError as exc:
-            raise IndexError(f"unknown animation transition index: {index}") from exc
+        if index < 0 or index >= len(self.session.document.transitions):
+            raise IndexError(f"unknown animation transition index: {index}")
+        return self.session.document.transitions[index]
 
     def _ensure_new_state(self, name: str) -> None:
         normalized = str(name).strip()
@@ -586,29 +601,29 @@ class AnimationMachinePanelController22:
         *,
         conditions: Sequence[TransitionConditionSpec22],
         duration: float,
-        exit_time: float | None,
+        exit_time: object,
         priority: int,
     ) -> AnimationTransitionSpec22:
-        source = str(source).strip()
-        target = self._state(target).name
-        if source != "*":
-            source = self._state(source).name
-        if source == target:
+        source_name = str(source).strip()
+        target_name = self._state(target).name
+        if source_name != "*":
+            source_name = self._state(source_name).name
+        if source_name == target_name:
             raise ValueError("self-transitions are not enabled by the M5 creator asset contract")
-        conditions = tuple(conditions)
+        condition_specs = tuple(conditions)
         probe = AnimationParameters(self.session.document.parameters)
-        for condition in conditions:
+        for condition in condition_specs:
             AnimationCondition(
                 condition.parameter,
                 condition.operator,
                 condition.value,
             ).evaluate(probe)
         return AnimationTransitionSpec22(
-            source,
-            target,
-            conditions=conditions,
+            source_name,
+            target_name,
+            conditions=condition_specs,
             duration=duration,
-            exit_time=exit_time,
+            exit_time=None if exit_time is None else float(exit_time),
             priority=priority,
         )
 
@@ -629,10 +644,10 @@ class AnimationMachinePanelController22:
             return ()
         return tuple(
             RigNodePreview22(
-                index=node.index,
-                parent=node.parent,
-                name=node.name or f"node_{node.index}",
-                translation=tuple(float(value) for value in self._pose.translations[node.index]),
+                node.index,
+                node.parent,
+                node.name or f"node_{node.index}",
+                tuple(float(value) for value in self._pose.translations[node.index]),
             )
             for node in self._skeleton.nodes
         )
@@ -647,6 +662,10 @@ class AnimationMachinePanelController22:
     @staticmethod
     def _condition_label(condition: TransitionConditionSpec22) -> str:
         operator = ConditionOperator(condition.operator).value
-        if operator in {ConditionOperator.TRUE.value, ConditionOperator.FALSE.value, ConditionOperator.TRIGGER.value}:
+        if operator in {
+            ConditionOperator.TRUE.value,
+            ConditionOperator.FALSE.value,
+            ConditionOperator.TRIGGER.value,
+        }:
             return f"{condition.parameter} {operator}"
         return f"{condition.parameter} {operator} {condition.value!r}"
