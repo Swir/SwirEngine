@@ -139,6 +139,9 @@ def test_workspace_binds_shipping_runtime_for_walk_run_jump_preview(tmp_path) ->
     assert frame.rig[1].translation[0] == pytest.approx(1.5)
 
     workspace.controller.trigger_preview("jump")
+    frame = workspace.controller.step_preview(0.0)
+    assert frame.preview_state == "Locomotion"
+    assert frame.preview_next_state == "Jump"
     frame = workspace.controller.step_preview(0.15)
     assert frame.preview_state == "Jump"
 
