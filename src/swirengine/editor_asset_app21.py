@@ -2,16 +2,19 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from .editor_animation_workspace_frontend22 import TkAnimationMachineEditorApp22
 from .editor_app21 import EditorProjectOpenError, EditorProjectSession, _build_parser
 from .editor_asset_drop21 import TkNativeDropAssetPipelineEditorApp21
 from .editor_asset_formats21 import create_format_aware_editor_asset_pipeline21
 from .editor_asset_frontend21 import EditorAssetWorkflow21
 from .editor_integrated_session21 import EditorIntegratedProjectSession21
 from .editor_render_backend21 import EditorRenderBackendUnavailable
-from .editor_terrain_frontend22 import TkTerrainEditorApp22
 
 
-class TkIntegratedEditorApp21(TkTerrainEditorApp22, TkNativeDropAssetPipelineEditorApp21):
+class TkIntegratedEditorApp21(
+    TkAnimationMachineEditorApp22,
+    TkNativeDropAssetPipelineEditorApp21,
+):
     """Unified SwirEditor shell for gameplay creator tools and the production asset pipeline."""
 
 
@@ -42,6 +45,7 @@ def run_editor_session21(session: EditorProjectSession) -> None:
             material_preview_viewport=session.controller.preview.viewport,
             visual_scripts=session.visual_scripts,
             terrains=session.terrains,
+            animation_machines=session.animation_machines,
             title=f"SwirEditor 2.2 — {session.manifest.name}",
         )
         session._install_file_menu(app)
@@ -54,6 +58,7 @@ def run_editor_session21(session: EditorProjectSession) -> None:
         session.console.write("Material/Shader Editor 2.2 attached", source="materials")
         session.console.write("Visual Scripting / Node Graph 2.2 attached", source="logic")
         session.console.write("World/Terrain Authoring 2.2 attached", source="world")
+        session.console.write("Animation State Machine / Blend Tree 2.2 attached", source="animation")
         app.run()
     finally:
         workflow.shutdown()
