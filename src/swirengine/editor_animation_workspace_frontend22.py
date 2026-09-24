@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from .editor_animation_workspace22 import AnimationMachineWorkspace22
@@ -14,15 +15,19 @@ class TkAnimationMachineEditorApp22(TkTerrainEditorApp22):
         controller: Any,
         *,
         animation_machines: AnimationMachineWorkspace22,
+        animation_resource_resolver: Callable[[str], object] | None = None,
         **kwargs: Any,
     ) -> None:
         self.animation_machines = animation_machines
+        self.animation_resource_resolver = animation_resource_resolver
         self._anim_window: Any | None = None
         self._anim_asset_var: Any | None = None
         self._anim_asset_list: Any | None = None
         self._anim_canvas: Any | None = None
         self._anim_status_var: Any | None = None
         self._anim_details: Any | None = None
+        self._anim_skeleton_ref_var: Any | None = None
+        self._anim_clip_refs_var: Any | None = None
         self._anim_drag_state: str | None = None
         super().__init__(controller, **kwargs)
 
@@ -42,8 +47,8 @@ class TkAnimationMachineEditorApp22(TkTerrainEditorApp22):
             return
         window = self.tk.Toplevel(self.root)
         window.title("SwirEditor 2.2 — Animation State Machine / Blend Tree")
-        window.geometry("1240x760")
-        window.minsize(980, 620)
+        window.geometry("1240x800")
+        window.minsize(980, 660)
         window.transient(self.root)
         window.protocol("WM_DELETE_WINDOW", self._close_animation_machine_editor)
         self._anim_window = window
@@ -51,10 +56,10 @@ class TkAnimationMachineEditorApp22(TkTerrainEditorApp22):
         body = self.ttk.Frame(window, padding=12)
         body.pack(fill="both", expand=True)
         body.columnconfigure(1, weight=1)
-        body.rowconfigure(1, weight=1)
+        body.rowconfigure(2, weight=1)
 
         toolbar = self.ttk.Frame(body)
-        toolbar.grid(row=0, column=0, columnspan=3, sticky="ew", pady=(0, 10))
+        toolbar.grid(row=0, column=0, columnspan=3, sticky="ew", pady=(0, 8))
         self._anim_asset_var = self.tk.StringVar(value="player.swiranimgraph")
         self.ttk.Label(toolbar, text="Graph asset").pack(side="left")
         self.ttk.Entry(toolbar, textvariable=self._anim_asset_var, width=34).pack(
@@ -71,8 +76,26 @@ class TkAnimationMachineEditorApp22(TkTerrainEditorApp22):
             side="right"
         )
 
+        bindings = self.ttk.Frame(body)
+        bindings.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(0, 10))
+        bindings.columnconfigure(1, weight=1)
+        bindings.columnconfigure(3, weight=2)
+        self._anim_skeleton_ref_var = self.tk.StringVar(value="")
+        self._anim_clip_refs_var = self.tk.StringVar(value="")
+        self.ttk.Label(bindings, text="Rig ref").grid(row=0, column=0, sticky="w")
+        self.ttk.Entry(bindings, textvariable=self._anim_skeleton_ref_var).grid(
+            row=0, column=1, sticky="ew", padx=(6, 12)
+        )
+        self.ttk.Label(bindings, text="Clip refs").grid(row=0, column=2, sticky="w")
+        self.ttk.Entry(bindings, textvariable=self._anim_clip_refs_var).grid(
+            row=0, column=3, sticky="ew", padx=(6, 8)
+        )
+        self.ttk.Button(bindings, text="Apply bindings", command=self._anim_apply_bindings).grid(
+            row=0, column=4, sticky="e"
+        )
+
         assets = self.ttk.Frame(body)
-        assets.grid(row=1, column=0, sticky="nsw", padx=(0, 10))
+        assets.grid(row=2, column=0, sticky="nsw", padx=(0, 10))
         self.ttk.Label(assets, text="Animation Graphs").pack(anchor="w")
         self._anim_asset_list = self.tk.Listbox(
             assets,
@@ -84,7 +107,7 @@ class TkAnimationMachineEditorApp22(TkTerrainEditorApp22):
         self._anim_asset_list.bind("<Double-Button-1>", self._anim_open_selected)
 
         graph = self.ttk.Frame(body)
-        graph.grid(row=1, column=1, sticky="nsew")
+        graph.grid(row=2, column=1, sticky="nsew")
         graph.columnconfigure(0, weight=1)
         graph.rowconfigure(0, weight=1)
         self._anim_canvas = self.tk.Canvas(
@@ -99,7 +122,7 @@ class TkAnimationMachineEditorApp22(TkTerrainEditorApp22):
         self._anim_canvas.bind("<ButtonRelease-1>", self._anim_drag_end)
 
         details_frame = self.ttk.Frame(body)
-        details_frame.grid(row=1, column=2, sticky="nse", padx=(10, 0))
+        details_frame.grid(row=2, column=2, sticky="nse", padx=(10, 0))
         self.ttk.Label(details_frame, text="Parameters / Transitions").pack(anchor="w")
         self._anim_details = self.tk.Text(
             details_frame,
@@ -111,7 +134,7 @@ class TkAnimationMachineEditorApp22(TkTerrainEditorApp22):
         self._anim_details.pack(fill="both", expand=True, pady=(4, 0))
 
         footer = self.ttk.Frame(body)
-        footer.grid(row=2, column=0, columnspan=3, sticky="ew", pady=(10, 0))
+        footer.grid(row=3, column=0, columnspan=3, sticky="ew", pady=(10, 0))
         self._anim_status_var = self.tk.StringVar(value="Animation workspace ready")
         self.ttk.Label(footer, textvariable=self._anim_status_var).pack(
             side="left", fill="x", expand=True
@@ -134,7 +157,7 @@ class TkAnimationMachineEditorApp22(TkTerrainEditorApp22):
         try:
             name = self._animation_asset_name()
             self.animation_machines.create(name)
-            self._set_animation_status(f"Created {name}; bind clips before runtime preview")
+            self._set_animation_status(f"Created {name}; configure rig and clip references")
             self._refresh_animation_machine_editor()
         except (OSError, RuntimeError, TypeError, ValueError) as exc:
             self._animation_error(exc)
@@ -143,6 +166,7 @@ class TkAnimationMachineEditorApp22(TkTerrainEditorApp22):
         try:
             name = self._animation_asset_name()
             self.animation_machines.open(name)
+            self._try_resolve_animation_resources()
             self._set_animation_status(f"Opened {name}")
             self._refresh_animation_machine_editor()
         except (OSError, RuntimeError, TypeError, ValueError) as exc:
@@ -166,8 +190,25 @@ class TkAnimationMachineEditorApp22(TkTerrainEditorApp22):
         except (OSError, RuntimeError, TypeError, ValueError) as exc:
             self._animation_error(exc)
 
+    def _anim_apply_bindings(self) -> None:
+        try:
+            if self._anim_skeleton_ref_var is None or self._anim_clip_refs_var is None:
+                raise RuntimeError("animation workspace is not open")
+            skeleton_ref = self._anim_skeleton_ref_var.get().strip()
+            clip_refs = self._parse_animation_clip_refs(self._anim_clip_refs_var.get())
+            self.animation_machines.configure_preview_resource_refs(skeleton_ref, clip_refs)
+            self._try_resolve_animation_resources()
+            if self.animation_machines.preview_bound:
+                self._set_animation_status("Animation resource bindings applied and resolved")
+            else:
+                self._set_animation_status("Animation resource bindings applied; save to persist")
+            self._refresh_animation_machine_editor()
+        except (OSError, RuntimeError, TypeError, ValueError) as exc:
+            self._animation_error(exc)
+
     def _anim_validate(self) -> None:
         try:
+            self._try_resolve_animation_resources()
             issues = self.animation_machines.validate_runtime()
             if issues:
                 self._set_animation_status("Runtime validation: " + " | ".join(issues))
@@ -178,6 +219,7 @@ class TkAnimationMachineEditorApp22(TkTerrainEditorApp22):
 
     def _anim_start_preview(self) -> None:
         try:
+            self._try_resolve_animation_resources()
             frame = self.animation_machines.start_preview()
             self._set_animation_status(f"Preview started: {frame.preview_state}")
             self._draw_animation_graph(frame)
@@ -229,6 +271,15 @@ class TkAnimationMachineEditorApp22(TkTerrainEditorApp22):
             self._anim_asset_list.delete(0, "end")
             for asset in self.animation_machines.discover():
                 self._anim_asset_list.insert("end", asset)
+        refs = self.animation_machines.resource_refs
+        if self._anim_skeleton_ref_var is not None:
+            self._anim_skeleton_ref_var.set("" if refs is None else refs.skeleton)
+        if self._anim_clip_refs_var is not None:
+            self._anim_clip_refs_var.set(
+                ""
+                if refs is None
+                else ", ".join(f"{name}={resource_ref}" for name, resource_ref in refs.clips)
+            )
         try:
             frame = self.animation_machines.controller.frame()
         except RuntimeError:
@@ -258,6 +309,10 @@ class TkAnimationMachineEditorApp22(TkTerrainEditorApp22):
         )
         if not frame.transitions:
             lines.append("  (none)")
+        if refs is not None:
+            lines.append("\nPreview resources:")
+            lines.append(f"  rig: {refs.skeleton}")
+            lines.extend(f"  {name}: {resource_ref}" for name, resource_ref in refs.clips)
         if frame.diagnostics:
             lines.append("\nDiagnostics:")
             lines.extend(f"  ! {item}" for item in frame.diagnostics)
@@ -314,6 +369,34 @@ class TkAnimationMachineEditorApp22(TkTerrainEditorApp22):
                 text=state.motion,
                 tags=(tag,),
             )
+
+    def _try_resolve_animation_resources(self) -> None:
+        if self.animation_machines.preview_bound:
+            return
+        if self.animation_machines.resource_refs is None:
+            return
+        if self.animation_resource_resolver is None:
+            return
+        self.animation_machines.resolve_preview_resources(self.animation_resource_resolver)
+
+    @staticmethod
+    def _parse_animation_clip_refs(value: str) -> dict[str, str]:
+        result: dict[str, str] = {}
+        for raw_item in value.split(","):
+            item = raw_item.strip()
+            if not item:
+                continue
+            if "=" not in item:
+                raise ValueError("clip refs must use id=resource syntax separated by commas")
+            clip_id, resource_ref = (part.strip() for part in item.split("=", 1))
+            if not clip_id or not resource_ref:
+                raise ValueError("clip refs must use non-empty id=resource pairs")
+            if clip_id in result:
+                raise ValueError(f"duplicate clip reference: {clip_id}")
+            result[clip_id] = resource_ref
+        if not result:
+            raise ValueError("at least one clip reference is required")
+        return result
 
     def _animation_asset_name(self) -> str:
         if self._anim_asset_var is None:
