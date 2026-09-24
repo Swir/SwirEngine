@@ -65,11 +65,18 @@ typed: the rig reference must produce `Skeleton3D`, and every clip reference mus
 `SkeletalAnimationClip3D`. Wrong or missing resources fail before runtime validation.
 Legacy graph assets without a resource sidecar continue to open unchanged.
 
+`AnimationProjectResourceResolver22` is the production project resolver used by the
+integrated SwirEditor session. It accepts project-relative `.gltf` / `.glb` references,
+confines every resolved path to the open project, loads through the shipping
+`load_gltf_skeletal(...)` path, resolves one shared skeleton or an exact named clip, and
+caches one loaded skeletal asset per source fingerprint. A changed source file therefore
+invalidates the cache without allowing stale imported animation objects to survive.
+
 SwirEditor's Animation window exposes **Rig ref** and **Clip refs** fields. Clip references
 use `id=resource` pairs separated by commas. Applying bindings invalidates any stale live
-preview objects; saving persists the sidecar. When the host editor provides its import
-resolver, open/validate/preview automatically rebuild the live runtime binding from those
-stored references.
+preview objects; saving persists the sidecar. The integrated editor installs the project
+resolver for the active project, so open/validate/preview rebuild the live runtime binding
+from the same stored references without a separate editor-only resource path.
 
 State nodes preserve canvas `x/y` positions. A state can reference one skeletal clip or
 a 1D blend tree. Transition conditions use the stable animation parameter contract from
@@ -78,11 +85,12 @@ a 1D blend tree. Transition conditions use the stable animation parameter contra
 ## Runtime preview example
 
 ```python
+from swirengine.editor_animation_project_resources22 import AnimationProjectResourceResolver22
 from swirengine.editor_animation_workspace22 import AnimationMachineWorkspace22
 
 workspace = AnimationMachineWorkspace22(project_root)
 workspace.open("hero")
-workspace.resolve_preview_resources(project_resource_resolver)
+workspace.resolve_preview_resources(AnimationProjectResourceResolver22(project_root))
 
 workspace.start_preview()
 workspace.controller.set_preview_parameter("speed", 0.75)
@@ -102,6 +110,12 @@ an asset change. Changing resource references also drops live runtime objects. S
 a different graph clears the previous graph's runtime binding, preventing cross-asset
 preview leakage.
 
+The project resolver rejects absolute paths, project-root escapes, unsupported asset
+suffixes, invalid fragments, missing clips and ambiguous clip/skeleton results before they
+reach the preview runtime. The focused acceptance fixture authors a source-only project,
+loads a real glTF skin plus Walk/Run/Jump clips, reopens the persisted graph/sidecar, then
+runs blend-tree locomotion and a trigger transition through the shipping preview runtime.
+
 `validate_runtime(...)` combines creator-graph diagnostics with a real compile against
 `Skeleton3D` and imported skeletal clips. Persisted-but-unresolved references are reported
 separately from a graph with no configured references. Unknown clips, invalid condition
@@ -112,8 +126,8 @@ production ready.
 
 Milestone 5 is still open. The runtime, deterministic graph asset, graph-editing
 controller, interactive SwirEditor canvas, transition/parameter presentation,
-runtime-backed preview/debug controls, rig snapshot, and persistent creator-facing rig /
-clip resource-reference workflow are implemented. Remaining acceptance work is wiring the
-production project import resolver into the integrated editor path and running the final
-representative walk/run/jump acceptance gate on a fully green exact head. No M6 work starts
-until M5 is formally accepted.
+runtime-backed preview/debug controls, rig snapshot, persistent creator-facing rig/clip
+references, production project resolver wiring and source-only walk/run/jump acceptance
+fixture are implemented on the M5 branch. Formal M5 acceptance still requires the complete
+exact-head CI matrix to finish green and the accepted changes to reach `main`. No M6 work
+starts until M5 is formally accepted.
