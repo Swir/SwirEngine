@@ -46,7 +46,7 @@ class AnimationProjectResourceResolver22:
                 raise ValueError("animation clip reference requires a non-empty clip name")
             matches = tuple(clip for clip in asset.clips if clip.name == name)
             if not matches:
-                raise KeyError(f"animation clip {name!r} was not found in {source.name}")
+                raise ValueError(f"animation clip {name!r} was not found in {source.name}")
             if len(matches) != 1:
                 raise ValueError(f"animation clip {name!r} is ambiguous in {source.name}")
             return matches[0]
@@ -76,7 +76,7 @@ class AnimationProjectResourceResolver22:
         if source.suffix.casefold() not in {".gltf", ".glb"}:
             raise ValueError("animation resource must reference a .gltf or .glb file")
         if not source.is_file():
-            raise FileNotFoundError(f"animation resource not found: {raw_path}")
+            raise ValueError(f"animation resource not found: {raw_path}")
         return source, fragment.strip()
 
     def _load(self, source: Path) -> GltfSkeletalAsset:
@@ -85,7 +85,10 @@ class AnimationProjectResourceResolver22:
         cached = self._cache.get(source)
         if cached is not None and cached.fingerprint == fingerprint:
             return cached.asset
-        asset = self._loader(source)
+        try:
+            asset = self._loader(source)
+        except OSError as exc:
+            raise ValueError(f"failed to load animation resource {source.name}: {exc}") from exc
         if not isinstance(asset, GltfSkeletalAsset):
             raise TypeError("skeletal asset loader must return GltfSkeletalAsset")
         self._cache[source] = _CachedSkeletalAsset22(fingerprint, asset)
