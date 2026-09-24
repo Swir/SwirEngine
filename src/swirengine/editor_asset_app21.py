@@ -8,10 +8,10 @@ from .editor_asset_formats21 import create_format_aware_editor_asset_pipeline21
 from .editor_asset_frontend21 import EditorAssetWorkflow21
 from .editor_integrated_session21 import EditorIntegratedProjectSession21
 from .editor_render_backend21 import EditorRenderBackendUnavailable
-from .editor_visual_scripting_frontend22 import TkVisualScriptEditorApp22
+from .editor_terrain_frontend22 import TkTerrainEditorApp22
 
 
-class TkIntegratedEditorApp21(TkVisualScriptEditorApp22, TkNativeDropAssetPipelineEditorApp21):
+class TkIntegratedEditorApp21(TkTerrainEditorApp22, TkNativeDropAssetPipelineEditorApp21):
     """Unified SwirEditor shell for gameplay creator tools and the production asset pipeline."""
 
 
@@ -41,6 +41,7 @@ def run_editor_session21(session: EditorProjectSession) -> None:
             materials=session.materials,
             material_preview_viewport=session.controller.preview.viewport,
             visual_scripts=session.visual_scripts,
+            terrains=session.terrains,
             title=f"SwirEditor 2.2 — {session.manifest.name}",
         )
         session._install_file_menu(app)
@@ -52,6 +53,7 @@ def run_editor_session21(session: EditorProjectSession) -> None:
         session.console.write("Build/Export Wizard attached", source="build")
         session.console.write("Material/Shader Editor 2.2 attached", source="materials")
         session.console.write("Visual Scripting / Node Graph 2.2 attached", source="logic")
+        session.console.write("World/Terrain Authoring 2.2 attached", source="world")
         app.run()
     finally:
         workflow.shutdown()

@@ -17,6 +17,7 @@ from .editor_save_profile_tooling21 import (
     EditorSaveProfileTooling21,
     EditorSaveProfileToolingError,
 )
+from .editor_terrain22 import EditorTerrainError22, EditorTerrainTooling22
 from .editor_ui_tooling21 import EditorUIHudTooling21, EditorUIHudToolingError
 from .editor_visual_scripting22 import (
     EditorVisualScriptingError22,
@@ -36,6 +37,7 @@ _SAVE_ERRORS = (
     EditorBuildExportToolingError,
     EditorMaterialToolingError,
     EditorVisualScriptingError22,
+    EditorTerrainError22,
     TypeError,
     ValueError,
 )
@@ -58,6 +60,7 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
         )
         self.materials = EditorMaterialTooling22(self.manifest.root)
         self.visual_scripts = EditorVisualScriptingTooling22(self.manifest.root)
+        self.terrains = EditorTerrainTooling22(self.manifest.root)
 
     @classmethod
     def adopt(cls, session: EditorProjectSession) -> EditorIntegratedProjectSession21:
@@ -81,6 +84,7 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
         )
         integrated.materials = EditorMaterialTooling22(integrated.manifest.root)
         integrated.visual_scripts = EditorVisualScriptingTooling22(integrated.manifest.root)
+        integrated.terrains = EditorTerrainTooling22(integrated.manifest.root)
         return integrated
 
     def summary(self) -> EditorProjectSummary:
@@ -95,6 +99,7 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
                 or self.build_export.dirty
                 or self.materials.dirty
                 or self.visual_scripts.dirty
+                or self.terrains.dirty
             ),
         )
 
@@ -105,6 +110,7 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
         build_export_was_dirty = self.build_export.dirty
         materials_were_dirty = self.materials.dirty
         visual_scripts_were_dirty = self.visual_scripts.dirty
+        terrains_were_dirty = self.terrains.dirty
         if audio_was_dirty:
             self.audio.save()
         if ui_hud_was_dirty:
@@ -117,6 +123,8 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
             self.materials.save()
         if visual_scripts_were_dirty:
             self.visual_scripts.save()
+        if terrains_were_dirty:
+            self.terrains.save()
         state = super().save()
         if audio_was_dirty:
             self.console.write(
@@ -148,6 +156,11 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
                 f"Saved visual scripts {self.visual_scripts.relative_dir}",
                 source="swireditor",
             )
+        if terrains_were_dirty:
+            self.console.write(
+                "Saved terrain assets assets/terrain",
+                source="swireditor",
+            )
         return state
 
     def run(self) -> None:
@@ -168,6 +181,7 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
             or self.build_export.dirty
             or self.materials.dirty
             or self.visual_scripts.dirty
+            or self.terrains.dirty
         )
 
     def _save_from_ui(self, app: Any) -> None:

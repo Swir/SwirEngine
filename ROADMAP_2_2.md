@@ -68,3 +68,24 @@ Milestone 3 may be checked only when the exact implementation head proves all of
 6. Post-merge `main` completes its triggered workflow set without failures before the roadmap counter advances.
 
 Milestone 3 accepted on 2026-09-23 after PR #223 exact head `545913c5a6fba16336366d9ac62c8f23c328488e` completed all 23 triggered pull-request workflows successfully. The accepted implementation merged to `main` as `566d3ca2207580f94d175529b5d6774c5da27a66`, and all 12 triggered post-merge workflow runs completed successfully before this acceptance record advanced the roadmap to 3/10.
+
+## Milestone 4 acceptance gate
+
+Milestone 4 may be checked only when the exact implementation head proves all of the following:
+
+1. Terrain sculpting and normalized material painting serialize through a deterministic, versioned `.swirterrain` project asset.
+2. Foliage placement remains project-relative and authored LOD/world-streaming controls round-trip into shipping `HeightmapTerrain`/`LargeWorld` runtime APIs.
+3. Sparse sculpt undo/redo and dirty-chunk tracking keep editor rebuild work bounded to changed terrain regions.
+4. Project-scoped save/load is contained beneath `assets/terrain`, rejects traversal/invalid extensions and reopens without canonical data loss.
+5. A creator-facing terrain editor session provides dirty/save/reload and runtime-preview behavior over the same shipping terrain runtime rather than disconnected editor-only state.
+6. Focused authoring/persistence/security/runtime regressions, representative fixtures, the progress contract and the normal exact-head repository matrix are green; post-merge `main` must also finish green before the roadmap counter advances.
+
+### M4 implementation evidence on feature branch
+
+- [x] Height/sculpt authoring and dirty-chunk tracking.
+- [x] Material paint layers and normalized splat weights.
+- [x] Project-relative foliage plus runtime LOD/streaming bridge.
+- [x] Sparse sculpt undo/redo and deterministic terrain payloads.
+- [x] Project-scoped `.swirterrain` save/load with traversal rejection.
+- [x] Editor document dirty/save/reload and shipping-runtime preview integration.
+- [ ] Full exact-head PR matrix and post-merge `main` acceptance evidence.
