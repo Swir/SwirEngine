@@ -6,7 +6,7 @@
 
 SwirEngine 2.2 starts after the public SwirEngine 2.1.0 creator-workflow release. The target is a finite production-tools release: creators should be able to author more of a complete 2D/3D/multiplayer game visually while the generated data remains backed by shipping runtime systems.
 
-Current verified progress: 3/10 milestones = 30.0%.
+Current verified progress: 4/10 milestones = 40.0%.
 
 ## Product rules
 
@@ -22,7 +22,7 @@ Current verified progress: 3/10 milestones = 30.0%.
 - [x] **1. Material/Shader authoring foundation.** Add deterministic project material assets, runtime-backed PBR material round-trip, safe shader variant authoring, asset validation, project-session dirty/save/reopen integration and focused regression coverage.
 - [x] **2. Material/Shader Editor and live preview.** Add creator-facing material/shader panels, texture/uniform/hook editing, presets, validation diagnostics and a live preview path using the shipping renderer.
 - [x] **3. Visual Scripting / Node Graph foundation.** Add a deterministic node-graph asset model, typed pins, validated graph compilation/execution and editor authoring for gameplay logic without weakening the Python scripting path.
-- [ ] **4. World/Terrain authoring.** Integrate terrain sculpt/paint data, foliage placement, LOD controls and world-streaming authoring with large-world runtime validation.
+- [x] **4. World/Terrain authoring.** Integrate terrain sculpt/paint data, foliage placement, LOD controls and world-streaming authoring with large-world runtime validation.
 - [ ] **5. Animation State Machine + Blend Tree Editor.** Add visual state/transition authoring, blend trees, parameter inspection and runtime-backed preview/debugging over the shipping animation systems.
 - [ ] **6. Particle/VFX Editor.** Add visual emitter/effect authoring for CPU/GPU particle systems, deterministic presets, preview controls and bounded runtime diagnostics.
 - [ ] **7. Lighting, Environment and Post-FX authoring.** Add creator controls for lights, sky/environment, shadows, tone mapping and post-processing with scene persistence and live renderer validation.
@@ -80,7 +80,7 @@ Milestone 4 may be checked only when the exact implementation head proves all of
 5. A creator-facing terrain editor session provides dirty/save/reload and runtime-preview behavior over the same shipping terrain runtime rather than disconnected editor-only state.
 6. Focused authoring/persistence/security/runtime regressions, representative fixtures, the progress contract and the normal exact-head repository matrix are green; post-merge `main` must also finish green before the roadmap counter advances.
 
-### M4 implementation evidence on feature branch
+### M4 implementation and acceptance evidence
 
 - [x] Height/sculpt authoring and dirty-chunk tracking.
 - [x] Material paint layers and normalized splat weights.
@@ -88,4 +88,6 @@ Milestone 4 may be checked only when the exact implementation head proves all of
 - [x] Sparse sculpt undo/redo and deterministic terrain payloads.
 - [x] Project-scoped `.swirterrain` save/load with traversal rejection.
 - [x] Editor document dirty/save/reload and shipping-runtime preview integration.
-- [ ] Full exact-head PR matrix and post-merge `main` acceptance evidence.
+- [x] Full exact-head PR matrix and post-merge `main` acceptance evidence.
+
+Milestone 4 accepted on 2026-09-24 after PR #225 exact head `551994894c1fcdbbecdea5dae3f2ea35b2be5d57` completed all 24 triggered pull-request workflows successfully. The accepted implementation merged to `main` as `71201fb5facb2774ec2e9bcf166f0166a3a71919`, and all 12 triggered post-merge workflow runs completed successfully before this acceptance record advanced the roadmap to 4/10.
