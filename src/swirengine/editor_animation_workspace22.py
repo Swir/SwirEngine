@@ -157,7 +157,8 @@ class AnimationMachineWorkspace22:
         clip_refs: Mapping[str, str],
     ) -> AnimationPreviewResourceRefs22:
         # Require an active graph so a creator cannot accidentally configure orphaned refs.
-        self.active_session
+        if self._session is None:
+            raise RuntimeError("no animation machine asset is open")
         refs = AnimationPreviewResourceRefs22.from_mapping(skeleton_ref, clip_refs)
         if refs != self._resource_refs:
             self._drop_runtime_binding()
@@ -166,7 +167,8 @@ class AnimationMachineWorkspace22:
         return refs
 
     def clear_preview_resource_refs(self) -> None:
-        self.active_session
+        if self._session is None:
+            raise RuntimeError("no animation machine asset is open")
         if self._resource_refs is not None:
             self._drop_runtime_binding()
             self._resource_refs = None
