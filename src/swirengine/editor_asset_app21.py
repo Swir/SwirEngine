@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from .editor_animation_project_resources22 import AnimationProjectResourceResolver22
 from .editor_animation_workspace_frontend22 import TkAnimationMachineEditorApp22
 from .editor_app21 import EditorProjectOpenError, EditorProjectSession, _build_parser
 from .editor_asset_drop21 import TkNativeDropAssetPipelineEditorApp21
@@ -24,6 +25,7 @@ def run_editor_session21(session: EditorProjectSession) -> None:
     session = EditorIntegratedProjectSession21.adopt(session)
     backend = create_format_aware_editor_asset_pipeline21(session.asset_browser.manager)
     workflow = EditorAssetWorkflow21(backend, session.asset_browser)
+    animation_resource_resolver = AnimationProjectResourceResolver22(session.manifest.root)
     try:
         try:
             session.enable_live_viewport()
@@ -46,6 +48,7 @@ def run_editor_session21(session: EditorProjectSession) -> None:
             visual_scripts=session.visual_scripts,
             terrains=session.terrains,
             animation_machines=session.animation_machines,
+            animation_resource_resolver=animation_resource_resolver,
             title=f"SwirEditor 2.2 — {session.manifest.name}",
         )
         session._install_file_menu(app)
