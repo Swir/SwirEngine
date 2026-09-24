@@ -33,28 +33,43 @@ The controller provides:
   imported clip map;
 - preview start/stop/restart/step, runtime parameter and trigger controls, force-state
   debugging and live transition state inspection;
-- skeleton-node preview snapshots backed by the sampled `SkeletalPose`, so the future
-  visual rig panel observes exactly the same pose that reaches the skinning path;
+- skeleton-node preview snapshots backed by the sampled `SkeletalPose`, so the visual rig
+  panel observes exactly the same pose that reaches the skinning path;
 - stale-preview invalidation after graph edits while retaining bound resources for a
   deliberate restart; and
 - deterministic project save through the existing `AnimationMachineEditorSession22`.
 
-## Creator asset
+## Creator asset and resource bindings
 
-A graph stores logical clip references rather than copying imported animation data.
-This keeps the state machine independent from the source model and lets the editor
-resolve imported clips at compile/preview time.
+A graph stores logical clip IDs rather than copying imported animation data. SwirEditor
+now persists the corresponding project/import resource references in a deterministic
+sidecar named `<graph>.swiranimgraph.resources.json`. Keeping loader-specific source
+references outside the graph schema preserves compatibility with existing
+`swir.animation-machine.v1` assets while still making rig/clip selection durable across
+editor restarts.
 
 ```json
 {
-  "format": "swir.animation-machine.v1",
-  "initial": "Locomotion",
-  "parameters": [
-    {"name": "speed", "kind": "float", "default": 0.0},
-    {"name": "jump", "kind": "trigger", "default": false}
-  ]
+  "format": "swir.animation-preview-resources.v1",
+  "skeleton": "imports/hero.glb#skeleton",
+  "clips": {
+    "walk": "imports/hero.glb#clip:Walk",
+    "run": "imports/hero.glb#clip:Run",
+    "jump": "imports/hero.glb#clip:Jump"
+  }
 }
 ```
+
+The animation workspace accepts a project/import resolver callable. Resolution is strongly
+typed: the rig reference must produce `Skeleton3D`, and every clip reference must produce
+`SkeletalAnimationClip3D`. Wrong or missing resources fail before runtime validation.
+Legacy graph assets without a resource sidecar continue to open unchanged.
+
+SwirEditor's Animation window exposes **Rig ref** and **Clip refs** fields. Clip references
+use `id=resource` pairs separated by commas. Applying bindings invalidates any stale live
+preview objects; saving persists the sidecar. When the host editor provides its import
+resolver, open/validate/preview automatically rebuild the live runtime binding from those
+stored references.
 
 State nodes preserve canvas `x/y` positions. A state can reference one skeletal clip or
 a 1D blend tree. Transition conditions use the stable animation parameter contract from
@@ -63,19 +78,17 @@ a 1D blend tree. Transition conditions use the stable animation parameter contra
 ## Runtime preview example
 
 ```python
-from swirengine.editor_animation_state_machine22 import AnimationMachineEditorSession22
-from swirengine.editor_animation_state_machine_frontend22 import (
-    AnimationMachinePanelController22,
-)
+from swirengine.editor_animation_workspace22 import AnimationMachineWorkspace22
 
-session = AnimationMachineEditorSession22.open(project_root, "hero")
-controller = AnimationMachinePanelController22(session)
-controller.start_preview(skeleton, imported_clips)
+workspace = AnimationMachineWorkspace22(project_root)
+workspace.open("hero")
+workspace.resolve_preview_resources(project_resource_resolver)
 
-controller.set_preview_parameter("speed", 0.75)
-controller.step_preview(1 / 60)
-controller.trigger_preview("jump")
-frame = controller.step_preview(1 / 60)
+workspace.start_preview()
+workspace.controller.set_preview_parameter("speed", 0.75)
+workspace.controller.step_preview(1 / 60)
+workspace.controller.trigger_preview("jump")
+frame = workspace.controller.step_preview(1 / 60)
 print(frame.preview_state, frame.preview_next_state, frame.rig)
 ```
 
@@ -85,21 +98,22 @@ simulation is used.
 ## Safety and validation behavior
 
 Creator edits invalidate the compiled preview player so stale runtime state cannot hide
-an asset change. The bound skeleton/clip resources may be retained for an explicit
-`restart_preview()`, which recompiles the edited graph. Parameters used by blend trees or
-transition conditions cannot be removed accidentally, and state/parameter renames rewire
-their graph references deterministically.
+an asset change. Changing resource references also drops live runtime objects. Switching to
+a different graph clears the previous graph's runtime binding, preventing cross-asset
+preview leakage.
 
 `validate_runtime(...)` combines creator-graph diagnostics with a real compile against
-`Skeleton3D` and imported skeletal clips. Unknown clips, invalid condition kinds and
-invalid blend-parameter types therefore fail before the asset is treated as production
-ready.
+`Skeleton3D` and imported skeletal clips. Persisted-but-unresolved references are reported
+separately from a graph with no configured references. Unknown clips, invalid condition
+kinds and invalid blend-parameter types therefore fail before the asset is treated as
+production ready.
 
 ## Current M5 boundary
 
-Milestone 5 is still open. The runtime, deterministic asset, graph-editing controller,
-transition editor model, parameter inspector model, runtime-backed preview/debug controls
-and rig snapshot are implemented. Remaining acceptance work is the interactive SwirEditor
-surface (canvas and inspectors), creator-facing clip/rig resource binding, and final
-representative walk/run/jump acceptance evidence on a fully green exact head. No M6 work
-starts until M5 is formally accepted.
+Milestone 5 is still open. The runtime, deterministic graph asset, graph-editing
+controller, interactive SwirEditor canvas, transition/parameter presentation,
+runtime-backed preview/debug controls, rig snapshot, and persistent creator-facing rig /
+clip resource-reference workflow are implemented. Remaining acceptance work is wiring the
+production project import resolver into the integrated editor path and running the final
+representative walk/run/jump acceptance gate on a fully green exact head. No M6 work starts
+until M5 is formally accepted.
