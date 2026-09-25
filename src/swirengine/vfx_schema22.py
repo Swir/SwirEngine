@@ -7,7 +7,7 @@ from typing import Any
 
 
 class EditorVFXError22(ValueError):
-    """Raised when project VFX data cannot be authored safely."""
+    """Raised when project VFX data cannot be authored safely and deterministically."""
 
 
 @dataclass(frozen=True, slots=True)
