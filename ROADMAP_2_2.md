@@ -6,7 +6,7 @@
 
 SwirEngine 2.2 starts after the public SwirEngine 2.1.0 creator-workflow release. The target is a finite production-tools release: creators should be able to author more of a complete 2D/3D/multiplayer game visually while the generated data remains backed by shipping runtime systems.
 
-Current verified progress: 4/10 milestones = 40.0%.
+Current verified progress: 5/10 milestones = 50.0%.
 
 ## Product rules
 
@@ -23,7 +23,7 @@ Current verified progress: 4/10 milestones = 40.0%.
 - [x] **2. Material/Shader Editor and live preview.** Add creator-facing material/shader panels, texture/uniform/hook editing, presets, validation diagnostics and a live preview path using the shipping renderer.
 - [x] **3. Visual Scripting / Node Graph foundation.** Add a deterministic node-graph asset model, typed pins, validated graph compilation/execution and editor authoring for gameplay logic without weakening the Python scripting path.
 - [x] **4. World/Terrain authoring.** Integrate terrain sculpt/paint data, foliage placement, LOD controls and world-streaming authoring with large-world runtime validation.
-- [ ] **5. Animation State Machine + Blend Tree Editor.** Add visual state/transition authoring, blend trees, parameter inspection and runtime-backed preview/debugging over the shipping animation systems.
+- [x] **5. Animation State Machine + Blend Tree Editor.** Add visual state/transition authoring, blend trees, parameter inspection and runtime-backed preview/debugging over the shipping animation systems.
 - [ ] **6. Particle/VFX Editor.** Add visual emitter/effect authoring for CPU/GPU particle systems, deterministic presets, preview controls and bounded runtime diagnostics.
 - [ ] **7. Lighting, Environment and Post-FX authoring.** Add creator controls for lights, sky/environment, shadows, tone mapping and post-processing with scene persistence and live renderer validation.
 - [ ] **8. UI Designer 2.0.** Add responsive anchors/containers, reusable styles, interaction states and UI animation authoring while preserving keyboard/gamepad focus/navigation behavior.
@@ -91,3 +91,26 @@ Milestone 4 may be checked only when the exact implementation head proves all of
 - [x] Full exact-head PR matrix and post-merge `main` acceptance evidence.
 
 Milestone 4 accepted on 2026-09-24 after PR #225 exact head `551994894c1fcdbbecdea5dae3f2ea35b2be5d57` completed all 24 triggered pull-request workflows successfully. The accepted implementation merged to `main` as `71201fb5facb2774ec2e9bcf166f0166a3a71919`, and all 12 triggered post-merge workflow runs completed successfully before this acceptance record advanced the roadmap to 4/10.
+
+## Milestone 5 acceptance gate
+
+Milestone 5 may be checked only when the exact implementation head proves all of the following:
+
+1. `.swiranimgraph` assets provide deterministic, project-scoped state/transition/parameter/blend-tree authoring with persistent creator node positions and safe reopen behavior.
+2. State-machine execution, conditions, triggers, exit time, cross-fades and synchronized 1D blend trees run through the shipping `Skeleton3D` / `SkeletalAnimationClip3D` animation systems rather than an editor-only simulator.
+3. The unified SwirEditor exposes creator-facing state graph, transition editing, parameter inspection and preview/debug controls over that same runtime-backed asset model.
+4. Rig and clip source references persist beside the graph, resolve through the production project-relative `.gltf` / `.glb` resolver, remain confined to the open project, reject ambiguous/invalid resources and invalidate stale cached runtime objects when the source fingerprint changes.
+5. A representative source-only Walk/Run/Jump fixture saves and reopens creator resources, exercises locomotion blending plus a trigger transition, and observes the sampled shipping skeletal pose through the editor preview path.
+6. Focused animation/editor/persistence/security/runtime regressions, the deterministic progress contract and the normal exact-head repository matrix are green; post-merge `main` must also complete its triggered workflow set without failures before the roadmap counter advances.
+
+### M5 implementation and acceptance evidence
+
+- [x] Runtime skeletal state machine, conditions/triggers, cross-fades and synchronized 1D blend trees.
+- [x] Deterministic `.swiranimgraph` creator asset plus project-scoped persistence.
+- [x] Visual SwirEditor state/transition/parameter authoring and runtime preview/debugging.
+- [x] Persistent rig/clip resource references with stale-binding protection and legacy graph compatibility.
+- [x] Production project-relative glTF/GLB resolver with confinement and source-fingerprint cache invalidation.
+- [x] Source-only Walk/Run/Jump save/reopen/runtime acceptance fixture.
+- [x] Full exact-head PR matrix and post-merge `main` acceptance evidence.
+
+Milestone 5 accepted on 2026-09-24 after PRs #227–#231 delivered the integrated runtime and creator workflow. Final PR #231 exact head `ac30cb0149099fce7c4eebc9a7cb9f7ba6ebb495` completed all 23 triggered pull-request workflows successfully. The accepted implementation merged to `main` as `8fb851bd6679671d66198721f2a5a535df94c942`, and all 12 triggered post-merge workflow runs completed successfully before this acceptance record advanced the roadmap to 5/10.
