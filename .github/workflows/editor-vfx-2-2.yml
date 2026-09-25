@@ -12,6 +12,7 @@ on:
       - "src/swirengine/editor_integrated_session21.py"
       - "src/swirengine/editor_asset_app21.py"
       - "tests/test_editor_vfx_2_2.py"
+      - "tests/test_vfx_real_game_gate_2_2.py"
       - "ROADMAP_2_2.md"
       - "docs/PARTICLE_VFX_EDITOR_2_2.md"
       - ".github/workflows/editor-vfx-2-2.yml"
@@ -24,6 +25,7 @@ on:
       - "src/swirengine/editor_integrated_session21.py"
       - "src/swirengine/editor_asset_app21.py"
       - "tests/test_editor_vfx_2_2.py"
+      - "tests/test_vfx_real_game_gate_2_2.py"
       - "ROADMAP_2_2.md"
       - "docs/PARTICLE_VFX_EDITOR_2_2.md"
       - ".github/workflows/editor-vfx-2-2.yml"
@@ -43,10 +45,16 @@ jobs:
       - name: Install development dependencies
         run: python -m pip install --upgrade pip ".[dev]"
       - name: Test VFX editor slice
-        run: python -m pytest -q tests/test_editor_vfx_2_2.py tests/test_editor_hub_2_1.py tests/test_progress_svg.py tests/test_progress_2_1.py
+        run: >-
+          python -m pytest -q
+          tests/test_editor_vfx_2_2.py tests/test_vfx_real_game_gate_2_2.py
+          tests/test_vfx_real_game_gate_2_2.py
+          tests/test_editor_hub_2_1.py
+          tests/test_progress_svg.py
+          tests/test_progress_2_1.py
       - name: Check active progress
         run: python tools/generate_progress_svg.py --check
       - name: Lint VFX editor slice
-        run: python -m ruff check src/swirengine/vfx_schema22.py src/swirengine/vfx_authoring22.py src/swirengine/editor_vfx22.py src/swirengine/editor_vfx_frontend22.py src/swirengine/editor_integrated_session21.py src/swirengine/editor_asset_app21.py tests/test_editor_vfx_2_2.py
+        run: python -m ruff check src/swirengine/vfx_schema22.py src/swirengine/vfx_authoring22.py src/swirengine/editor_vfx22.py src/swirengine/editor_vfx_frontend22.py src/swirengine/editor_integrated_session21.py src/swirengine/editor_asset_app21.py tests/test_editor_vfx_2_2.py tests/test_vfx_real_game_gate_2_2.py
       - name: Compile VFX editor slice
         run: python -m compileall -q src/swirengine/vfx_schema22.py src/swirengine/vfx_authoring22.py src/swirengine/editor_vfx22.py src/swirengine/editor_vfx_frontend22.py src/swirengine/editor_integrated_session21.py src/swirengine/editor_asset_app21.py tests/test_editor_vfx_2_2.py

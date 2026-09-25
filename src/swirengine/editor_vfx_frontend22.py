@@ -26,6 +26,7 @@ class TkVFXEditorApp22(TkAnimationMachineEditorApp22):
         self._vfx_rate_var: Any | None = None
         self._vfx_status_var: Any | None = None
         self._vfx_diagnostics: Any | None = None
+        self._vfx_tick_after: Any | None = None
         super().__init__(controller, **kwargs)
 
     def install_creator_menu(self, menu: Any) -> None:
@@ -126,6 +127,7 @@ class TkVFXEditorApp22(TkAnimationMachineEditorApp22):
         self._refresh_vfx_editor()
 
     def _close_vfx_editor(self) -> None:
+        self._cancel_vfx_tick()
         if self._vfx_window is not None:
             self._vfx_window.destroy()
         self._vfx_window = None
@@ -178,8 +180,10 @@ class TkVFXEditorApp22(TkAnimationMachineEditorApp22):
 
     def _vfx_start(self) -> None:
         self._vfx_action(self.vfx_controller.start_preview)
+        self._schedule_vfx_tick()
 
     def _vfx_pause(self) -> None:
+        self._cancel_vfx_tick()
         self._vfx_action(self.vfx_controller.pause_preview)
 
     def _vfx_step(self) -> None:
@@ -190,6 +194,32 @@ class TkVFXEditorApp22(TkAnimationMachineEditorApp22):
 
     def _vfx_clear(self) -> None:
         self._vfx_action(self.vfx_controller.clear_preview)
+
+    def _schedule_vfx_tick(self) -> None:
+        if self._vfx_tick_after is None and self._vfx_window is not None:
+            self._vfx_tick_after = self.root.after(16, self._vfx_tick)
+
+    def _cancel_vfx_tick(self) -> None:
+        if self._vfx_tick_after is None:
+            return
+        try:
+            self.root.after_cancel(self._vfx_tick_after)
+        except (RuntimeError, TypeError, ValueError):
+            pass
+        self._vfx_tick_after = None
+
+    def _vfx_tick(self) -> None:
+        self._vfx_tick_after = None
+        if not self.vfx_controller.frame().preview_running:
+            return
+        try:
+            self.vfx_controller.step_preview(1.0 / 60.0)
+            self._refresh_vfx_editor()
+        except (OSError, RuntimeError, TypeError, ValueError) as exc:
+            self.vfx_controller.pause_preview()
+            self._vfx_error(exc)
+            return
+        self._schedule_vfx_tick()
 
     def _vfx_action(self, action: Any) -> None:
         try:

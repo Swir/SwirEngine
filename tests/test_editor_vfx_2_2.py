@@ -5,12 +5,16 @@ from pathlib import Path
 import pytest
 
 from swirengine.editor_integrated_session21 import EditorIntegratedProjectSession21
-from swirengine.editor_vfx22 import MAX_VFX_PREVIEW_STEP, EditorVFXPanelController22
+from swirengine.editor_vfx22 import (
+    MAX_VFX_PREVIEW_BURST,
+    MAX_VFX_PREVIEW_STEP,
+    EditorVFXPanelController22,
+)
 from swirengine.gpu_particles import GPUParticleEmitter3D
 from swirengine.particles import ParticleEmitter2D
 from swirengine.project_scaffold21 import new_project21
 from swirengine.vfx_authoring22 import EditorVFXTooling22
-from swirengine.vfx_schema22 import EditorVFXError22
+from swirengine.vfx_schema22 import MAX_VFX_CAPACITY22, EditorVFXError22
 
 
 def test_vfx_library_round_trips_cpu_runtime_deterministically(tmp_path: Path) -> None:
@@ -102,3 +106,17 @@ def test_integrated_session_saves_and_reopens_vfx_library(tmp_path: Path) -> Non
     reopened = EditorIntegratedProjectSession21.open(root)
     assert tuple(item.name for item in reopened.vfx.effects()) == ("impact",)
     assert not reopened.summary().dirty
+
+
+def test_vfx_authoring_bounds_capacity_and_manual_preview_bursts(tmp_path: Path) -> None:
+    tooling = EditorVFXTooling22(tmp_path)
+    with pytest.raises(EditorVFXError22, match="capacity"):
+        tooling.create_effect("too-large", capacity=MAX_VFX_CAPACITY22 + 1)
+
+    controller = EditorVFXPanelController22(tooling)
+    controller.create("bounded", preset="sparks-2d")
+    controller.start_preview()
+    frame = controller.burst(MAX_VFX_PREVIEW_BURST * 100)
+    assert frame.diagnostics is not None
+    assert frame.diagnostics.emitted_total == MAX_VFX_PREVIEW_BURST
+    assert "clamped" in controller.status

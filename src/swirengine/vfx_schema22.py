@@ -6,6 +6,9 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
 
+MAX_VFX_CAPACITY22 = 65_536
+
+
 class EditorVFXError22(ValueError):
     """Raised when project VFX data cannot be authored safely and deterministically."""
 
@@ -43,7 +46,11 @@ class VFXEffectSpec22:
         if backend not in {"cpu2d", "gpu3d"}:
             raise EditorVFXError22("backend must be cpu2d or gpu3d")
         object.__setattr__(self, "backend", backend)
-        object.__setattr__(self, "capacity", _positive_int(self.capacity, "capacity"))
+        object.__setattr__(
+            self,
+            "capacity",
+            _bounded_positive_int(self.capacity, "capacity", MAX_VFX_CAPACITY22),
+        )
         object.__setattr__(self, "rate", _non_negative(self.rate, "rate"))
         object.__setattr__(self, "lifetime", _positive_pair(self.lifetime, "lifetime"))
         object.__setattr__(self, "speed", _pair(self.speed, "speed"))
@@ -132,6 +139,13 @@ def _positive_int(value: Any, label: str) -> int:
     result = int(value)
     if result <= 0:
         raise EditorVFXError22(f"{label} must be greater than zero")
+    return result
+
+
+def _bounded_positive_int(value: Any, label: str, maximum: int) -> int:
+    result = _positive_int(value, label)
+    if result > maximum:
+        raise EditorVFXError22(f"{label} must be <= {maximum}")
     return result
 
 

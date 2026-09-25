@@ -6,9 +6,10 @@ from dataclasses import dataclass
 from .gpu_particles import GPUParticleEmitter3D
 from .particles import ParticleEmitter2D
 from .vfx_authoring22 import EditorVFXTooling22
-from .vfx_schema22 import EditorVFXError22, VFXEffectSpec22
+from .vfx_schema22 import MAX_VFX_CAPACITY22, EditorVFXError22, VFXEffectSpec22
 
 MAX_VFX_PREVIEW_STEP = 0.1
+MAX_VFX_PREVIEW_BURST = 4_096
 
 
 @dataclass(frozen=True, slots=True)
@@ -215,8 +216,13 @@ class EditorVFXPanelController22:
         return self.frame()
 
     def burst(self, count: int = 16) -> VFXEditorFrame22:
-        emitted = self._require_runtime().emit(count)
-        self._status = f"Queued/emitted {emitted} particles"
+        requested = int(count)
+        if requested < 0:
+            raise EditorVFXError22("preview burst count must be non-negative")
+        bounded = min(requested, MAX_VFX_PREVIEW_BURST, MAX_VFX_CAPACITY22)
+        emitted = self._require_runtime().emit(bounded)
+        suffix = " (clamped)" if bounded != requested else ""
+        self._status = f"Queued/emitted {emitted} particles{suffix}"
         return self.frame()
 
     def clear_preview(self) -> VFXEditorFrame22:
