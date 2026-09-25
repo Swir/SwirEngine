@@ -24,6 +24,8 @@ from .editor_visual_scripting22 import (
     EditorVisualScriptingError22,
     EditorVisualScriptingTooling22,
 )
+from .vfx_authoring22 import EditorVFXTooling22
+from .vfx_schema22 import EditorVFXError22
 from .serialization import SceneSerializationError
 
 _SAVE_ERRORS = (
@@ -39,6 +41,7 @@ _SAVE_ERRORS = (
     EditorMaterialToolingError,
     EditorVisualScriptingError22,
     EditorTerrainError22,
+    EditorVFXError22,
     TypeError,
     ValueError,
 )
@@ -63,6 +66,7 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
         self.visual_scripts = EditorVisualScriptingTooling22(self.manifest.root)
         self.terrains = EditorTerrainTooling22(self.manifest.root)
         self.animation_machines = AnimationMachineWorkspace22(self.manifest.root)
+        self.vfx = EditorVFXTooling22(self.manifest.root)
 
     @classmethod
     def adopt(cls, session: EditorProjectSession) -> EditorIntegratedProjectSession21:
@@ -88,6 +92,7 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
         integrated.visual_scripts = EditorVisualScriptingTooling22(integrated.manifest.root)
         integrated.terrains = EditorTerrainTooling22(integrated.manifest.root)
         integrated.animation_machines = AnimationMachineWorkspace22(integrated.manifest.root)
+        integrated.vfx = EditorVFXTooling22(integrated.manifest.root)
         return integrated
 
     def summary(self) -> EditorProjectSummary:
@@ -104,6 +109,7 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
                 or self.visual_scripts.dirty
                 or self.terrains.dirty
                 or self.animation_machines.dirty
+                or self.vfx.dirty
             ),
         )
 
@@ -116,6 +122,7 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
         visual_scripts_were_dirty = self.visual_scripts.dirty
         terrains_were_dirty = self.terrains.dirty
         animation_machines_were_dirty = self.animation_machines.dirty
+        vfx_was_dirty = self.vfx.dirty
         if audio_was_dirty:
             self.audio.save()
         if ui_hud_was_dirty:
@@ -132,6 +139,8 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
             self.terrains.save()
         if animation_machines_were_dirty:
             self.animation_machines.save()
+        if vfx_was_dirty:
+            self.vfx.save()
         state = super().save()
         if audio_was_dirty:
             self.console.write(
@@ -173,6 +182,11 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
                 f"Saved animation machine {self.animation_machines.active_session.asset_name}",
                 source="swireditor",
             )
+        if vfx_was_dirty:
+            self.console.write(
+                f"Saved VFX library {self.vfx.relative_path}",
+                source="swireditor",
+            )
         return state
 
     def run(self) -> None:
@@ -195,6 +209,7 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
             or self.visual_scripts.dirty
             or self.terrains.dirty
             or self.animation_machines.dirty
+            or self.vfx.dirty
         )
 
     def _save_from_ui(self, app: Any) -> None:
