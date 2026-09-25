@@ -24,7 +24,7 @@ def test_representative_project_vfx_round_trip_and_runtime_preview(
     tmp_path: Path,
     mode: str,
     preset: str,
-    runtime_type: type[ParticleEmitter2D] | type[GPUParticleEmitter3D],
+    runtime_type: type[ParticleEmitter2D | GPUParticleEmitter3D],
 ) -> None:
     root = new_project21(f"VFXGate{mode.upper()}", mode, parent=tmp_path)
     session = EditorIntegratedProjectSession21.open(root)
