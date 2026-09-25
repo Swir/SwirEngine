@@ -3,13 +3,13 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from .editor_animation_project_resources22 import AnimationProjectResourceResolver22
-from .editor_vfx_frontend22 import TkVFXEditorApp22
 from .editor_app21 import EditorProjectOpenError, EditorProjectSession, _build_parser
 from .editor_asset_drop21 import TkNativeDropAssetPipelineEditorApp21
 from .editor_asset_formats21 import create_format_aware_editor_asset_pipeline21
 from .editor_asset_frontend21 import EditorAssetWorkflow21
 from .editor_integrated_session21 import EditorIntegratedProjectSession21
 from .editor_render_backend21 import EditorRenderBackendUnavailable
+from .editor_vfx_frontend22 import TkVFXEditorApp22
 
 
 class TkIntegratedEditorApp21(

@@ -24,9 +24,9 @@ from .editor_visual_scripting22 import (
     EditorVisualScriptingError22,
     EditorVisualScriptingTooling22,
 )
+from .serialization import SceneSerializationError
 from .vfx_authoring22 import EditorVFXTooling22
 from .vfx_schema22 import EditorVFXError22
-from .serialization import SceneSerializationError
 
 _SAVE_ERRORS = (
     OSError,

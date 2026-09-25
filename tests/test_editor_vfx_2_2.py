@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from swirengine.editor_integrated_session21 import EditorIntegratedProjectSession21
-from swirengine.editor_vfx22 import EditorVFXPanelController22, MAX_VFX_PREVIEW_STEP
+from swirengine.editor_vfx22 import MAX_VFX_PREVIEW_STEP, EditorVFXPanelController22
 from swirengine.gpu_particles import GPUParticleEmitter3D
 from swirengine.particles import ParticleEmitter2D
 from swirengine.project_scaffold21 import new_project21
