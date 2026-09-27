@@ -55,6 +55,23 @@ def test_representative_project_vfx_round_trip_and_runtime_preview(
     assert (root / "config" / "vfx.json").read_bytes() == canonical
 
 
+def test_integrated_project_missing_gpu_texture_reports_and_blocks_preview(tmp_path: Path) -> None:
+    root = new_project21("VFXMissingTexture", "3d", parent=tmp_path)
+    session = EditorIntegratedProjectSession21.open(root)
+    session.vfx.create_effect(
+        "missing-texture",
+        backend="gpu3d",
+        texture="vfx/missing.png",
+    )
+    controller = EditorVFXPanelController22(session.vfx)
+    controller.select("missing-texture")
+
+    assert controller.frame().messages == ("Missing asset: vfx/missing.png",)
+    assert controller.validate() == ("Missing asset: vfx/missing.png",)
+    with pytest.raises(ValueError, match="preview blocked by missing assets"):
+        controller.start_preview()
+
+
 def test_integrated_shell_includes_vfx_editor() -> None:
     assert issubclass(TkIntegratedEditorApp21, TkVFXEditorApp22)
 
