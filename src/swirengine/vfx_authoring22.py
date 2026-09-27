@@ -108,7 +108,14 @@ class EditorVFXTooling22:
                 end_size_scale=spec.end_size_scale,
                 drag=spec.drag,
             )
-        texture = None if spec.texture is None else str(self._asset_target(spec.texture))
+        texture = None
+        if spec.texture is not None:
+            texture_target = self._asset_target(spec.texture)
+            if not texture_target.is_file():
+                raise EditorVFXError22(
+                    f"VFX texture asset {spec.texture!r} is missing from project assets"
+                )
+            texture = str(texture_target)
         return GPUParticleEmitter3D(
             capacity=spec.capacity,
             rate=spec.rate,

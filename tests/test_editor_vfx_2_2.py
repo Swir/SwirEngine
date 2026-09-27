@@ -64,6 +64,29 @@ def test_vfx_gpu_preview_uses_shipping_runtime_and_project_texture(tmp_path: Pat
     assert len(preview.fingerprint) == 64
 
 
+def test_vfx_missing_gpu_texture_fails_closed_before_runtime_preview(tmp_path: Path) -> None:
+    tooling = EditorVFXTooling22(tmp_path)
+    tooling.create_effect(
+        "sparks",
+        backend="gpu3d",
+        texture="vfx/missing.png",
+    )
+    assert tooling.missing_assets("sparks") == ("vfx/missing.png",)
+
+    with pytest.raises(EditorVFXError22, match="missing from project assets"):
+        tooling.build_runtime("sparks")
+    with pytest.raises(EditorVFXError22, match="missing from project assets"):
+        tooling.preview("sparks")
+
+    controller = EditorVFXPanelController22(tooling)
+    controller.select("sparks")
+    assert controller.frame().messages == ("Missing asset: vfx/missing.png",)
+    assert controller.validate() == ("Missing asset: vfx/missing.png",)
+    with pytest.raises(EditorVFXError22, match="preview blocked by missing assets"):
+        controller.start_preview()
+    assert controller.status == "Missing asset: vfx/missing.png"
+
+
 def test_vfx_paths_reject_parent_escape(tmp_path: Path) -> None:
     with pytest.raises(EditorVFXError22, match="project-relative"):
         EditorVFXTooling22(tmp_path, path="../vfx.json")

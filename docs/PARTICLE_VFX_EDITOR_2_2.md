@@ -10,6 +10,6 @@ Milestone 6 builds creator-facing particle and effect authoring on the shipping 
 - Preview controls support start, pause, a real 60 Hz Tk preview loop, bounded stepping, bounded bursts and clear.
 - Runtime diagnostics expose capacity, active/queued work, emissions, recycling and bounded work counters; authored capacity is capped at 65,536 particles and manual preview bursts at 4,096.
 - Representative source-only 2D and 3D project fixtures save, reopen and exercise the same runtime-backed preview controller used by SwirEditor.
-- GPU texture references are project-relative and resolve only below the current project `assets/` directory.
+- GPU texture references are project-relative and resolve only below the current project `assets/` directory; missing textures fail closed before runtime preview construction while SwirEditor surfaces the exact missing asset path.
 
 Milestone 6 remains open until the complete acceptance gate in `ROADMAP_2_2.md` is satisfied on an exact head and post-merge `main` evidence is green.

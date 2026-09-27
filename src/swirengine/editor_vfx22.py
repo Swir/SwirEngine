@@ -176,9 +176,11 @@ class EditorVFXPanelController22:
 
     def validate(self) -> tuple[str, ...]:
         current = self.selected_spec()
-        preview = self.tooling.preview(current.name)
-        messages = tuple(f"Missing asset: {path}" for path in preview.missing_assets)
-        if not messages:
+        missing = self.tooling.missing_assets(current.name)
+        if missing:
+            messages = tuple(f"Missing asset: {path}" for path in missing)
+        else:
+            preview = self.tooling.preview(current.name)
             messages = (
                 f"{preview.backend} effect validated against the shipping particle runtime.",
             )
@@ -186,9 +188,14 @@ class EditorVFXPanelController22:
         return messages
 
     def start_preview(self) -> VFXEditorFrame22:
-        preview = self.tooling.preview(self.selected_spec().name)
-        if preview.missing_assets:
-            raise EditorVFXError22("preview blocked by missing assets")
+        name = self.selected_spec().name
+        missing = self.tooling.missing_assets(name)
+        if missing:
+            self._status = f"Missing asset: {missing[0]}"
+            raise EditorVFXError22(
+                "preview blocked by missing assets: " + ", ".join(missing)
+            )
+        preview = self.tooling.preview(name)
         self._runtime = preview.runtime
         self._preview_running = True
         self._last_step = 0.0
