@@ -122,7 +122,15 @@ class EditorVFXPanelController22:
             self._selected = names[0] if names else None
             self._invalidate_preview()
         backend = None if self._selected is None else self.tooling.require(self._selected).backend
-        missing = () if self._selected is None else self.tooling.missing_assets(self._selected)
+        messages: tuple[str, ...] = ()
+        if self._selected is not None:
+            try:
+                missing = self.tooling.missing_assets(self._selected)
+            except EditorVFXError22 as exc:
+                missing = ()
+                messages = (str(exc),)
+            else:
+                messages = tuple(f"Missing asset: {path}" for path in missing)
         return VFXEditorFrame22(
             self._selected,
             names,
@@ -130,7 +138,7 @@ class EditorVFXPanelController22:
             self.tooling.dirty,
             self._preview_running,
             self._diagnostics(),
-            tuple(f"Missing asset: {path}" for path in missing),
+            messages,
         )
 
     def select(self, name: str) -> VFXEditorFrame22:
