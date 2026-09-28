@@ -234,6 +234,12 @@ class TkVFXEditorApp22(TkAnimationMachineEditorApp22):
             self._vfx_list.delete(0, "end")
             for name in frame.effect_names:
                 self._vfx_list.insert("end", name)
+            self._vfx_list.selection_clear(0, "end")
+            if frame.selected in frame.effect_names:
+                selected_index = frame.effect_names.index(frame.selected)
+                self._vfx_list.selection_set(selected_index)
+                self._vfx_list.activate(selected_index)
+                self._vfx_list.see(selected_index)
         if frame.selected is not None:
             spec = self.vfx_controller.selected_spec()
             if self._vfx_capacity_var is not None:

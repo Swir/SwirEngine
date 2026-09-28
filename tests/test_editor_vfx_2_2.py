@@ -10,11 +10,72 @@ from swirengine.editor_vfx22 import (
     MAX_VFX_PREVIEW_STEP,
     EditorVFXPanelController22,
 )
+from swirengine.editor_vfx_frontend22 import TkVFXEditorApp22
 from swirengine.gpu_particles import GPUParticleEmitter3D
 from swirengine.particles import ParticleEmitter2D
 from swirengine.project_scaffold21 import new_project21
 from swirengine.vfx_authoring22 import EditorVFXTooling22
 from swirengine.vfx_schema22 import MAX_VFX_CAPACITY22, EditorVFXError22
+
+
+class _FakeVar:
+    def __init__(self) -> None:
+        self.value = ""
+
+    def set(self, value: object) -> None:
+        self.value = str(value)
+
+
+class _FakeListbox:
+    def __init__(self) -> None:
+        self.items: list[str] = []
+        self.selected: set[int] = set()
+        self.active: int | None = None
+        self.visible: int | None = None
+
+    def delete(self, _first: object, _last: object) -> None:
+        self.items.clear()
+        self.selected.clear()
+
+    def insert(self, _index: object, value: str) -> None:
+        self.items.append(value)
+
+    def selection_clear(self, _first: object, _last: object) -> None:
+        self.selected.clear()
+
+    def selection_set(self, index: int) -> None:
+        self.selected.add(index)
+
+    def activate(self, index: int) -> None:
+        self.active = index
+
+    def see(self, index: int) -> None:
+        self.visible = index
+
+
+def test_vfx_frontend_refresh_preserves_selected_effect(tmp_path: Path) -> None:
+    tooling = EditorVFXTooling22(tmp_path)
+    tooling.create_effect("alpha")
+    tooling.create_effect("beta", capacity=321, rate=33.0)
+    controller = EditorVFXPanelController22(tooling)
+    controller.select("beta")
+
+    app = object.__new__(TkVFXEditorApp22)
+    app.vfx_controller = controller
+    app._vfx_list = _FakeListbox()
+    app._vfx_capacity_var = _FakeVar()
+    app._vfx_rate_var = _FakeVar()
+    app._vfx_diagnostics = None
+    app._vfx_status_var = None
+
+    app._refresh_vfx_editor()
+
+    assert app._vfx_list.items == ["alpha", "beta"]
+    assert app._vfx_list.selected == {1}
+    assert app._vfx_list.active == 1
+    assert app._vfx_list.visible == 1
+    assert app._vfx_capacity_var.value == "321"
+    assert app._vfx_rate_var.value == "33.0"
 
 
 def test_vfx_library_round_trips_cpu_runtime_deterministically(tmp_path: Path) -> None:
