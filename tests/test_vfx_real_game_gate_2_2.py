@@ -94,5 +94,14 @@ def test_nested_texture_symlink_escape_fails_closed(tmp_path: Path) -> None:
         backend="gpu3d",
         texture="linked/spark.png",
     )
+    controller = EditorVFXPanelController22(session.vfx)
+    frame = controller.select("unsafe")
+    assert frame.messages == (
+        "VFX asset 'linked/spark.png' resolves outside the project assets directory",
+    )
+    assert frame.diagnostics is None
+    with pytest.raises(ValueError, match="outside"):
+        controller.start_preview()
+    assert controller.frame().diagnostics is None
     with pytest.raises(ValueError, match="outside"):
         session.vfx.preview("unsafe")
