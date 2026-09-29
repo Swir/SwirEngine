@@ -206,6 +206,15 @@ def test_vfx_authoring_bounds_capacity_and_manual_preview_bursts(tmp_path: Path)
     controller.start_preview()
     frame = controller.burst(MAX_VFX_PREVIEW_BURST * 100)
     assert frame.diagnostics is not None
+    assert frame.diagnostics.emitted_total == frame.diagnostics.capacity
+    assert frame.diagnostics.capacity == 256
+    assert "clamped" in controller.status
+
+    controller.apply_preset("fire-gpu")
+    controller.start_preview()
+    frame = controller.burst(MAX_VFX_PREVIEW_BURST * 100)
+    assert frame.diagnostics is not None
+    assert frame.diagnostics.capacity == 8192
     assert frame.diagnostics.emitted_total == MAX_VFX_PREVIEW_BURST
     assert "clamped" in controller.status
 
