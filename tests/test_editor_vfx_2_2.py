@@ -56,6 +56,33 @@ class _FakeListbox:
     def see(self, index: int) -> None:
         self.visible = index
 
+class _FakeWindow:
+    def __init__(self) -> None:
+        self.destroyed = False
+
+    def destroy(self) -> None:
+        self.destroyed = True
+
+
+def test_vfx_frontend_close_pauses_active_preview(tmp_path: Path) -> None:
+    tooling = EditorVFXTooling22(tmp_path)
+    controller = EditorVFXPanelController22(tooling)
+    controller.create("smoke", preset="soft-smoke-2d")
+    controller.start_preview()
+    assert controller.frame().preview_running
+
+    app = object.__new__(TkVFXEditorApp22)
+    app.vfx_controller = controller
+    app._vfx_tick_after = None
+    window = _FakeWindow()
+    app._vfx_window = window
+
+    app._close_vfx_editor()
+
+    assert not controller.frame().preview_running
+    assert window.destroyed
+    assert app._vfx_window is None
+
 
 def test_vfx_frontend_refresh_preserves_selected_effect(tmp_path: Path) -> None:
     tooling = EditorVFXTooling22(tmp_path)

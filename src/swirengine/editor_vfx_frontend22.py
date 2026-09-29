@@ -128,6 +128,7 @@ class TkVFXEditorApp22(TkAnimationMachineEditorApp22):
 
     def _close_vfx_editor(self) -> None:
         self._cancel_vfx_tick()
+        self.vfx_controller.pause_preview()
         if self._vfx_window is not None:
             self._vfx_window.destroy()
         self._vfx_window = None
