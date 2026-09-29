@@ -6,6 +6,7 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
 MAX_VFX_CAPACITY22 = 65_536
+MAX_CPU2D_VFX_RATE_PER_CAPACITY22 = 4.0
 
 
 class EditorVFXError22(ValueError):
@@ -45,12 +46,16 @@ class VFXEffectSpec22:
         if backend not in {"cpu2d", "gpu3d"}:
             raise EditorVFXError22("backend must be cpu2d or gpu3d")
         object.__setattr__(self, "backend", backend)
-        object.__setattr__(
-            self,
-            "capacity",
-            _bounded_positive_int(self.capacity, "capacity", MAX_VFX_CAPACITY22),
-        )
-        object.__setattr__(self, "rate", _non_negative(self.rate, "rate"))
+        capacity = _bounded_positive_int(self.capacity, "capacity", MAX_VFX_CAPACITY22)
+        object.__setattr__(self, "capacity", capacity)
+        rate = _non_negative(self.rate, "rate")
+        if backend == "cpu2d":
+            max_rate = capacity * MAX_CPU2D_VFX_RATE_PER_CAPACITY22
+            if rate > max_rate:
+                raise EditorVFXError22(
+                    f"cpu2d rate must be <= {max_rate:g} for capacity {capacity}"
+                )
+        object.__setattr__(self, "rate", rate)
         object.__setattr__(self, "lifetime", _positive_pair(self.lifetime, "lifetime"))
         object.__setattr__(self, "speed", _pair(self.speed, "speed"))
         object.__setattr__(self, "angle", _pair(self.angle, "angle"))
