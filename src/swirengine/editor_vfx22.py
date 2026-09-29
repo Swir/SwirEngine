@@ -197,6 +197,7 @@ class EditorVFXPanelController22:
 
     def start_preview(self) -> VFXEditorFrame22:
         name = self.selected_spec().name
+        self._invalidate_preview()
         missing = self.tooling.missing_assets(name)
         if missing:
             self._status = f"Missing asset: {missing[0]}"
