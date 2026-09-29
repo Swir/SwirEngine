@@ -234,8 +234,17 @@ class EditorVFXPanelController22:
         requested = int(count)
         if requested < 0:
             raise EditorVFXError22("preview burst count must be non-negative")
-        bounded = min(requested, MAX_VFX_PREVIEW_BURST, MAX_VFX_CAPACITY22)
-        emitted = self._require_runtime().emit(bounded)
+        runtime = self._require_runtime()
+        runtime_capacity = (
+            runtime.max_particles if isinstance(runtime, ParticleEmitter2D) else runtime.capacity
+        )
+        bounded = min(
+            requested,
+            MAX_VFX_PREVIEW_BURST,
+            MAX_VFX_CAPACITY22,
+            runtime_capacity,
+        )
+        emitted = runtime.emit(bounded)
         suffix = " (clamped)" if bounded != requested else ""
         self._status = f"Queued/emitted {emitted} particles{suffix}"
         return self.frame()
