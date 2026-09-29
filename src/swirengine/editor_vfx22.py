@@ -131,6 +131,9 @@ class EditorVFXPanelController22:
                 messages = (str(exc),)
             else:
                 messages = tuple(f"Missing asset: {path}" for path in missing)
+        if messages:
+            self._invalidate_preview()
+            self._status = messages[0]
         return VFXEditorFrame22(
             self._selected,
             names,

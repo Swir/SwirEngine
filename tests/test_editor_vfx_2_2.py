@@ -202,6 +202,28 @@ def test_vfx_restart_with_removed_texture_invalidates_stale_preview(tmp_path: Pa
     assert frame.messages == ("Missing asset: vfx/spark.png",)
 
 
+def test_vfx_live_preview_stops_when_texture_disappears(tmp_path: Path) -> None:
+    texture = tmp_path / "assets" / "vfx" / "spark.png"
+    texture.parent.mkdir(parents=True)
+    texture.write_bytes(b"fixture")
+    tooling = EditorVFXTooling22(tmp_path)
+    tooling.create_effect("sparks", backend="gpu3d", texture="vfx/spark.png")
+    controller = EditorVFXPanelController22(tooling)
+    controller.select("sparks")
+    controller.start_preview()
+    assert controller.frame().preview_running
+
+    texture.unlink()
+
+    frame = controller.frame()
+    assert not frame.preview_running
+    assert frame.diagnostics is None
+    assert frame.messages == ("Missing asset: vfx/spark.png",)
+    assert controller.status == "Missing asset: vfx/spark.png"
+    with pytest.raises(EditorVFXError22, match="preview is not active"):
+        controller.step_preview(1.0 / 60.0)
+
+
 def test_vfx_paths_reject_parent_escape(tmp_path: Path) -> None:
     with pytest.raises(EditorVFXError22, match="project-relative"):
         EditorVFXTooling22(tmp_path, path="../vfx.json")
