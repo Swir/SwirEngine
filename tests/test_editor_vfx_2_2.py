@@ -15,7 +15,7 @@ from swirengine.gpu_particles import GPUParticleEmitter3D
 from swirengine.particles import ParticleEmitter2D
 from swirengine.project_scaffold21 import new_project21
 from swirengine.vfx_authoring22 import EditorVFXTooling22
-from swirengine.vfx_schema22 import MAX_VFX_CAPACITY22, EditorVFXError22
+from swirengine.vfx_schema22 import (\n    MAX_CPU2D_VFX_RATE_PER_CAPACITY22,\n    MAX_VFX_CAPACITY22,\n    EditorVFXError22,\n)
 
 
 class _FakeVar:
@@ -204,3 +204,47 @@ def test_vfx_authoring_bounds_capacity_and_manual_preview_bursts(tmp_path: Path)
     assert frame.diagnostics is not None
     assert frame.diagnostics.emitted_total == MAX_VFX_PREVIEW_BURST
     assert "clamped" in controller.status
+
+def test_vfx_cpu2d_authored_rate_is_bounded_to_normal_frame_capacity(tmp_path: Path) -> None:
+    capacity = 32
+    max_cpu_rate = capacity * MAX_CPU2D_VFX_RATE_PER_CAPACITY22
+
+    tooling = EditorVFXTooling22(tmp_path)
+    with pytest.raises(EditorVFXError22, match="cpu2d rate"):
+        tooling.create_effect(
+            "cpu-too-fast",
+            backend="cpu2d",
+            capacity=capacity,
+            rate=max_cpu_rate + 0.01,
+        )
+
+    tooling.create_effect(
+        "cpu-boundary",
+        backend="cpu2d",
+        capacity=capacity,
+        rate=max_cpu_rate,
+    )
+    cpu_runtime = tooling.build_runtime("cpu-boundary")
+    assert isinstance(cpu_runtime, ParticleEmitter2D)
+    cpu_runtime.update(0.25)
+    assert cpu_runtime.diagnostics.last_spawned <= capacity
+
+    controller = EditorVFXPanelController22(tooling)
+    controller.select("cpu-boundary")
+    controller.start_preview()
+    frame = controller.step_preview(0.25)
+    assert frame.diagnostics is not None
+    assert frame.diagnostics.last_step == pytest.approx(MAX_VFX_PREVIEW_STEP)
+    assert frame.diagnostics.emitted_total <= capacity
+
+    tooling.create_effect(
+        "gpu-high-rate",
+        backend="gpu3d",
+        capacity=capacity,
+        rate=max_cpu_rate * 10.0,
+    )
+    gpu_runtime = tooling.build_runtime("gpu-high-rate")
+    assert isinstance(gpu_runtime, GPUParticleEmitter3D)
+    gpu_runtime.update(0.25)
+    assert gpu_runtime.diagnostics.queued <= capacity
+
