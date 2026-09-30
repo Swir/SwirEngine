@@ -140,7 +140,9 @@ def _unit(value: Any, label: str) -> float:
 
 
 def _positive_int(value: Any, label: str) -> int:
-    result = int(value)
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise EditorVFXError22(f"{label} must be an integer")
+    result = value
     if result <= 0:
         raise EditorVFXError22(f"{label} must be greater than zero")
     return result

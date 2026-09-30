@@ -268,6 +268,16 @@ def test_integrated_session_saves_and_reopens_vfx_library(tmp_path: Path) -> Non
     assert not reopened.summary().dirty
 
 
+@pytest.mark.parametrize("capacity", (1.5, "64", True))
+def test_vfx_capacity_rejects_non_integer_values(
+    tmp_path: Path,
+    capacity: object,
+) -> None:
+    tooling = EditorVFXTooling22(tmp_path)
+    with pytest.raises(EditorVFXError22, match="capacity must be an integer"):
+        tooling.create_effect("invalid-capacity", capacity=capacity)
+
+
 def test_vfx_authoring_bounds_capacity_and_manual_preview_bursts(tmp_path: Path) -> None:
     tooling = EditorVFXTooling22(tmp_path)
     with pytest.raises(EditorVFXError22, match="capacity"):
