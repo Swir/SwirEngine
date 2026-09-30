@@ -278,6 +278,25 @@ def test_vfx_capacity_rejects_non_integer_values(
         tooling.create_effect("invalid-capacity", capacity=capacity)
 
 
+@pytest.mark.parametrize("trail_enabled", ("false", 1, 0))
+def test_vfx_trail_enabled_rejects_non_boolean_values(
+    tmp_path: Path,
+    trail_enabled: object,
+) -> None:
+    tooling = EditorVFXTooling22(tmp_path)
+    with pytest.raises(EditorVFXError22, match="trail_enabled must be a boolean"):
+        tooling.create_effect("invalid-trail", trail_enabled=trail_enabled)
+
+
+def test_vfx_trail_enabled_true_round_trips(tmp_path: Path) -> None:
+    tooling = EditorVFXTooling22(tmp_path)
+    tooling.create_effect("trail-enabled", trail_enabled=True)
+    tooling.save()
+
+    reopened = EditorVFXTooling22(tmp_path)
+    assert tuple(item.trail_enabled for item in reopened.effects()) == (True,)
+
+
 @pytest.mark.parametrize("seed", (1.5, "7", True))
 def test_vfx_seed_rejects_non_integer_values(
     tmp_path: Path,

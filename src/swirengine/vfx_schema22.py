@@ -79,7 +79,7 @@ class VFXEffectSpec22:
             raise EditorVFXError22("render_mode must be sprite or mesh")
         object.__setattr__(self, "emissive_strength", _non_negative(self.emissive_strength, "emissive_strength"))
         object.__setattr__(self, "texture", None if self.texture is None else project_asset_path(self.texture))
-        object.__setattr__(self, "trail_enabled", bool(self.trail_enabled))
+        object.__setattr__(self, "trail_enabled", _boolean(self.trail_enabled, "trail_enabled"))
         object.__setattr__(self, "trail_alpha_scale", _unit(self.trail_alpha_scale, "trail_alpha_scale"))
         object.__setattr__(self, "seed", _integer(self.seed, "seed"))
 
@@ -137,6 +137,12 @@ def _unit(value: Any, label: str) -> float:
     if not 0 <= result <= 1:
         raise EditorVFXError22(f"{label} must be within 0..1")
     return result
+
+
+def _boolean(value: Any, label: str) -> bool:
+    if not isinstance(value, bool):
+        raise EditorVFXError22(f"{label} must be a boolean")
+    return value
 
 
 def _integer(value: Any, label: str) -> int:
