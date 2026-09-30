@@ -81,7 +81,7 @@ class VFXEffectSpec22:
         object.__setattr__(self, "texture", None if self.texture is None else project_asset_path(self.texture))
         object.__setattr__(self, "trail_enabled", bool(self.trail_enabled))
         object.__setattr__(self, "trail_alpha_scale", _unit(self.trail_alpha_scale, "trail_alpha_scale"))
-        object.__setattr__(self, "seed", int(self.seed))
+        object.__setattr__(self, "seed", _integer(self.seed, "seed"))
 
 
 def project_relative_path(value: Any, label: str) -> str:
@@ -139,10 +139,14 @@ def _unit(value: Any, label: str) -> float:
     return result
 
 
-def _positive_int(value: Any, label: str) -> int:
+def _integer(value: Any, label: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise EditorVFXError22(f"{label} must be an integer")
-    result = value
+    return value
+
+
+def _positive_int(value: Any, label: str) -> int:
+    result = _integer(value, label)
     if result <= 0:
         raise EditorVFXError22(f"{label} must be greater than zero")
     return result

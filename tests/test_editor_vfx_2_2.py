@@ -278,6 +278,25 @@ def test_vfx_capacity_rejects_non_integer_values(
         tooling.create_effect("invalid-capacity", capacity=capacity)
 
 
+@pytest.mark.parametrize("seed", (1.5, "7", True))
+def test_vfx_seed_rejects_non_integer_values(
+    tmp_path: Path,
+    seed: object,
+) -> None:
+    tooling = EditorVFXTooling22(tmp_path)
+    with pytest.raises(EditorVFXError22, match="seed must be an integer"):
+        tooling.create_effect("invalid-seed", seed=seed)
+
+
+def test_vfx_seed_preserves_negative_integer_round_trip(tmp_path: Path) -> None:
+    tooling = EditorVFXTooling22(tmp_path)
+    tooling.create_effect("negative-seed", seed=-7)
+    tooling.save()
+
+    reopened = EditorVFXTooling22(tmp_path)
+    assert tuple(item.seed for item in reopened.effects()) == (-7,)
+
+
 def test_vfx_authoring_bounds_capacity_and_manual_preview_bursts(tmp_path: Path) -> None:
     tooling = EditorVFXTooling22(tmp_path)
     with pytest.raises(EditorVFXError22, match="capacity"):
