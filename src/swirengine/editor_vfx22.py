@@ -235,7 +235,9 @@ class EditorVFXPanelController22:
         return self.frame()
 
     def burst(self, count: int = 16) -> VFXEditorFrame22:
-        requested = int(count)
+        if isinstance(count, bool) or not isinstance(count, int):
+            raise EditorVFXError22("preview burst count must be an integer")
+        requested = count
         if requested < 0:
             raise EditorVFXError22("preview burst count must be non-negative")
         runtime = self._require_runtime()
