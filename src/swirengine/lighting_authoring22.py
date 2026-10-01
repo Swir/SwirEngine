@@ -103,8 +103,10 @@ class LightSpec22:
         _boolean(self.enabled, "enabled")
 
     def runtime(self) -> DirectionalLight3D | PointLight3D | SpotLight3D:
-        common = dict(name=self.name, color=Color(*self.color), intensity=self.intensity,
-                      enabled=self.enabled)
+        common = {
+            "name": self.name, "color": Color(*self.color),
+            "intensity": self.intensity, "enabled": self.enabled,
+        }
         if self.kind == "directional":
             return DirectionalLight3D(direction=Vec3(*self.direction), **common)
         if self.kind == "point":
@@ -334,8 +336,10 @@ class EditorLightingTooling22:
 
     def _serialized(self, profiles: dict[str, SceneLightingSpec22] | None = None) -> str:
         data = self._profiles if profiles is None else profiles
-        return _serialize(dict(format=LIGHTING_FORMAT, version=LIGHTING_VERSION,
-                               profiles=[asdict(data[key]) for key in sorted(data)]))
+        return _serialize({
+            "format": LIGHTING_FORMAT, "version": LIGHTING_VERSION,
+            "profiles": [asdict(data[key]) for key in sorted(data)],
+        })
 
     def save(self) -> None:
         data = self._serialized()
