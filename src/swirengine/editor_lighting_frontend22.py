@@ -22,7 +22,7 @@ _SECTIONS = (
 def _parse_field(value: Any, original: Any) -> Any:
     if isinstance(original, bool):
         if not isinstance(value, bool):
-            raise ValueError("checkbox value must be boolean")
+            raise TypeError("checkbox value must be boolean")
         return value
     if isinstance(original, tuple):
         return tuple(float(item.strip()) for item in str(value).split(","))
