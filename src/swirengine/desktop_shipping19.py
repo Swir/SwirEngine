@@ -190,7 +190,12 @@ def _source_inventory(root: Path, files: Sequence[Path]) -> tuple[ShippingInvent
     for relative in files:
         portable = _safe_relative(relative, label="source file")
         source = root / PurePosixPath(portable)
-        _contained(source, root, label="source file")
+        try:
+            source.resolve(strict=True).relative_to(root)
+        except (OSError, RuntimeError, ValueError) as exc:
+            raise DesktopShippingError(
+                f"source file resolves outside its allowed root: {source}"
+            ) from exc
         if source.is_symlink():
             raise DesktopShippingError(
                 f"source shipping inventory does not accept symlinked files: {portable}"
@@ -510,7 +515,13 @@ def create_desktop_shipping_plan(
             f"profile {profile_name!r} targets {profile.target.value}; "
             "desktop shipping requires windows/linux/macos"
         )
-    export_plan = ProjectExporter(manifest.root).plan(profile)
+    try:
+        export_plan = ProjectExporter(manifest.root).plan(profile)
+    except (OSError, ValueError) as exc:
+        raise DesktopShippingError(
+            "desktop shipping export preflight rejected a source outside its allowed root "
+            f"or otherwise unsafe: {exc}"
+        ) from exc
     inventory = _source_inventory(manifest.root, export_plan.files)
     return DesktopShippingPlan(
         project_name=manifest.name,

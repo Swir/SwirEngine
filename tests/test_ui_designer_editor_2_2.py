@@ -8,6 +8,7 @@ import pytest
 from swirengine.editor_app21 import EditorProjectSession
 from swirengine.editor_asset_app21 import TkIntegratedEditorApp21, run_editor_session21
 from swirengine.editor_asset_drop21 import TkNativeDropAssetPipelineEditorApp21
+from swirengine.editor_extension_frontend22 import TkEditorExtensionHostApp22
 from swirengine.editor_integrated_session21 import EditorIntegratedProjectSession21
 from swirengine.editor_preview import EditorViewportImage
 from swirengine.editor_ui_designer22 import (
@@ -253,8 +254,9 @@ def test_integrated_session_saves_reopens_and_adopts_ui_designer(tmp_path: Path)
     assert promoted.ui_designer.target.parent == root.resolve() / "config"
 
 
-def test_integrated_shell_keeps_legacy_ui_and_adds_ui_designer_first() -> None:
-    assert TkIntegratedEditorApp21.__bases__[0] is TkUIDesignerEditorApp22
+def test_integrated_shell_keeps_ui_designer_under_extension_host_first() -> None:
+    assert TkIntegratedEditorApp21.__bases__[0] is TkEditorExtensionHostApp22
+    assert issubclass(TkEditorExtensionHostApp22, TkUIDesignerEditorApp22)
     assert issubclass(TkIntegratedEditorApp21, TkUIDesignerEditorApp22)
     assert issubclass(TkIntegratedEditorApp21, TkNativeDropAssetPipelineEditorApp21)
 

@@ -11,7 +11,10 @@ from .editor_build_export_tooling21 import (
     EditorBuildExportTooling21,
     EditorBuildExportToolingError,
 )
+from .editor_extension_sdk22 import EditorExtensionError22, EditorExtensionRegistry22
 from .editor_material_tooling22 import EditorMaterialTooling22, EditorMaterialToolingError
+from .editor_multiplayer_debugger22 import EditorMultiplayerDebugger22
+from .editor_multiplayer_extension22 import EditorMultiplayerDebuggerExtension22
 from .editor_navigation_tooling21 import EditorNavigationToolingError
 from .editor_physics_tooling21 import EditorPhysicsToolingError
 from .editor_save_profile_tooling21 import (
@@ -73,6 +76,11 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
         self.vfx = EditorVFXTooling22(self.manifest.root)
         self.lighting = EditorLightingTooling22(self.manifest.root)
         self.ui_designer = EditorUIDesignerTooling22.open(self.manifest.root)
+        self.multiplayer_debugger = EditorMultiplayerDebugger22(self.manifest.root)
+        self.editor_extensions = EditorExtensionRegistry22()
+        self.editor_extensions.register(
+            EditorMultiplayerDebuggerExtension22(self.multiplayer_debugger)
+        )
 
     @classmethod
     def adopt(cls, session: EditorProjectSession) -> EditorIntegratedProjectSession21:
@@ -101,6 +109,11 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
         integrated.vfx = EditorVFXTooling22(integrated.manifest.root)
         integrated.lighting = EditorLightingTooling22(integrated.manifest.root)
         integrated.ui_designer = EditorUIDesignerTooling22.open(integrated.manifest.root)
+        integrated.multiplayer_debugger = EditorMultiplayerDebugger22(integrated.manifest.root)
+        integrated.editor_extensions = EditorExtensionRegistry22()
+        integrated.editor_extensions.register(
+            EditorMultiplayerDebuggerExtension22(integrated.multiplayer_debugger)
+        )
         return integrated
 
     def summary(self) -> EditorProjectSummary:
@@ -219,6 +232,19 @@ class EditorIntegratedProjectSession21(EditorProjectSession):
         from .editor_asset_app21 import run_editor_session21
 
         run_editor_session21(self)
+
+    def close(self) -> None:
+        """Release transient debugger and extension resources without saving project state."""
+        try:
+            self.editor_extensions.shutdown()
+        except EditorExtensionError22:
+            self.console.write(
+                "Editor extension shutdown failed.",
+                level="error",
+                source="editor-extensions",
+            )
+        finally:
+            self.multiplayer_debugger.close()
 
     def _all_dirty(self) -> bool:
         return bool(
