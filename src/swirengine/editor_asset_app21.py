@@ -7,14 +7,14 @@ from .editor_app21 import EditorProjectOpenError, EditorProjectSession, _build_p
 from .editor_asset_drop21 import TkNativeDropAssetPipelineEditorApp21
 from .editor_asset_formats21 import create_format_aware_editor_asset_pipeline21
 from .editor_asset_frontend21 import EditorAssetWorkflow21
+from .editor_extension_frontend22 import TkEditorExtensionHostApp22
 from .editor_integrated_session21 import EditorIntegratedProjectSession21
 from .editor_lighting22 import LightingSceneSource22
 from .editor_render_backend21 import EditorRenderBackendUnavailable
-from .editor_ui_designer_frontend22 import TkUIDesignerEditorApp22
 
 
 class TkIntegratedEditorApp21(
-    TkUIDesignerEditorApp22,
+    TkEditorExtensionHostApp22,
     TkNativeDropAssetPipelineEditorApp21,
 ):
     """Unified SwirEditor shell for gameplay creator tools and the production asset pipeline."""
@@ -24,10 +24,11 @@ def run_editor_session21(session: EditorProjectSession) -> None:
     """Run one fully integrated SwirEditor creator session with 2.2 production tooling."""
 
     session = EditorIntegratedProjectSession21.adopt(session)
-    backend = create_format_aware_editor_asset_pipeline21(session.asset_browser.manager)
-    workflow = EditorAssetWorkflow21(backend, session.asset_browser)
-    animation_resource_resolver = AnimationProjectResourceResolver22(session.manifest.root)
+    workflow: EditorAssetWorkflow21 | None = None
     try:
+        backend = create_format_aware_editor_asset_pipeline21(session.asset_browser.manager)
+        workflow = EditorAssetWorkflow21(backend, session.asset_browser)
+        animation_resource_resolver = AnimationProjectResourceResolver22(session.manifest.root)
         try:
             session.enable_live_viewport()
         except EditorRenderBackendUnavailable as exc:
@@ -53,12 +54,16 @@ def run_editor_session21(session: EditorProjectSession) -> None:
             vfx=session.vfx,
             lighting=session.lighting,
             ui_designer=session.ui_designer,
+            editor_extensions=session.editor_extensions,
             lighting_source=lambda: LightingSceneSource22(
                 session.scenes.active_path,
                 session.manifest.mode,
                 session.workspace.scene,
-                (session.controller.camera_3d if session.manifest.mode == "3d"
-                 else session.controller.camera_2d),
+                (
+                    session.controller.camera_3d
+                    if session.manifest.mode == "3d"
+                    else session.controller.camera_2d
+                ),
                 session.serializer,
             ),
             title=f"SwirEditor 2.2 — {session.manifest.name}",
@@ -73,14 +78,28 @@ def run_editor_session21(session: EditorProjectSession) -> None:
         session.console.write("Material/Shader Editor 2.2 attached", source="materials")
         session.console.write("Visual Scripting / Node Graph 2.2 attached", source="logic")
         session.console.write("World/Terrain Authoring 2.2 attached", source="world")
-        session.console.write("Animation State Machine / Blend Tree 2.2 attached", source="animation")
+        session.console.write(
+            "Animation State Machine / Blend Tree 2.2 attached", source="animation"
+        )
         session.console.write("Particle / VFX Editor 2.2 attached", source="vfx")
-        session.console.write("Lighting / Environment / Post-FX Editor 2.2 attached", source="lighting")
+        session.console.write(
+            "Lighting / Environment / Post-FX Editor 2.2 attached", source="lighting"
+        )
         session.console.write("UI Designer 2.2 attached", source="ui-designer")
+        session.console.write(
+            "Multiplayer Debugger and Editor Extension SDK 2.2 attached",
+            source="multiplayer-debugger",
+        )
         app.run()
     finally:
-        workflow.shutdown()
-        session.disable_live_viewport()
+        try:
+            if workflow is not None:
+                workflow.shutdown()
+        finally:
+            try:
+                session.disable_live_viewport()
+            finally:
+                session.close()
 
 
 def main(argv: Sequence[str] | None = None) -> int:

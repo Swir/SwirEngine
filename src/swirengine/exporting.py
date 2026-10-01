@@ -91,8 +91,7 @@ class PackagingProfile:
             entrypoint=str(data.get("entrypoint", "main.py")),
             app_name=(None if data.get("app_name") is None else str(data["app_name"])),
             include=tuple(
-                str(value)
-                for value in data.get("include", ("assets", "scenes", "scripts"))
+                str(value) for value in data.get("include", ("assets", "scenes", "scripts"))
             ),
             exclude=tuple(
                 str(value)
@@ -184,6 +183,7 @@ class ProjectExporter:
         ExportTarget.LINUX: "linux",
         ExportTarget.MACOS: "darwin",
     }
+    _EDITOR_ONLY_ROOTS: ClassVar[frozenset[str]] = frozenset({".swir"})
 
     def __init__(self, project_root: str | Path) -> None:
         self.project_root = Path(project_root).expanduser().resolve()
@@ -207,6 +207,99 @@ class ProjectExporter:
             if normalized in parts or relative.as_posix() == normalized:
                 return True
         return False
+
+    @classmethod
+    def _is_editor_only(cls, relative: Path) -> bool:
+        parts = relative.parts
+        return bool(parts and parts[0].casefold() in cls._EDITOR_ONLY_ROOTS)
+
+    @staticmethod
+    def _is_within(path: Path, root: Path) -> bool:
+        return path == root or root in path.parents
+
+    def _resolves_into_output(self, relative: Path, output_dir: Path) -> bool:
+        """Return whether an existing source aliases the exact staging subtree."""
+
+        try:
+            resolved = (self.project_root / relative).resolve(strict=True)
+        except (OSError, RuntimeError, ValueError):
+            return False
+        return self._is_within(resolved, output_dir)
+
+    def _validated_source(self, relative: Path, *, label: str) -> Path:
+        source = self.project_root / relative
+        try:
+            resolved = source.resolve(strict=True)
+            resolved_relative = resolved.relative_to(self.project_root)
+        except (OSError, RuntimeError, ValueError) as exc:
+            raise ValueError(f"{label} must resolve inside the project") from exc
+        if self._is_editor_only(resolved_relative):
+            raise ValueError(
+                f"{label} must not resolve through the editor-only .swir directory"
+            )
+        return source
+
+    def _included_files(
+        self,
+        relative: Path,
+        *,
+        exclude: Iterable[str],
+        output_dir: Path,
+    ) -> tuple[Path, ...]:
+        """Inspect one include without entering editor-only or excluded directories."""
+
+        if self._is_editor_only(relative) or self._is_excluded(relative, exclude):
+            return ()
+        if self._resolves_into_output(relative, output_dir):
+            return ()
+        source = self.project_root / relative
+        if source.is_file():
+            self._validated_source(relative, label="included file")
+            return (relative,)
+        if not source.is_dir():
+            return ()
+        self._validated_source(relative, label="include path")
+
+        files: list[Path] = []
+
+        def fail_walk(_error: OSError) -> None:
+            raise ValueError("include path could not be inspected")
+
+        for directory, names, filenames in os.walk(
+            source,
+            topdown=True,
+            followlinks=False,
+            onerror=fail_walk,
+        ):
+            directory_path = Path(directory)
+            kept_names: list[str] = []
+            for name in sorted(names, key=str.casefold):
+                child = directory_path / name
+                child_relative = child.relative_to(self.project_root)
+                if self._is_editor_only(child_relative) or self._is_excluded(
+                    child_relative, exclude
+                ):
+                    continue
+                if self._resolves_into_output(child_relative, output_dir):
+                    continue
+                if child.is_symlink():
+                    self._validated_source(child_relative, label="included directory")
+                kept_names.append(name)
+            names[:] = kept_names
+
+            for name in sorted(filenames, key=str.casefold):
+                child = directory_path / name
+                child_relative = child.relative_to(self.project_root)
+                if self._is_editor_only(child_relative) or self._is_excluded(
+                    child_relative, exclude
+                ):
+                    continue
+                if self._resolves_into_output(child_relative, output_dir):
+                    continue
+                self._validated_source(child_relative, label="included file")
+                if child.is_file():
+                    files.append(child_relative)
+        return tuple(files)
 
     def _scene_package_files(self) -> tuple[Path, ...]:
         """Return validated scene-package files that must ship with a 1.9 project.
@@ -353,29 +446,41 @@ class ProjectExporter:
                 runtime.close()
         return (Path(tooling.relative_path),)
 
-    def _collect_files(self, profile: PackagingProfile) -> tuple[Path, ...]:
+    def _collect_files(
+        self,
+        profile: PackagingProfile,
+        *,
+        output_dir: Path,
+    ) -> tuple[Path, ...]:
         entrypoint = self._safe_relative(profile.entrypoint, label="entrypoint")
+        if self._is_editor_only(entrypoint):
+            raise ValueError("entrypoint must not use the editor-only .swir directory")
         candidates: set[Path] = set()
         entrypoint_path = self.project_root / entrypoint
         if not entrypoint_path.is_file():
             raise FileNotFoundError(f"entrypoint does not exist: {entrypoint_path}")
+        if self._resolves_into_output(entrypoint, output_dir):
+            raise ValueError("entrypoint must not resolve inside the export output directory")
         candidates.add(entrypoint)
 
-        for value in profile.include:
-            relative = self._safe_relative(value, label="include path")
-            source = self.project_root / relative
-            if source.is_file():
-                candidates.add(relative)
-                continue
-            if source.is_dir():
-                for child in source.rglob("*"):
-                    if child.is_file():
-                        candidates.add(child.relative_to(self.project_root))
-
+        # Run semantic opt-in preflights before a broad include walk. Besides preserving their
+        # public diagnostics, this ensures malformed or escaping declared resources fail at their
+        # owning boundary before generic source inventory validation can mask the reason.
         scene_package_files = self._scene_package_files()
         content_build_files = self._content_build_files()
         lighting_files = self._lighting_files()
         ui_designer_files = self._ui_designer_files()
+
+        for value in profile.include:
+            relative = self._safe_relative(value, label="include path")
+            candidates.update(
+                self._included_files(
+                    relative,
+                    exclude=profile.exclude,
+                    output_dir=output_dir,
+                )
+            )
+
         candidates.update(scene_package_files)
         candidates.update(content_build_files)
         candidates.update(lighting_files)
@@ -383,8 +488,12 @@ class ProjectExporter:
 
         if profile.icon:
             icon = self._safe_relative(profile.icon, label="icon path")
+            if self._is_editor_only(icon):
+                raise ValueError("icon must not use the editor-only .swir directory")
             if not (self.project_root / icon).is_file():
                 raise FileNotFoundError(f"icon does not exist: {self.project_root / icon}")
+            if self._resolves_into_output(icon, output_dir):
+                raise ValueError("icon must not resolve inside the export output directory")
             candidates.add(icon)
 
         for optional in ("swirproject.toml", "requirements.txt", "pyproject.toml"):
@@ -392,7 +501,13 @@ class ProjectExporter:
             if path.is_file():
                 candidates.add(Path(optional))
 
-        filtered = [path for path in candidates if not self._is_excluded(path, profile.exclude)]
+        filtered = [
+            path
+            for path in candidates
+            if not self._is_editor_only(path)
+            and not self._is_excluded(path, profile.exclude)
+            and not self._resolves_into_output(path, output_dir)
+        ]
         excluded_scene_files = tuple(path for path in scene_package_files if path not in filtered)
         if excluded_scene_files:
             values = ", ".join(path.as_posix() for path in excluded_scene_files)
@@ -408,9 +523,9 @@ class ProjectExporter:
         excluded_ui_designer = tuple(path for path in ui_designer_files if path not in filtered)
         if excluded_ui_designer:
             values = ", ".join(path.as_posix() for path in excluded_ui_designer)
-            raise ValueError(
-                f"packaging profile excludes declared UI Designer content: {values}"
-            )
+            raise ValueError(f"packaging profile excludes declared UI Designer content: {values}")
+        for path in filtered:
+            self._validated_source(path, label="export source")
         return tuple(sorted(filtered, key=lambda path: path.as_posix().casefold()))
 
     @staticmethod
@@ -434,7 +549,9 @@ class ProjectExporter:
     def _data_files(files: Sequence[Path], entrypoint: Path) -> tuple[Path, ...]:
         # Keep dynamically loaded project scripts as data. Only the entrypoint is consumed directly
         # by PyInstaller; .pyc files remain excluded because source scripts are the portable form.
-        return tuple(path for path in files if path != entrypoint and path.suffix.casefold() != ".pyc")
+        return tuple(
+            path for path in files if path != entrypoint and path.suffix.casefold() != ".pyc"
+        )
 
     @classmethod
     def _render_pyinstaller_spec(cls, plan: ExportPlan) -> str:
@@ -495,17 +612,15 @@ class ProjectExporter:
         output_dir: str | Path | None = None,
     ) -> ExportPlan:
         destination = (
-            Path(output_dir).expanduser().resolve()
+            Path(output_dir).expanduser()
             if output_dir is not None
-            else self.project_root
-            / "dist"
-            / f"{profile.effective_app_name}-{profile.target.value}"
-        )
+            else self.project_root / "dist" / f"{profile.effective_app_name}-{profile.target.value}"
+        ).resolve()
         return ExportPlan(
             project_root=self.project_root,
             output_dir=destination,
             profile=profile,
-            files=self._collect_files(profile),
+            files=self._collect_files(profile, output_dir=destination),
             native_build_command=self._native_command(profile),
             experimental=profile.target in {ExportTarget.ANDROID, ExportTarget.WEB},
         )
@@ -523,6 +638,11 @@ class ProjectExporter:
         )
         if overlaps_source and plan.output_dir.parent != self.project_root / "dist":
             raise ValueError("output directory must not overlap project source")
+
+        # Revalidate all inputs before cleaning a previous export. This keeps a source symlink swap
+        # or other unsafe source mutation from destroying the last known-good staging directory.
+        for relative in plan.files:
+            self._validated_source(relative, label="export source")
 
         if clean and plan.output_dir.exists():
             shutil.rmtree(plan.output_dir)

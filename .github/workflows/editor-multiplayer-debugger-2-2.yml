@@ -1,0 +1,180 @@
+name: Editor Multiplayer Debugger and Extension SDK 2.2
+
+on:
+  push:
+    branches: [main, "feature/2.2-*"]
+    paths:
+      - "src/swirengine/network_latency22.py"
+      - "src/swirengine/multiplayer_debugger22.py"
+      - "src/swirengine/editor_multiplayer_debugger22.py"
+      - "src/swirengine/editor_extension_sdk22.py"
+      - "src/swirengine/editor_extension_frontend22.py"
+      - "src/swirengine/editor_multiplayer_extension22.py"
+      - "src/swirengine/editor_integrated_session21.py"
+      - "src/swirengine/editor_asset_app21.py"
+      - "src/swirengine/exporting.py"
+      - "src/swirengine/desktop_shipping19.py"
+      - "tests/test_network_latency_2_2.py"
+      - "tests/test_multiplayer_debugger_2_2.py"
+      - "tests/test_editor_multiplayer_debugger_2_2.py"
+      - "tests/test_editor_multiplayer_integration_2_2.py"
+      - "tests/test_editor_extension_sdk_2_2.py"
+      - "tests/test_editor_extension_tk_2_2.py"
+      - "tests/test_multiplayer_debugger_shipping_2_2.py"
+      - "tests/test_multiplayer_debugger_workflow_2_2.py"
+      - "docs/MULTIPLAYER_DEBUGGER_2_2.md"
+      - "CHANGELOG.d/2.2.0-multiplayer-debugger-sdk.md"
+      - "README.md"
+      - "ROADMAP_2_2.md"
+      - "assets/readme/**"
+      - "tools/generate_progress_svg.py"
+      - ".github/workflows/editor-multiplayer-debugger-2-2.yml"
+  pull_request:
+    paths:
+      - "src/swirengine/network_latency22.py"
+      - "src/swirengine/multiplayer_debugger22.py"
+      - "src/swirengine/editor_multiplayer_debugger22.py"
+      - "src/swirengine/editor_extension_sdk22.py"
+      - "src/swirengine/editor_extension_frontend22.py"
+      - "src/swirengine/editor_multiplayer_extension22.py"
+      - "src/swirengine/editor_integrated_session21.py"
+      - "src/swirengine/editor_asset_app21.py"
+      - "src/swirengine/exporting.py"
+      - "src/swirengine/desktop_shipping19.py"
+      - "tests/test_network_latency_2_2.py"
+      - "tests/test_multiplayer_debugger_2_2.py"
+      - "tests/test_editor_multiplayer_debugger_2_2.py"
+      - "tests/test_editor_multiplayer_integration_2_2.py"
+      - "tests/test_editor_extension_sdk_2_2.py"
+      - "tests/test_editor_extension_tk_2_2.py"
+      - "tests/test_multiplayer_debugger_shipping_2_2.py"
+      - "tests/test_multiplayer_debugger_workflow_2_2.py"
+      - "docs/MULTIPLAYER_DEBUGGER_2_2.md"
+      - "CHANGELOG.d/2.2.0-multiplayer-debugger-sdk.md"
+      - "README.md"
+      - "ROADMAP_2_2.md"
+      - "assets/readme/**"
+      - "tools/generate_progress_svg.py"
+      - ".github/workflows/editor-multiplayer-debugger-2-2.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: Debugger, extension SDK and compatibility / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install CPython 3.14 native build prerequisites
+        if: matrix.python-version == '3.14'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev
+      - name: Install development dependencies
+        run: python -m pip install --upgrade pip ".[dev]"
+      - name: Verify M9, legacy multiplayer and M8 UI contracts
+        run: >-
+          python -m pytest -q
+          tests/test_network_latency_2_2.py
+          tests/test_multiplayer_debugger_2_2.py
+          tests/test_editor_multiplayer_debugger_2_2.py
+          tests/test_editor_multiplayer_integration_2_2.py
+          tests/test_editor_extension_sdk_2_2.py
+          tests/test_editor_extension_tk_2_2.py
+          tests/test_multiplayer_debugger_shipping_2_2.py
+          tests/test_multiplayer_debugger_workflow_2_2.py
+          tests/test_multiplayer_2_0.py
+          tests/test_multiplayer_2_1_4.py
+          tests/test_multiplayer_replication_1_6.py
+          tests/test_network_profiler_1_6.py
+          tests/test_transport_qos_1_6.py
+          tests/test_ui_designer_authoring_2_2.py
+          tests/test_ui_designer_runtime_2_2.py
+          tests/test_ui_designer_editor_2_2.py
+          tests/test_ui_designer_shipping_2_2.py
+          tests/test_editor_hub_2_1.py
+          tests/test_progress_svg.py tests/test_progress_2_1.py
+      - name: Check active progress
+        run: python tools/generate_progress_svg.py --check
+      - name: Lint M9 slice
+        run: >-
+          python -m ruff check
+          src/swirengine/network_latency22.py
+          src/swirengine/multiplayer_debugger22.py
+          src/swirengine/editor_multiplayer_debugger22.py
+          src/swirengine/editor_extension_sdk22.py
+          src/swirengine/editor_extension_frontend22.py
+          src/swirengine/editor_multiplayer_extension22.py
+          src/swirengine/editor_integrated_session21.py
+          src/swirengine/editor_asset_app21.py
+          src/swirengine/exporting.py
+          src/swirengine/desktop_shipping19.py
+          tests/test_network_latency_2_2.py
+          tests/test_multiplayer_debugger_2_2.py
+          tests/test_editor_multiplayer_debugger_2_2.py
+          tests/test_editor_multiplayer_integration_2_2.py
+          tests/test_editor_extension_sdk_2_2.py
+          tests/test_editor_extension_tk_2_2.py
+          tests/test_multiplayer_debugger_shipping_2_2.py
+          tests/test_multiplayer_debugger_workflow_2_2.py
+      - name: Compile M9 slice
+        run: >-
+          python -m compileall -q
+          src/swirengine/network_latency22.py
+          src/swirengine/multiplayer_debugger22.py
+          src/swirengine/editor_multiplayer_debugger22.py
+          src/swirengine/editor_extension_sdk22.py
+          src/swirengine/editor_extension_frontend22.py
+          src/swirengine/editor_multiplayer_extension22.py
+          src/swirengine/editor_integrated_session21.py
+          src/swirengine/editor_asset_app21.py
+          src/swirengine/exporting.py
+          src/swirengine/desktop_shipping19.py
+          tests/test_network_latency_2_2.py
+          tests/test_multiplayer_debugger_2_2.py
+          tests/test_editor_multiplayer_debugger_2_2.py
+          tests/test_editor_multiplayer_integration_2_2.py
+          tests/test_editor_extension_sdk_2_2.py
+          tests/test_editor_extension_tk_2_2.py
+          tests/test_multiplayer_debugger_shipping_2_2.py
+          tests/test_multiplayer_debugger_workflow_2_2.py
+
+  installed-runtime:
+    name: Installed relocation, real localhost RTT and native Tk
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install native Tk test runtime
+        run: sudo apt-get update && sudo apt-get install -y xvfb python3-tk
+      - name: Install current source as a wheel-backed runtime
+        run: python -m pip install --upgrade pip ".[dev]"
+      - name: Require a real localhost TCP round trip
+        run: >-
+          python -m pytest -v -s tests/test_network_latency_2_2.py
+          -k real_localhost_tcp_peer_round_trip_records_a_real_rtt
+      - name: Require relocated execution from the installed engine
+        env:
+          SWIR_MULTIPLAYER_DEBUGGER_INSTALLED_ONLY: "1"
+        run: >-
+          python -m pytest -v -s tests/test_multiplayer_debugger_shipping_2_2.py
+          -k relocated_export_runs_debugger_and_real_round_trip_from_installed_engine
+      - name: Require native Tk extension host lifecycle
+        env:
+          SWIR_EDITOR_EXTENSIONS_REQUIRE_TK: "1"
+        run: xvfb-run -a python -m pytest -v tests/test_editor_extension_tk_2_2.py

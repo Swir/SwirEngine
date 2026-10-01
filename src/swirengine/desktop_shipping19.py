@@ -510,7 +510,13 @@ def create_desktop_shipping_plan(
             f"profile {profile_name!r} targets {profile.target.value}; "
             "desktop shipping requires windows/linux/macos"
         )
-    export_plan = ProjectExporter(manifest.root).plan(profile)
+    try:
+        export_plan = ProjectExporter(manifest.root).plan(profile)
+    except (OSError, ValueError) as exc:
+        raise DesktopShippingError(
+            "desktop shipping export preflight rejected a source outside its allowed root "
+            f"or otherwise unsafe: {exc}"
+        ) from exc
     inventory = _source_inventory(manifest.root, export_plan.files)
     return DesktopShippingPlan(
         project_name=manifest.name,
