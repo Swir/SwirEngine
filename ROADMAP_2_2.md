@@ -6,7 +6,7 @@
 
 SwirEngine 2.2 starts after the public SwirEngine 2.1.0 creator-workflow release. The target is a finite production-tools release: creators should be able to author more of a complete 2D/3D/multiplayer game visually while the generated data remains backed by shipping runtime systems.
 
-Current verified progress: 7/10 milestones = 70.0%.
+Current verified progress: 8/10 milestones = 80.0%.
 
 ## Product rules
 
@@ -26,7 +26,7 @@ Current verified progress: 7/10 milestones = 70.0%.
 - [x] **5. Animation State Machine + Blend Tree Editor.** Add visual state/transition authoring, blend trees, parameter inspection and runtime-backed preview/debugging over the shipping animation systems.
 - [x] **6. Particle/VFX Editor.** Add visual emitter/effect authoring for CPU/GPU particle systems, deterministic presets, preview controls and bounded runtime diagnostics.
 - [x] **7. Lighting, Environment and Post-FX authoring.** Add creator controls for lights, sky/environment, shadows, tone mapping and post-processing with scene persistence and live renderer validation.
-- [ ] **8. UI Designer 2.0.** Add responsive anchors/containers, reusable styles, interaction states and UI animation authoring while preserving keyboard/gamepad focus/navigation behavior.
+- [x] **8. UI Designer 2.2.** Add responsive anchors/containers, reusable styles, interaction states and UI animation authoring while preserving keyboard/gamepad focus/navigation behavior.
 - [ ] **9. Multiplayer Debugger + Editor Extension SDK.** Add replication/session inspection, latency/debug views and a bounded plugin API for extending SwirEditor without bypassing project/runtime safety contracts.
 - [ ] **10. Production acceptance and 2.2 release readiness.** Drive representative 2D, 3D and multiplayer projects through authoring, profiling, build/export and staged runtime; requalify supported CPython/platform packaging, clean installs, performance/safety evidence, checksums/provenance and the guarded release gate.
 
@@ -176,3 +176,16 @@ Milestone 8 may be checked only when the exact implementation head proves all of
 4. Action labels remain portable data, require explicit runtime handlers and stay inert in editor/export validation; invalid bindings, malformed documents, traversal and symlink escapes fail closed without replacing live authoring state or previous export output.
 5. Default Build/Export Wizard staging preserves the canonical UI document and manifest hash through relocation; an isolated installed wheel reopens it and exercises responsive layout, focus/navigation, animation sampling and a real software-EGL frame.
 6. Focused UI Designer, legacy UI/HUD, editor session, export, native Tk, persistence and safety regressions, the deterministic progress contract and the normal exact-head repository matrix are green; post-merge `main` must also complete its triggered workflow set without failures before the roadmap counter advances.
+
+### M8 implementation and acceptance evidence
+
+- [x] Deterministic project-confined `config/ui-designer.json` authoring with reusable themes, styles, responsive widget hierarchies and bounded animation tracks.
+- [x] Shipping `UIToolkit` runtime mapping for flow containers, viewport/parent anchors, interaction states, actions, input focus and animation playback.
+- [x] Unified SwirEditor creator controls with dirty/save/reopen behavior and isolated runtime-backed preview lifecycle.
+- [x] Explicit portable action bindings, transactional reload/save and fail-closed malformed, traversal, directory and symlink handling.
+- [x] Default Wizard export, manifest hashing, relocation, isolated installed-wheel runtime, real software EGL and native Tk qualification.
+- [x] Full exact-head PR matrix and post-merge `main` acceptance evidence.
+
+Milestone 8 accepted on 2026-10-01 after PR #237 exact head `81136e3ec1599cbc8553cdc3afe7b82f4e9efb34` completed all 41 exact-SHA Actions workflows successfully with 173 successful PR check runs. The implementation merged normally to `main` as `e4a916f66ef7329e88acb675995c9751870c3b5d`; both commits share tree `539c1d5e894929a69cf2b0554b2f235fec2af552`. All 19 associated post-merge workflow runs and all 107 final check runs completed successfully before this acceptance record advanced the roadmap to 8/10.
+
+The post-merge Lighting, UI Designer and Real-Game jobs each encountered an infrastructure-only package-install stall or timeout on their first attempt. The affected jobs were rerun on the unchanged exact merge SHA and completed successfully without any code, dependency or gate change. Required Python 3.10/3.13/3.14 UI contracts, default-export relocation, installed-wheel execution, real software EGL output and native Tk lifecycle validation all passed. This is source-development acceptance only; no public 2.2 release or physical-GPU performance claim is implied. Milestone 9 is the next open production-tools target.
