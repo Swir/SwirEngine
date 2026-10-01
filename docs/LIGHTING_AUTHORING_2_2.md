@@ -1,6 +1,6 @@
-# Lighting, Environment and Post-FX authoring — 2.2 M7 foundation
+# Lighting, Environment and Post-FX authoring — 2.2 M7
 
-This is the first runtime-backed M7 slice, not completed M7 acceptance and not a public 2.2 release. The authoritative roadmap remains 6/10 = 60.0%; public stable remains 2.1.0.
+This is runtime-backed M7 development, not completed M7 acceptance and not a public 2.2 release. The authoritative roadmap remains 6/10 = 60.0%; public stable remains 2.1.0.
 
 ## Included in this slice
 
@@ -9,6 +9,16 @@ This is the first runtime-backed M7 slice, not completed M7 acceptance and not a
 3D profiles map to the existing shipping `DirectionalLight3D`, `PointLight3D`, `SpotLight3D`, `Environment3D`, `Skybox3D`, `Renderer2Settings` and `PostProcessSettings`. 2D profiles use the shipping post-processing pipeline only. Nothing in this module substitutes an editor simulation for the runtime.
 
 Authoring includes light intensity/color/position/direction/range/cones, sky/ground lighting and an optional skybox texture, directional-shadow cascades and resolution, SSAO/bloom settings, tone mapping, exposure, gamma, contrast, saturation, vignette and FXAA.
+
+## Unified creator panel
+
+Open **Lighting / Environment / Post-FX…** from the SwirEditor creator menu. The panel follows the active project scene; its five tabs expose Lights, Environment, Shadows, Effects and Color grading. Light names identify add/update targets; remove operates on the selected light. Apply validates and updates the active scene profile atomically. Save lighting profiles writes the same library included in ordinary project saves. 2D disables the 3D-only authoring actions.
+
+**Start / refresh scene** snapshots the active scene using the project's registered serializer and creates an isolated preview with its own production renderer and GPU context. No game scripts are run. **Apply** updates live lighting on the next preview tick; **Pause** retains the image and runtime, **Step** renders one frame, and **Stop** releases the owned preview. Editing project geometry requires Start / refresh scene again; the panel intentionally does not reserialize the entire authoring scene every frame.
+
+The UI renders at most one 480x320 capture per 100 ms tick, without catch-up. The preview API caps each image dimension at 1024 and rejects snapshots over 4096 objects/entities or 4 MiB serialized data. These are editor preview budgets, not engine scene-size limits or FPS guarantees. The existing main viewport, authoring objects, game scripts and original renderer settings are never modified: closing or failing the isolated preview requires no mutation to restore them.
+
+Switching scenes (or reopening a different Scene object at the same path) stops the preview and clears its image rather than applying the old profile to the new scene. Missing or escaping live skybox resources also stop it. A changed profile or asset metadata signature rebuilds the preview once; unchanged captures reuse the owned renderer. Skybox camera following uses a copied current editor camera. Window close cancels the tick and releases the context; reopening starts stopped.
 
 ## Source-development example
 
@@ -46,7 +56,7 @@ finally:
     mount.unmount()
 ```
 
-`apply_to_game` is intentionally a **before-Game.run** API. It refuses a running game or a mismatched mode, checks combined existing/authored light budgets, mounts individually owned light/skybox objects and configures the shipping renderer. Build a fresh runtime per game. Unmount removes only this mount's scene objects; it does not restore global render settings. Skybox position is initially aligned to the camera; a moving-camera application should call the shipping `skybox.follow(game.camera)` in its update loop.
+`apply_to_game` is intentionally a **before-Game.run** API. It refuses a running game or a mismatched mode, checks combined existing/authored light budgets, mounts individually owned light/skybox objects and configures the shipping renderer. Build a fresh runtime per game. Unmount removes only this mount's scene objects; it does not restore global render settings. Skybox position is initially aligned to the camera; a moving-camera application should call the shipping `skybox.follow(game.camera)` in its update loop. This game-install API is distinct from the fully isolated editor preview described above.
 
 3D uses Renderer2, which requires the post-processing resolve. To request a neutral resolve use supported neutral tone mapping and neutral settings rather than disabling its resolve. A 2D profile cannot silently contain ignored 3D lights or an environment.
 
@@ -56,20 +66,21 @@ finally:
 - At most 128 scene profiles and 256 KiB canonical input/output; a rejected reload never replaces the previous live library or its dirty state.
 - Save uses a same-directory temporary file, flush/fsync and atomic replacement. Replacement failure preserves the original file and unsaved changes and cleans its temporary file.
 - Scene/library paths stay within the project. Skybox references stay beneath the resolved project `assets/` directory and are re-resolved on every runtime build, including nested and replaced-root symlinks. Missing resources fail closed before installation. This is not a claim against adversarial simultaneous filesystem races.
-- Skybox image decoding still belongs to the shipping renderer; file existence/path validation is not proof that arbitrary image bytes decode successfully.
+- Skybox image decoding still belongs to the shipping renderer; file existence/path validation is not proof that arbitrary image bytes decode successfully. Preview decoder/render errors close the owned preview and surface an error rather than claiming successful rendering.
 - Each light kind is capped at four; enabled environment illumination consumes two directional slots. Existing scene lights are included at installation so authored lights cannot silently displace them.
 - Renderer settings retain shipping validation, with editor bounds on shadow resolution and decal count (4096). This is a bounded authoring policy, not a claim of equal memory/FPS on every GPU.
 
 ## Verification
 
 ```bash
-python -m pytest -q tests/test_lighting_authoring_2_2.py
+python -m pytest -q tests/test_lighting_authoring_2_2.py tests/test_lighting_editor_2_2.py
 # Linux with Mesa/EGL and project dependencies installed:
-SWIR_LIGHTING_REQUIRE_GL=1 python -m pytest -v tests/test_lighting_opengl_2_2.py
+SWIR_LIGHTING_REQUIRE_GL=1 python -m pytest -v tests/test_lighting_opengl_2_2.py tests/test_lighting_editor_opengl_2_2.py
+SWIR_LIGHTING_REQUIRE_TK=1 xvfb-run -a python -m pytest -v tests/test_lighting_editor_tk_2_2.py
 ```
 
-The focused `Editor Lighting 2.2` workflow requires the real EGL tests; an unavailable context or dependency fails that step instead of skipping it. They render saved/reopened 2D and 3D profiles to real framebuffers and compare exposure-dependent output. The generic cross-platform test suite skips that optional GL file unless the explicit EGL gate is enabled. CPU-side persistence/runtime tests never count as GPU evidence.
+The focused `Editor Lighting 2.2` workflow requires real EGL tests; an unavailable context or dependency fails that step instead of skipping it. They render saved/reopened 2D and 3D profiles and live controller changes to real framebuffers and compare exposure-dependent output. Native Tk tests exercise the real panel widgets/event loop with a CPU capture probe; they are not GPU evidence. The separate EGL tests exercise the production preview renderer. The generic cross-platform suite skips these environment-specific tests unless their explicit required-gate switches are enabled. CPU-side persistence/runtime tests never count as GPU evidence.
 
 ## Remaining M7 acceptance work
 
-The unified creator-facing Lighting/Environment/Post-FX panel, continuous viewport preview updates with safe state restoration, scene-switch lifecycle and staged/exported representative game validation still need implementation and qualification. This foundation deliberately does not claim those surfaces exist. Complete M7 also requires full final-head repository CI, real renderer validation and post-merge main qualification before the next roadmap checkmark.
+The unified panel, isolated continuous preview, cleanup and scene-switch lifecycle are implemented in this development branch. Their exact-final-head CI, staged/exported representative lighting workflows, final acceptance review and post-merge main qualification remain required before M7 can receive a checkmark. No release or additional platform support is implied by this slice.
