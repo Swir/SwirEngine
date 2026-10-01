@@ -1,0 +1,59 @@
+name: Editor Lighting 2.2
+
+on:
+  push:
+    branches: [main, "feature/2.2-*"]
+    paths:
+      - "src/swirengine/**"
+      - "tests/test_lighting*_2_2.py"
+      - "tests/test_editor_hub_2_1.py"
+      - "docs/LIGHTING_AUTHORING_2_2.md"
+      - ".github/workflows/editor-lighting-2-2.yml"
+  pull_request:
+    paths:
+      - "src/swirengine/**"
+      - "tests/test_lighting*_2_2.py"
+      - "tests/test_editor_hub_2_1.py"
+      - "docs/LIGHTING_AUTHORING_2_2.md"
+      - ".github/workflows/editor-lighting-2-2.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  lighting-authoring:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      LIBGL_ALWAYS_SOFTWARE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install software OpenGL runtime
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libgl1-mesa-dri
+      - name: Install development dependencies
+        run: python -m pip install --upgrade pip ".[dev]"
+      - name: Test lighting and integrated creator persistence
+        run: >-
+          python -m pytest -q tests/test_lighting_authoring_2_2.py
+          tests/test_editor_hub_2_1.py tests/test_vfx_real_game_gate_2_2.py
+          tests/test_progress_svg.py tests/test_progress_2_1.py
+      - name: Required real EGL rendering of saved 2D and 3D profiles
+        env:
+          SWIR_LIGHTING_REQUIRE_GL: "1"
+        run: python -m pytest -v tests/test_lighting_opengl_2_2.py
+      - name: Check active progress
+        run: python tools/generate_progress_svg.py --check
+      - name: Lint lighting slice
+        run: >-
+          python -m ruff check src/swirengine/lighting_authoring22.py
+          src/swirengine/editor_integrated_session21.py
+          tests/test_lighting_authoring_2_2.py tests/test_lighting_opengl_2_2.py
+      - name: Compile lighting slice
+        run: >-
+          python -m compileall -q src/swirengine/lighting_authoring22.py
+          src/swirengine/editor_integrated_session21.py
+          tests/test_lighting_authoring_2_2.py tests/test_lighting_opengl_2_2.py
