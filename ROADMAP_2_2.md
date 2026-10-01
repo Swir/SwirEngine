@@ -6,7 +6,7 @@
 
 SwirEngine 2.2 starts after the public SwirEngine 2.1.0 creator-workflow release. The target is a finite production-tools release: creators should be able to author more of a complete 2D/3D/multiplayer game visually while the generated data remains backed by shipping runtime systems.
 
-Current verified progress: 6/10 milestones = 60.0%.
+Current verified progress: 7/10 milestones = 70.0%.
 
 ## Product rules
 
@@ -25,7 +25,7 @@ Current verified progress: 6/10 milestones = 60.0%.
 - [x] **4. World/Terrain authoring.** Integrate terrain sculpt/paint data, foliage placement, LOD controls and world-streaming authoring with large-world runtime validation.
 - [x] **5. Animation State Machine + Blend Tree Editor.** Add visual state/transition authoring, blend trees, parameter inspection and runtime-backed preview/debugging over the shipping animation systems.
 - [x] **6. Particle/VFX Editor.** Add visual emitter/effect authoring for CPU/GPU particle systems, deterministic presets, preview controls and bounded runtime diagnostics.
-- [ ] **7. Lighting, Environment and Post-FX authoring.** Add creator controls for lights, sky/environment, shadows, tone mapping and post-processing with scene persistence and live renderer validation.
+- [x] **7. Lighting, Environment and Post-FX authoring.** Add creator controls for lights, sky/environment, shadows, tone mapping and post-processing with scene persistence and live renderer validation.
 - [ ] **8. UI Designer 2.0.** Add responsive anchors/containers, reusable styles, interaction states and UI animation authoring while preserving keyboard/gamepad focus/navigation behavior.
 - [ ] **9. Multiplayer Debugger + Editor Extension SDK.** Add replication/session inspection, latency/debug views and a bounded plugin API for extending SwirEditor without bypassing project/runtime safety contracts.
 - [ ] **10. Production acceptance and 2.2 release readiness.** Drive representative 2D, 3D and multiplayer projects through authoring, profiling, build/export and staged runtime; requalify supported CPython/platform packaging, clean installs, performance/safety evidence, checksums/provenance and the guarded release gate.
@@ -140,4 +140,28 @@ Milestone 6 accepted on 2026-10-01 after PR #233 exact head `110ac0f948ffa125c94
 
 Post-merge evidence includes CI `36835339285`, Desktop Export `36835339254`, real OpenGL/packaged Neon Snake `36835339398`, and Showcase + Hardening `36835339320`. The latter initially failed during Python 3.10 build-dependency resolution (`hatchling>=1.25` unavailable from the index at that attempt); one failed-job rerun passed without any code, dependency or gate change, including clean wheel installation, real OpenGL 2D/3D execution and Windows one-file runtime probes. The failed attempt remains in Actions history; only the completed successful final attempt is acceptance evidence.
 
-The VFX GPU fixture validates the shipping CPU-side particle scheduling bridge; no new physical-GPU performance claim or public 2.2 release is implied. Milestone 7 is the next open production-tools target.
+The VFX GPU fixture validates the shipping CPU-side particle scheduling bridge; no new physical-GPU performance claim or public 2.2 release is implied.
+
+## Milestone 7 acceptance gate
+
+Milestone 7 may be checked only when the exact implementation head proves all of the following:
+
+1. Scene-keyed lighting data round-trips deterministically through project save/reopen and maps directional, point and spot lights onto shipping renderer systems.
+2. The unified SwirEditor exposes lights, sky/environment, shadows, SSAO/bloom, tone mapping and color-grading controls with scene-safe selection and validation.
+3. Live preview uses an isolated owned production renderer/context, remains bounded, preserves authoring state and fails closed when project resources change or disappear.
+4. Lighting libraries, bound scenes and skybox assets remain project-confined, validate before export replacement and survive default export relocation with manifest hashes.
+5. Representative 2D and 3D projects render reopened profiles and live editor changes through required real EGL paths, including an isolated installed-wheel relocated-runtime gate.
+6. Focused lighting/editor/persistence/security/export regressions, native Tk lifecycle coverage, the deterministic progress contract and the normal exact-head repository matrix are green; post-merge `main` must also complete its triggered workflow set without failures before the roadmap counter advances.
+
+### M7 implementation and acceptance evidence
+
+- [x] Deterministic scene-keyed `config/lighting.json` authoring and shipping light/environment/post-FX runtime mapping.
+- [x] Unified creator tabs for lights, environment, shadows, effects and color grading.
+- [x] Isolated bounded live preview with pause/step/stop, scene-switch cleanup and live asset revalidation.
+- [x] Project-confined scene/skybox validation plus fail-closed default export and relocation.
+- [x] Representative 2D/3D save/reopen, real EGL, native Tk and isolated installed-wheel shipping qualification.
+- [x] Full exact-head PR matrix and post-merge `main` acceptance evidence.
+
+Milestone 7 accepted on 2026-10-01 after PR #235 exact head `89c4a890f098b3780b0ef3a86b4629ded8be6898` completed all 33 exact-SHA Actions workflows successfully with 153 successful PR check runs. The implementation merged normally to `main` as `f694768a176d693f1638d18240346e701f8fc3ab`; both commits share tree `a2a54049e4ed39d4057496ab410c485d3cc50a76`. All 18 associated post-merge workflow runs and all 103 check runs completed successfully before this acceptance record advanced the roadmap to 7/10.
+
+Post-merge evidence includes focused Editor Lighting run `36877834624`, CI, Desktop Export, packaging, real-game, source-checkpoint and final release-gate workflows on the exact merge SHA. Required real EGL saved-profile/live-preview tests, native Tk lifecycle coverage and isolated installed-wheel relocated 2D/3D rendering all completed successfully. This is source-development acceptance only; no new physical-GPU performance claim or public 2.2 release is implied. Milestone 8 is the next open production-tools target.
