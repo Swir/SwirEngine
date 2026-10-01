@@ -204,5 +204,5 @@ def test_tk_field_parsing_does_not_coerce_bad_integer_or_boolean() -> None:
     assert _parse_field("", None) is None
     with pytest.raises(ValueError):
         _parse_field("1.5", 1)
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError, match="checkbox value must be boolean"):
         _parse_field("false", False)
