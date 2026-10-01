@@ -314,6 +314,45 @@ class ProjectExporter:
             raise ValueError(f"lighting export preflight failed: {exc}") from exc
         return tuple(sorted(files, key=lambda path: path.as_posix().casefold()))
 
+    def _ui_designer_files(self) -> tuple[Path, ...]:
+        """Include and validate an opt-in UI Designer document before staging.
+
+        The default packaging profile intentionally does not include ``config``. A present UI
+        Designer document is nevertheless shipping data and must survive the same default Wizard
+        path. Projects without the document retain the legacy exporter inventory unchanged.
+        """
+        document = self.project_root / "config" / "ui-designer.json"
+        if not document.exists() and not document.is_symlink():
+            return ()
+
+        from .ui_designer22 import EditorUIDesignerTooling22
+
+        runtime = None
+        try:
+            tooling = EditorUIDesignerTooling22(self.project_root)
+            # Construct the production runtime during preflight so malformed documents and unsafe
+            # bindings fail before export() can clean an existing output directory. Portable action
+            # names receive inert handlers: preflight validates binding completeness without running
+            # project code or weakening the shipping runtime's missing-handler contract.
+            actions = {
+                widget.action
+                for widget in tooling.snapshot().asset.widgets
+                if widget.action is not None
+            }
+
+            def ignore_action(_widget: object) -> None:
+                return None
+
+            runtime = tooling.build_runtime(
+                handlers={action: ignore_action for action in sorted(actions)}
+            )
+        except (OSError, TypeError, ValueError, RuntimeError) as exc:
+            raise ValueError(f"UI Designer export preflight failed: {exc}") from exc
+        finally:
+            if runtime is not None:
+                runtime.close()
+        return (Path(tooling.relative_path),)
+
     def _collect_files(self, profile: PackagingProfile) -> tuple[Path, ...]:
         entrypoint = self._safe_relative(profile.entrypoint, label="entrypoint")
         candidates: set[Path] = set()
@@ -336,9 +375,11 @@ class ProjectExporter:
         scene_package_files = self._scene_package_files()
         content_build_files = self._content_build_files()
         lighting_files = self._lighting_files()
+        ui_designer_files = self._ui_designer_files()
         candidates.update(scene_package_files)
         candidates.update(content_build_files)
         candidates.update(lighting_files)
+        candidates.update(ui_designer_files)
 
         if profile.icon:
             icon = self._safe_relative(profile.icon, label="icon path")
@@ -364,6 +405,12 @@ class ProjectExporter:
         if excluded_lighting:
             values = ", ".join(path.as_posix() for path in excluded_lighting)
             raise ValueError(f"packaging profile excludes declared lighting content: {values}")
+        excluded_ui_designer = tuple(path for path in ui_designer_files if path not in filtered)
+        if excluded_ui_designer:
+            values = ", ".join(path.as_posix() for path in excluded_ui_designer)
+            raise ValueError(
+                f"packaging profile excludes declared UI Designer content: {values}"
+            )
         return tuple(sorted(filtered, key=lambda path: path.as_posix().casefold()))
 
     @staticmethod

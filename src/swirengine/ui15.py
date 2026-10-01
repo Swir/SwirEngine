@@ -11,6 +11,7 @@ from typing import Any
 from .core.scene import Scene
 from .math.types import Color
 from .ui import UIButton, UILabel, UIManager, UIPanel, UIProgressBar
+from .ui_layout import UIAnchor
 
 
 class UIAxis(str, Enum):
@@ -65,6 +66,13 @@ def _nonnegative(value: float, name: str) -> float:
     result = _finite(value, name)
     if result < 0.0:
         raise ValueError(f"{name} must be >= 0")
+    return result
+
+
+def _unit(value: float, name: str) -> float:
+    result = _finite(value, name)
+    if not 0.0 <= result <= 1.0:
+        raise ValueError(f"{name} must be between 0 and 1")
     return result
 
 
@@ -138,6 +146,38 @@ class UITheme:
 
 
 @dataclass(frozen=True, slots=True)
+class UIWidgetStyle:
+    """Optional per-widget values layered over the active :class:`UITheme`."""
+
+    panel: Color | None = None
+    text: Color | None = None
+    button: Color | None = None
+    button_hover: Color | None = None
+    button_pressed: Color | None = None
+    button_focused: Color | None = None
+    progress_background: Color | None = None
+    progress_fill: Color | None = None
+    font_size: float | None = None
+
+    def __post_init__(self) -> None:
+        for name in (
+            "panel",
+            "text",
+            "button",
+            "button_hover",
+            "button_pressed",
+            "button_focused",
+            "progress_background",
+            "progress_fill",
+        ):
+            value = getattr(self, name)
+            if value is not None and not isinstance(value, Color):
+                raise TypeError(f"{name} must be a Color or None")
+        if self.font_size is not None:
+            object.__setattr__(self, "font_size", _positive(self.font_size, "font_size"))
+
+
+@dataclass(frozen=True, slots=True)
 class UIToolkitDiagnostics:
     nodes: int
     visible_nodes: int
@@ -167,11 +207,14 @@ class UIWidget:
         padding: UIInsets | float = 0.0,
         align: UIAlign | str = UIAlign.CENTER,
         justify: UIJustify | str = UIJustify.CENTER,
+        anchor: UIAnchor | str | None = None,
         offset_x: float = 0.0,
         offset_y: float = 0.0,
         visible: bool = True,
         enabled: bool = True,
         focusable: bool | None = None,
+        opacity: float = 1.0,
+        style: UIWidgetStyle | None = None,
         on_activate: Callable[[UIWidget], None] | None = None,
     ) -> None:
         normalized_id = str(widget_id).strip()
@@ -188,11 +231,16 @@ class UIWidget:
         self.padding = UIInsets.all(padding) if isinstance(padding, (int, float)) else padding
         self.align = UIAlign(align)
         self.justify = UIJustify(justify)
+        self.anchor = None if anchor is None else UIAnchor(anchor)
         self.offset_x = _finite(offset_x, "offset_x")
         self.offset_y = _finite(offset_y, "offset_y")
         self.visible = bool(visible)
         self.enabled = bool(enabled)
         self.focusable = self.kind is UIWidgetKind.BUTTON if focusable is None else bool(focusable)
+        self.opacity = _unit(opacity, "opacity")
+        if style is not None and not isinstance(style, UIWidgetStyle):
+            raise TypeError("style must be a UIWidgetStyle or None")
+        self.style = style
         self.on_activate = on_activate
         self.parent: UIWidget | None = None
         self.children: list[UIWidget] = []
@@ -200,6 +248,7 @@ class UIWidget:
         self.rect = UIRect(0.0, 0.0, self.width, self.height)
         self.effective_visible = bool(visible)
         self.effective_enabled = bool(enabled)
+        self.effective_opacity = self.opacity
 
     def walk(self) -> Iterator[UIWidget]:
         yield self
@@ -526,9 +575,56 @@ class UIToolkit:
             return high - size * 0.5
         return (low + high) * 0.5
 
-    def _layout_children(self, parent: UIWidget, scale: float, inherited_visible: bool, inherited_enabled: bool) -> None:
+    def _anchored_rect(
+        self,
+        parent: UIWidget,
+        child: UIWidget,
+        scale: float,
+        padding: UIInsets,
+    ) -> UIRect:
+        anchor = child.anchor
+        assert anchor is not None
+        width = child.width * scale
+        height = child.height * scale
+        bounds = parent.rect
+        if parent is self.root and self._viewport is not None:
+            bounds = UIRect(0.0, 0.0, float(self._viewport[0]), float(self._viewport[1]))
+        inner_left = bounds.left + padding.left
+        inner_right = bounds.right - padding.right
+        inner_top = bounds.top - padding.top
+        inner_bottom = bounds.bottom + padding.bottom
+
+        if anchor in (UIAnchor.TOP_LEFT, UIAnchor.LEFT, UIAnchor.BOTTOM_LEFT):
+            x = inner_left + width * 0.5
+        elif anchor in (UIAnchor.TOP_RIGHT, UIAnchor.RIGHT, UIAnchor.BOTTOM_RIGHT):
+            x = inner_right - width * 0.5
+        else:
+            x = (inner_left + inner_right) * 0.5
+
+        if anchor in (UIAnchor.TOP_LEFT, UIAnchor.TOP, UIAnchor.TOP_RIGHT):
+            y = inner_top - height * 0.5
+        elif anchor in (UIAnchor.BOTTOM_LEFT, UIAnchor.BOTTOM, UIAnchor.BOTTOM_RIGHT):
+            y = inner_bottom + height * 0.5
+        else:
+            y = (inner_bottom + inner_top) * 0.5
+        return UIRect(
+            x + child.offset_x * scale,
+            y + child.offset_y * scale,
+            width,
+            height,
+        )
+
+    def _layout_children(
+        self,
+        parent: UIWidget,
+        scale: float,
+        inherited_visible: bool,
+        inherited_enabled: bool,
+        inherited_opacity: float,
+    ) -> None:
         parent.effective_visible = inherited_visible and parent.visible
         parent.effective_enabled = inherited_enabled and parent.enabled
+        parent.effective_opacity = inherited_opacity * parent.opacity
         if parent.control is not None:
             self._sync_control(parent, scale)
 
@@ -548,15 +644,17 @@ class UIToolkit:
             parent.padding.bottom * scale,
         )
         gap = parent.gap * scale
-        if parent.axis is UIAxis.VERTICAL:
+        flowing = [child for child in active if child.anchor is None]
+        anchored = [child for child in active if child.anchor is not None]
+        if parent.axis is UIAxis.VERTICAL and flowing:
             inner_main = max(0.0, parent.rect.height - padding.top - padding.bottom)
-            sizes = [child.height * scale for child in active]
-            default_gap_total = gap * max(0, len(active) - 1)
+            sizes = [child.height * scale for child in flowing]
+            default_gap_total = gap * max(0, len(flowing) - 1)
             content = sum(sizes) + default_gap_total
             actual_gap = gap
-            if parent.justify is UIJustify.SPACE_BETWEEN and len(active) > 1:
-                actual_gap = max(0.0, (inner_main - sum(sizes)) / (len(active) - 1))
-                content = sum(sizes) + actual_gap * (len(active) - 1)
+            if parent.justify is UIJustify.SPACE_BETWEEN and len(flowing) > 1:
+                actual_gap = max(0.0, (inner_main - sum(sizes)) / (len(flowing) - 1))
+                content = sum(sizes) + actual_gap * (len(flowing) - 1)
             top = parent.rect.top - padding.top
             if parent.justify is UIJustify.START or parent.justify is UIJustify.SPACE_BETWEEN:
                 cursor = top
@@ -564,7 +662,7 @@ class UIToolkit:
                 cursor = parent.rect.bottom + padding.bottom + content
             else:
                 cursor = parent.rect.y + content * 0.5
-            for child, main_size in zip(active, sizes):
+            for child, main_size in zip(flowing, sizes):
                 width = child.width * scale
                 available_cross = max(1.0, parent.rect.width - padding.left - padding.right)
                 if parent.align is UIAlign.STRETCH:
@@ -578,16 +676,22 @@ class UIToolkit:
                     main_size,
                 )
                 cursor -= main_size + actual_gap
-                self._layout_children(child, scale, parent.effective_visible, parent.effective_enabled)
-        else:
+                self._layout_children(
+                    child,
+                    scale,
+                    parent.effective_visible,
+                    parent.effective_enabled,
+                    parent.effective_opacity,
+                )
+        elif parent.axis is UIAxis.HORIZONTAL and flowing:
             inner_main = max(0.0, parent.rect.width - padding.left - padding.right)
-            sizes = [child.width * scale for child in active]
-            default_gap_total = gap * max(0, len(active) - 1)
+            sizes = [child.width * scale for child in flowing]
+            default_gap_total = gap * max(0, len(flowing) - 1)
             content = sum(sizes) + default_gap_total
             actual_gap = gap
-            if parent.justify is UIJustify.SPACE_BETWEEN and len(active) > 1:
-                actual_gap = max(0.0, (inner_main - sum(sizes)) / (len(active) - 1))
-                content = sum(sizes) + actual_gap * (len(active) - 1)
+            if parent.justify is UIJustify.SPACE_BETWEEN and len(flowing) > 1:
+                actual_gap = max(0.0, (inner_main - sum(sizes)) / (len(flowing) - 1))
+                content = sum(sizes) + actual_gap * (len(flowing) - 1)
             left = parent.rect.left + padding.left
             if parent.justify is UIJustify.START or parent.justify is UIJustify.SPACE_BETWEEN:
                 cursor = left
@@ -595,7 +699,7 @@ class UIToolkit:
                 cursor = parent.rect.right - padding.right - content
             else:
                 cursor = parent.rect.x - content * 0.5
-            for child, main_size in zip(active, sizes):
+            for child, main_size in zip(flowing, sizes):
                 height = child.height * scale
                 available_cross = max(1.0, parent.rect.height - padding.top - padding.bottom)
                 if parent.align is UIAlign.STRETCH:
@@ -609,11 +713,28 @@ class UIToolkit:
                     height,
                 )
                 cursor += main_size + actual_gap
-                self._layout_children(child, scale, parent.effective_visible, parent.effective_enabled)
+                self._layout_children(
+                    child,
+                    scale,
+                    parent.effective_visible,
+                    parent.effective_enabled,
+                    parent.effective_opacity,
+                )
+
+        for child in anchored:
+            child.rect = self._anchored_rect(parent, child, scale, padding)
+            self._layout_children(
+                child,
+                scale,
+                parent.effective_visible,
+                parent.effective_enabled,
+                parent.effective_opacity,
+            )
 
     def _hide_subtree(self, node: UIWidget) -> None:
         node.effective_visible = False
         node.effective_enabled = False
+        node.effective_opacity = 0.0
         if node.control is not None:
             if hasattr(node.control, "visible"):
                 node.control.visible = False
@@ -629,12 +750,21 @@ class UIToolkit:
         self._scale = scale
         self._viewport = (width, height)
         self.root.rect = UIRect(0.0, 0.0, self.reference_width * scale, self.reference_height * scale)
-        self._layout_children(self.root, scale, True, True)
+        self._layout_children(self.root, scale, True, True, 1.0)
         self._layout_generation += 1
         if self._focused_id is not None and self.focused not in self.focusable_widgets():
             self._focused_id = None
         self._sync_interaction_styles()
         return scale
+
+    def _widget_color(self, widget: UIWidget, name: str) -> Color:
+        style = widget.style
+        override = None if style is None else getattr(style, name)
+        color = getattr(self.theme, name) if override is None else override
+        opacity = widget.effective_opacity
+        if opacity == 1.0:
+            return color
+        return Color(color.r, color.g, color.b, color.a * opacity)
 
     def _sync_control(self, widget: UIWidget, scale: float) -> None:
         control = widget.control
@@ -651,30 +781,34 @@ class UIToolkit:
             control.height = max(1.0, rect.height)
         if isinstance(control, UILabel):
             control.text = widget.text
-            control.text_object.color = self.theme.text
+            control.text_object.color = self._widget_color(widget, "text")
+            if widget.style is not None and widget.style.font_size is not None:
+                control.text_object.font_size = max(1, round(widget.style.font_size))
             control.text_object.scale = scale
             control.text_object.visible = widget.effective_visible
             control.text_object.enabled = widget.effective_enabled
         elif isinstance(control, UIPanel):
-            control.background.color = self.theme.panel
+            control.background.color = self._widget_color(widget, "panel")
             control.background.visible = widget.effective_visible
             control.background.enabled = widget.effective_enabled
             control._sync()
         elif isinstance(control, UIButton):
             control.text = widget.text
-            control.color = self.theme.button
-            control.hover_color = self.theme.button_hover
-            control.pressed_color = self.theme.button_pressed
-            control.focused_color = self.theme.button_focused
-            control.label.color = self.theme.text
+            control.color = self._widget_color(widget, "button")
+            control.hover_color = self._widget_color(widget, "button_hover")
+            control.pressed_color = self._widget_color(widget, "button_pressed")
+            control.focused_color = self._widget_color(widget, "button_focused")
+            control.label.color = self._widget_color(widget, "text")
+            if widget.style is not None and widget.style.font_size is not None:
+                control.label.font_size = max(1, round(widget.style.font_size))
             control.label.scale = scale
             control.visible = widget.effective_visible
             control.enabled = widget.effective_enabled
             control._sync()
         elif isinstance(control, UIProgressBar):
             control.value = widget.value
-            control.background.color = self.theme.progress_background
-            control.fill.color = self.theme.progress_fill
+            control.background.color = self._widget_color(widget, "progress_background")
+            control.fill.color = self._widget_color(widget, "progress_fill")
             control.background.visible = widget.effective_visible
             control.background.enabled = widget.effective_enabled
             control.fill.enabled = widget.effective_enabled
@@ -889,8 +1023,7 @@ class UIToolkit:
         for widget in self.root.walk():
             if widget is self.root:
                 continue
-            nodes.append(
-                {
+            node = {
                     "id": widget.id,
                     "kind": widget.kind.value,
                     "parent": widget.parent.id if widget.parent is not None else None,
@@ -913,7 +1046,30 @@ class UIToolkit:
                     "enabled": widget.enabled,
                     "focusable": widget.focusable,
                 }
-            )
+            if widget.anchor is not None:
+                node["anchor"] = widget.anchor.value
+            if widget.style is not None:
+                node["style"] = {
+                    name: (
+                        None
+                        if getattr(widget.style, name) is None
+                        else self._color_tuple(getattr(widget.style, name))
+                    )
+                    for name in (
+                        "panel",
+                        "text",
+                        "button",
+                        "button_hover",
+                        "button_pressed",
+                        "button_focused",
+                        "progress_background",
+                        "progress_fill",
+                    )
+                }
+                node["style"]["font_size"] = widget.style.font_size
+            if widget.opacity != 1.0:
+                node["opacity"] = widget.opacity
+            nodes.append(node)
         return {
             "reference": (self.reference_width, self.reference_height),
             "scale_limits": (self.min_scale, self.max_scale),
@@ -938,4 +1094,5 @@ __all__ = [
     "UIToolkitDiagnostics",
     "UIWidget",
     "UIWidgetKind",
+    "UIWidgetStyle",
 ]
