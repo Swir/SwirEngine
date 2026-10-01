@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -172,6 +173,78 @@ def test_vfx_texture_rejects_absolute_project_escape_paths(
         session.vfx.create_effect("unsafe", backend="gpu3d", texture=texture)
     assert session.vfx.effects() == before
     assert not session.vfx.dirty
+
+
+@pytest.mark.parametrize(("mode", "preset"), (("2d", "sparks-2d"), ("3d", "fire-gpu")))
+@pytest.mark.parametrize("unsaved", (False, True))
+@pytest.mark.parametrize(
+    ("invalid_kind", "message"),
+    (
+        ("duplicate", "duplicate VFX effect name"),
+        ("invalid-entry", "invalid VFX effect entry"),
+        ("broken-json", "cannot load VFX library"),
+        ("future-version", "unsupported VFX library"),
+    ),
+)
+def test_vfx_rejected_reload_preserves_authored_state_and_allows_recovery(
+    tmp_path: Path,
+    mode: str,
+    preset: str,
+    unsaved: bool,
+    invalid_kind: str,
+    message: str,
+) -> None:
+    root = new_project21("VFXReloadRecovery", mode, parent=tmp_path)
+    session = EditorIntegratedProjectSession21.open(root)
+    controller = EditorVFXPanelController22(session.vfx)
+    controller.create("primary", preset=preset)
+    session.save()
+    target = root / "config" / "vfx.json"
+    canonical = target.read_bytes()
+    saved_effects = session.vfx.effects()
+    if unsaved:
+        session.vfx.update_effect("primary", rate=5.0)
+        session.vfx.create_effect("local-only")
+    before_effects = session.vfx.effects()
+    before_fingerprint = session.vfx.preview("primary").fingerprint
+    controller.start_preview()
+    before_frame = controller.burst(3)
+    before_status = controller.status
+    assert session.vfx.dirty is unsaved
+
+    payload = json.loads(canonical)
+    entry = dict(payload["effects"][0], name="replacement")
+    if invalid_kind == "duplicate":
+        # Names are normalized by the schema before duplicate detection.
+        payload["effects"] = [entry, dict(entry, name=" replacement ")]
+    elif invalid_kind == "invalid-entry":
+        payload["effects"] = [entry, dict(entry, name="invalid", capacity=1.5)]
+    elif invalid_kind == "future-version":
+        payload["version"] = 999
+    invalid_data = (
+        b"{broken-json" if invalid_kind == "broken-json" else json.dumps(payload).encode("utf-8")
+    )
+    target.write_bytes(invalid_data)
+
+    with pytest.raises(EditorVFXError22, match=message):
+        session.vfx.load()
+
+    assert session.vfx.effects() == before_effects
+    assert session.vfx.dirty is unsaved
+    assert session.summary().dirty is unsaved
+    assert session.vfx.preview("primary").fingerprint == before_fingerprint
+    assert controller.frame() == before_frame
+    assert controller.status == before_status
+    assert target.read_bytes() == invalid_data
+
+    target.write_bytes(canonical)
+    session.vfx.load()
+    assert session.vfx.effects() == saved_effects
+    assert not session.summary().dirty
+    controller.select("primary")
+    assert controller.start_preview().preview_running
+    session.vfx.save()
+    assert target.read_bytes() == canonical
 
 
 def test_integrated_project_missing_gpu_texture_reports_and_blocks_preview(tmp_path: Path) -> None:
