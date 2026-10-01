@@ -217,19 +217,30 @@ class ProjectExporter:
     def _is_within(path: Path, root: Path) -> bool:
         return path == root or root in path.parents
 
-    def _resolves_into_output(self, relative: Path, output_dir: Path) -> bool:
-        """Return whether an existing source aliases the exact staging subtree."""
-
+    def _output_relative(self, output_dir: Path) -> Path | None:
         try:
-            resolved = (self.project_root / relative).resolve(strict=True)
-        except (OSError, RuntimeError, ValueError):
-            return False
-        return self._is_within(resolved, output_dir)
+            return output_dir.relative_to(self.project_root)
+        except ValueError:
+            return None
 
-    def _validated_source(self, relative: Path, *, label: str) -> Path:
+    def _validated_source(
+        self,
+        relative: Path,
+        *,
+        label: str,
+        output_dir: Path | None = None,
+        skip_output: bool = False,
+    ) -> Path | None:
         source = self.project_root / relative
         try:
             resolved = source.resolve(strict=True)
+        except (OSError, RuntimeError, ValueError) as exc:
+            raise ValueError(f"{label} must resolve inside the project") from exc
+        if output_dir is not None and self._is_within(resolved, output_dir):
+            if skip_output:
+                return None
+            raise ValueError(f"{label} must not resolve inside the export output directory")
+        try:
             resolved_relative = resolved.relative_to(self.project_root)
         except (OSError, RuntimeError, ValueError) as exc:
             raise ValueError(f"{label} must resolve inside the project") from exc
@@ -237,7 +248,7 @@ class ProjectExporter:
             raise ValueError(
                 f"{label} must not resolve through the editor-only .swir directory"
             )
-        return source
+        return resolved
 
     def _included_files(
         self,
@@ -245,20 +256,35 @@ class ProjectExporter:
         *,
         exclude: Iterable[str],
         output_dir: Path,
+        output_relative: Path | None,
     ) -> tuple[Path, ...]:
         """Inspect one include without entering editor-only or excluded directories."""
 
         if self._is_editor_only(relative) or self._is_excluded(relative, exclude):
             return ()
-        if self._resolves_into_output(relative, output_dir):
+        if output_relative is not None and self._is_within(relative, output_relative):
             return ()
         source = self.project_root / relative
         if source.is_file():
-            self._validated_source(relative, label="included file")
+            resolved = self._validated_source(
+                relative,
+                label="included file",
+                output_dir=output_dir,
+                skip_output=True,
+            )
+            if resolved is None:
+                return ()
             return (relative,)
         if not source.is_dir():
             return ()
-        self._validated_source(relative, label="include path")
+        resolved = self._validated_source(
+            relative,
+            label="include path",
+            output_dir=output_dir,
+            skip_output=True,
+        )
+        if resolved is None:
+            return ()
 
         files: list[Path] = []
 
@@ -280,10 +306,20 @@ class ProjectExporter:
                     child_relative, exclude
                 ):
                     continue
-                if self._resolves_into_output(child_relative, output_dir):
+                if output_relative is not None and self._is_within(
+                    child_relative, output_relative
+                ):
                     continue
-                if child.is_symlink():
-                    self._validated_source(child_relative, label="included directory")
+                # Resolve every child directory before os.walk may enter it. On Windows a junction
+                # is not a symlink, and followlinks=False does not prevent traversal into it.
+                resolved = self._validated_source(
+                    child_relative,
+                    label="included directory",
+                    output_dir=output_dir,
+                    skip_output=True,
+                )
+                if resolved is None:
+                    continue
                 kept_names.append(name)
             names[:] = kept_names
 
@@ -294,9 +330,19 @@ class ProjectExporter:
                     child_relative, exclude
                 ):
                     continue
-                if self._resolves_into_output(child_relative, output_dir):
+                if output_relative is not None and self._is_within(
+                    child_relative, output_relative
+                ):
                     continue
-                self._validated_source(child_relative, label="included file")
+                if child.is_symlink():
+                    resolved = self._validated_source(
+                        child_relative,
+                        label="included file",
+                        output_dir=output_dir,
+                        skip_output=True,
+                    )
+                    if resolved is None:
+                        continue
                 if child.is_file():
                     files.append(child_relative)
         return tuple(files)
@@ -455,12 +501,12 @@ class ProjectExporter:
         entrypoint = self._safe_relative(profile.entrypoint, label="entrypoint")
         if self._is_editor_only(entrypoint):
             raise ValueError("entrypoint must not use the editor-only .swir directory")
+        output_relative = self._output_relative(output_dir)
         candidates: set[Path] = set()
         entrypoint_path = self.project_root / entrypoint
         if not entrypoint_path.is_file():
             raise FileNotFoundError(f"entrypoint does not exist: {entrypoint_path}")
-        if self._resolves_into_output(entrypoint, output_dir):
-            raise ValueError("entrypoint must not resolve inside the export output directory")
+        self._validated_source(entrypoint, label="entrypoint", output_dir=output_dir)
         candidates.add(entrypoint)
 
         # Run semantic opt-in preflights before a broad include walk. Besides preserving their
@@ -478,6 +524,7 @@ class ProjectExporter:
                     relative,
                     exclude=profile.exclude,
                     output_dir=output_dir,
+                    output_relative=output_relative,
                 )
             )
 
@@ -492,8 +539,7 @@ class ProjectExporter:
                 raise ValueError("icon must not use the editor-only .swir directory")
             if not (self.project_root / icon).is_file():
                 raise FileNotFoundError(f"icon does not exist: {self.project_root / icon}")
-            if self._resolves_into_output(icon, output_dir):
-                raise ValueError("icon must not resolve inside the export output directory")
+            self._validated_source(icon, label="icon", output_dir=output_dir)
             candidates.add(icon)
 
         for optional in ("swirproject.toml", "requirements.txt", "pyproject.toml"):
@@ -501,13 +547,18 @@ class ProjectExporter:
             if path.is_file():
                 candidates.add(Path(optional))
 
-        filtered = [
-            path
-            for path in candidates
-            if not self._is_editor_only(path)
-            and not self._is_excluded(path, profile.exclude)
-            and not self._resolves_into_output(path, output_dir)
-        ]
+        filtered: list[Path] = []
+        for path in candidates:
+            if self._is_editor_only(path) or self._is_excluded(path, profile.exclude):
+                continue
+            if output_relative is not None and self._is_within(path, output_relative):
+                continue
+            self._validated_source(
+                path,
+                label="export source",
+                output_dir=output_dir,
+            )
+            filtered.append(path)
         excluded_scene_files = tuple(path for path in scene_package_files if path not in filtered)
         if excluded_scene_files:
             values = ", ".join(path.as_posix() for path in excluded_scene_files)
@@ -524,8 +575,6 @@ class ProjectExporter:
         if excluded_ui_designer:
             values = ", ".join(path.as_posix() for path in excluded_ui_designer)
             raise ValueError(f"packaging profile excludes declared UI Designer content: {values}")
-        for path in filtered:
-            self._validated_source(path, label="export source")
         return tuple(sorted(filtered, key=lambda path: path.as_posix().casefold()))
 
     @staticmethod
@@ -642,7 +691,11 @@ class ProjectExporter:
         # Revalidate all inputs before cleaning a previous export. This keeps a source symlink swap
         # or other unsafe source mutation from destroying the last known-good staging directory.
         for relative in plan.files:
-            self._validated_source(relative, label="export source")
+            self._validated_source(
+                relative,
+                label="export source",
+                output_dir=plan.output_dir,
+            )
 
         if clean and plan.output_dir.exists():
             shutil.rmtree(plan.output_dir)

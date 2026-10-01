@@ -11,9 +11,11 @@ from pathlib import Path
 import pytest
 
 import swirengine
+from swirengine.desktop_shipping19 import create_desktop_shipping_plan
 from swirengine.editor_multiplayer_debugger22 import EditorMultiplayerDebugger22
 from swirengine.exporting import ExportTarget, PackagingProfile, ProjectExporter
 from swirengine.multiplayer20 import MultiplayerCompatibility, ProductionMultiplayerSession
+from swirengine.project19 import ProjectManifest
 
 _RUNTIME_ENTRYPOINT = (
     r"""
@@ -117,6 +119,138 @@ def _project(root: Path, *, entrypoint: str = "print('shipping')\n") -> Path:
 
 def _assert_no_editor_only_files(paths: tuple[Path, ...] | list[Path]) -> None:
     assert all(not path.parts or path.parts[0].casefold() != ".swir" for path in paths)
+
+
+def test_desktop_shipping_plan_keeps_source_canonicalization_bounded(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = _project(tmp_path / "bounded-planning")
+    assets = root / "assets"
+    for index in range(32):
+        (assets / f"asset-{index:02d}.bin").write_bytes(f"asset-{index}".encode("ascii"))
+    (root / "swirproject.toml").write_text(
+        """
+name = "Bounded Shipping"
+mode = "2d"
+entrypoint = "main.py"
+
+[content]
+include = ["assets"]
+
+[profiles.linux]
+target = "linux"
+app_name = "BoundedShipping"
+include = ["assets"]
+onefile = false
+console = true
+""".strip()
+        + "\n",
+        encoding="ascii",
+    )
+    manifest = ProjectManifest.load(root)
+    original_resolve = Path.resolve
+    resolve_calls = 0
+
+    def counted_resolve(path: Path, *args: object, **kwargs: object) -> Path:
+        nonlocal resolve_calls
+        resolve_calls += 1
+        return original_resolve(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "resolve", counted_resolve)
+
+    plan = create_desktop_shipping_plan(manifest, "linux")
+
+    assert len(plan.source_inventory) == 35
+    assert resolve_calls <= 80
+
+
+def test_source_swap_after_discovery_is_rejected_before_cleanup(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = _project(tmp_path / "project")
+    source = root / "assets" / "marker.txt"
+    outside = tmp_path / "outside-secret.txt"
+    outside.write_text("private-outside-source", encoding="ascii")
+    probe = root / "symlink-probe"
+    try:
+        probe.symlink_to(outside)
+    except OSError:
+        pytest.skip("file symlinks are unavailable on this runner")
+    probe.unlink()
+    output = tmp_path / "out"
+    output.mkdir()
+    sentinel = output / "sentinel.txt"
+    sentinel.write_text("keep", encoding="ascii")
+    exporter = ProjectExporter(root)
+    original_included_files = exporter._included_files
+    swapped = False
+
+    def swap_after_discovery(
+        relative: Path,
+        *,
+        exclude: object,
+        output_dir: Path,
+        output_relative: Path | None,
+    ) -> tuple[Path, ...]:
+        nonlocal swapped
+        files = original_included_files(
+            relative,
+            exclude=exclude,
+            output_dir=output_dir,
+            output_relative=output_relative,
+        )
+        if not swapped and Path("assets/marker.txt") in files:
+            source.unlink()
+            source.symlink_to(outside)
+            swapped = True
+        return files
+
+    monkeypatch.setattr(exporter, "_included_files", swap_after_discovery)
+
+    with pytest.raises(ValueError, match="resolve inside the project"):
+        exporter.export(PackagingProfile(include=(".",), exclude=()), output)
+
+    assert sentinel.read_text(encoding="ascii") == "keep"
+
+
+def test_source_swap_after_plan_is_rejected_before_cleanup(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = _project(tmp_path / "project")
+    source = root / "assets" / "marker.txt"
+    outside = tmp_path / "outside-secret.txt"
+    outside.write_text("private-outside-source", encoding="ascii")
+    probe = root / "symlink-probe"
+    try:
+        probe.symlink_to(outside)
+    except OSError:
+        pytest.skip("file symlinks are unavailable on this runner")
+    probe.unlink()
+    output = tmp_path / "out"
+    output.mkdir()
+    sentinel = output / "sentinel.txt"
+    sentinel.write_text("keep", encoding="ascii")
+    exporter = ProjectExporter(root)
+    profile = PackagingProfile(include=(".",), exclude=())
+    safe_plan = exporter.plan(profile, output)
+
+    def swapped_plan(
+        _profile: PackagingProfile,
+        _output_dir: str | Path | None = None,
+    ) -> object:
+        source.unlink()
+        source.symlink_to(outside)
+        return safe_plan
+
+    monkeypatch.setattr(exporter, "plan", swapped_plan)
+
+    with pytest.raises(ValueError, match="resolve inside the project"):
+        exporter.export(profile, output)
+
+    assert sentinel.read_text(encoding="ascii") == "keep"
 
 
 def test_privacy_safe_capture_is_never_shipped_by_a_broad_desktop_profile(
@@ -425,6 +559,62 @@ def test_repeated_broad_default_export_ignores_only_its_exact_output_subtree(
         exporter.export(invalid)
 
     assert sentinel.read_text(encoding="ascii") == "keep"
+
+
+def test_broad_plan_ignores_project_alias_to_exact_external_output(tmp_path: Path) -> None:
+    root = _project(tmp_path / "project")
+    output = tmp_path / "external-output"
+    output.mkdir()
+    (output / "previous.txt").write_text("previous-output", encoding="ascii")
+    alias = root / "export-alias"
+    try:
+        alias.symlink_to(output, target_is_directory=True)
+    except OSError:
+        pytest.skip("directory symlinks are unavailable on this runner")
+
+    plan = ProjectExporter(root).plan(
+        PackagingProfile(target=ExportTarget.WEB, include=(".",), exclude=()),
+        output,
+    )
+
+    assert all(path != Path("export-alias") and Path("export-alias") not in path.parents for path in plan.files)
+    assert (output / "previous.txt").read_text(encoding="ascii") == "previous-output"
+
+
+@pytest.mark.skipif(os.name != "nt", reason="junctions are a Windows path type")
+def test_broad_plan_does_not_scan_exact_output_junction(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = _project(tmp_path / "project")
+    output = tmp_path / "external-output"
+    output.mkdir()
+    (output / "previous.txt").write_text("previous-output", encoding="ascii")
+    alias = root / "export-junction"
+    created = subprocess.run(
+        ("cmd", "/c", "mklink", "/J", str(alias), str(output)),
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if created.returncode != 0:
+        pytest.skip("directory junctions are unavailable on this runner")
+    original_scandir = os.scandir
+
+    def reject_output_scan(path: str | os.PathLike[str]) -> object:
+        if Path(path) == alias:
+            raise AssertionError("the exact output junction must be pruned before scandir")
+        return original_scandir(path)
+
+    monkeypatch.setattr(os, "scandir", reject_output_scan)
+
+    plan = ProjectExporter(root).plan(
+        PackagingProfile(target=ExportTarget.WEB, include=(".",), exclude=()),
+        output,
+    )
+
+    assert all(path != Path("export-junction") for path in plan.files)
+    assert (output / "previous.txt").read_text(encoding="ascii") == "previous-output"
 
 
 @pytest.mark.parametrize(

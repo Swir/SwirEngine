@@ -190,7 +190,12 @@ def _source_inventory(root: Path, files: Sequence[Path]) -> tuple[ShippingInvent
     for relative in files:
         portable = _safe_relative(relative, label="source file")
         source = root / PurePosixPath(portable)
-        _contained(source, root, label="source file")
+        try:
+            source.resolve(strict=True).relative_to(root)
+        except (OSError, RuntimeError, ValueError) as exc:
+            raise DesktopShippingError(
+                f"source file resolves outside its allowed root: {source}"
+            ) from exc
         if source.is_symlink():
             raise DesktopShippingError(
                 f"source shipping inventory does not accept symlinked files: {portable}"
