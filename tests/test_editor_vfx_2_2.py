@@ -1,0 +1,394 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from swirengine.editor_integrated_session21 import EditorIntegratedProjectSession21
+from swirengine.editor_vfx22 import (
+    MAX_VFX_PREVIEW_BURST,
+    MAX_VFX_PREVIEW_STEP,
+    EditorVFXPanelController22,
+)
+from swirengine.editor_vfx_frontend22 import TkVFXEditorApp22
+from swirengine.gpu_particles import GPUParticleEmitter3D
+from swirengine.particles import ParticleEmitter2D
+from swirengine.project_scaffold21 import new_project21
+from swirengine.vfx_authoring22 import EditorVFXTooling22
+from swirengine.vfx_schema22 import (
+    MAX_CPU2D_VFX_RATE_PER_CAPACITY22,
+    MAX_VFX_CAPACITY22,
+    EditorVFXError22,
+)
+
+
+class _FakeVar:
+    def __init__(self) -> None:
+        self.value = ""
+
+    def set(self, value: object) -> None:
+        self.value = str(value)
+
+
+class _FakeListbox:
+    def __init__(self) -> None:
+        self.items: list[str] = []
+        self.selected: set[int] = set()
+        self.active: int | None = None
+        self.visible: int | None = None
+
+    def delete(self, _first: object, _last: object) -> None:
+        self.items.clear()
+        self.selected.clear()
+
+    def insert(self, _index: object, value: str) -> None:
+        self.items.append(value)
+
+    def selection_clear(self, _first: object, _last: object) -> None:
+        self.selected.clear()
+
+    def selection_set(self, index: int) -> None:
+        self.selected.add(index)
+
+    def activate(self, index: int) -> None:
+        self.active = index
+
+    def see(self, index: int) -> None:
+        self.visible = index
+
+class _FakeWindow:
+    def __init__(self) -> None:
+        self.destroyed = False
+
+    def destroy(self) -> None:
+        self.destroyed = True
+
+
+def test_vfx_frontend_close_pauses_active_preview(tmp_path: Path) -> None:
+    tooling = EditorVFXTooling22(tmp_path)
+    controller = EditorVFXPanelController22(tooling)
+    controller.create("smoke", preset="soft-smoke-2d")
+    controller.start_preview()
+    assert controller.frame().preview_running
+
+    app = object.__new__(TkVFXEditorApp22)
+    app.vfx_controller = controller
+    app._vfx_tick_after = None
+    window = _FakeWindow()
+    app._vfx_window = window
+
+    app._close_vfx_editor()
+
+    assert not controller.frame().preview_running
+    assert window.destroyed
+    assert app._vfx_window is None
+
+
+def test_vfx_frontend_refresh_preserves_selected_effect(tmp_path: Path) -> None:
+    tooling = EditorVFXTooling22(tmp_path)
+    tooling.create_effect("alpha")
+    tooling.create_effect("beta", capacity=321, rate=33.0)
+    controller = EditorVFXPanelController22(tooling)
+    controller.select("beta")
+
+    app = object.__new__(TkVFXEditorApp22)
+    app.vfx_controller = controller
+    app._vfx_list = _FakeListbox()
+    app._vfx_capacity_var = _FakeVar()
+    app._vfx_rate_var = _FakeVar()
+    app._vfx_diagnostics = None
+    app._vfx_status_var = None
+
+    app._refresh_vfx_editor()
+
+    assert app._vfx_list.items == ["alpha", "beta"]
+    assert app._vfx_list.selected == {1}
+    assert app._vfx_list.active == 1
+    assert app._vfx_list.visible == 1
+    assert app._vfx_capacity_var.value == "321"
+    assert app._vfx_rate_var.value == "33.0"
+
+
+def test_vfx_library_round_trips_cpu_runtime_deterministically(tmp_path: Path) -> None:
+    tooling = EditorVFXTooling22(tmp_path)
+    tooling.create_effect(
+        "dust",
+        backend="cpu2d",
+        capacity=96,
+        rate=14.0,
+        emission_shape="box",
+        emission_extent=(8.0, 4.0, 0.0),
+        start_color=(0.8, 0.7, 0.5, 1.0),
+        end_color=(0.6, 0.5, 0.4, 0.0),
+    )
+    tooling.save()
+    first = tooling.target.read_text(encoding="utf-8")
+    runtime = tooling.build_runtime("dust")
+    assert isinstance(runtime, ParticleEmitter2D)
+    assert runtime.max_particles == 96
+    assert runtime.rate == pytest.approx(14.0)
+
+    reopened = EditorVFXTooling22(tmp_path)
+    assert reopened.effects() == tooling.effects()
+    reopened.save()
+    assert reopened.target.read_text(encoding="utf-8") == first
+
+
+def test_vfx_gpu_preview_uses_shipping_runtime_and_project_texture(tmp_path: Path) -> None:
+    texture = tmp_path / "assets" / "vfx" / "spark.png"
+    texture.parent.mkdir(parents=True)
+    texture.write_bytes(b"fixture")
+    tooling = EditorVFXTooling22(tmp_path)
+    tooling.create_effect(
+        "sparks",
+        backend="gpu3d",
+        capacity=2048,
+        rate=300.0,
+        emission_shape="sphere",
+        emission_extent=(0.5, 0.5, 0.5),
+        texture="vfx/spark.png",
+    )
+    preview = tooling.preview("sparks")
+    assert isinstance(preview.runtime, GPUParticleEmitter3D)
+    assert preview.runtime.capacity == 2048
+    assert preview.runtime.texture == str(texture.resolve())
+    assert preview.missing_assets == ()
+    assert len(preview.fingerprint) == 64
+
+
+def test_vfx_missing_gpu_texture_fails_closed_before_runtime_preview(tmp_path: Path) -> None:
+    tooling = EditorVFXTooling22(tmp_path)
+    tooling.create_effect(
+        "sparks",
+        backend="gpu3d",
+        texture="vfx/missing.png",
+    )
+    assert tooling.missing_assets("sparks") == ("vfx/missing.png",)
+
+    with pytest.raises(EditorVFXError22, match="missing from project assets"):
+        tooling.build_runtime("sparks")
+    with pytest.raises(EditorVFXError22, match="missing from project assets"):
+        tooling.preview("sparks")
+
+    controller = EditorVFXPanelController22(tooling)
+    controller.select("sparks")
+    assert controller.frame().messages == ("Missing asset: vfx/missing.png",)
+    assert controller.validate() == ("Missing asset: vfx/missing.png",)
+    with pytest.raises(EditorVFXError22, match="preview blocked by missing assets"):
+        controller.start_preview()
+    assert controller.status == "Missing asset: vfx/missing.png"
+
+
+def test_vfx_restart_with_removed_texture_invalidates_stale_preview(tmp_path: Path) -> None:
+    texture = tmp_path / "assets" / "vfx" / "spark.png"
+    texture.parent.mkdir(parents=True)
+    texture.write_bytes(b"fixture")
+    tooling = EditorVFXTooling22(tmp_path)
+    tooling.create_effect("sparks", backend="gpu3d", texture="vfx/spark.png")
+    controller = EditorVFXPanelController22(tooling)
+    controller.select("sparks")
+    controller.start_preview()
+    assert controller.frame().preview_running
+    assert controller.frame().diagnostics is not None
+
+    texture.unlink()
+
+    with pytest.raises(EditorVFXError22, match="preview blocked by missing assets"):
+        controller.start_preview()
+
+    frame = controller.frame()
+    assert not frame.preview_running
+    assert frame.diagnostics is None
+    assert frame.messages == ("Missing asset: vfx/spark.png",)
+
+
+def test_vfx_live_preview_stops_when_texture_disappears(tmp_path: Path) -> None:
+    texture = tmp_path / "assets" / "vfx" / "spark.png"
+    texture.parent.mkdir(parents=True)
+    texture.write_bytes(b"fixture")
+    tooling = EditorVFXTooling22(tmp_path)
+    tooling.create_effect("sparks", backend="gpu3d", texture="vfx/spark.png")
+    controller = EditorVFXPanelController22(tooling)
+    controller.select("sparks")
+    controller.start_preview()
+    assert controller.frame().preview_running
+
+    texture.unlink()
+
+    frame = controller.frame()
+    assert not frame.preview_running
+    assert frame.diagnostics is None
+    assert frame.messages == ("Missing asset: vfx/spark.png",)
+    assert controller.status == "Missing asset: vfx/spark.png"
+    with pytest.raises(EditorVFXError22, match="preview is not active"):
+        controller.step_preview(1.0 / 60.0)
+
+
+def test_vfx_paths_reject_parent_escape(tmp_path: Path) -> None:
+    with pytest.raises(EditorVFXError22, match="project-relative"):
+        EditorVFXTooling22(tmp_path, path="../vfx.json")
+
+    tooling = EditorVFXTooling22(tmp_path)
+    with pytest.raises(EditorVFXError22, match="project-relative"):
+        tooling.create_effect("escape", backend="gpu3d", texture="../outside.png")
+
+
+def test_vfx_texture_rejects_windows_drive_relative_path(tmp_path: Path) -> None:
+    tooling = EditorVFXTooling22(tmp_path)
+
+    with pytest.raises(EditorVFXError22, match="texture must stay project-relative"):
+        tooling.create_effect(
+            "drive-relative-escape",
+            backend="gpu3d",
+            texture="C:outside\\spark.png",
+        )
+
+
+def test_vfx_controller_presets_and_bounded_preview(tmp_path: Path) -> None:
+    controller = EditorVFXPanelController22(EditorVFXTooling22(tmp_path))
+    frame = controller.create("smoke", preset="soft-smoke-2d")
+    assert frame.backend == "cpu2d"
+    assert controller.start_preview().preview_running
+    controller.burst(12)
+    frame = controller.step_preview(1.0)
+    assert frame.diagnostics is not None
+    assert frame.diagnostics.last_step == pytest.approx(MAX_VFX_PREVIEW_STEP)
+    assert frame.diagnostics.step_was_clamped
+    assert frame.diagnostics.emitted_total >= 12
+
+    controller.apply_preset("fire-gpu")
+    frame = controller.start_preview()
+    assert frame.backend == "gpu3d"
+    controller.burst(20)
+    frame = controller.step_preview(1.0 / 60.0)
+    assert frame.diagnostics is not None
+    assert frame.diagnostics.capacity == 8192
+
+
+def test_integrated_session_saves_and_reopens_vfx_library(tmp_path: Path) -> None:
+    root = new_project21("VFXIntegrated", "3d", parent=tmp_path)
+    session = EditorIntegratedProjectSession21.open(root)
+    session.vfx.create_effect("impact", backend="gpu3d", rate=80.0)
+    assert session.summary().dirty
+    session.save()
+    assert not session.vfx.dirty
+    assert (root / "config" / "vfx.json").is_file()
+
+    reopened = EditorIntegratedProjectSession21.open(root)
+    assert tuple(item.name for item in reopened.vfx.effects()) == ("impact",)
+    assert not reopened.summary().dirty
+
+
+@pytest.mark.parametrize("capacity", (1.5, "64", True))
+def test_vfx_capacity_rejects_non_integer_values(
+    tmp_path: Path,
+    capacity: object,
+) -> None:
+    tooling = EditorVFXTooling22(tmp_path)
+    with pytest.raises(EditorVFXError22, match="capacity must be an integer"):
+        tooling.create_effect("invalid-capacity", capacity=capacity)
+
+
+@pytest.mark.parametrize("trail_enabled", ("false", 1, 0))
+def test_vfx_trail_enabled_rejects_non_boolean_values(
+    tmp_path: Path,
+    trail_enabled: object,
+) -> None:
+    tooling = EditorVFXTooling22(tmp_path)
+    with pytest.raises(EditorVFXError22, match="trail_enabled must be a boolean"):
+        tooling.create_effect("invalid-trail", trail_enabled=trail_enabled)
+
+
+def test_vfx_trail_enabled_true_round_trips(tmp_path: Path) -> None:
+    tooling = EditorVFXTooling22(tmp_path)
+    tooling.create_effect("trail-enabled", trail_enabled=True)
+    tooling.save()
+
+    reopened = EditorVFXTooling22(tmp_path)
+    assert tuple(item.trail_enabled for item in reopened.effects()) == (True,)
+
+
+@pytest.mark.parametrize("seed", (1.5, "7", True))
+def test_vfx_seed_rejects_non_integer_values(
+    tmp_path: Path,
+    seed: object,
+) -> None:
+    tooling = EditorVFXTooling22(tmp_path)
+    with pytest.raises(EditorVFXError22, match="seed must be an integer"):
+        tooling.create_effect("invalid-seed", seed=seed)
+
+
+def test_vfx_seed_preserves_negative_integer_round_trip(tmp_path: Path) -> None:
+    tooling = EditorVFXTooling22(tmp_path)
+    tooling.create_effect("negative-seed", seed=-7)
+    tooling.save()
+
+    reopened = EditorVFXTooling22(tmp_path)
+    assert tuple(item.seed for item in reopened.effects()) == (-7,)
+
+
+def test_vfx_authoring_bounds_capacity_and_manual_preview_bursts(tmp_path: Path) -> None:
+    tooling = EditorVFXTooling22(tmp_path)
+    with pytest.raises(EditorVFXError22, match="capacity"):
+        tooling.create_effect("too-large", capacity=MAX_VFX_CAPACITY22 + 1)
+
+    controller = EditorVFXPanelController22(tooling)
+    controller.create("bounded", preset="sparks-2d")
+    controller.start_preview()
+    frame = controller.burst(MAX_VFX_PREVIEW_BURST * 100)
+    assert frame.diagnostics is not None
+    assert frame.diagnostics.emitted_total == frame.diagnostics.capacity
+    assert frame.diagnostics.capacity == 256
+    assert "clamped" in controller.status
+
+    controller.apply_preset("fire-gpu")
+    controller.start_preview()
+    frame = controller.burst(MAX_VFX_PREVIEW_BURST * 100)
+    assert frame.diagnostics is not None
+    assert frame.diagnostics.capacity == 8192
+    assert frame.diagnostics.emitted_total == MAX_VFX_PREVIEW_BURST
+    assert "clamped" in controller.status
+
+def test_vfx_cpu2d_authored_rate_is_bounded_to_normal_frame_capacity(tmp_path: Path) -> None:
+    capacity = 32
+    max_cpu_rate = capacity * MAX_CPU2D_VFX_RATE_PER_CAPACITY22
+
+    tooling = EditorVFXTooling22(tmp_path)
+    with pytest.raises(EditorVFXError22, match="cpu2d rate"):
+        tooling.create_effect(
+            "cpu-too-fast",
+            backend="cpu2d",
+            capacity=capacity,
+            rate=max_cpu_rate + 0.01,
+        )
+
+    tooling.create_effect(
+        "cpu-boundary",
+        backend="cpu2d",
+        capacity=capacity,
+        rate=max_cpu_rate,
+    )
+    cpu_runtime = tooling.build_runtime("cpu-boundary")
+    assert isinstance(cpu_runtime, ParticleEmitter2D)
+    cpu_runtime.update(0.25)
+    assert cpu_runtime.diagnostics.last_spawned <= capacity
+
+    controller = EditorVFXPanelController22(tooling)
+    controller.select("cpu-boundary")
+    controller.start_preview()
+    frame = controller.step_preview(0.25)
+    assert frame.diagnostics is not None
+    assert frame.diagnostics.last_step == pytest.approx(MAX_VFX_PREVIEW_STEP)
+    assert frame.diagnostics.emitted_total <= capacity
+
+    tooling.create_effect(
+        "gpu-high-rate",
+        backend="gpu3d",
+        capacity=capacity,
+        rate=max_cpu_rate * 10.0,
+    )
+    gpu_runtime = tooling.build_runtime("gpu-high-rate")
+    assert isinstance(gpu_runtime, GPUParticleEmitter3D)
+    gpu_runtime.update(0.25)
+    assert gpu_runtime.diagnostics.queued <= capacity
+

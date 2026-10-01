@@ -114,3 +114,17 @@ Milestone 5 may be checked only when the exact implementation head proves all of
 - [x] Full exact-head PR matrix and post-merge `main` acceptance evidence.
 
 Milestone 5 accepted on 2026-09-24 after PRs #227–#231 delivered the integrated runtime and creator workflow. Final PR #231 exact head `ac30cb0149099fce7c4eebc9a7cb9f7ba6ebb495` completed all 23 triggered pull-request workflows successfully. The accepted implementation merged to `main` as `8fb851bd6679671d66198721f2a5a535df94c942`, and all 12 triggered post-merge workflow runs completed successfully before this acceptance record advanced the roadmap to 5/10.
+
+
+## Milestone 6 acceptance gate
+
+Milestone 6 may be checked only when the exact implementation head proves all of the following:
+
+1. Deterministic project VFX authoring round-trips creator effects without data loss and maps CPU 2D / GPU 3D settings onto the shipping particle runtimes.
+2. The unified SwirEditor exposes creator-facing presets, emitter controls and runtime-backed preview controls for start, pause, bounded stepping, burst and clear.
+3. Project texture references remain confined beneath the open project `assets/` directory; missing, invalid and escaping resources fail closed with actionable diagnostics.
+4. Runtime diagnostics expose bounded particle capacity/work information without per-frame unbounded editor catch-up or fabricated performance claims.
+5. Representative 2D and 3D source-only fixtures save/reopen authored effects and exercise the same runtime-backed preview path used by the editor.
+6. Focused VFX/editor/persistence/security regressions, the deterministic progress contract and the normal exact-head repository matrix are green; post-merge `main` must also complete its triggered workflow set without failures before the roadmap counter advances.
+
+Milestone 6 remains open at 5/10 while this implementation is developed and qualified.
