@@ -189,9 +189,11 @@ class EditorVFXTooling22:
             effects = tuple(VFXEffectSpec22(**item) for item in payload["effects"])
         except (TypeError, ValueError) as exc:
             raise EditorVFXError22(f"invalid VFX effect entry: {exc}") from exc
-        self._effects = {item.name: item for item in effects}
-        if len(self._effects) != len(effects):
+        candidate = {item.name: item for item in effects}
+        if len(candidate) != len(effects):
             raise EditorVFXError22("duplicate VFX effect name")
+        # Commit only a fully validated library; a failed reload must preserve edits.
+        self._effects = candidate
         self._saved = self._fingerprint()
 
     def _payload(self) -> dict[str, Any]:
