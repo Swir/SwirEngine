@@ -57,6 +57,8 @@ def test_native_tk_lighting_controls_scene_switch_close_reopen(tmp_path: Path, m
         app._lighting_fields["light"]["intensity"][0].set("2.0")
         app._lighting_apply_light()
         assert app.lighting_controller.spec().lights[0].intensity == 2.0
+        assert app._lighting_fields["light"]["intensity"][0].get() == "2.0"
+        assert app._lighting_light_list.get(app._lighting_light_list.curselection()[0]) == "sun"
         app._lighting_fields["Color grading"]["exposure"][0].set("1.7")
         app._lighting_apply("postfx", "Color grading")
         app._lighting_save()
@@ -68,6 +70,11 @@ def test_native_tk_lighting_controls_scene_switch_close_reopen(tmp_path: Path, m
         app._lighting_step()
         assert not app.lighting_controller.running
         active[0] = replace(active[0], key="other-scene", scene=Scene())
+        # An Apply click can arrive before the next scene polling tick.
+        app._lighting_apply("postfx", "Color grading")
+        assert len(errors) == 1 and "Active scene changed" in errors[0][0]
+        assert all(spec.scene != "other-scene" for spec in app.lighting_controller.tooling.profiles())
+        errors.clear()
         app.root.after_cancel(app._lighting_after)
         app._lighting_after = None
         app._lighting_tick()
@@ -84,3 +91,45 @@ def test_native_tk_lighting_controls_scene_switch_close_reopen(tmp_path: Path, m
     finally:
         app._close_lighting_editor()
         app.root.destroy()
+
+
+@pytest.mark.parametrize("mode", ("2d", "3d"))
+def test_unified_native_shell_routes_lighting_to_active_project(
+    tmp_path: Path, monkeypatch, mode: str,
+) -> None:
+    if os.environ.get("SWIR_LIGHTING_REQUIRE_TK") != "1":
+        pytest.skip("required by the dedicated Xvfb native Tk workflow")
+    from swirengine.editor_asset_app21 import TkIntegratedEditorApp21, run_editor_session21
+    from swirengine.editor_integrated_session21 import EditorIntegratedProjectSession21
+    from swirengine.project_scaffold21 import new_project21
+
+    root = new_project21("NativeLighting", mode, parent=tmp_path)
+    session = EditorIntegratedProjectSession21.open(root)
+    visited = []
+
+    def exercise(self):
+        # The full unified constructor and real Tk widgets run unmodified.
+        # Replace only the unbounded mainloop with a finite sequence of UI actions.
+        try:
+            self._open_lighting_editor()
+            self.root.update()
+            source = self.lighting_controller.source()
+            assert source.scene is session.workspace.scene
+            assert source.key == session.scenes.active_path
+            assert source.mode == mode
+            assert len(self._lighting_notebook.tabs()) == 5
+            self._lighting_fields["Color grading"]["exposure"][0].set("1.9")
+            self._lighting_apply("postfx", "Color grading")
+            assert session.lighting.require(source.key).postfx.exposure == 1.9
+            assert session.summary().dirty
+            self._lighting_save()
+            assert not session.lighting.dirty
+            visited.append(source.key)
+        finally:
+            self.close()
+
+    monkeypatch.setattr(TkIntegratedEditorApp21, "run", exercise)
+    run_editor_session21(session)
+    assert visited == [session.scenes.active_path]
+    reopened = EditorIntegratedProjectSession21.open(root)
+    assert reopened.lighting.require(visited[0]).postfx.exposure == 1.9
