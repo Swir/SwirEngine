@@ -10,7 +10,7 @@
 [![PyPI](https://img.shields.io/pypi/v/swirengine?style=for-the-badge&color=02050A&logo=pypi&logoColor=62E5FF)](https://pypi.org/project/swirengine/)
 ![Python](https://img.shields.io/badge/Python-3.10--3.14%2064--bit%20CPython%20verified%20matrix-02050A?style=for-the-badge&logo=python&logoColor=62E5FF)
 ![Status](https://img.shields.io/badge/STATUS-2.1.0%20PUBLISHED-02050A?style=for-the-badge&logoColor=62E5FF)
-![Development](https://img.shields.io/badge/2.2%20ROADMAP-6%2F10-02050A?style=for-the-badge&logoColor=62E5FF)
+![Development](https://img.shields.io/badge/2.2%20ROADMAP-7%2F10-02050A?style=for-the-badge&logoColor=62E5FF)
 ![License](https://img.shields.io/badge/LICENSE-MIT-02050A?style=for-the-badge&logo=opensourceinitiative&logoColor=62E5FF)
 
 [![Author](https://img.shields.io/badge/Author-Swir-0088FF?style=flat-square&logo=github)](https://github.com/Swir)
@@ -29,20 +29,20 @@
 <!-- SWIR-PYPI-PROGRESS:START -->
 ```text
 Scope: SwirEngine 2.2 - Production Tools & Visual Creation
-Progress: [##################------------] 60.0%
-Counter: 6 / 10 milestones
+Progress: [#####################---------] 70.0%
+Counter: 7 / 10 milestones
 Status: IN PROGRESS
 ```
 <!-- SWIR-PYPI-PROGRESS:END -->
 
 **Active verified development scope:** SwirEngine 2.2 — Production Tools & Visual Creation  
-**2.2 roadmap:** **6/10 milestones = 60.0% — IN PROGRESS**  
+**2.2 roadmap:** **7/10 milestones = 70.0% — IN PROGRESS**
 **2.1 release:** **PUBLISHED — GitHub Release and PyPI verified**  
 **Latest public stable release:** **SwirEngine 2.1.0**  
 **Release date:** **2026-09-23**  
 **Release source:** immutable tag **`v2.1.0`**; exact source identity is preserved by release provenance and SHA-256 checksums.
 
-SwirEngine 2.1.0 is publicly released on GitHub and PyPI and remains the current stable package. Active source development follows [`ROADMAP_2_2.md`](ROADMAP_2_2.md): **Production Tools & Visual Creation**. Milestones 1–6 are accepted: the deterministic runtime-backed material/shader asset foundation, creator-facing Material/Shader Editor with shipping-renderer live preview, the integrated Visual Scripting / Node Graph foundation, runtime-backed World/Terrain authoring, the Animation State Machine + Blend Tree Editor with project-backed resource resolution and shipping-runtime preview/debugging, and the Particle/VFX Editor with project-confined assets, bounded CPU2D/GPU3D preview controls and failure-safe save/reopen. Milestone 7 now targets Lighting, Environment and Post-FX authoring.
+SwirEngine 2.1.0 is publicly released on GitHub and PyPI and remains the current stable package. Active source development follows [`ROADMAP_2_2.md`](ROADMAP_2_2.md): **Production Tools & Visual Creation**. Milestones 1–7 are accepted: the deterministic runtime-backed material/shader foundation and editor, Visual Scripting / Node Graph tooling, World/Terrain authoring, Animation State Machine + Blend Tree Editor, Particle/VFX Editor, and Lighting/Environment/Post-FX authoring with isolated renderer preview and relocated installed-runtime qualification. Milestone 8 now targets UI Designer 2.0.
 
 Published 2.1.0 remains the stable compatibility baseline while 2.2 develops on a separate finite roadmap. Concrete regressions, compatibility failures, security/safety issues or release-blocking defects still take priority over 2.2 feature work.
 
@@ -56,6 +56,7 @@ Published 2.1.0 remains the stable compatibility baseline while 2.2 develops on 
 | Rendering | Materials, lighting, shadows, post-processing, instancing, culling, terrain/LOD and bounded transient-resource reuse; 2.2 adds deterministic material/shader assets plus a creator-facing editor and live preview backed by the shipping `Mesh3D` / `ShaderMesh3D` renderer paths. |
 | Animation | Tween/timeline/state machines, animation graphs, skeletal animation and GPU skinning paths; 2.2 adds integrated visual state/transition/parameter and synchronized 1D blend-tree authoring, persistent rig/clip source bindings, a project-confined glTF/GLB resolver, and runtime-backed sampled-pose preview/debugging. |
 | Particle/VFX authoring | 2.2 source development includes deterministic project effects over shipping CPU2D/GPU3D runtimes, creator presets, start/pause/step/burst/clear controls, bounded diagnostics, confined texture references and failure-safe library reload. |
+| Lighting authoring | 2.2 source development includes deterministic scene lighting/environment/post-FX profiles, unified creator controls, isolated shipping-renderer preview, confined resources and verified default-export relocation. |
 | Physics + navigation | 2D/3D collision and rigid-body systems, character controllers, navigation and local-avoidance foundations, with SwirEditor 2.1 creator tooling backed by the shipping runtime APIs. |
 | Audio | Runtime audio engine, buses/groups, spatial behavior and optional audio support, with SwirEditor 2.1 bus/cue authoring and runtime preview. |
 | UI + input | Retained UI, focus/navigation, keyboard/mouse/gamepad input, rebinding and settings foundations, with integrated SwirEditor 2.1 HUD/input authoring. |
@@ -130,7 +131,7 @@ game.run()
 
 SwirEngine 2.1.0 is the current public stable release. Active development has moved to a new finite roadmap:
 
-- [`ROADMAP_2_2.md`](ROADMAP_2_2.md) — **2.2 Production Tools & Visual Creation**, **6/10 = 60.0%**; Milestones 1–6 accepted, Milestone 7 Lighting, Environment and Post-FX authoring open.
+- [`ROADMAP_2_2.md`](ROADMAP_2_2.md) — **2.2 Production Tools & Visual Creation**, **7/10 = 70.0%**; Milestones 1–7 accepted, Milestone 8 UI Designer 2.0 open.
 - [`ROADMAP_2_1.md`](ROADMAP_2_1.md) — **2.1 SwirEditor & Creator Workflow**, **10/10 = 100.0%**, released and frozen except for regressions.
 
 Historical release-development detail remains preserved in [`ROADMAP_2_0.md`](ROADMAP_2_0.md), which is **10/10 = 100.0%** only for its named source-development scope. The former 2.0 post-release audit is retained as a historical verification snapshot rather than a parallel active roadmap.
@@ -139,6 +140,7 @@ Historical release-development detail remains preserved in [`ROADMAP_2_0.md`](RO
 
 - [`ROADMAP_2_2.md`](ROADMAP_2_2.md) — active 2.2 Production Tools & Visual Creation roadmap
 - [`docs/PARTICLE_VFX_EDITOR_2_2.md`](docs/PARTICLE_VFX_EDITOR_2_2.md) — accepted M6 particle authoring, preview controls and runtime boundaries
+- [`docs/LIGHTING_AUTHORING_2_2.md`](docs/LIGHTING_AUTHORING_2_2.md) — accepted M7 scene lighting, isolated preview and portable export workflow
 - [`ROADMAP_2_1.md`](ROADMAP_2_1.md) — completed 2.1 editor/creator source roadmap
 - [`docs/MIGRATING_TO_2_1.md`](docs/MIGRATING_TO_2_1.md) — 2.0 → 2.1 migration guidance for source development
 - [`docs/RELEASE_GATE_2_1.md`](docs/RELEASE_GATE_2_1.md) — 2.1 milestone acceptance and publication boundary
@@ -228,11 +230,11 @@ Engineering quality is evaluated against complete games, public installation, re
 | 2.0 | [`ROADMAP_2_0.md`](ROADMAP_2_0.md) | 10/10 = 100.0%, released 2026-09-19 |
 | 2.0 post-release | [`docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md`](docs/SWIRENGINE_2_0_POST_RELEASE_AUDIT.md) | 5/10 = 50.0%, archived snapshot |
 | 2.1 | [`ROADMAP_2_1.md`](ROADMAP_2_1.md) | 10/10 = 100.0%, released 2026-09-23 |
-| **2.2** | **[`ROADMAP_2_2.md`](ROADMAP_2_2.md)** | **6/10 = 60.0%, active development** |
+| **2.2** | **[`ROADMAP_2_2.md`](ROADMAP_2_2.md)** | **7/10 = 70.0%, active development** |
 
 ## ⚠️ Current limitations
 
-- SwirEngine 2.2 is active source development at 6/10; Milestone 7 Lighting, Environment and Post-FX authoring is the next open production-tools gate.
+- SwirEngine 2.2 is active source development at 7/10; Milestone 8 UI Designer 2.0 is the next open production-tools gate.
 - The verified base-engine matrix covers only the maintained 64-bit hosted runner architectures exercised by CI; 32-bit Python, PyPy, free-threaded CPython and unverified architectures are not claimed.
 - Optional extras such as audio require their own dependency/runtime evidence beyond the base-engine support matrix.
 - Desktop build plans are host-native; unsupported cross-compilation is intentionally rejected.
