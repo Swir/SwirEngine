@@ -6,7 +6,7 @@
 
 SwirEngine 2.2 starts after the public SwirEngine 2.1.0 creator-workflow release. The target is a finite production-tools release: creators should be able to author more of a complete 2D/3D/multiplayer game visually while the generated data remains backed by shipping runtime systems.
 
-Current verified progress: 8/10 milestones = 80.0%.
+Current verified progress: 9/10 milestones = 90.0%.
 
 ## Product rules
 
@@ -27,7 +27,7 @@ Current verified progress: 8/10 milestones = 80.0%.
 - [x] **6. Particle/VFX Editor.** Add visual emitter/effect authoring for CPU/GPU particle systems, deterministic presets, preview controls and bounded runtime diagnostics.
 - [x] **7. Lighting, Environment and Post-FX authoring.** Add creator controls for lights, sky/environment, shadows, tone mapping and post-processing with scene persistence and live renderer validation.
 - [x] **8. UI Designer 2.2.** Add responsive anchors/containers, reusable styles, interaction states and UI animation authoring while preserving keyboard/gamepad focus/navigation behavior.
-- [ ] **9. Multiplayer Debugger + Editor Extension SDK.** Add replication/session inspection, latency/debug views and a bounded plugin API for extending SwirEditor without bypassing project/runtime safety contracts.
+- [x] **9. Multiplayer Debugger + Editor Extension SDK.** Add replication/session inspection, latency/debug views and a bounded plugin API for extending SwirEditor without bypassing project/runtime safety contracts.
 - [ ] **10. Production acceptance and 2.2 release readiness.** Drive representative 2D, 3D and multiplayer projects through authoring, profiling, build/export and staged runtime; requalify supported CPython/platform packaging, clean installs, performance/safety evidence, checksums/provenance and the guarded release gate.
 
 ## Milestone 1 acceptance gate
@@ -201,3 +201,17 @@ Milestone 9 may be checked only when the exact implementation head proves all of
 5. The unified dynamic Tk host renders deterministic extension snapshots, sanitizes lifecycle and callback failures, cleans up on close and exposes the multiplayer debugger through a built-in restricted adapter rather than passing the production session to extension code.
 6. Project and desktop export exclude `.swir` editor state for broad, direct and case-insensitive include shapes; traversal, entrypoint/icon aliases, symlinks and unsafe source changes fail before previous output cleanup, while a relocated installed runtime still exercises privacy-safe debugger and RTT behavior.
 7. Focused M9, legacy multiplayer, M8 UI, native Tk, real localhost RTT, installed-runtime relocation, safety, progress, Ruff and compile gates plus the normal repository matrix are green for the exact PR head; after normal merge, every required workflow and check for the exact merged `main` SHA must also be green before the roadmap counter advances from 8/10.
+
+### M9 implementation and acceptance evidence
+
+- [x] Bounded monotonic ping/pong RTT protocol with strict replay, mismatch, expiry and payload validation.
+- [x] Privacy-safe production multiplayer capture with deterministic aliases, allowlisted aggregates and hard size/count limits.
+- [x] Transient SwirEditor debugger lifecycle with explicit attach/sample/RTT/capture controls and confined atomic editor-state export.
+- [x] Capability-gated trusted Editor Extension SDK with bounded immutable panels/actions and no raw application or runtime object bridge.
+- [x] Dynamic Tk extension host with sanitized failures, deterministic cleanup and a restricted built-in multiplayer adapter.
+- [x] Broad/default export privacy, symlink/junction/TOCTOU fail-closed regressions and relocated installed-runtime qualification.
+- [x] Full exact-head PR matrix and post-merge `main` acceptance evidence.
+
+Milestone 9 accepted on 2026-10-01 after PR #239 exact head `50b76c0b44d2a06f6cb07227cbdebdaf4c92d8b8` completed all 38 exact-SHA Actions workflows successfully with 175 successful PR check runs. The implementation merged normally to `main` as `7611068101c19aa7b69446913c8814efe9224167`; both commits share tree `2b4f4678b6e70221daaab8f0f791e60188841d3c`. All 21 associated post-merge workflow runs and all 117 final check runs completed successfully before this acceptance record advanced the roadmap to 9/10.
+
+The earlier exact head `90483821e116f38ed65559d7cb2239dfb5f50dbd` was not accepted or rerun as a flake after Desktop Shipping exposed a real planning-performance regression. The final exact head restored the deterministic desktop-planning budget without weakening discovery, final or pre-clean source confinement: the 500-cycle CPython 3.13 workload completed in 4.7089 seconds on the PR head and 4.8262 seconds on the merged `main` SHA against the 5.0-second ceiling, with fingerprint `8984903953e78b82`. Required CPython 3.10/3.13/3.14 contracts, localhost RTT, bounded private capture, native Tk, `.swir` exclusion and relocated installed-wheel execution all passed without an acceptance rerun, gate bypass or dependency change. This is source-development acceptance only; no public 2.2 release, operating-system sandbox claim or public-network latency claim is implied. Milestone 10 is the final open production-acceptance and release-readiness target.
