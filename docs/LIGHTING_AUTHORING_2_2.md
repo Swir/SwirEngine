@@ -22,7 +22,7 @@ Switching scenes (or reopening a different Scene object at the same path) stops 
 
 ## Source-development example
 
-Run against a source checkout containing this slice and an existing 3D project. Adjust the scene key to match that project. Scene keys are confined relative paths; the library may be authored before the scene file is created, so this API alone does not prove the scene exists or loads.
+Run against a source checkout containing this slice and an existing 3D project. Adjust the scene key to match that project. Scene keys are confined relative paths; the library may be authored before the scene file is created, so this API alone does not prove the scene exists or loads. Export requires the bound scene file to exist.
 
 ```python
 from pathlib import Path
@@ -60,6 +60,16 @@ finally:
 
 3D uses Renderer2, which requires the post-processing resolve. To request a neutral resolve use supported neutral tone mapping and neutral settings rather than disabling its resolve. A 2D profile cannot silently contain ignored 3D lights or an environment.
 
+## Portable Build/Export workflow
+
+A present `config/lighting.json` opts the project into lighting export validation. The normal `ProjectExporter` and integrated Build/Export Wizard include that library, every bound scene file and every referenced skybox texture even when the packaging profile uses the default `assets/scenes/scripts` includes. They record the files in the export manifest with SHA-256 hashes and include them in the generated native packaging spec.
+
+Invalid libraries, missing scene/texture dependencies, escaping symlinks and packaging exclusions that would omit declared lighting data fail preflight **before the previous output directory is cleaned**. A project with no lighting library keeps its existing export behavior. Validation does not silently skip an excluded resource or publish an export with missing settings.
+
+The game entrypoint must load its scene and apply the appropriate profile through `EditorLightingTooling22.build_runtime(...).apply_to_game(...)`, as above. Export preserves authored data; it does not inject arbitrary lighting setup into an existing game script or automatically switch profiles during gameplay. Packaged applications still use their established resource-root resolution.
+
+The representative 2D/3D shipping tests use the real integrated editor session and default Wizard to author, save and stage a project. They relocate the stage, move the original project away, then launch the staged entrypoint in a separate process. Canonical profile bytes, fingerprint, exposure and light counts must remain unchanged. The required installed-runtime gate uses isolated Python (`-I`) and verifies that the engine comes from the installed wheel's `site-packages`, not the checkout. Under the explicit EGL gate it renders both relocated projects with real OpenGL, including a decodable project skybox for 3D. This is staged/installed-runtime evidence, not a claim that a new Windows executable or 2.2 release was published.
+
 ## Safety and deterministic persistence
 
 - Booleans, integers and finite numeric fields are validated without lossy integer coercion. Persisted objects reject unknown fields, duplicate JSON keys, duplicate normalized light names and duplicate scene bindings.
@@ -73,14 +83,17 @@ finally:
 ## Verification
 
 ```bash
-python -m pytest -q tests/test_lighting_authoring_2_2.py tests/test_lighting_editor_2_2.py
+python -m pytest -q tests/test_lighting_authoring_2_2.py tests/test_lighting_editor_2_2.py tests/test_lighting_shipping_2_2.py
 # Linux with Mesa/EGL and project dependencies installed:
 SWIR_LIGHTING_REQUIRE_GL=1 python -m pytest -v tests/test_lighting_opengl_2_2.py tests/test_lighting_editor_opengl_2_2.py
 SWIR_LIGHTING_REQUIRE_TK=1 xvfb-run -a python -m pytest -v tests/test_lighting_editor_tk_2_2.py
+# Install the current source as a non-editable wheel before the isolated child-process gate:
+python -m pip install ".[dev]"
+SWIR_LIGHTING_REQUIRE_GL=1 SWIR_LIGHTING_INSTALLED_ONLY=1 python -m pytest -v -s tests/test_lighting_shipping_2_2.py -k survives_default_wizard_export_and_relocation
 ```
 
-The focused `Editor Lighting 2.2` workflow requires real EGL tests; an unavailable context or dependency fails that step instead of skipping it. They render saved/reopened 2D and 3D profiles and live controller changes to real framebuffers and compare exposure-dependent output. Native Tk tests exercise the real panel widgets/event loop with a CPU capture probe; they are not GPU evidence. The separate EGL tests exercise the production preview renderer. The generic cross-platform suite skips these environment-specific tests unless their explicit required-gate switches are enabled. CPU-side persistence/runtime tests never count as GPU evidence.
+The focused `Editor Lighting 2.2` workflow requires real EGL tests; an unavailable context or dependency fails that step instead of skipping it. They render saved/reopened 2D and 3D profiles, live controller changes and relocated exports to real framebuffers. Native Tk tests exercise the real panel widgets/event loop with a CPU capture probe; they are not GPU evidence. The separate EGL tests exercise the production preview renderer. The generic cross-platform suite skips the environment-specific files unless their explicit required-gate switches are enabled, but still runs the shipping validation and CPU-side relocated-runtime tests. CPU-side persistence/runtime tests never count as GPU evidence.
 
 ## Remaining M7 acceptance work
 
-The unified panel, isolated continuous preview, cleanup and scene-switch lifecycle are implemented in this development branch. Their exact-final-head CI, staged/exported representative lighting workflows, final acceptance review and post-merge main qualification remain required before M7 can receive a checkmark. No release or additional platform support is implied by this slice.
+The unified panel, isolated continuous preview, cleanup, scene switching and declared lighting export integration are implemented in this development branch. Exact-final-head CI, installed/EGL shipping qualification, final acceptance review and post-merge main qualification remain required before M7 can receive a checkmark. No release or additional platform support is implied by this slice.
