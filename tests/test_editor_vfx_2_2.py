@@ -233,6 +233,17 @@ def test_vfx_paths_reject_parent_escape(tmp_path: Path) -> None:
         tooling.create_effect("escape", backend="gpu3d", texture="../outside.png")
 
 
+def test_vfx_texture_rejects_windows_drive_relative_path(tmp_path: Path) -> None:
+    tooling = EditorVFXTooling22(tmp_path)
+
+    with pytest.raises(EditorVFXError22, match="texture must stay project-relative"):
+        tooling.create_effect(
+            "drive-relative-escape",
+            backend="gpu3d",
+            texture="C:outside\\spark.png",
+        )
+
+
 def test_vfx_controller_presets_and_bounded_preview(tmp_path: Path) -> None:
     controller = EditorVFXPanelController22(EditorVFXTooling22(tmp_path))
     frame = controller.create("smoke", preset="soft-smoke-2d")
