@@ -1,0 +1,138 @@
+name: Editor UI Designer 2.2
+
+on:
+  push:
+    branches: [main, "feature/2.2-*"]
+    paths:
+      - "src/swirengine/ui15.py"
+      - "src/swirengine/ui_designer22.py"
+      - "src/swirengine/editor_ui_designer22.py"
+      - "src/swirengine/editor_ui_designer_frontend22.py"
+      - "src/swirengine/editor_integrated_session21.py"
+      - "src/swirengine/editor_asset_app21.py"
+      - "src/swirengine/exporting.py"
+      - "tests/test_ui_designer*_2_2.py"
+      - "tests/test_ui_toolkit_2_1_5.py"
+      - "tests/test_editor_ui_hud*_2_1.py"
+      - "docs/UI_DESIGNER_2_2.md"
+      - "CHANGELOG.d/2.2.0-ui-designer.md"
+      - "README.md"
+      - "ROADMAP_2_2.md"
+      - "assets/readme/**"
+      - "tools/generate_progress_svg.py"
+      - ".github/workflows/editor-ui-designer-2-2.yml"
+  pull_request:
+    paths:
+      - "src/swirengine/ui15.py"
+      - "src/swirengine/ui_designer22.py"
+      - "src/swirengine/editor_ui_designer22.py"
+      - "src/swirengine/editor_ui_designer_frontend22.py"
+      - "src/swirengine/editor_integrated_session21.py"
+      - "src/swirengine/editor_asset_app21.py"
+      - "src/swirengine/exporting.py"
+      - "tests/test_ui_designer*_2_2.py"
+      - "tests/test_ui_toolkit_2_1_5.py"
+      - "tests/test_editor_ui_hud*_2_1.py"
+      - "docs/UI_DESIGNER_2_2.md"
+      - "CHANGELOG.d/2.2.0-ui-designer.md"
+      - "README.md"
+      - "ROADMAP_2_2.md"
+      - "assets/readme/**"
+      - "tools/generate_progress_svg.py"
+      - ".github/workflows/editor-ui-designer-2-2.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: UI Designer runtime and authoring / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install CPython 3.14 native build prerequisites
+        if: matrix.python-version == '3.14'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev
+      - name: Install development dependencies
+        run: python -m pip install --upgrade pip ".[dev]"
+      - name: Verify UI Designer and compatibility contracts
+        run: >-
+          python -m pytest -q
+          tests/test_ui_designer_authoring_2_2.py
+          tests/test_ui_designer_runtime_2_2.py
+          tests/test_ui_designer_editor_2_2.py
+          tests/test_ui_designer_shipping_2_2.py
+          tests/test_ui_toolkit_2_1_5.py
+          tests/test_editor_ui_hud_tooling_2_1.py
+          tests/test_editor_ui_hud_session_2_1.py
+          tests/test_editor_build_export_tooling21.py
+          tests/test_editor_build_export_frontend21.py
+          tests/test_editor_hub_2_1.py
+          tests/test_progress_svg.py tests/test_progress_2_1.py
+      - name: Check active progress
+        run: python tools/generate_progress_svg.py --check
+      - name: Lint UI Designer slice
+        run: >-
+          python -m ruff check
+          src/swirengine/ui15.py src/swirengine/ui_designer22.py
+          src/swirengine/editor_ui_designer22.py
+          src/swirengine/editor_ui_designer_frontend22.py
+          src/swirengine/editor_integrated_session21.py
+          src/swirengine/editor_asset_app21.py src/swirengine/exporting.py
+          tests/test_ui_designer_authoring_2_2.py
+          tests/test_ui_designer_runtime_2_2.py
+          tests/test_ui_designer_editor_2_2.py
+          tests/test_ui_designer_editor_tk_2_2.py
+          tests/test_ui_designer_shipping_2_2.py
+      - name: Compile UI Designer slice
+        run: >-
+          python -m compileall -q
+          src/swirengine/ui15.py src/swirengine/ui_designer22.py
+          src/swirengine/editor_ui_designer22.py
+          src/swirengine/editor_ui_designer_frontend22.py
+          src/swirengine/editor_integrated_session21.py
+          src/swirengine/editor_asset_app21.py src/swirengine/exporting.py
+          tests/test_ui_designer_authoring_2_2.py
+          tests/test_ui_designer_runtime_2_2.py
+          tests/test_ui_designer_editor_2_2.py
+          tests/test_ui_designer_editor_tk_2_2.py
+          tests/test_ui_designer_shipping_2_2.py
+
+  installed-runtime:
+    name: Relocated installed runtime and native panel
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install software OpenGL and native Tk test runtime
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libgl1-mesa-dri xvfb python3-tk
+      - name: Install current source as a wheel-backed runtime
+        run: python -m pip install --upgrade pip ".[dev]"
+      - name: Require relocated installed-wheel UI runtime and real EGL output
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          SWIR_UI_DESIGNER_INSTALLED_ONLY: "1"
+          SWIR_UI_DESIGNER_REQUIRE_GL: "1"
+        run: >-
+          python -m pytest -v -s tests/test_ui_designer_shipping_2_2.py
+          -k survives_default_wizard_export_and_relocation
+      - name: Require native Tk panel lifecycle
+        env:
+          SWIR_UI_DESIGNER_REQUIRE_TK: "1"
+        run: xvfb-run -a python -m pytest -v tests/test_ui_designer_editor_tk_2_2.py

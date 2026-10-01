@@ -9,12 +9,12 @@ from .editor_asset_formats21 import create_format_aware_editor_asset_pipeline21
 from .editor_asset_frontend21 import EditorAssetWorkflow21
 from .editor_integrated_session21 import EditorIntegratedProjectSession21
 from .editor_lighting22 import LightingSceneSource22
-from .editor_lighting_frontend22 import TkLightingEditorApp22
 from .editor_render_backend21 import EditorRenderBackendUnavailable
+from .editor_ui_designer_frontend22 import TkUIDesignerEditorApp22
 
 
 class TkIntegratedEditorApp21(
-    TkLightingEditorApp22,
+    TkUIDesignerEditorApp22,
     TkNativeDropAssetPipelineEditorApp21,
 ):
     """Unified SwirEditor shell for gameplay creator tools and the production asset pipeline."""
@@ -52,6 +52,7 @@ def run_editor_session21(session: EditorProjectSession) -> None:
             animation_resource_resolver=animation_resource_resolver,
             vfx=session.vfx,
             lighting=session.lighting,
+            ui_designer=session.ui_designer,
             lighting_source=lambda: LightingSceneSource22(
                 session.scenes.active_path,
                 session.manifest.mode,
@@ -75,6 +76,7 @@ def run_editor_session21(session: EditorProjectSession) -> None:
         session.console.write("Animation State Machine / Blend Tree 2.2 attached", source="animation")
         session.console.write("Particle / VFX Editor 2.2 attached", source="vfx")
         session.console.write("Lighting / Environment / Post-FX Editor 2.2 attached", source="lighting")
+        session.console.write("UI Designer 2.2 attached", source="ui-designer")
         app.run()
     finally:
         workflow.shutdown()

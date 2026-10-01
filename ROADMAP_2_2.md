@@ -165,3 +165,14 @@ Milestone 7 may be checked only when the exact implementation head proves all of
 Milestone 7 accepted on 2026-10-01 after PR #235 exact head `89c4a890f098b3780b0ef3a86b4629ded8be6898` completed all 33 exact-SHA Actions workflows successfully with 153 successful PR check runs. The implementation merged normally to `main` as `f694768a176d693f1638d18240346e701f8fc3ab`; both commits share tree `a2a54049e4ed39d4057496ab410c485d3cc50a76`. All 18 associated post-merge workflow runs and all 103 check runs completed successfully before this acceptance record advanced the roadmap to 7/10.
 
 Post-merge evidence includes focused Editor Lighting run `36877834624`, CI, Desktop Export, packaging, real-game, source-checkpoint and final release-gate workflows on the exact merge SHA. Required real EGL saved-profile/live-preview tests, native Tk lifecycle coverage and isolated installed-wheel relocated 2D/3D rendering all completed successfully. This is source-development acceptance only; no new physical-GPU performance claim or public 2.2 release is implied. Milestone 8 is the next open production-tools target.
+
+## Milestone 8 acceptance gate
+
+Milestone 8 may be checked only when the exact implementation head proves all of the following:
+
+1. A deterministic, versioned `config/ui-designer.json` document round-trips responsive widget hierarchies, reusable themes/styles and bounded UI animation tracks without changing the legacy `config/ui-hud.json` contract.
+2. Responsive flow containers plus top-level viewport and nested parent anchors build the shipping `UIToolkit` tree while preserving keyboard, pointer and gamepad focus/navigation behavior.
+3. The unified SwirEditor exposes creator-facing widget, container, style, interaction-state and animation controls with dirty/save/reopen behavior and an isolated runtime-backed preview.
+4. Action labels remain portable data, require explicit runtime handlers and stay inert in editor/export validation; invalid bindings, malformed documents, traversal and symlink escapes fail closed without replacing live authoring state or previous export output.
+5. Default Build/Export Wizard staging preserves the canonical UI document and manifest hash through relocation; an isolated installed wheel reopens it and exercises responsive layout, focus/navigation, animation sampling and a real software-EGL frame.
+6. Focused UI Designer, legacy UI/HUD, editor session, export, native Tk, persistence and safety regressions, the deterministic progress contract and the normal exact-head repository matrix are green; post-merge `main` must also complete its triggered workflow set without failures before the roadmap counter advances.
