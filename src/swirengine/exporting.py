@@ -286,6 +286,34 @@ class ProjectExporter:
             raise ValueError(f"content build export preflight failed: {exc}") from exc
         return tuple(Path(value) for value in paths)
 
+    def _lighting_files(self) -> tuple[Path, ...]:
+        """Opt-in lighting libraries and their bound scene/skybox data must ship together.
+
+        No library means the legacy export contract is unchanged. A present invalid library,
+        missing dependency or escaping symlink fails preflight before cleaning the output.
+        """
+        library = self.project_root / "config" / "lighting.json"
+        if not library.exists() and not library.is_symlink():
+            return ()
+        from .lighting_authoring22 import EditorLightingTooling22, _contained
+
+        try:
+            tooling = EditorLightingTooling22(self.project_root)
+            files = {Path(tooling.relative_path)}
+            for spec in tooling.profiles():
+                scene = _contained(self.project_root, spec.scene)
+                if not scene.is_file():
+                    raise ValueError(f"missing lighting scene: {spec.scene}")
+                files.add(Path(spec.scene))
+                # Use the production resolver, including assets-root and nested symlink checks.
+                tooling.build_runtime(spec.scene)
+                texture = spec.environment.skybox_texture
+                if texture is not None:
+                    files.add(Path("assets") / texture)
+        except (OSError, ValueError, RuntimeError) as exc:
+            raise ValueError(f"lighting export preflight failed: {exc}") from exc
+        return tuple(sorted(files, key=lambda path: path.as_posix().casefold()))
+
     def _collect_files(self, profile: PackagingProfile) -> tuple[Path, ...]:
         entrypoint = self._safe_relative(profile.entrypoint, label="entrypoint")
         candidates: set[Path] = set()
@@ -307,8 +335,10 @@ class ProjectExporter:
 
         scene_package_files = self._scene_package_files()
         content_build_files = self._content_build_files()
+        lighting_files = self._lighting_files()
         candidates.update(scene_package_files)
         candidates.update(content_build_files)
+        candidates.update(lighting_files)
 
         if profile.icon:
             icon = self._safe_relative(profile.icon, label="icon path")
@@ -330,6 +360,10 @@ class ProjectExporter:
         if excluded_build_files:
             values = ", ".join(path.as_posix() for path in excluded_build_files)
             raise ValueError(f"packaging profile excludes declared content build files: {values}")
+        excluded_lighting = tuple(path for path in lighting_files if path not in filtered)
+        if excluded_lighting:
+            values = ", ".join(path.as_posix() for path in excluded_lighting)
+            raise ValueError(f"packaging profile excludes declared lighting content: {values}")
         return tuple(sorted(filtered, key=lambda path: path.as_posix().casefold()))
 
     @staticmethod

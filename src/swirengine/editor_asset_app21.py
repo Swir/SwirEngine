@@ -8,12 +8,13 @@ from .editor_asset_drop21 import TkNativeDropAssetPipelineEditorApp21
 from .editor_asset_formats21 import create_format_aware_editor_asset_pipeline21
 from .editor_asset_frontend21 import EditorAssetWorkflow21
 from .editor_integrated_session21 import EditorIntegratedProjectSession21
+from .editor_lighting22 import LightingSceneSource22
+from .editor_lighting_frontend22 import TkLightingEditorApp22
 from .editor_render_backend21 import EditorRenderBackendUnavailable
-from .editor_vfx_frontend22 import TkVFXEditorApp22
 
 
 class TkIntegratedEditorApp21(
-    TkVFXEditorApp22,
+    TkLightingEditorApp22,
     TkNativeDropAssetPipelineEditorApp21,
 ):
     """Unified SwirEditor shell for gameplay creator tools and the production asset pipeline."""
@@ -50,6 +51,15 @@ def run_editor_session21(session: EditorProjectSession) -> None:
             animation_machines=session.animation_machines,
             animation_resource_resolver=animation_resource_resolver,
             vfx=session.vfx,
+            lighting=session.lighting,
+            lighting_source=lambda: LightingSceneSource22(
+                session.scenes.active_path,
+                session.manifest.mode,
+                session.workspace.scene,
+                (session.controller.camera_3d if session.manifest.mode == "3d"
+                 else session.controller.camera_2d),
+                session.serializer,
+            ),
             title=f"SwirEditor 2.2 — {session.manifest.name}",
         )
         session._install_file_menu(app)
@@ -64,6 +74,7 @@ def run_editor_session21(session: EditorProjectSession) -> None:
         session.console.write("World/Terrain Authoring 2.2 attached", source="world")
         session.console.write("Animation State Machine / Blend Tree 2.2 attached", source="animation")
         session.console.write("Particle / VFX Editor 2.2 attached", source="vfx")
+        session.console.write("Lighting / Environment / Post-FX Editor 2.2 attached", source="lighting")
         app.run()
     finally:
         workflow.shutdown()
