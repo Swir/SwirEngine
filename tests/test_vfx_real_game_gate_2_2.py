@@ -51,6 +51,26 @@ def test_representative_project_vfx_round_trip_and_runtime_preview(
     assert second_preview.fingerprint == first_preview.fingerprint
     assert not reopened.summary().dirty
 
+    initial = reopened_controller.start_preview()
+    assert initial.diagnostics is not None
+    reopened_controller.burst(24)
+    stepped = reopened_controller.step_preview(1.0 / 60.0)
+    assert stepped.diagnostics is not None
+    assert stepped.diagnostics.emitted_total >= 24
+
+    paused = reopened_controller.pause_preview()
+    assert not paused.preview_running
+    assert paused.diagnostics == stepped.diagnostics
+
+    restarted = reopened_controller.start_preview()
+    assert restarted.preview_running
+    assert restarted.diagnostics == initial.diagnostics
+    reopened_controller.burst(24)
+    replayed = reopened_controller.step_preview(1.0 / 60.0)
+    assert replayed.diagnostics == stepped.diagnostics
+    assert not reopened.summary().dirty
+    assert reopened.vfx.preview("primary").fingerprint == first_preview.fingerprint
+
     reopened.vfx.save()
     assert (root / "config" / "vfx.json").read_bytes() == canonical
 
