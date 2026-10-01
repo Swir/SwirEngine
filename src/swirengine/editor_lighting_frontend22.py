@@ -118,9 +118,16 @@ class TkLightingEditorApp22(TkVFXEditorApp22):
             fields[key] = (variable, value)
         return fields
 
-    def _populate_lighting(self) -> None:
+    def _populate_lighting(self, *, selected_light: str | None = None) -> None:
         spec = self.lighting_controller.spec()
-        self._lighting_scene_key = (spec.scene, id(self.lighting_controller.source().scene), spec.mode)
+        binding = (spec.scene, id(self.lighting_controller.source().scene), spec.mode)
+        previous = getattr(self, "_lighting_light_list", None)
+        if (selected_light is None and self._lighting_scene_key == binding
+                and previous is not None and previous.winfo_exists()):
+            selection = previous.curselection()
+            if selection:
+                selected_light = previous.get(selection[0])
+        self._lighting_scene_key = binding
         self._lighting_scene_var.set(f"Active scene: {spec.scene}  |  {spec.mode.upper()}")
         for tab in self._lighting_notebook.tabs():
             self._lighting_notebook.nametowidget(tab).destroy()
@@ -132,7 +139,11 @@ class TkLightingEditorApp22(TkVFXEditorApp22):
         self._lighting_light_list.bind("<<ListboxSelect>>", self._lighting_select_light)
         for item in spec.lights:
             self._lighting_light_list.insert("end", item.name)
-        self._lighting_fields["light"] = self._form(light_tab, asdict(LightSpec22("sun")), start=1)
+        selected = next((light for light in spec.lights if light.name == selected_light),
+                        spec.lights[0] if spec.lights else LightSpec22("sun"))
+        self._lighting_fields["light"] = self._form(light_tab, asdict(selected), start=1)
+        if spec.lights:
+            self._lighting_light_list.selection_set(spec.lights.index(selected))
         actions = self.ttk.Frame(light_tab)
         actions.grid(row=12, column=0, columnspan=2, sticky="ew", padx=8, pady=8)
         state = "normal" if spec.mode == "3d" else "disabled"
@@ -152,7 +163,16 @@ class TkLightingEditorApp22(TkVFXEditorApp22):
                             command=lambda s=section, t=title: self._lighting_apply(s, t)).grid(
                 row=len(values), column=0, columnspan=2, sticky="ew", padx=8, pady=12)
 
+    def _require_lighting_form_scene(self) -> None:
+        source = self.lighting_controller.source()
+        if self._lighting_scene_key != (source.key, id(source.scene), source.mode):
+            self.lighting_controller.sync_scene()
+            self._clear_lighting_image()
+            self._populate_lighting()
+            raise ValueError("Active scene changed; review its lighting controls before applying")
+
     def _lighting_values(self, group: str) -> dict[str, Any]:
+        self._require_lighting_form_scene()
         return {key: _parse_field(variable.get(), None if key == "skybox_texture" else default)
                 for key, (variable, default) in self._lighting_fields[group].items()}
 
@@ -165,19 +185,24 @@ class TkLightingEditorApp22(TkVFXEditorApp22):
         if not selected:
             return
         name = self._lighting_light_list.get(selected[0])
-        light = next(item for item in self.lighting_controller.spec().lights if item.name == name)
+        light = next((item for item in self.lighting_controller.spec().lights if item.name == name), None)
+        if light is None:
+            self._populate_lighting()
+            return
         for key, value in asdict(light).items():
             variable, _ = self._lighting_fields["light"][key]
             variable.set(", ".join(str(item) for item in value) if isinstance(value, tuple) else value)
 
     def _lighting_apply_light(self) -> None:
         def apply() -> None:
-            self.lighting_controller.set_light(LightSpec22(**self._lighting_values("light")))
-            self._populate_lighting()
+            light = LightSpec22(**self._lighting_values("light"))
+            self.lighting_controller.set_light(light)
+            self._populate_lighting(selected_light=light.name)
         self._lighting_action(apply)
 
     def _lighting_remove_light(self) -> None:
         def remove() -> None:
+            self._require_lighting_form_scene()
             selection = self._lighting_light_list.curselection()
             if not selection:
                 raise ValueError("Select a light to remove")
