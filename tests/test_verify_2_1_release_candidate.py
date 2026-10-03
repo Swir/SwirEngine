@@ -38,7 +38,7 @@ WORKFLOW = """name: candidate
 on:
   push:
     branches:
-      - "release/**"
+      - "release/2.1.0-candidate"
   workflow_dispatch:
 permissions:
   contents: read
@@ -154,6 +154,21 @@ def test_release_candidate_contract_rejects_pull_request_trigger(tmp_path: Path)
     errors = check_release_candidate(tmp_path)
 
     assert any("release-branch-scoped" in error for error in errors)
+
+
+def test_release_candidate_contract_rejects_broad_release_branch_trigger(
+    tmp_path: Path,
+) -> None:
+    _write_candidate(tmp_path)
+    workflow = tmp_path / ".github/workflows/release-candidate-2.1.yml"
+    workflow.write_text(
+        WORKFLOW.replace('"release/2.1.0-candidate"', '"release/**"'),
+        encoding="utf-8",
+    )
+
+    errors = check_release_candidate(tmp_path)
+
+    assert any("release/**" in error for error in errors)
 
 
 def test_release_candidate_contract_rejects_publish_capability(tmp_path: Path) -> None:

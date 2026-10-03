@@ -113,7 +113,7 @@ def check_release_candidate(root: Path = ROOT) -> list[str]:
         "permissions:",
         "contents: read",
         "push:",
-        '"release/**"',
+        '"release/2.1.0-candidate"',
         "verify_2_1_release_candidate.py",
         "verify_2_1_release_readiness.py",
         "python -m build",
@@ -144,6 +144,7 @@ def check_release_candidate(root: Path = ROOT) -> list[str]:
         "git tag",
         "contents: write",
         "id-token: write",
+        '"release/**"',
     )
     for token in forbidden_publish_tokens:
         if token in workflow:
