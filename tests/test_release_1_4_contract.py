@@ -93,6 +93,9 @@ def test_historical_1_4_tag_bridge_only_targets_exact_verified_main_commit() -> 
 
 def test_current_release_workflow_preserves_trusted_publisher_without_rewriting_history() -> None:
     workflow = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
+    publication_gate = (ROOT / ".github/workflows/publication-gate-2.2.yml").read_text(
+        encoding="utf-8"
+    )
     historical = (ROOT / ".github/workflows/release-2.0.yml").read_text(encoding="utf-8")
     trigger_section = workflow.split("jobs:", 1)[0]
 
@@ -100,10 +103,13 @@ def test_current_release_workflow_preserves_trusted_publisher_without_rewriting_
     assert "id-token: write" in workflow
     assert "environment: pypi" in workflow
     assert "skip-existing: true" not in workflow
-    assert "workflow_dispatch:" in trigger_section
-    assert "RELEASE_TAG: v2.1.0" in trigger_section
-    assert "verify_2_1_publication.py" in workflow
-    assert 'branches:\n      - "release/2.1.0-publication"' in trigger_section
+    assert "workflow_run:" in trigger_section
+    assert "RELEASE_TAG: v2.2.0" in trigger_section
+    assert "SwirEngine 2.2 Publication Gate" in trigger_section
+    assert "verify_publication_chain_2_2.py" in workflow
+    assert "verify_required_workflows_2_2.py" in workflow
+    assert "reconcile_release_2_2.py" in workflow
+    assert 'branches:\n      - "release/2.2.0-publication"' in publication_gate
     assert 'ref: "refs/tags/v2.0.0"' in historical
     assert "verify_2_0_release_candidate.py --require-final" in historical
     assert "git push --force" not in workflow

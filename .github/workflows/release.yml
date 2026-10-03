@@ -1,151 +1,230 @@
-# SwirEngine 2.1.0 guarded publication workflow.
-# Reuses the historical release.yml identity required by the configured PyPI Trusted Publisher.
+# SwirEngine 2.2.0 guarded publication workflow.
+# This filename is retained because the PyPI Trusted Publisher is bound to release.yml.
+# The published v2.1.0 workflow is immutable in Git history and at its release tag.
 name: Release
 
 on:
-  push:
-    branches:
-      - "release/2.1.0-publication"
-    paths:
-      - ".release/publish-2.1.0"
-  workflow_dispatch:
+  workflow_run:
+    workflows:
+      - "SwirEngine 2.2 Publication Gate"
+    types:
+      - completed
 
 permissions:
   contents: read
 
 concurrency:
-  group: swirengine-2.1.0-publication
+  group: swirengine-2.2.0-publication
   cancel-in-progress: false
 
 env:
-  RELEASE_VERSION: 2.1.0
-  RELEASE_TAG: v2.1.0
-  EXPECTED_PR_WORKFLOWS: "30"
+  RELEASE_VERSION: 2.2.0
+  RELEASE_TAG: v2.2.0
+  PUBLICATION_BRANCH: release/2.2.0-publication
 
 jobs:
-  publication-state:
-    name: Verify immutable target and public state
+  publication-chain:
+    name: Verify immutable publication chain and trigger
+    if: github.event_name == 'workflow_run'
     runs-on: ubuntu-24.04
     permissions:
+      actions: read
       contents: read
+      pull-requests: read
     outputs:
-      tag_exists: ${{ steps.state.outputs.tag_exists }}
-      release_exists: ${{ steps.state.outputs.release_exists }}
-      pypi_exists: ${{ steps.state.outputs.pypi_exists }}
+      candidate_source_sha: ${{ steps.chain.outputs.candidate_source_sha }}
+      candidate_marker_sha: ${{ steps.chain.outputs.candidate_marker_sha }}
+      publication_sha: ${{ steps.chain.outputs.publication_sha }}
+      workflow_manifest_sha256: ${{ steps.chain.outputs.workflow_manifest_sha256 }}
     steps:
-      - name: Inspect tag, GitHub Release and PyPI state
-        id: state
+      - name: Check out trusted verifier source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+          path: trusted-verifier
+      - name: Check out untrusted publication source for inspection
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+          path: publication-source
+      - name: Require an exact successful same-repository push workflow
         env:
-          GH_TOKEN: ${{ github.token }}
+          EVENT_PATH: ${{ github.event_path }}
+          EXPECTED_REPOSITORY: Swir/SwirEngine
+          PUBLICATION_SHA: ${{ github.event.workflow_run.head_sha }}
+          TRUSTED_WORKFLOW_SHA: ${{ github.workflow_sha }}
         shell: bash
         run: |
           set -euo pipefail
-          remote_tag="$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}.git" "refs/tags/${RELEASE_TAG}" | awk '{print $1}')"
-          if [ -n "$remote_tag" ] && [ "$remote_tag" != "$GITHUB_SHA" ]; then
-            echo "Immutable ${RELEASE_TAG} already points to $remote_tag instead of $GITHUB_SHA"
-            exit 1
-          fi
-          if [ -n "$remote_tag" ]; then tag_exists=1; else tag_exists=0; fi
+          test "$GITHUB_REPOSITORY" = "$EXPECTED_REPOSITORY"
+          test "$GITHUB_EVENT_NAME" = "workflow_run"
+          test "$(jq -r '.repository.full_name' "$EVENT_PATH")" = "$EXPECTED_REPOSITORY"
+          test "$(jq -r '.action' "$EVENT_PATH")" = "completed"
+          test "$(jq -r '.workflow_run.name' "$EVENT_PATH")" = "SwirEngine 2.2 Publication Gate"
+          test "$(jq -r '.workflow_run.path' "$EVENT_PATH")" = ".github/workflows/publication-gate-2.2.yml"
+          test "$(jq -r '.workflow_run.event' "$EVENT_PATH")" = "push"
+          test "$(jq -r '.workflow_run.status' "$EVENT_PATH")" = "completed"
+          test "$(jq -r '.workflow_run.conclusion' "$EVENT_PATH")" = "success"
+          test "$(jq -r '.workflow_run.head_repository.full_name' "$EVENT_PATH")" = "$EXPECTED_REPOSITORY"
+          test "$(jq -r '.workflow_run.repository.full_name' "$EVENT_PATH")" = "$EXPECTED_REPOSITORY"
+          test "$(jq -r '.workflow_run.head_branch' "$EVENT_PATH")" = "$PUBLICATION_BRANCH"
+          test "$(jq -r '.workflow_run.head_sha' "$EVENT_PATH")" = "$PUBLICATION_SHA"
+          test "$(git -C trusted-verifier rev-parse HEAD)" = "$TRUSTED_WORKFLOW_SHA"
+          test "$(git -C publication-source rev-parse HEAD)" = "$PUBLICATION_SHA"
+          remote_head="$(git -C publication-source ls-remote origin "refs/heads/$PUBLICATION_BRANCH" | awk '{print $1}')"
+          test "$remote_head" = "$PUBLICATION_SHA"
+          remote_tag="$(git -C publication-source ls-remote origin "refs/tags/$RELEASE_TAG" | awk '{print $1}')"
+          if [ -n "$remote_tag" ]; then test "$remote_tag" = "$PUBLICATION_SHA"; fi
+      - name: Verify C to M1 to P marker-only history
+        id: chain
+        run: >-
+          python trusted-verifier/tools/verify_publication_chain_2_2.py
+          --root publication-source
+          --publication-sha "${{ github.event.workflow_run.head_sha }}"
+          --tag-policy absent-or-publication
+          --github-output "$GITHUB_OUTPUT"
+      - name: Require one merged same-repository candidate pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE_SOURCE_SHA: ${{ steps.chain.outputs.candidate_source_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "repos/${GITHUB_REPOSITORY}/commits/${CANDIDATE_SOURCE_SHA}/pulls" \
+            > candidate-pulls.json
+          git -C publication-source fetch --no-tags origin \
+            "+refs/heads/main:refs/remotes/origin/main"
+          python trusted-verifier/tools/verify_candidate_merge_2_2.py \
+            --pulls-json candidate-pulls.json \
+            --candidate-sha "$CANDIDATE_SOURCE_SHA" \
+            --root publication-source \
+            --main-ref origin/main
 
-          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            release_exists=1
-          else
-            release_exists=0
-          fi
-
-          pypi_status="$(curl --silent --show-error --location --retry 3 --retry-all-errors             --output /tmp/swirengine-pypi.json --write-out '%{http_code}'             "https://pypi.org/pypi/swirengine/${RELEASE_VERSION}/json" || true)"
-          case "$pypi_status" in
-            200) pypi_exists=1 ;;
-            404) pypi_exists=0 ;;
-            *)
-              echo "Could not establish public PyPI state (HTTP ${pypi_status:-transport-error})."
-              exit 1
-              ;;
-          esac
-
-          echo "tag_exists=$tag_exists" >> "$GITHUB_OUTPUT"
-          echo "release_exists=$release_exists" >> "$GITHUB_OUTPUT"
-          echo "pypi_exists=$pypi_exists" >> "$GITHUB_OUTPUT"
-
-  wait-pr-matrix:
-    name: Require exact-head pull-request matrix
-    needs: publication-state
+  required-workflows:
+    name: Require named exact-source pull-request workflows
+    needs: publication-chain
     runs-on: ubuntu-24.04
     permissions:
       actions: read
       contents: read
     steps:
-      - name: Wait for the exact publication head to be fully green
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.publication-chain.outputs.publication_sha }}
+          persist-credentials: false
+      - name: Wait for the explicit exact-SHA workflow manifest
         env:
           GH_TOKEN: ${{ github.token }}
+          CANDIDATE_SOURCE_SHA: ${{ needs.publication-chain.outputs.candidate_source_sha }}
         shell: bash
         run: |
           set -euo pipefail
           for attempt in $(seq 1 90); do
-            json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${GITHUB_SHA}&event=pull_request&per_page=100")"
-            count="$(jq '.workflow_runs | length' <<<"$json")"
-            incomplete="$(jq '[.workflow_runs[] | select(.status != "completed")] | length' <<<"$json")"
-            bad="$(jq '[.workflow_runs[] | select(.status == "completed" and (.conclusion != "success" and .conclusion != "skipped" and .conclusion != "neutral"))] | length' <<<"$json")"
-            echo "PR workflows: count=$count incomplete=$incomplete bad=$bad"
-            if [ "$bad" -ne 0 ]; then
-              jq -r '.workflow_runs[] | select(.status == "completed" and (.conclusion != "success" and .conclusion != "skipped" and .conclusion != "neutral")) | "(.name): (.conclusion) (.html_url)"' <<<"$json"
-              exit 1
-            fi
-            if [ "$count" -ge "$EXPECTED_PR_WORKFLOWS" ] && [ "$incomplete" -eq 0 ]; then
+            gh api --paginate --slurp \
+              "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${CANDIDATE_SOURCE_SHA}&event=pull_request&per_page=100" \
+              > required-run-pages.json
+            jq -e '
+              length > 0 and
+              ([.[].total_count] | unique | length == 1)
+            ' required-run-pages.json > /dev/null
+            jq '{
+              total_count: .[0].total_count,
+              workflow_runs: [.[].workflow_runs[]]
+            }' required-run-pages.json > required-runs.json
+            if python tools/verify_required_workflows_2_2.py \
+              --runs-json required-runs.json \
+              --sha "$CANDIDATE_SOURCE_SHA" \
+              --mode pull-request; then
               exit 0
             fi
+            echo "Required named workflows are not complete yet (attempt $attempt/90)."
             sleep 10
           done
-          echo "Timed out waiting for the exact-head PR matrix."
+          echo "Timed out waiting for the explicit exact-SHA workflow manifest."
           exit 1
 
   build-release:
-    name: Build and verify exact SwirEngine 2.1.0 source
-    needs: [publication-state, wait-pr-matrix]
+    name: Build and compare exact candidate/publication source
+    needs: [publication-chain, required-workflows]
     runs-on: ubuntu-24.04
+    outputs:
+      logical_sdist_sha256: ${{ steps.sdist.outputs.logical_sdist_sha256 }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.publication-chain.outputs.publication_sha }}
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
           cache: pip
       - name: Install release validation dependencies
-        run: python -m pip install --upgrade pip build twine ".[dev]"
-      - name: Enforce publication contract
-        run: python tools/verify_2_1_publication.py
-      - name: Re-check accepted 2.1 source readiness
-        run: python tools/verify_2_1_release_readiness.py
-      - name: Run full release tests
-        run: python -m pytest -q
-      - name: Lint release tree
-        run: python -m ruff check src tests examples demo_projects tools
-      - name: Compile release tree
-        run: python -m compileall -q src tests examples demo_projects tools
-      - name: Build exact-source wheel and sdist
-        run: python -m build --wheel --sdist --outdir dist
-      - name: Validate distribution metadata
-        run: python -m twine check dist/*
-      - name: Verify portable artifact names
+        run: >-
+          python -m pip install --upgrade pip
+          "build>=1.2,<2"
+          "twine>=6,<7"
+          ".[dev]"
+      - name: Re-check publication chain and exact checkout
+        env:
+          PUBLICATION_SHA: ${{ needs.publication-chain.outputs.publication_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$PUBLICATION_SHA"
+          python tools/verify_publication_chain_2_2.py \
+            --publication-sha "$PUBLICATION_SHA" \
+            --tag-policy absent-or-publication
+      - name: Run complete exact-source tests and static checks
+        run: |
+          python -m pytest -q
+          python -m ruff check src tests examples demo_projects tools
+          python -m compileall -q src tests examples demo_projects tools
+      - name: Build publication wheel and sdist
+        run: python -m build --wheel --sdist --outdir publication-dist
+      - name: Build candidate sdist from immutable C
+        env:
+          CANDIDATE_SOURCE_SHA: ${{ needs.publication-chain.outputs.candidate_source_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git worktree add --detach candidate-tree "$CANDIDATE_SOURCE_SHA"
+          python -m build --sdist --outdir candidate-dist candidate-tree
+      - name: Require logical candidate/publication sdist identity
+        id: sdist
+        run: >-
+          python tools/verify_sdist_identity_2_2.py
+          --candidate candidate-dist/swirengine-2.2.0.tar.gz
+          --publication publication-dist/swirengine-2.2.0.tar.gz
+          --github-output "$GITHUB_OUTPUT"
+      - name: Validate exact publication distributions
+        run: |
+          python -m twine check publication-dist/*
+          python tools/verify_distribution_audit_data_2_2.py --dist-dir publication-dist
+      - name: Require exact portable artifact names
         shell: python
         run: |
           from pathlib import Path
-          wheels = list(Path("dist").glob("swirengine-2.1.0-*.whl"))
-          sdists = list(Path("dist").glob("swirengine-2.1.0.tar.gz"))
-          assert len(wheels) == 1, wheels
-          assert len(sdists) == 1, sdists
+          paths = sorted(path.name for path in Path("publication-dist").iterdir())
+          assert paths == [
+              "swirengine-2.2.0-py3-none-any.whl",
+              "swirengine-2.2.0.tar.gz",
+          ], paths
       - uses: actions/upload-artifact@v4
         with:
-          name: swirengine-2.1.0-publication-portable
-          path: dist/*
+          name: swirengine-2.2.0-publication-portable
+          path: publication-dist/*
           if-no-files-found: error
           retention-days: 7
 
   clean-install-matrix:
     name: Clean install ${{ matrix.os }} / CPython ${{ matrix.python-version }}
-    needs: [publication-state, wait-pr-matrix]
+    needs: [publication-chain, required-workflows]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -155,7 +234,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.publication-chain.outputs.publication_sha }}
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
@@ -163,7 +243,7 @@ jobs:
       - name: Install Linux CPython 3.14 native build prerequisites
         if: runner.os == 'Linux' && matrix.python-version == '3.14'
         run: sudo apt-get update && sudo apt-get install -y libx11-dev libgl-dev libegl-dev
-      - name: Install candidate build tooling
+      - name: Install build tooling
         run: python -m pip install --upgrade pip setuptools wheel "build>=1.2,<2"
       - name: Build Windows CPython 3.14 renderer-native dependencies
         if: runner.os == 'Windows' && matrix.python-version == '3.14'
@@ -182,7 +262,7 @@ jobs:
         shell: pwsh
         run: |
           python -m build --wheel --outdir dist-base
-          $base = (Get-ChildItem dist-base\swirengine-2.1.0-*.whl).FullName
+          $base = (Get-ChildItem dist-base\swirengine-2.2.0-*.whl).FullName
           $moderngl = (Get-ChildItem native-wheels\moderngl-*.whl).FullName
           $glcontext = (Get-ChildItem native-wheels\glcontext-*.whl).FullName
           python tools/build_vendored_wheel.py --base $base --vendor $moderngl --vendor $glcontext --tag cp314-cp314-win_amd64 --output-dir dist
@@ -193,147 +273,368 @@ jobs:
           --wheel-dir dist
           --expected-system "${{ runner.os }}"
           --expected-python "${{ matrix.python-version }}"
+          --expected-version 2.2.0
           --verify-cli21
-      - name: Verify Windows CPython 3.14 vendored release wheel and CLI
+      - name: Verify Windows CPython 3.14 vendored wheel and CLI
         if: runner.os == 'Windows' && matrix.python-version == '3.14'
         run: >-
           python tools/verify_clean_wheel_2_0.py
           --wheel-dir dist
           --expected-system Windows
           --expected-python 3.14
+          --expected-version 2.2.0
           --require-vendored-native
           --verify-cli21
       - name: Preserve Windows CPython 3.14 release wheel
         if: runner.os == 'Windows' && matrix.python-version == '3.14'
         uses: actions/upload-artifact@v4
         with:
-          name: swirengine-2.1.0-publication-win-cp314
+          name: swirengine-2.2.0-publication-win-cp314
           path: dist/*.whl
           if-no-files-found: error
           retention-days: 7
 
   release-evidence:
-    name: Generate checksums and exact-source provenance
-    needs: [build-release, clean-install-matrix]
+    name: Generate provenance and take initial public-state snapshot
+    needs: [publication-chain, build-release, clean-install-matrix]
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.publication-chain.outputs.publication_sha }}
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
       - uses: actions/download-artifact@v4
         with:
-          name: swirengine-2.1.0-publication-portable
+          name: swirengine-2.2.0-publication-portable
           path: dist
       - uses: actions/download-artifact@v4
         with:
-          name: swirengine-2.1.0-publication-win-cp314
+          name: swirengine-2.2.0-publication-win-cp314
           path: dist
-      - name: Generate deterministic release evidence
-        run: >-
-          python tools/release_evidence_2_1.py generate
-          --dist-dir dist
-          --source-sha "${GITHUB_SHA}"
-          --require-windows-cp314
-      - name: Verify exact-source release evidence
-        run: >-
-          python tools/release_evidence_2_1.py verify
-          --dist-dir dist
-          --source-sha "${GITHUB_SHA}"
-          --require-windows-cp314
+      - name: Generate and verify deterministic v2 release evidence
+        env:
+          CANDIDATE_SOURCE_SHA: ${{ needs.publication-chain.outputs.candidate_source_sha }}
+          CANDIDATE_MARKER_SHA: ${{ needs.publication-chain.outputs.candidate_marker_sha }}
+          PUBLICATION_SHA: ${{ needs.publication-chain.outputs.publication_sha }}
+          WORKFLOW_MANIFEST_SHA256: ${{ needs.publication-chain.outputs.workflow_manifest_sha256 }}
+          LOGICAL_SDIST_SHA256: ${{ needs.build-release.outputs.logical_sdist_sha256 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for mode in generate verify; do
+            python tools/release_evidence_2_2.py "$mode" \
+              --dist-dir dist \
+              --candidate-source-commit "$CANDIDATE_SOURCE_SHA" \
+              --candidate-marker-commit "$CANDIDATE_MARKER_SHA" \
+              --publication-commit "$PUBLICATION_SHA" \
+              --workflow-manifest .github/release-gates/2.2-required-workflows.json \
+              --expected-workflow-manifest-sha256 "$WORKFLOW_MANIFEST_SHA256" \
+              --expected-logical-sdist-sha256 "$LOGICAL_SDIST_SHA256"
+          done
+      - name: Capture initial PyPI, tag and GitHub Release state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p initial-state
+          snapshot() {
+            local output="$1" url="$2" auth="${3:-0}" status
+            args=(--silent --show-error --location --output "$output" --write-out '%{http_code}')
+            if [ "$auth" = 1 ]; then
+              args+=(-H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json")
+            fi
+            status="$(curl "${args[@]}" "$url")"
+            case "$status" in
+              200) ;;
+              404) printf 'null\n' > "$output" ;;
+              *) echo "Public-state read failed for $url (HTTP $status)"; exit 1 ;;
+            esac
+          }
+          snapshot initial-state/pypi.json "https://pypi.org/pypi/swirengine/${RELEASE_VERSION}/json"
+          snapshot initial-state/tag.json "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" 1
+          snapshot initial-state/release.json "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" 1
+          python tools/reconcile_release_2_2.py \
+            --dist-dir dist \
+            --publication-commit "${{ needs.publication-chain.outputs.publication_sha }}" \
+            --pypi-json initial-state/pypi.json \
+            --tag-json initial-state/tag.json \
+            --release-json initial-state/release.json \
+            > initial-state/plan.json
+          jq . initial-state/plan.json
       - uses: actions/upload-artifact@v4
         with:
-          name: swirengine-2.1.0-publication-assets
-          path: dist/*
+          name: swirengine-2.2.0-publication-assets
+          path: |
+            dist/*
+            initial-state/*.json
           if-no-files-found: error
           retention-days: 7
 
   ensure-tag:
-    name: Create immutable v2.1.0 tag
-    needs: [publication-state, release-evidence]
+    name: Reconcile and create immutable v2.2.0 tag
+    needs: [publication-chain, release-evidence]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.publication-chain.outputs.publication_sha }}
           fetch-depth: 0
-      - name: Create tag only when absent
+      - uses: actions/download-artifact@v4
+        with:
+          name: swirengine-2.2.0-publication-assets
+          path: release-input
+      - name: Re-read and reconcile immediately before tag mutation
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUBLICATION_SHA: ${{ needs.publication-chain.outputs.publication_sha }}
         shell: bash
         run: |
           set -euo pipefail
-          remote_tag="$(git ls-remote origin "refs/tags/${RELEASE_TAG}" | awk '{print $1}')"
-          if [ -n "$remote_tag" ]; then
-            test "$remote_tag" = "$GITHUB_SHA"
-            echo "${RELEASE_TAG} already exists at the accepted source."
-            exit 0
-          fi
-          git tag "$RELEASE_TAG" "$GITHUB_SHA"
+          mkdir -p fresh-state
+          snapshot() {
+            local output="$1" url="$2" auth="${3:-0}" status
+            args=(--silent --show-error --location --output "$output" --write-out '%{http_code}')
+            if [ "$auth" = 1 ]; then args+=(-H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json"); fi
+            status="$(curl "${args[@]}" "$url")"
+            case "$status" in 200) ;; 404) printf 'null\n' > "$output" ;; *) exit 1 ;; esac
+          }
+          snapshot fresh-state/pypi.json "https://pypi.org/pypi/swirengine/${RELEASE_VERSION}/json"
+          snapshot fresh-state/tag.json "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" 1
+          snapshot fresh-state/release.json "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" 1
+          python tools/reconcile_release_2_2.py \
+            --dist-dir release-input/dist \
+            --publication-commit "$PUBLICATION_SHA" \
+            --initial-pypi-json release-input/initial-state/pypi.json \
+            --initial-tag-json release-input/initial-state/tag.json \
+            --initial-release-json release-input/initial-state/release.json \
+            --pypi-json fresh-state/pypi.json \
+            --tag-json fresh-state/tag.json \
+            --release-json fresh-state/release.json > plan.json
+          jq . plan.json
+          echo "create=$(jq -r '.create_tag' plan.json)" >> "$GITHUB_OUTPUT"
+      - name: Create tag only when the reconciled state says it is absent
+        if: steps.plan.outputs.create == 'true'
+        env:
+          PUBLICATION_SHA: ${{ needs.publication-chain.outputs.publication_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin "refs/heads/$PUBLICATION_BRANCH" | awk '{print $1}')" = "$PUBLICATION_SHA"
+          test -z "$(git ls-remote origin "refs/tags/$RELEASE_TAG" | awk '{print $1}')"
+          git tag "$RELEASE_TAG" "$PUBLICATION_SHA"
           git push origin "refs/tags/$RELEASE_TAG"
+      - name: Immediate tag read-back
+        env:
+          PUBLICATION_SHA: ${{ needs.publication-chain.outputs.publication_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_tag="$(git ls-remote origin "refs/tags/$RELEASE_TAG" | awk '{print $1}')"
+          test "$remote_tag" = "$PUBLICATION_SHA"
+          git fetch origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          python tools/verify_publication_chain_2_2.py \
+            --publication-sha "$PUBLICATION_SHA" \
+            --tag-policy publication
 
   pypi-publish:
-    name: Publish SwirEngine 2.1.0 to PyPI
-    needs: [publication-state, release-evidence, ensure-tag]
+    name: Reconcile and publish only missing PyPI files
+    needs: [publication-chain, release-evidence, ensure-tag]
     runs-on: ubuntu-24.04
     environment: pypi
     permissions:
       contents: read
       id-token: write
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.publication-chain.outputs.publication_sha }}
+          persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
-          name: swirengine-2.1.0-publication-assets
-          path: release-assets
-      - name: Prepare only package distributions for PyPI
-        if: needs.publication-state.outputs.pypi_exists != '1'
+          name: swirengine-2.2.0-publication-assets
+          path: release-input
+      - name: Re-read and reconcile immediately before PyPI mutation
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUBLICATION_SHA: ${{ needs.publication-chain.outputs.publication_sha }}
         shell: bash
         run: |
-          mkdir -p dist
-          cp release-assets/*.whl dist/
-          cp release-assets/*.tar.gz dist/
-      - name: Publish package distributions through registered Trusted Publisher
-        if: needs.publication-state.outputs.pypi_exists != '1'
+          set -euo pipefail
+          test "$(git ls-remote origin "refs/heads/$PUBLICATION_BRANCH" | awk '{print $1}')" = "$PUBLICATION_SHA"
+          mkdir -p fresh-state pypi-dist
+          snapshot() {
+            local output="$1" url="$2" auth="${3:-0}" status
+            args=(--silent --show-error --location --output "$output" --write-out '%{http_code}')
+            if [ "$auth" = 1 ]; then args+=(-H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json"); fi
+            status="$(curl "${args[@]}" "$url")"
+            case "$status" in 200) ;; 404) printf 'null\n' > "$output" ;; *) exit 1 ;; esac
+          }
+          snapshot fresh-state/pypi.json "https://pypi.org/pypi/swirengine/${RELEASE_VERSION}/json"
+          snapshot fresh-state/tag.json "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" 1
+          snapshot fresh-state/release.json "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" 1
+          python tools/reconcile_release_2_2.py \
+            --dist-dir release-input/dist \
+            --publication-commit "$PUBLICATION_SHA" \
+            --initial-pypi-json release-input/initial-state/pypi.json \
+            --initial-tag-json release-input/initial-state/tag.json \
+            --initial-release-json release-input/initial-state/release.json \
+            --pypi-json fresh-state/pypi.json \
+            --tag-json fresh-state/tag.json \
+            --release-json fresh-state/release.json > plan.json
+          jq -e '.create_tag == false' plan.json
+          jq -r '.pypi_uploads[]' plan.json | while IFS= read -r name; do
+            cp "release-input/dist/$name" pypi-dist/
+          done
+          count="$(jq '.pypi_uploads | length' plan.json)"
+          echo "upload=$([ "$count" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - name: Publish the reconciled missing distributions through Trusted Publisher
+        if: steps.plan.outputs.upload == 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: dist/
-      - name: Preserve an already-published public package
-        if: needs.publication-state.outputs.pypi_exists == '1'
-        run: echo "PyPI already contains SwirEngine 2.1.0; refusing to upload duplicates."
+          packages-dir: pypi-dist/
+      - name: Immediate PyPI read-back and reconciliation
+        env:
+          PUBLICATION_SHA: ${{ needs.publication-chain.outputs.publication_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            status="$(curl --silent --show-error --location --output pypi-after.json --write-out '%{http_code}' \
+              "https://pypi.org/pypi/swirengine/${RELEASE_VERSION}/json")"
+            if [ "$status" = 200 ]; then
+              cp fresh-state/tag.json tag-after.json
+              cp fresh-state/release.json release-after.json
+              if python tools/reconcile_release_2_2.py \
+                --dist-dir release-input/dist \
+                --publication-commit "$PUBLICATION_SHA" \
+                --initial-pypi-json fresh-state/pypi.json \
+                --initial-tag-json fresh-state/tag.json \
+                --initial-release-json fresh-state/release.json \
+                --pypi-json pypi-after.json \
+                --tag-json tag-after.json \
+                --release-json release-after.json > after-plan.json \
+                && jq -e '.pypi_uploads | length == 0' after-plan.json; then
+                exit 0
+              fi
+            fi
+            sleep 10
+          done
+          echo "PyPI did not expose the exact reconciled files in time."
+          exit 1
 
   github-release:
-    name: Create GitHub Release 2.1.0
-    needs: [publication-state, release-evidence, ensure-tag, pypi-publish]
+    name: Reconcile and create or complete GitHub Release 2.2.0
+    needs: [publication-chain, release-evidence, pypi-publish]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.publication-chain.outputs.publication_sha }}
+          persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
-          name: swirengine-2.1.0-publication-assets
-          path: release-assets
+          name: swirengine-2.2.0-publication-assets
+          path: release-input
+      - name: Re-read and reconcile immediately before GitHub mutation
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUBLICATION_SHA: ${{ needs.publication-chain.outputs.publication_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin "refs/heads/$PUBLICATION_BRANCH" | awk '{print $1}')" = "$PUBLICATION_SHA"
+          mkdir -p fresh-state github-assets
+          snapshot() {
+            local output="$1" url="$2" auth="${3:-0}" status
+            args=(--silent --show-error --location --output "$output" --write-out '%{http_code}')
+            if [ "$auth" = 1 ]; then args+=(-H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json"); fi
+            status="$(curl "${args[@]}" "$url")"
+            case "$status" in 200) ;; 404) printf 'null\n' > "$output" ;; *) exit 1 ;; esac
+          }
+          snapshot fresh-state/pypi.json "https://pypi.org/pypi/swirengine/${RELEASE_VERSION}/json"
+          snapshot fresh-state/tag.json "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" 1
+          snapshot fresh-state/release.json "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" 1
+          python tools/reconcile_release_2_2.py \
+            --dist-dir release-input/dist \
+            --publication-commit "$PUBLICATION_SHA" \
+            --initial-pypi-json release-input/initial-state/pypi.json \
+            --initial-tag-json release-input/initial-state/tag.json \
+            --initial-release-json release-input/initial-state/release.json \
+            --pypi-json fresh-state/pypi.json \
+            --tag-json fresh-state/tag.json \
+            --release-json fresh-state/release.json > plan.json
+          jq -e '.create_tag == false and (.pypi_uploads | length == 0)' plan.json
+          jq -r '.github_uploads[]' plan.json | while IFS= read -r name; do
+            cp "release-input/dist/$name" github-assets/
+          done
+          echo "create=$(jq -r '.create_release' plan.json)" >> "$GITHUB_OUTPUT"
+          echo "upload=$([ "$(jq '.github_uploads | length' plan.json)" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
       - name: Create verified GitHub Release when absent
-        if: needs.publication-state.outputs.release_exists != '1'
+        if: steps.plan.outputs.create == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: >-
-          gh release create "$RELEASE_TAG" release-assets/*
+          gh release create "$RELEASE_TAG" github-assets/*
           --verify-tag
-          --title "SwirEngine 2.1.0"
-          --notes-file RELEASE_NOTES_2_1.md
+          --title "SwirEngine 2.2.0"
+          --notes-file RELEASE_NOTES_2_2.md
           --repo "$GITHUB_REPOSITORY"
-      - name: Preserve an already-created GitHub Release
-        if: needs.publication-state.outputs.release_exists == '1'
-        run: echo "GitHub Release v2.1.0 already exists; refusing to replace it."
+      - name: Upload only reconciled missing assets to an existing release
+        if: steps.plan.outputs.create != 'true' && steps.plan.outputs.upload == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for asset in github-assets/*; do
+            gh release upload "$RELEASE_TAG" "$asset" --repo "$GITHUB_REPOSITORY"
+          done
+      - name: Immediate GitHub Release read-back
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUBLICATION_SHA: ${{ needs.publication-chain.outputs.publication_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            status="$(curl --silent --show-error --location \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              --output release-after.json --write-out '%{http_code}' \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}")"
+            if [ "$status" = 200 ] && python tools/reconcile_release_2_2.py \
+              --dist-dir release-input/dist \
+              --publication-commit "$PUBLICATION_SHA" \
+              --initial-pypi-json fresh-state/pypi.json \
+              --initial-tag-json fresh-state/tag.json \
+              --initial-release-json fresh-state/release.json \
+              --pypi-json fresh-state/pypi.json \
+              --tag-json fresh-state/tag.json \
+              --release-json release-after.json \
+              --require-complete; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "GitHub Release did not expose the exact reconciled assets in time."
+          exit 1
 
   post-release-public-pypi:
     name: Public PyPI verify / ${{ matrix.os }} / Python ${{ matrix.python-version }}
-    needs: [pypi-publish, github-release]
+    needs: [publication-chain, github-release]
     strategy:
       fail-fast: false
       matrix:
@@ -350,67 +651,84 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: "refs/tags/v2.1.0"
+          ref: ${{ needs.publication-chain.outputs.publication_sha }}
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Wait for public PyPI and install only SwirEngine 2.1.0
+      - name: Install only public SwirEngine 2.2.0
+        run: >-
+          python -m pip install --no-cache-dir
+          --index-url https://pypi.org/simple
+          swirengine==2.2.0
+      - name: Verify public runtime identity outside the checkout
         shell: python
         run: |
-          import json
           import os
           import subprocess
           import sys
           import tempfile
-          import time
-          import urllib.error
-          import urllib.request
 
-          url = "https://pypi.org/pypi/swirengine/2.1.0/json"
-          metadata = None
-          for attempt in range(30):
-              try:
-                  with urllib.request.urlopen(url, timeout=20) as response:
-                      metadata = json.load(response)
-                  break
-              except (urllib.error.URLError, urllib.error.HTTPError):
-                  if attempt == 29:
-                      raise
-                  time.sleep(10)
-          assert metadata is not None
-          assert metadata["info"]["version"] == "2.1.0"
-          assert metadata["info"]["requires_python"] == ">=3.10,<3.15"
-          subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "pip"])
-          subprocess.check_call([
-              sys.executable, "-m", "pip", "install", "--no-cache-dir",
-              "--index-url", "https://pypi.org/simple", "swirengine==2.1.0",
-          ])
-          with tempfile.TemporaryDirectory(prefix="swir-public-2.1-") as temp:
+          with tempfile.TemporaryDirectory(prefix="swir-public-2.2-") as temp:
               env = dict(os.environ)
               env.pop("PYTHONPATH", None)
+              env.pop("PYTHONHOME", None)
               subprocess.check_call(
-                  [sys.executable, "-c",
-                   "import swirengine; assert swirengine.__version__ == '2.1.0'; "
-                   "assert all(hasattr(swirengine, n) for n in ('Game','Scene','Color','Vec3')); "
-                   "print(swirengine.__version__, swirengine.__file__)"],
-                  cwd=temp, env=env,
+                  [
+                      sys.executable,
+                      "-c",
+                      "import swirengine; assert swirengine.__version__ == '2.2.0'; "
+                      "print(swirengine.__version__, swirengine.__file__)",
+                  ],
+                  cwd=temp,
+                  env=env,
               )
 
   final-public-state:
-    name: Verify public tag, release and package
-    needs: [post-release-public-pypi]
+    name: Verify immutable tag, release, package and evidence
+    needs: [publication-chain, release-evidence, post-release-public-pypi]
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
-      - name: Verify immutable tag, GitHub Release and PyPI
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.publication-chain.outputs.publication_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: swirengine-2.2.0-publication-assets
+          path: release-input
+      - name: Fresh-read and require a complete immutable public state
         env:
           GH_TOKEN: ${{ github.token }}
+          PUBLICATION_SHA: ${{ needs.publication-chain.outputs.publication_sha }}
         shell: bash
         run: |
           set -euo pipefail
-          remote_tag="$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}.git" "refs/tags/${RELEASE_TAG}" | awk '{print $1}')"
-          test "$remote_tag" = "$GITHUB_SHA"
-          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null
-          curl --fail --silent --show-error "https://pypi.org/pypi/swirengine/${RELEASE_VERSION}/json" >/dev/null
-          echo "SwirEngine ${RELEASE_VERSION} public release verified."
+          mkdir -p final-state
+          curl --fail --silent --show-error --location \
+            "https://pypi.org/pypi/swirengine/${RELEASE_VERSION}/json" \
+            > final-state/pypi.json
+          curl --fail --silent --show-error --location \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" \
+            > final-state/tag.json
+          curl --fail --silent --show-error --location \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" \
+            > final-state/release.json
+          python tools/reconcile_release_2_2.py \
+            --dist-dir release-input/dist \
+            --publication-commit "$PUBLICATION_SHA" \
+            --pypi-json final-state/pypi.json \
+            --tag-json final-state/tag.json \
+            --release-json final-state/release.json \
+            --require-complete
+          git fetch origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          python tools/verify_publication_chain_2_2.py \
+            --publication-sha "$PUBLICATION_SHA" \
+            --tag-policy publication
