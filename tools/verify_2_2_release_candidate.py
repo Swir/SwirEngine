@@ -198,6 +198,7 @@ def validate_candidate_workflow(text: str) -> list[str]:
         "Swir/SwirEngine",
         "release/2.2.0-candidate",
         "persist-credentials: false",
+        "$GITHUB_EVENT_PATH",
         "git rev-parse HEAD",
         "python tools/verify_2_2_release_candidate.py",
         "python tools/verify_2_2_release_readiness.py",

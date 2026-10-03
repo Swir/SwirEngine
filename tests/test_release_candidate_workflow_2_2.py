@@ -48,9 +48,11 @@ def test_candidate_workflow_binds_exact_same_repo_branch_and_head() -> None:
         "'.pull_request.head.ref'",
         "'.pull_request.base.ref'",
         "'.pull_request.head.sha'",
+        'test -f "$GITHUB_EVENT_PATH"',
     )
     for fragment in required_guard:
         assert fragment in text
+    assert "github.event_path" not in text
 
     checkout_count = 0
     for job in jobs.values():

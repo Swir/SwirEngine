@@ -58,6 +58,7 @@ jobs:
           test "${{{{ github.event.pull_request.head.repo.full_name }}}}" = "${{{{ github.repository }}}}"
           test "${{{{ github.repository }}}}" = "Swir/SwirEngine"
           test "${{{{ github.event.pull_request.base.ref }}}}" = "main"
+          test -f "$GITHUB_EVENT_PATH"
           test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
       - run: python tools/verify_2_2_release_candidate.py
       - run: python tools/verify_2_2_release_readiness.py
