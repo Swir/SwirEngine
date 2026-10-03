@@ -10,7 +10,8 @@ except ModuleNotFoundError:  # Python 3.10
     import tomli as tomllib
 
 EXPECTED_STABLE_VERSION = "2.0.0"
-EXPECTED_CANDIDATE_VERSION = "2.1.0"
+EXPECTED_PUBLIC_VERSION = "2.1.0"
+EXPECTED_CANDIDATE_VERSION = "2.2.0"
 EXPECTED_PYTHON_RANGE = ">=3.10,<3.15"
 EXPECTED_COMPLETED = 10
 EXPECTED_TOTAL = 10
@@ -194,8 +195,13 @@ def audit(root: Path | None = None) -> ReadinessReport:
     project = tomllib.loads(_read(root, "pyproject.toml"))["project"]
     version = str(project["version"])
     _require(
-        version in {EXPECTED_STABLE_VERSION, EXPECTED_CANDIDATE_VERSION},
-        "2.1 source readiness permits only published stable 2.0.0 or guarded candidate 2.1.0 metadata",
+        version
+        in {
+            EXPECTED_STABLE_VERSION,
+            EXPECTED_PUBLIC_VERSION,
+            EXPECTED_CANDIDATE_VERSION,
+        },
+        "2.1 history permits stable 2.0.0, immutable public 2.1.0, or the bound 2.2.0 candidate",
         checks,
     )
     init_text = _read(root, "src/swirengine/__init__.py")
@@ -230,7 +236,7 @@ def audit(root: Path | None = None) -> ReadinessReport:
     )
 
     publication_final = (
-        version == EXPECTED_CANDIDATE_VERSION
+        version in {EXPECTED_PUBLIC_VERSION, EXPECTED_CANDIDATE_VERSION}
         and "**Latest public stable release:** **SwirEngine 2.1.0**" in readme
         and notes.startswith("# SwirEngine 2.1.0 Release Notes")
         and "NOT PUBLISHED" not in notes
@@ -241,6 +247,42 @@ def audit(root: Path | None = None) -> ReadinessReport:
             "README final publication state identifies the verified 2.1 release",
             checks,
         )
+        if version == EXPECTED_CANDIDATE_VERSION:
+            candidate_notes = _read(root, "RELEASE_NOTES_2_2.md")
+            candidate_roadmap = parse_roadmap(_read(root, "ROADMAP_2_2.md"))
+            pypi_description = _read(root, "PYPI_DESCRIPTION_2_2.md")
+            _require(
+                (candidate_roadmap.completed, candidate_roadmap.total) == (9, 10),
+                "bound 2.2 candidate preserves the open 9/10 roadmap",
+                checks,
+            )
+            _require(
+                "SwirEngine 2.2.0" in readme
+                and "bound non-publishing candidate" in readme
+                and "NOT PUBLISHED" in readme,
+                "README identifies SwirEngine 2.2.0 as a bound non-publishing candidate",
+                checks,
+            )
+            _require(
+                '"swirengine==2.2.0"' not in readme
+                and '"swirengine[audio]==2.2.0"' not in readme,
+                "README does not advertise public 2.2.0 installation before publication",
+                checks,
+            )
+            _require(
+                candidate_notes.startswith("# SwirEngine 2.2.0 Release Notes")
+                and "Prepared from the bound 2.2.0 candidate" in candidate_notes
+                and "NOT PUBLISHED" not in candidate_notes,
+                "2.2 release notes are publication-ready and time-neutral",
+                checks,
+            )
+            _require(
+                project.get("readme") == "PYPI_DESCRIPTION_2_2.md"
+                and "NOT PUBLISHED" not in pypi_description
+                and "latest public stable" not in pypi_description.lower(),
+                "2.2 package metadata uses a time-neutral PyPI description",
+                checks,
+            )
     else:
         _require(
             "**Latest public stable release:** **SwirEngine 2.0.0**" in readme,
@@ -253,7 +295,7 @@ def audit(root: Path | None = None) -> ReadinessReport:
             "README separates 2.1 roadmap completion from public release before publication",
             checks,
         )
-        if version == EXPECTED_CANDIDATE_VERSION:
+        if version == EXPECTED_PUBLIC_VERSION:
             _require(
                 "NOT PUBLISHED" in notes,
                 "2.1 candidate metadata remains explicitly non-published before Phase C publication",
@@ -261,7 +303,10 @@ def audit(root: Path | None = None) -> ReadinessReport:
             )
 
     urls = project.get("urls", {})
-    expected_roadmap = "ROADMAP_2_1.md" if publication_final else "ROADMAP_2_0.md"
+    if version == EXPECTED_CANDIDATE_VERSION:
+        expected_roadmap = "ROADMAP_2_2.md"
+    else:
+        expected_roadmap = "ROADMAP_2_1.md" if publication_final else "ROADMAP_2_0.md"
     _require(
         str(urls.get("Roadmap", "")).endswith(expected_roadmap),
         "primary package roadmap matches the current publication phase",
@@ -272,6 +317,12 @@ def audit(root: Path | None = None) -> ReadinessReport:
         "package metadata exposes the completed 2.1 source roadmap",
         checks,
     )
+    if version == EXPECTED_CANDIDATE_VERSION:
+        _require(
+            str(urls.get("2.2 Roadmap", "")).endswith("ROADMAP_2_2.md"),
+            "package metadata exposes the active 2.2 candidate roadmap",
+            checks,
+        )
 
     for relative in REQUIRED_DOCS + REQUIRED_VERIFIERS + REQUIRED_FIXTURES + REQUIRED_WORKFLOWS:
         _read(root, relative)

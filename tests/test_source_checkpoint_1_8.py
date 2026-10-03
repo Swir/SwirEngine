@@ -70,7 +70,7 @@ def test_roadmap_has_exactly_ten_ordered_milestones() -> None:
 
 def test_source_version_preserves_finalized_2_0_compatibility() -> None:
     version = current_version()
-    if version in {"2.0.0", "2.1.0"}:
+    if version in {"2.0.0", "2.1.0", "2.2.0"}:
         assert two_point_zero_finalized()
     else:
         assert version == "1.5.0"

@@ -16,7 +16,9 @@ ROOT = Path(__file__).resolve().parents[1]
 ROADMAP = ROOT / "ROADMAP_1_9.md"
 ACTIVE_20_ROADMAP = ROOT / "ROADMAP_2_0.md"
 ACTIVE_21_ROADMAP = ROOT / "ROADMAP_2_1.md"
+ACTIVE_22_ROADMAP = ROOT / "ROADMAP_2_2.md"
 RELEASE_NOTES_21 = ROOT / "RELEASE_NOTES_2_1.md"
+RELEASE_NOTES_22 = ROOT / "RELEASE_NOTES_2_2.md"
 POST_RELEASE_STATUS = ROOT / "docs" / "SWIRENGINE_2_0_POST_RELEASE_AUDIT.md"
 README = ROOT / "README.md"
 PYPROJECT = ROOT / "pyproject.toml"
@@ -34,7 +36,8 @@ PYPI_PROGRESS_RE = re.compile(
 
 STABLE_PUBLIC_VERSION = "1.5.0"
 FORWARD_PUBLIC_VERSION = "2.0.0"
-CANDIDATE_VERSION = "2.1.0"
+CURRENT_PUBLIC_VERSION = "2.1.0"
+CANDIDATE_VERSION = "2.2.0"
 EXPECTED_MILESTONES = 10
 
 MILESTONE_RE = re.compile(r"^- \[([ xX])\] \*\*(\d+)\.", re.MULTILINE)
@@ -214,6 +217,28 @@ def _two_point_one_published() -> bool:
     )
 
 
+def _two_point_two_candidate_ready() -> bool:
+    if (
+        not _two_point_one_published()
+        or not ACTIVE_22_ROADMAP.is_file()
+        or not RELEASE_NOTES_22.is_file()
+        or not README.is_file()
+    ):
+        return False
+    roadmap = _text(ACTIVE_22_ROADMAP)
+    notes = _text(RELEASE_NOTES_22)
+    readme = _text(README)
+    return (
+        "Current verified progress: 9/10 milestones = 90.0%." in roadmap
+        and notes.startswith("# SwirEngine 2.2.0 Release Notes")
+        and "Prepared from the bound 2.2.0 candidate" in notes
+        and "bound non-publishing candidate" in readme
+        and "NOT PUBLISHED" in readme
+        and "**Latest public stable release:** **SwirEngine 2.1.0**" in readme
+        and '"swirengine==2.2.0"' not in readme
+    )
+
+
 def _current_public_version() -> str:
     match = VERSION_RE.search(_text(PYPROJECT))
     if match is None:
@@ -223,7 +248,7 @@ def _current_public_version() -> str:
 
 def _two_point_zero_published() -> bool:
     current = _current_public_version()
-    if current not in {FORWARD_PUBLIC_VERSION, CANDIDATE_VERSION}:
+    if current not in {FORWARD_PUBLIC_VERSION, CURRENT_PUBLIC_VERSION, CANDIDATE_VERSION}:
         return False
     readme = _text(README)
     if current == FORWARD_PUBLIC_VERSION:
@@ -231,11 +256,13 @@ def _two_point_zero_published() -> bool:
             "STATUS-2.0.0%20PUBLISHED" in readme
             and "**Latest public stable release:** **SwirEngine 2.0.0**" in readme
         )
-    if _two_point_one_candidate_ready():
+    if current == CURRENT_PUBLIC_VERSION and _two_point_one_candidate_ready():
         return (
             "STATUS-2.0.0%20PUBLISHED" in readme
             and "**Latest public stable release:** **SwirEngine 2.0.0**" in readme
         )
+    if current == CANDIDATE_VERSION:
+        return _two_point_two_candidate_ready()
     return _two_point_one_published()
 
 
@@ -260,10 +287,12 @@ def _verify_public_version() -> str:
     if _two_point_zero_finalized():
         allowed.add(FORWARD_PUBLIC_VERSION)
     if _two_point_one_candidate_ready() or _two_point_one_published():
+        allowed.add(CURRENT_PUBLIC_VERSION)
+    if _two_point_two_candidate_ready():
         allowed.add(CANDIDATE_VERSION)
     if version not in allowed:
         raise CheckpointError(
-            "locked 1.9 history permits only the current public line, finalized 2.0, or accepted/published 2.1: "
+            "locked 1.9 history permits only finalized public lines or the bound 2.2 candidate: "
             f"allowed={sorted(allowed)}, found {version}"
         )
     return version

@@ -13,7 +13,8 @@ except ModuleNotFoundError:  # Python 3.10 compatibility
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 STABLE_PUBLIC_VERSION = "1.5.0"
 FORWARD_PUBLIC_VERSION = "2.0.0"
-CANDIDATE_VERSION = "2.1.0"
+CURRENT_PUBLIC_VERSION = "2.1.0"
+CANDIDATE_VERSION = "2.2.0"
 EXPECTED_MILESTONES = 10
 
 MILESTONE_RE = re.compile(r"^- \[([ x])\] \*\*(\d+)\.", re.MULTILINE)
@@ -155,6 +156,28 @@ def _two_point_one_published(root: Path) -> bool:
     )
 
 
+def _two_point_two_candidate_ready(root: Path) -> bool:
+    roadmap = root / "ROADMAP_2_2.md"
+    notes = root / "RELEASE_NOTES_2_2.md"
+    readme = root / "README.md"
+    if not _two_point_one_published(root) or not all(
+        path.is_file() for path in (roadmap, notes, readme)
+    ):
+        return False
+    roadmap_text = roadmap.read_text(encoding="utf-8")
+    notes_text = notes.read_text(encoding="utf-8")
+    readme_text = readme.read_text(encoding="utf-8")
+    return (
+        "Current verified progress: 9/10 milestones = 90.0%." in roadmap_text
+        and notes_text.startswith("# SwirEngine 2.2.0 Release Notes")
+        and "Prepared from the bound 2.2.0 candidate" in notes_text
+        and "bound non-publishing candidate" in readme_text
+        and "NOT PUBLISHED" in readme_text
+        and "**Latest public stable release:** **SwirEngine 2.1.0**" in readme_text
+        and '"swirengine==2.2.0"' not in readme_text
+    )
+
+
 def _assert_locked_roadmap(root: Path, version: str) -> None:
     text = _read_text(root, f"ROADMAP_{version.replace('.', '_')}.md")
     _assert("100.0%" in text, f"locked {version} roadmap must preserve its 100.0% completion marker")
@@ -191,6 +214,8 @@ def validate_checkpoint(root: Path = PROJECT_ROOT, *, require_complete: bool = F
     if _two_point_zero_finalized(root):
         allowed_versions.add(FORWARD_PUBLIC_VERSION)
     if _two_point_one_candidate_ready(root) or _two_point_one_published(root):
+        allowed_versions.add(CURRENT_PUBLIC_VERSION)
+    if _two_point_two_candidate_ready(root):
         allowed_versions.add(CANDIDATE_VERSION)
     _assert(
         project_version in allowed_versions,

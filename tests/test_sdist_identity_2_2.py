@@ -119,6 +119,17 @@ def test_any_payload_change_fails(
         ("root/path /payload.py", "Windows-ambiguous"),
         ("root/C:/payload.py", "drive/stream"),
         ("root/NUL.txt", "device name"),
+        ("root/COM¹/payload.py", "device name"),
+        ("root/COM².txt", "device name"),
+        ("root/LPT³/payload.py", "device name"),
+        ("root/CONIN$/payload.py", "device name"),
+        ("root/CONOUT$.txt", "device name"),
+        ("root/bad?.py", "Windows-forbidden"),
+        ("root/bad*.py", "Windows-forbidden"),
+        ('root/bad"name.py', "Windows-forbidden"),
+        ("root/bad|name.py", "Windows-forbidden"),
+        ("root/bad<name>.py", "Windows-forbidden"),
+        ("root/control\x01.py", "Windows-forbidden"),
     ],
 )
 def test_unsafe_or_ambiguous_paths_fail(

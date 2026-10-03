@@ -22,6 +22,7 @@ on:
       - ".github/workflows/game-state-production-1-9.yml"
   pull_request:
     paths:
+      - "pyproject.toml"
       - "src/swirengine/game_state19.py"
       - "src/swirengine/storage.py"
       - "src/swirengine/storage15.py"

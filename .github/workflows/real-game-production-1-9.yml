@@ -28,6 +28,7 @@ on:
       - ".github/workflows/real-game-production-1-9.yml"
   pull_request:
     paths:
+      - "pyproject.toml"
       - "examples/2d_game_demo/**"
       - "examples/3d_game_demo/**"
       - "examples/multiplayer_game_demo/**"

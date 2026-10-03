@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.2.0 bound candidate - 2026-10-04
+
+SwirEngine 2.2.0 is a bound non-publishing candidate. It is not a public release; SwirEngine
+2.1.0 remains the latest public stable package while guarded publication and immutable public
+verification are pending.
+
+- bound the 2.2 package/runtime identity to the accepted Production Tools & Visual Creation source
+- retained the 9/10 roadmap state until post-release evidence can close Milestone 10
+- preserved public installation guidance at SwirEngine 2.1.0
+- prepared time-neutral release notes and package-index description for immutable publication
+- kept material/shader, node-graph, terrain/foliage, animation, VFX, lighting, UI and multiplayer
+  authoring on the shipping runtime paths covered by the candidate gates
+
 ## 1.4 development - 2026-09-16
 
 Renderer 2.0 milestone.

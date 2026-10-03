@@ -23,6 +23,7 @@ on:
       - ".github/workflows/scene-packages-1-9.yml"
   pull_request:
     paths:
+      - "pyproject.toml"
       - "src/swirengine/scene_packages19.py"
       - "src/swirengine/exporting.py"
       - "tests/test_scene_packages_1_9.py"

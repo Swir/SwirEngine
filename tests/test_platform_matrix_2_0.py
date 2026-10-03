@@ -39,7 +39,11 @@ def test_python_metadata_preserves_2_0_floor_and_supported_range():
     if final_complete:
         assert version_tuple >= (2, 0, 0)
         assert project["urls"]["2.0 Roadmap"].endswith("/ROADMAP_2_0.md")
-        if version_tuple >= (2, 1, 0):
+        if version_tuple >= (2, 2, 0):
+            assert project["urls"]["Roadmap"].endswith("/ROADMAP_2_2.md")
+            assert project["urls"]["2.2 Roadmap"].endswith("/ROADMAP_2_2.md")
+            assert project["urls"]["2.1 Roadmap"].endswith("/ROADMAP_2_1.md")
+        elif version_tuple >= (2, 1, 0):
             assert project["urls"]["Roadmap"].endswith("/ROADMAP_2_1.md")
             assert project["urls"]["2.1 Roadmap"].endswith("/ROADMAP_2_1.md")
         else:

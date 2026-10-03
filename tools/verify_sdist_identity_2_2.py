@@ -13,9 +13,10 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 WINDOWS_DEVICE_RE = re.compile(
-    r"^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?$",
+    r"^(?:CON|PRN|AUX|NUL|CONIN\$|CONOUT\$|COM[1-9¹²³]|LPT[1-9¹²³])(?:\..*)?$",
     re.IGNORECASE,
 )
+WINDOWS_FORBIDDEN_CHARS = frozenset('<>"|?*')
 FORBIDDEN_ROOTS = {".release", "release-evidence"}
 FORBIDDEN_ROOT_KEYS = {name.casefold() for name in FORBIDDEN_ROOTS}
 
@@ -62,6 +63,10 @@ def _safe_components(name: str, *, source: Path) -> tuple[str, ...]:
     for part in parts:
         _require(part == unicodedata.normalize("NFC", part), f"non-NFC archive path {subject}")
         _require(not part.endswith((".", " ")), f"Windows-ambiguous archive path {subject}")
+        _require(
+            not any(ord(character) < 32 or character in WINDOWS_FORBIDDEN_CHARS for character in part),
+            f"Windows-forbidden character in archive path {subject}",
+        )
         _require(":" not in part, f"Windows drive/stream syntax in archive path {subject}")
         _require(not WINDOWS_DEVICE_RE.fullmatch(part), f"Windows device name in archive path {subject}")
 

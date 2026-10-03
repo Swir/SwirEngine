@@ -23,6 +23,7 @@ on:
       - ".github/workflows/content-build-1-9.yml"
   pull_request:
     paths:
+      - "pyproject.toml"
       - "src/swirengine/content_build19.py"
       - "src/swirengine/exporting.py"
       - "src/swirengine/asset_pipeline.py"

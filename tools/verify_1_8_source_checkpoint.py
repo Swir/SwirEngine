@@ -17,13 +17,16 @@ ROOT = Path(__file__).resolve().parents[1]
 ROADMAP = ROOT / "ROADMAP_1_8.md"
 ACTIVE_20_ROADMAP = ROOT / "ROADMAP_2_0.md"
 ACTIVE_21_ROADMAP = ROOT / "ROADMAP_2_1.md"
+ACTIVE_22_ROADMAP = ROOT / "ROADMAP_2_2.md"
 RELEASE_NOTES_21 = ROOT / "RELEASE_NOTES_2_1.md"
+RELEASE_NOTES_22 = ROOT / "RELEASE_NOTES_2_2.md"
 PYPROJECT = ROOT / "pyproject.toml"
 WORKFLOWS = ROOT / ".github" / "workflows"
 
 STABLE_PUBLIC_VERSION = "1.5.0"
 FORWARD_PUBLIC_VERSION = "2.0.0"
-CANDIDATE_VERSION = "2.1.0"
+CURRENT_PUBLIC_VERSION = "2.1.0"
+CANDIDATE_VERSION = "2.2.0"
 EXPECTED_MILESTONES = 10
 
 MILESTONE_RE = re.compile(r"^- \[([ xX])\] \*\*(\d+)\.", re.MULTILINE)
@@ -199,6 +202,29 @@ def _two_point_one_published() -> bool:
     )
 
 
+def _two_point_two_candidate_ready() -> bool:
+    readme_path = ROOT / "README.md"
+    if (
+        not _two_point_one_published()
+        or not ACTIVE_22_ROADMAP.is_file()
+        or not RELEASE_NOTES_22.is_file()
+        or not readme_path.is_file()
+    ):
+        return False
+    roadmap = _text(ACTIVE_22_ROADMAP)
+    notes = _text(RELEASE_NOTES_22)
+    readme = _text(readme_path)
+    return (
+        "Current verified progress: 9/10 milestones = 90.0%." in roadmap
+        and notes.startswith("# SwirEngine 2.2.0 Release Notes")
+        and "Prepared from the bound 2.2.0 candidate" in notes
+        and "bound non-publishing candidate" in readme
+        and "NOT PUBLISHED" in readme
+        and "**Latest public stable release:** **SwirEngine 2.1.0**" in readme
+        and '"swirengine==2.2.0"' not in readme
+    )
+
+
 def _current_public_version() -> str:
     pyproject = _text(PYPROJECT)
     match = VERSION_RE.search(pyproject)
@@ -213,10 +239,12 @@ def _verify_public_version() -> str:
     if _two_point_zero_finalized():
         allowed.add(FORWARD_PUBLIC_VERSION)
     if _two_point_one_candidate_ready() or _two_point_one_published():
+        allowed.add(CURRENT_PUBLIC_VERSION)
+    if _two_point_two_candidate_ready():
         allowed.add(CANDIDATE_VERSION)
     if version not in allowed:
         raise CheckpointError(
-            "locked 1.8 history permits only the current public line, finalized 2.0, or accepted/published 2.1: "
+            "locked 1.8 history permits only finalized public lines or the bound 2.2 candidate: "
             f"allowed={sorted(allowed)}, found {version}"
         )
     return version

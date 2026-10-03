@@ -36,16 +36,26 @@ The exact Phase A head must prove all of the following:
 10. Focused tests, strict Ruff, compile validation, YAML parsing and the normal exact-head
     repository matrix pass after the final Phase A change.
 
-Phase A evidence: pending exact-head CI. Record an exact 40-character head and its complete green
-workflow evidence only after that unchanged head finishes; do not copy evidence from an ancestor.
+Phase A evidence is accepted for PR #240. The exact PR head
+`6c109e2dce25d94dee91f5b06b84a134e4302d58` completed 54/54 workflows GREEN, including the
+explicit required-workflow manifest at 47/47. It was integrated by a normal merge commit, and
+fresh `main` at `a634e980649ec50307479ab0d14f483c77315e6a` completed 28/28 push workflows GREEN.
+No run IDs are asserted here because they are not part of the recorded evidence.
 
 ## Phase B — bound non-publishing candidate
 
-After Phase A is accepted, Phase B may prepare and qualify the exact 2.2.0 candidate source. It
-must remain non-publishing: candidate artifacts are short-lived evidence and do not authorize a
-tag, upload, release creation or public-stable README claim. The candidate source identity,
-artifact hashes and supported-platform results must be bound together before publication is
-enabled. The roadmap stays at **9/10**.
+Phase B prepares and qualifies the exact **SwirEngine 2.2.0 bound non-publishing candidate**.
+README must state **NOT PUBLISHED**, keep SwirEngine 2.1.0 as the latest public stable release and
+keep every public install command pinned to 2.1.0. Package/runtime metadata may now identify
+2.2.0, and the primary package roadmap points to `ROADMAP_2_2.md` while all historical roadmap
+links remain available.
+
+Candidate artifacts are short-lived evidence and do not authorize a tag, upload, release creation
+or public-stable README claim. The candidate source identity, artifact hashes and
+supported-platform results must be bound together before publication is enabled.
+`RELEASE_NOTES_2_2.md` and `PYPI_DESCRIPTION_2_2.md` are deliberately time-neutral because their
+bytes become immutable release metadata; the temporary non-publication warning belongs in README
+and the candidate verifier. The roadmap stays at **9/10**.
 
 ## Phases C and D — guarded publication and immutable verification
 

@@ -19,6 +19,7 @@ on:
       - ".github/workflows/desktop-shipping-1-9.yml"
   pull_request:
     paths:
+      - "pyproject.toml"
       - "src/swirengine/desktop_shipping19.py"
       - "tests/test_shipping_1_9.py"
       - "tests/test_exporting.py"

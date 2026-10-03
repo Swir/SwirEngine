@@ -4,13 +4,51 @@ import csv
 import io
 import zipfile
 
+import pytest
+
 from tools.build_vendored_wheel import build_vendored_wheel
 
 
 def _write_wheel(path, files: dict[str, bytes]) -> None:
+    _write_wheel_entries(path, list(files.items()))
+
+
+def _write_wheel_entries(path, entries: list[tuple[str, bytes]]) -> None:
     with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        for name, data in files.items():
-            archive.writestr(name, data)
+        for name, data in entries:
+            info = zipfile.ZipInfo("placeholder")
+            info.filename = name
+            info.compress_type = zipfile.ZIP_DEFLATED
+            archive.writestr(info, data)
+
+
+def _base_wheel(tmp_path):
+    path = tmp_path / "swirengine-1.0.3-py3-none-any.whl"
+    _write_wheel(
+        path,
+        {
+            "swirengine/__init__.py": b'__version__ = "1.0.3"\n',
+            "swirengine-1.0.3.dist-info/METADATA": b"Name: swirengine\nVersion: 1.0.3\n",
+            "swirengine-1.0.3.dist-info/WHEEL": (
+                b"Wheel-Version: 1.0\nRoot-Is-Purelib: true\nTag: py3-none-any\n"
+            ),
+            "swirengine-1.0.3.dist-info/RECORD": b"",
+        },
+    )
+    return path
+
+
+def _vendor_wheel(tmp_path, name: str, entries: list[tuple[str, bytes]]):
+    path = tmp_path / name
+    _write_wheel_entries(
+        path,
+        entries
+        + [
+            ("vendor-1.0.0.dist-info/METADATA", b"Name: vendor\nVersion: 1.0.0\n"),
+            ("vendor-1.0.0.dist-info/RECORD", b""),
+        ],
+    )
+    return path
 
 
 def test_build_vendored_wheel_creates_platform_specific_archive(tmp_path):
@@ -84,3 +122,93 @@ def test_build_vendored_wheel_creates_platform_specific_archive(tmp_path):
         assert recorded == names
         record_row = next(row for row in rows if row[0].endswith("/RECORD"))
         assert record_row[1:] == ["", ""]
+
+
+@pytest.mark.parametrize(
+    "unsafe_name",
+    [
+        "../../sitecustomize.py",
+        "/absolute.py",
+        r"bad\path.py",
+        "pkg//payload.py",
+        "pkg/./payload.py",
+        "pkg/path./payload.py",
+        "pkg/COM¹/payload.py",
+        "pkg/CONOUT$.txt",
+        "pkg/bad?.py",
+        "pkg/control\x01.py",
+    ],
+)
+def test_build_vendored_wheel_rejects_unsafe_vendor_members(
+    tmp_path, unsafe_name: str
+) -> None:
+    base = _base_wheel(tmp_path)
+    vendor = _vendor_wheel(
+        tmp_path,
+        "vendor-1.0.0-py3-none-any.whl",
+        [(unsafe_name, b"payload")],
+    )
+
+    with pytest.raises(ValueError, match="wheel member path|device wheel member"):
+        build_vendored_wheel(
+            base,
+            [vendor],
+            tag="cp314-cp314-win_amd64",
+            output_dir=tmp_path / "dist",
+        )
+
+
+def test_build_vendored_wheel_rejects_casefold_member_collision(tmp_path) -> None:
+    base = _base_wheel(tmp_path)
+    vendor = _vendor_wheel(
+        tmp_path,
+        "vendor-1.0.0-py3-none-any.whl",
+        [("Package.py", b"one"), ("package.py", b"two")],
+    )
+
+    with pytest.raises(ValueError, match="duplicate/Windows-colliding wheel member"):
+        build_vendored_wheel(
+            base,
+            [vendor],
+            tag="cp314-cp314-win_amd64",
+            output_dir=tmp_path / "dist",
+        )
+
+
+def test_build_vendored_wheel_rejects_cross_vendor_output_collision(tmp_path) -> None:
+    base = _base_wheel(tmp_path)
+    first = _vendor_wheel(
+        tmp_path,
+        "first-1.0.0-py3-none-any.whl",
+        [("shared.py", b"one")],
+    )
+    second = _vendor_wheel(
+        tmp_path,
+        "second-1.0.0-py3-none-any.whl",
+        [("Shared.py", b"two")],
+    )
+
+    with pytest.raises(ValueError, match="duplicate/Windows-colliding output member"):
+        build_vendored_wheel(
+            base,
+            [first, second],
+            tag="cp314-cp314-win_amd64",
+            output_dir=tmp_path / "dist",
+        )
+
+
+def test_build_vendored_wheel_rejects_unsafe_platform_tag(tmp_path) -> None:
+    base = _base_wheel(tmp_path)
+    vendor = _vendor_wheel(
+        tmp_path,
+        "vendor-1.0.0-py3-none-any.whl",
+        [("vendor/__init__.py", b"")],
+    )
+
+    with pytest.raises(ValueError, match="invalid platform wheel tag"):
+        build_vendored_wheel(
+            base,
+            [vendor],
+            tag="../../outside",
+            output_dir=tmp_path / "dist",
+        )

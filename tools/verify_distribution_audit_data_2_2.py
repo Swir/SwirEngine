@@ -72,23 +72,26 @@ def _reject_publication_marker(names: list[str] | tuple[str, ...], *, label: str
             )
 
 
-def inspect_distributions(dist_dir: Path) -> None:
+def inspect_distributions(dist_dir: Path, *, wheel_only: bool = False) -> None:
     root = dist_dir.resolve()
     wheels = sorted(root.glob("swirengine-*.whl"))
     sdists = sorted(root.glob("swirengine-*.tar.gz"))
-    if len(wheels) != 1 or len(sdists) != 1:
+    expected_sdists = 0 if wheel_only else 1
+    if len(wheels) != 1 or len(sdists) != expected_sdists:
+        expected = "one SwirEngine wheel only" if wheel_only else "one SwirEngine wheel and one sdist"
         raise DistributionAuditDataError(
-            "expected exactly one SwirEngine wheel and one sdist for audit-data inspection; "
+            f"expected exactly {expected} for audit-data inspection; "
             f"found wheels={len(wheels)}, sdists={len(sdists)}"
         )
     with zipfile.ZipFile(wheels[0]) as archive:
         names = tuple(archive.namelist())
         _reject_audit_member(names, label="wheel")
         _reject_publication_marker(names, label="wheel")
-    with tarfile.open(sdists[0], mode="r:gz") as archive:
-        names = tuple(member.name for member in archive.getmembers())
-        _reject_audit_member(names, label="sdist")
-        _reject_publication_marker(names, label="sdist")
+    if not wheel_only:
+        with tarfile.open(sdists[0], mode="r:gz") as archive:
+            names = tuple(member.name for member in archive.getmembers())
+            _reject_audit_member(names, label="sdist")
+            _reject_publication_marker(names, label="sdist")
 
 
 def main() -> int:
@@ -99,11 +102,18 @@ def main() -> int:
     )
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--dist-dir", type=Path)
+    parser.add_argument(
+        "--wheel-only",
+        action="store_true",
+        help="require and inspect exactly one wheel and no sdist in --dist-dir",
+    )
     args = parser.parse_args()
 
     verify_pyproject_guard(args.root.resolve())
+    if args.wheel_only and args.dist_dir is None:
+        parser.error("--wheel-only requires --dist-dir")
     if args.dist_dir is not None:
-        inspect_distributions(args.dist_dir)
+        inspect_distributions(args.dist_dir, wheel_only=args.wheel_only)
     print("SwirEngine 2.2 distribution audit-data isolation OK")
     return 0
 

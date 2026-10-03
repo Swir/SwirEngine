@@ -7,7 +7,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_PATH = ROOT / ".github/workflows/release.yml"
 PUBLICATION_GATE_PATH = ROOT / ".github/workflows/publication-gate-2.2.yml"
-READINESS_PATH = ROOT / ".github/workflows/release-readiness-2.2.yml"
+CANDIDATE_PATH = ROOT / ".github/workflows/release-candidate-2.2.yml"
 
 
 def _workflow() -> tuple[str, dict[str, object]]:
@@ -37,10 +37,10 @@ def test_workflow_display_names_are_repository_unique() -> None:
 
 def test_yaml_contract_dependency_is_available_to_every_full_test_run() -> None:
     project = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    readiness = READINESS_PATH.read_text(encoding="utf-8")
+    candidate = CANDIDATE_PATH.read_text(encoding="utf-8")
 
     assert 'dev = ["pytest>=8,<10", "ruff>=0.16,<0.17", "PyYAML>=6,<7"]' in project
-    assert '"PyYAML>=6,<7"' in readiness
+    assert '"PyYAML>=6,<7"' in candidate
 
 
 def test_release_identity_waits_for_the_publication_gate_workflow() -> None:

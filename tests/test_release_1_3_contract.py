@@ -12,6 +12,7 @@ def test_locked_1_3_compatibility_contract_remains_complete_under_current_stable
 
     assert report.version in ACTIVE_STABLE_VERSIONS
     assert "1.5.0" in ACTIVE_STABLE_VERSIONS
+    assert "2.2.0" in ACTIVE_STABLE_VERSIONS
     assert report.roadmap.total == 10
     assert report.roadmap.completed == 10
     assert report.roadmap.remaining == 0

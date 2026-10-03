@@ -12,6 +12,7 @@ except ModuleNotFoundError:  # Python 3.10
 
 TARGET_VERSION = "1.3.0"
 CURRENT_STABLE_VERSION = "1.2.0"
+BOUND_CANDIDATE_VERSION = "2.2.0"
 ACTIVE_STABLE_VERSIONS = {
     CURRENT_STABLE_VERSION,
     TARGET_VERSION,
@@ -19,6 +20,7 @@ ACTIVE_STABLE_VERSIONS = {
     "1.5.0",
     "2.0.0",
     "2.1.0",
+    BOUND_CANDIDATE_VERSION,
 }
 EXPECTED_TOTAL = 10
 EXPECTED_PYTHON_RANGE = ">=3.10,<3.15"
@@ -86,6 +88,31 @@ def _require(condition: bool, message: str, checks: list[str]) -> None:
     checks.append(message)
 
 
+def _bound_two_point_two_candidate(root: Path) -> bool:
+    readme_path = root / "README.md"
+    notes_21_path = root / "RELEASE_NOTES_2_1.md"
+    notes_22_path = root / "RELEASE_NOTES_2_2.md"
+    roadmap_path = root / "ROADMAP_2_2.md"
+    if not all(path.is_file() for path in (readme_path, notes_21_path, notes_22_path, roadmap_path)):
+        return False
+    readme = readme_path.read_text(encoding="utf-8")
+    notes_21 = notes_21_path.read_text(encoding="utf-8")
+    notes_22 = notes_22_path.read_text(encoding="utf-8")
+    roadmap = roadmap_path.read_text(encoding="utf-8")
+    return (
+        notes_21.startswith("# SwirEngine 2.1.0 Release Notes")
+        and "NOT PUBLISHED" not in notes_21
+        and notes_22.startswith("# SwirEngine 2.2.0 Release Notes")
+        and "Prepared from the bound 2.2.0 candidate" in notes_22
+        and "Current verified progress: 9/10 milestones = 90.0%." in roadmap
+        and "SwirEngine 2.2.0" in readme
+        and "bound non-publishing candidate" in readme
+        and "NOT PUBLISHED" in readme
+        and "**Latest public stable release:** **SwirEngine 2.1.0**" in readme
+        and '"swirengine==2.2.0"' not in readme
+    )
+
+
 def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditReport:
     root = Path(root or Path(__file__).resolve().parents[1]).resolve()
     checks: list[str] = []
@@ -97,6 +124,12 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         f"package version preserves the locked 1.3 compatibility phase: {version}",
         checks,
     )
+    if version == BOUND_CANDIDATE_VERSION:
+        _require(
+            _bound_two_point_two_candidate(root),
+            "2.2.0 metadata is a bound non-publishing candidate over immutable public 2.1",
+            checks,
+        )
     _require(
         project["requires-python"] == EXPECTED_PYTHON_RANGE,
         f"Python contract is {EXPECTED_PYTHON_RANGE}",
@@ -126,7 +159,7 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             _require(version == TARGET_VERSION, f"historical 1.3 publication version is {TARGET_VERSION}", checks)
         else:
             _require(
-                version in {"1.4.0", "1.5.0", "2.0.0", "2.1.0"},
+                version in {"1.4.0", "1.5.0", "2.0.0", "2.1.0", "2.2.0"},
                 "later verified stable/candidate lines preserve the completed 1.3 compatibility contract",
                 checks,
             )
@@ -134,7 +167,7 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         _require(roadmap.completed <= 10, "development roadmap cannot exceed 10 deliverables", checks)
 
     readme = _read(root, "README.md")
-    if version in {"2.0.0", "2.1.0"}:
+    if version in {"2.0.0", "2.1.0", "2.2.0"}:
         _require(
             "64-bit CPython 3.10–3.14" in readme,
             "current README documents the verified 2.x Python support matrix",
