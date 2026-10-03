@@ -21,7 +21,7 @@ class DistributionAuditDataError(RuntimeError):
 
 
 def _normalized_parts(name: str) -> tuple[str, ...]:
-    value = str(name).replace("\\\\", "/").strip("/")
+    value = str(name).replace("\\", "/").strip("/")
     return tuple(part.casefold() for part in PurePosixPath(value).parts if part not in {"", "."})
 
 
