@@ -279,19 +279,39 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
                 f"historical 2.0 publication workflow preserves {token}",
                 checks,
             )
-        _require(
-            "workflow_dispatch:" in trigger_section
-            and "RELEASE_TAG: v2.1.0" in trigger_section
-            and "verify_2_1_publication.py" in release
-            and "verify_2_1_release_readiness.py" in release,
-            "current 2.1 publication workflow is guarded by accepted 2.1 source contracts",
-            checks,
-        )
-        _require(
-            'branches:\n      - "release/2.1.0-publication"' in trigger_section,
-            "2.1 publication workflow is isolated to the dedicated publication branch",
-            checks,
-        )
+        if "RELEASE_TAG: v2.2.0" in trigger_section:
+            publication_gate = _read(root, ".github/workflows/publication-gate-2.2.yml")
+            for token in (
+                "workflow_run:",
+                "SwirEngine 2.2 Publication Gate",
+                "verify_publication_chain_2_2.py",
+                "verify_required_workflows_2_2.py",
+                "reconcile_release_2_2.py",
+            ):
+                _require(
+                    token in release,
+                    f"current 2.2 publication workflow preserves {token}",
+                    checks,
+                )
+            _require(
+                'branches:\n      - "release/2.2.0-publication"' in publication_gate,
+                "2.2 publication gate is isolated to the dedicated publication branch",
+                checks,
+            )
+        else:
+            _require(
+                "workflow_dispatch:" in trigger_section
+                and "RELEASE_TAG: v2.1.0" in trigger_section
+                and "verify_2_1_publication.py" in release
+                and "verify_2_1_release_readiness.py" in release,
+                "current 2.1 publication workflow is guarded by accepted 2.1 source contracts",
+                checks,
+            )
+            _require(
+                'branches:\n      - "release/2.1.0-publication"' in trigger_section,
+                "2.1 publication workflow is isolated to the dedicated publication branch",
+                checks,
+            )
     else:
         _require(
             "branches:" not in trigger_section,

@@ -323,29 +323,59 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
                         f"historical 2.0 publication workflow preserves {token}",
                         checks,
                     )
-                for token in (
-                    "RELEASE_TAG: v2.1.0",
-                    "verify_2_1_publication.py",
-                    "verify_2_1_release_readiness.py",
-                    "pypa/gh-action-pypi-publish@release/v1",
-                    "environment: pypi",
-                    "id-token: write",
-                ):
+                if "RELEASE_TAG: v2.2.0" in trigger_section:
+                    publication_gate = _read(root, ".github/workflows/publication-gate-2.2.yml")
+                    for token in (
+                        "SwirEngine 2.2 Publication Gate",
+                        "verify_publication_chain_2_2.py",
+                        "verify_required_workflows_2_2.py",
+                        "reconcile_release_2_2.py",
+                        "pypa/gh-action-pypi-publish@release/v1",
+                        "environment: pypi",
+                        "id-token: write",
+                    ):
+                        _require(
+                            token in release,
+                            f"current 2.2 publication workflow includes {token}",
+                            checks,
+                        )
                     _require(
-                        token in release,
-                        f"current 2.1 publication workflow includes {token}",
+                        'branches:\n      - "release/2.2.0-publication"'
+                        in publication_gate,
+                        "2.2 publication gate is isolated to the dedicated publication branch",
                         checks,
                     )
+                else:
+                    for token in (
+                        "RELEASE_TAG: v2.1.0",
+                        "verify_2_1_publication.py",
+                        "verify_2_1_release_readiness.py",
+                        "pypa/gh-action-pypi-publish@release/v1",
+                        "environment: pypi",
+                        "id-token: write",
+                    ):
+                        _require(
+                            token in release,
+                            f"current 2.1 publication workflow includes {token}",
+                            checks,
+                        )
+                    _require(
+                        'branches:\n      - "release/2.1.0-publication"' in trigger_section,
+                        "2.1 publication workflow is isolated to the dedicated publication branch",
+                        checks,
+                    )
+            if "RELEASE_TAG: v2.2.0" in trigger_section:
                 _require(
-                    'branches:\n      - "release/2.1.0-publication"' in trigger_section,
-                    "2.1 publication workflow is isolated to the dedicated publication branch",
+                    "workflow_run:" in trigger_section,
+                    "current 2.2 publication waits for the independent push gate",
                     checks,
                 )
-            _require(
-                "workflow_dispatch:" in trigger_section,
-                "current publication workflow remains manually dispatchable",
-                checks,
-            )
+            else:
+                _require(
+                    "workflow_dispatch:" in trigger_section,
+                    "current historical publication workflow remains manually dispatchable",
+                    checks,
+                )
             _require(
                 "git push --force" not in release and "git tag -f" not in release,
                 "current publication workflow cannot rewrite immutable release tags",

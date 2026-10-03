@@ -77,15 +77,30 @@ def verify(root: Path) -> list[str]:
     if 'swirengine==2.1.0' not in notes:
         errors.append("release notes must include the exact 2.1.0 install command")
 
-    required_release_fragments = (
-        "RELEASE_VERSION: 2.1.0",
-        "RELEASE_TAG: v2.1.0",
-        "environment: pypi",
-        "id-token: write",
-        "gh release create",
-        "pypa/gh-action-pypi-publish@release/v1",
-        "release_evidence_2_1.py",
-    )
+    if "RELEASE_VERSION: 2.2.0" in release:
+        required_release_fragments = (
+            "RELEASE_TAG: v2.2.0",
+            "SwirEngine 2.2 Publication Gate",
+            "workflow_run.event",
+            "workflow_run.head_repository.full_name",
+            "verify_publication_chain_2_2.py",
+            "verify_required_workflows_2_2.py",
+            "reconcile_release_2_2.py",
+            "environment: pypi",
+            "id-token: write",
+            "gh release create",
+            "pypa/gh-action-pypi-publish@release/v1",
+        )
+    else:
+        required_release_fragments = (
+            "RELEASE_VERSION: 2.1.0",
+            "RELEASE_TAG: v2.1.0",
+            "environment: pypi",
+            "id-token: write",
+            "gh release create",
+            "pypa/gh-action-pypi-publish@release/v1",
+            "release_evidence_2_1.py",
+        )
     for fragment in required_release_fragments:
         if fragment not in release:
             errors.append(f"release workflow missing required fragment: {fragment}")

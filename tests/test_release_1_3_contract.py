@@ -49,10 +49,12 @@ def test_active_release_workflow_uses_current_final_gate_and_registered_trusted_
     workflow = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
     trigger_section = workflow.split("jobs:", 1)[0]
 
-    assert "workflow_dispatch:" in trigger_section
-    assert "RELEASE_TAG: v2.1.0" in trigger_section
-    assert "verify_2_1_publication.py" in workflow
-    assert "verify_2_1_release_readiness.py" in workflow
+    assert "workflow_run:" in trigger_section
+    assert "RELEASE_TAG: v2.2.0" in trigger_section
+    assert "SwirEngine 2.2 Publication Gate" in trigger_section
+    assert "verify_publication_chain_2_2.py" in workflow
+    assert "verify_required_workflows_2_2.py" in workflow
+    assert "reconcile_release_2_2.py" in workflow
     assert "verify_1_5_release_candidate.py --require-complete" not in workflow
     assert "verify_1_4_release_candidate.py --require-complete" not in workflow
     assert "verify_1_3_release_candidate.py" not in workflow

@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import tarfile
 import zipfile
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 try:
     import tomllib
@@ -13,7 +13,7 @@ except ModuleNotFoundError:  # pragma: no cover - CPython 3.10
 ROOT = Path(__file__).resolve().parents[1]
 AUDIT_DIR = "release-evidence"
 PUBLICATION_MARKER = (".release", "publish-2.2.0")
-EXPECTED_SDIST_EXCLUDES = ["/release-evidence", "/.release/publish-2.2.0"]
+EXPECTED_SDIST_EXCLUDES = ["/release-evidence", "/.release"]
 
 
 class DistributionAuditDataError(RuntimeError):
@@ -22,7 +22,16 @@ class DistributionAuditDataError(RuntimeError):
 
 def _normalized_parts(name: str) -> tuple[str, ...]:
     value = str(name).replace("\\", "/").strip("/")
-    return tuple(part.casefold() for part in PurePosixPath(value).parts if part not in {"", "."})
+    raw_parts = tuple(value.split("/"))
+    if ".." in raw_parts:
+        raise DistributionAuditDataError(
+            f"archive member contains parent traversal: {name!r}"
+        )
+    if any(part and part.endswith((".", " ")) for part in raw_parts):
+        raise DistributionAuditDataError(
+            f"archive member contains a Windows-ambiguous path component: {name!r}"
+        )
+    return tuple(part.casefold() for part in raw_parts if part not in {"", "."})
 
 
 def _reject_audit_member(names: list[str] | tuple[str, ...], *, label: str) -> None:
@@ -54,10 +63,10 @@ def verify_pyproject_guard(root: Path = ROOT) -> None:
 
 
 def _reject_publication_marker(names: list[str] | tuple[str, ...], *, label: str) -> None:
-    marker = tuple(part.casefold() for part in PUBLICATION_MARKER)
+    control_root = PUBLICATION_MARKER[0].casefold()
     for name in names:
         parts = _normalized_parts(name)
-        if len(parts) >= len(marker) and tuple(parts[-len(marker):]) == marker:
+        if control_root in parts:
             raise DistributionAuditDataError(
                 f"{label} contains publication-control marker: {name!r}"
             )
@@ -73,7 +82,9 @@ def inspect_distributions(dist_dir: Path) -> None:
             f"found wheels={len(wheels)}, sdists={len(sdists)}"
         )
     with zipfile.ZipFile(wheels[0]) as archive:
-        _reject_audit_member(tuple(archive.namelist()), label="wheel")
+        names = tuple(archive.namelist())
+        _reject_audit_member(names, label="wheel")
+        _reject_publication_marker(names, label="wheel")
     with tarfile.open(sdists[0], mode="r:gz") as archive:
         names = tuple(member.name for member in archive.getmembers())
         _reject_audit_member(names, label="sdist")

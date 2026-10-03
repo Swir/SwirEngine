@@ -1,0 +1,61 @@
+name: SwirEngine 2.2 Publication Gate
+
+on:
+  push:
+    branches:
+      - "release/2.2.0-publication"
+    paths:
+      - ".release/publish-2.2.0/publication.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: swirengine-2.2.0-publication-gate
+  cancel-in-progress: false
+
+jobs:
+  publication-chain:
+    name: Verify marker-only publication source
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require an exact same-repository marker push
+        env:
+          EVENT_PATH: ${{ github.event_path }}
+          EXPECTED_REPOSITORY: Swir/SwirEngine
+          PUBLICATION_BRANCH: release/2.2.0-publication
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = "$EXPECTED_REPOSITORY"
+          test "$GITHUB_EVENT_NAME" = "push"
+          test "$GITHUB_REF" = "refs/heads/$PUBLICATION_BRANCH"
+          test "$(jq -r '.repository.full_name' "$EVENT_PATH")" = "$EXPECTED_REPOSITORY"
+          test "$(jq -r '.ref' "$EVENT_PATH")" = "refs/heads/$PUBLICATION_BRANCH"
+          test "$(jq -r '.after' "$EVENT_PATH")" = "$GITHUB_SHA"
+          test "$(jq -r '.head_commit.id' "$EVENT_PATH")" = "$GITHUB_SHA"
+          test "$(jq -r '.deleted' "$EVENT_PATH")" = "false"
+          test "$(jq -r '.forced' "$EVENT_PATH")" = "false"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          remote_head="$(git ls-remote origin "refs/heads/$PUBLICATION_BRANCH" | awk '{print $1}')"
+          test "$remote_head" = "$GITHUB_SHA"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Verify deterministic C to M1 to P chain
+        run: >-
+          python tools/verify_publication_chain_2_2.py
+          --publication-sha "$GITHUB_SHA"
+          --tag-policy absent-or-publication
+      - name: Require the complete non-publishing candidate contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f RELEASE_NOTES_2_2.md
+          test -f tools/verify_2_2_release_candidate.py
+          python tools/verify_2_2_release_candidate.py

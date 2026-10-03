@@ -58,6 +58,9 @@ Roadmap = "https://github.com/Swir/SwirEngine/blob/main/ROADMAP_2_1.md"
 [tool.hatch.build.targets.wheel]
 packages = ["src/swirengine"]
 
+[tool.hatch.build.targets.sdist]
+exclude = ["/release-evidence", "/.release"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src", "."]
