@@ -70,6 +70,7 @@ jobs:
           python -m pip install --upgrade pip
           "pytest>=8,<10"
           "ruff>=0.16,<0.17"
+          "PyYAML>=6,<7"
           "build>=1.2,<2"
       - name: Verify named required-workflow manifest
         run: python tools/verify_required_workflows_2_2.py
