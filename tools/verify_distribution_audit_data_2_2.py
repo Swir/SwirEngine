@@ -1,0 +1,101 @@
+from __future__ import annotations
+
+import argparse
+import tarfile
+import zipfile
+from pathlib import Path, PurePosixPath
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - CPython 3.10
+    import tomli as tomllib
+
+ROOT = Path(__file__).resolve().parents[1]
+AUDIT_DIR = "release-evidence"
+PUBLICATION_MARKER = (".release", "publish-2.2.0")
+EXPECTED_SDIST_EXCLUDES = ["/release-evidence", "/.release/publish-2.2.0"]
+
+
+class DistributionAuditDataError(RuntimeError):
+    """Raised when repository-only audit data can leak into distributions."""
+
+
+def _normalized_parts(name: str) -> tuple[str, ...]:
+    value = str(name).replace("\\\\", "/").strip("/")
+    return tuple(part.casefold() for part in PurePosixPath(value).parts if part not in {"", "."})
+
+
+def _reject_audit_member(names: list[str] | tuple[str, ...], *, label: str) -> None:
+    for name in names:
+        if AUDIT_DIR.casefold() in _normalized_parts(name):
+            raise DistributionAuditDataError(
+                f"{label} contains repository-only {AUDIT_DIR!r} audit data: {name!r}"
+            )
+
+
+def verify_pyproject_guard(root: Path = ROOT) -> None:
+    data = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    try:
+        targets = data["tool"]["hatch"]["build"]["targets"]
+        wheel_packages = targets["wheel"]["packages"]
+        sdist_exclude = targets["sdist"]["exclude"]
+    except (KeyError, TypeError) as exc:
+        raise DistributionAuditDataError(
+            "pyproject Hatch distribution audit-data guard is missing or malformed"
+        ) from exc
+    if wheel_packages != ["src/swirengine"]:
+        raise DistributionAuditDataError(
+            "wheel target must remain package-only ['src/swirengine']"
+        )
+    if sdist_exclude != EXPECTED_SDIST_EXCLUDES:
+        raise DistributionAuditDataError(
+            f"sdist target must explicitly exclude {EXPECTED_SDIST_EXCLUDES!r}"
+        )
+
+
+def _reject_publication_marker(names: list[str] | tuple[str, ...], *, label: str) -> None:
+    marker = tuple(part.casefold() for part in PUBLICATION_MARKER)
+    for name in names:
+        parts = _normalized_parts(name)
+        if len(parts) >= len(marker) and tuple(parts[-len(marker):]) == marker:
+            raise DistributionAuditDataError(
+                f"{label} contains publication-control marker: {name!r}"
+            )
+
+
+def inspect_distributions(dist_dir: Path) -> None:
+    root = dist_dir.resolve()
+    wheels = sorted(root.glob("swirengine-*.whl"))
+    sdists = sorted(root.glob("swirengine-*.tar.gz"))
+    if len(wheels) != 1 or len(sdists) != 1:
+        raise DistributionAuditDataError(
+            "expected exactly one SwirEngine wheel and one sdist for audit-data inspection; "
+            f"found wheels={len(wheels)}, sdists={len(sdists)}"
+        )
+    with zipfile.ZipFile(wheels[0]) as archive:
+        _reject_audit_member(tuple(archive.namelist()), label="wheel")
+    with tarfile.open(sdists[0], mode="r:gz") as archive:
+        names = tuple(member.name for member in archive.getmembers())
+        _reject_audit_member(names, label="sdist")
+        _reject_publication_marker(names, label="sdist")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Fail closed if durable repository release evidence can enter SwirEngine wheel/sdist payloads."
+        )
+    )
+    parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--dist-dir", type=Path)
+    args = parser.parse_args()
+
+    verify_pyproject_guard(args.root.resolve())
+    if args.dist_dir is not None:
+        inspect_distributions(args.dist_dir)
+    print("SwirEngine 2.2 distribution audit-data isolation OK")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
