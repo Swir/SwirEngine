@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "scope": "SwirEngine 2.2 publication exact-head PR gate",
+  "required": [
+    {"name": "CI", "path": ".github/workflows/ci.yml"},
+    {"name": "Desktop Export", "path": ".github/workflows/desktop-export.yml"},
+    {"name": "Editor Real-Game Milestone 10", "path": ".github/workflows/editor-real-game-milestone-10.yml"},
+    {"name": "Editor Release Readiness Milestone 10", "path": ".github/workflows/editor-release-readiness-milestone-10.yml"}
+  ]
+}
