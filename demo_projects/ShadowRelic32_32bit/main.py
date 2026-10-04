@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from procedural_art import asset_root, ensure_art
+
 from swirengine import (
     AABB,
     BoxCollider2D,
@@ -212,7 +213,7 @@ class ShadowRelic32:
             collider = self.game.collider(node, layer=SOLID, mask=PLAYER, tag="solid")
             self.platforms.append(node)
             self.platform_colliders.append(collider)
-            tile_count = max(1, int(math.ceil(w / 128)))
+            tile_count = max(1, math.ceil(w / 128))
             for tile in range(tile_count):
                 tx = x - w / 2 + min(w - 64, 64 + tile * 128)
                 self.game.sprite(f"platform_{style}.png", x=tx, y=y, width=min(128, w), height=max(64, h), layer=-2)
@@ -624,7 +625,7 @@ class ShadowRelic32:
         for node in self.potion_nodes:
             node.visible = True
         for i, enemy in enumerate(self.enemies):
-            kind, x, y, patrol, speed, hp = ENEMY_SPECS[i]
+            _kind, x, y, patrol, speed, hp = ENEMY_SPECS[i]
             enemy.update({"origin": x, "base_y": y, "patrol": patrol, "speed": speed, "hp": hp, "alive": True, "direction": 1.0, "phase": 0.0})
             enemy["root"].x, enemy["root"].y = x, y
             enemy["collider"].enabled = True
