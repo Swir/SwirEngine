@@ -14,6 +14,7 @@ on:
       - ".github/release-gates/2.2-required-workflows.json"
       - ".github/workflows/release-candidate-2.2.yml"
       - ".github/workflows/publication-gate-2.2.yml"
+      - ".github/workflows/public-api-2.0.yml"
       - ".github/workflows/release.yml"
       - "tools/verify_2_2_release_candidate.py"
       - "tools/verify_candidate_merge_2_2.py"

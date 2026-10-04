@@ -39,3 +39,5 @@ When practical, a public API scheduled for removal should first remain available
 ## Release verification
 
 Every claimed supported Python/OS combination must run the relevant test/runtime contract, Ruff and bytecode compilation. Packaging verification must build wheel and sdist artifacts and validate clean installation independently of the source checkout. SwirEngine 2.0 additionally requires representative real-game workflows, native shipping checks, migration validation and public PyPI installation verification before release.
+
+Release-control-only recovery does not change public API guarantees, but it must still rerun the complete exact-source workflow manifest and clean-install verification before publication.

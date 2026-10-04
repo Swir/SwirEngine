@@ -35,6 +35,7 @@ dependencies = [
 
 [project.optional-dependencies]
 audio = ["pygame>=2.6,<3"]
+# The publication gate installs only PyYAML from this set with an exact wheel hash.
 dev = ["pytest>=8,<10", "ruff>=0.16,<0.17", "PyYAML>=6,<7"]
 
 [project.scripts]

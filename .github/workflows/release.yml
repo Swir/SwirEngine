@@ -20,7 +20,7 @@ concurrency:
 env:
   RELEASE_VERSION: 2.2.0
   RELEASE_TAG: v2.2.0
-  PUBLICATION_BRANCH: release/2.2.0-publication
+  PUBLICATION_BRANCH: release/2.2.0-publication-r2
 
 jobs:
   publication-chain:
@@ -117,7 +117,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ needs.publication-chain.outputs.publication_sha }}
+          ref: ${{ needs.publication-chain.outputs.candidate_source_sha }}
           persist-credentials: false
       - name: Wait for the explicit exact-SHA workflow manifest
         env:
@@ -166,7 +166,17 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
+      - name: Materialize exact candidate source outside the publication tree
+        env:
+          CANDIDATE_SOURCE_SHA: ${{ needs.publication-chain.outputs.candidate_source_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate_root="$RUNNER_TEMP/candidate-tree"
+          git worktree add --detach "$candidate_root" "$CANDIDATE_SOURCE_SHA"
+          test "$(git -C "$candidate_root" rev-parse HEAD)" = "$CANDIDATE_SOURCE_SHA"
       - name: Install release validation dependencies
+        working-directory: ${{ runner.temp }}/candidate-tree
         run: >-
           python -m pip install --upgrade pip
           "build>=1.2,<2"
@@ -182,11 +192,6 @@ jobs:
           python tools/verify_publication_chain_2_2.py \
             --publication-sha "$PUBLICATION_SHA" \
             --tag-policy absent-or-publication
-      - name: Run complete exact-source tests and static checks
-        run: |
-          python -m pytest -q
-          python -m ruff check src tests examples demo_projects tools
-          python -m compileall -q src tests examples demo_projects tools
       - name: Build publication wheel and sdist
         run: python -m build --wheel --sdist --outdir publication-dist
       - name: Build candidate sdist from immutable C
@@ -195,8 +200,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git worktree add --detach candidate-tree "$CANDIDATE_SOURCE_SHA"
-          python -m build --sdist --outdir candidate-dist candidate-tree
+          candidate_root="$RUNNER_TEMP/candidate-tree"
+          test "$(git -C "$candidate_root" rev-parse HEAD)" = "$CANDIDATE_SOURCE_SHA"
+          test -z "$(git -C "$candidate_root" status --porcelain --untracked-files=all)"
+          python -m build --sdist --outdir candidate-dist "$candidate_root"
+      - name: Run complete exact-source tests and static checks
+        working-directory: ${{ runner.temp }}/candidate-tree
+        env:
+          PYTHONPYCACHEPREFIX: ${{ runner.temp }}/candidate-pycache
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pytest -q -p no:cacheprovider
+          python -m ruff check --no-cache src tests examples demo_projects tools
+          python -m compileall -q src tests examples demo_projects tools
+          test -z "$(git status --porcelain --untracked-files=all)"
       - name: Require logical candidate/publication sdist identity
         id: sdist
         run: >-

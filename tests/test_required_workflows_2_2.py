@@ -82,6 +82,7 @@ def test_repository_manifest_tracks_the_explicit_candidate_workflows(
         ".github/workflows/desktop-shipping-1-9.yml",
         ".github/workflows/editor-vfx-2-2.yml",
         ".github/workflows/game-state-production-1-9.yml",
+        ".github/workflows/public-api-2.0.yml",
         ".github/workflows/real-game-production-1-9.yml",
         ".github/workflows/runtime-diagnostics-1-9.yml",
         ".github/workflows/scene-packages-1-9.yml",

@@ -340,7 +340,7 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
                     checks,
                 )
             _require(
-                'branches:\n      - "release/2.2.0-publication"' in publication_gate,
+                'branches:\n      - "release/2.2.0-publication-r2"' in publication_gate,
                 "2.2 publication gate is isolated to the dedicated publication branch",
                 checks,
             )
