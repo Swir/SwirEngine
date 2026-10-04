@@ -995,9 +995,9 @@ class ShadowRelic32:
                 self.body.velocity_y *= 0.48
             if self.game.key_pressed("C") or self.game.key_pressed("K"):
                 self._dash()
-            if self.game.key_pressed("X") or self.game.key_pressed("J"):
-                self._attack()
-            elif self.attack_buffer > 0 and self.attack_cooldown <= 0:
+            attack_pressed = self.game.key_pressed("X") or self.game.key_pressed("J")
+            buffered_attack = self.attack_buffer > 0 and self.attack_cooldown <= 0
+            if attack_pressed or buffered_attack:
                 self._attack()
 
             self._update_enemies(dt)
