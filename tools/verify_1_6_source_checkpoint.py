@@ -226,6 +226,36 @@ def _two_point_two_patch_candidate_ready(root: Path) -> bool:
     )
 
 
+def _two_point_two_patch_published(root: Path) -> bool:
+    required = (
+        root / "README.md",
+        root / "RELEASE_NOTES_2_2.md",
+        root / "RELEASE_NOTES_2_2_1.md",
+        root / "ROADMAP_2_2.md",
+    )
+    if not all(path.is_file() for path in required):
+        return False
+    readme = required[0].read_text(encoding="utf-8")
+    notes_22 = required[1].read_text(encoding="utf-8")
+    notes_221 = required[2].read_text(encoding="utf-8")
+    roadmap = required[3].read_text(encoding="utf-8")
+    return (
+        notes_22.startswith("# SwirEngine 2.2.0 Release Notes")
+        and "Prepared from the bound 2.2.0 candidate" in notes_22
+        and notes_221.startswith("# SwirEngine 2.2.1 Release Notes")
+        and "NOT PUBLISHED" not in notes_221
+        and "Current verified progress: 10/10 milestones = 100.0%." in roadmap
+        and "**Latest public stable release:** **SwirEngine 2.2.1**" in readme
+        and '"swirengine==2.2.1"' in readme
+        and '"swirengine[audio]==2.2.1"' in readme
+        and "release-evidence/2.2.1/manifest.json" in readme
+        and "NOT PUBLISHED" not in readme
+        and (root / "release-evidence/2.2.1/manifest.json").is_file()
+        and (root / ".github/workflows/post-release-2.2.1.yml").is_file()
+        and not (root / ".github/workflows/release-candidate-2.2.1.yml").exists()
+    )
+
+
 def validate_checkpoint(root: Path = PROJECT_ROOT, *, require_complete: bool = False) -> tuple[int, int]:
     roadmap = _read_text(root, "ROADMAP_1_6.md")
     checked, total = milestone_progress(roadmap)
@@ -250,7 +280,7 @@ def validate_checkpoint(root: Path = PROJECT_ROOT, *, require_complete: bool = F
         allowed_versions.add(CURRENT_PUBLIC_VERSION)
     if _two_point_two_candidate_ready(root):
         allowed_versions.add(CANDIDATE_VERSION)
-    if _two_point_two_patch_candidate_ready(root):
+    if _two_point_two_patch_candidate_ready(root) or _two_point_two_patch_published(root):
         allowed_versions.add(PATCH_CANDIDATE_VERSION)
     _assert(
         project_version in allowed_versions,

@@ -278,6 +278,34 @@ def _two_point_two_patch_candidate_ready() -> bool:
     )
 
 
+def _two_point_two_patch_published() -> bool:
+    notes_221_path = ROOT / "RELEASE_NOTES_2_2_1.md"
+    if not all(
+        path.is_file()
+        for path in (ACTIVE_22_ROADMAP, RELEASE_NOTES_22, notes_221_path, README)
+    ):
+        return False
+    roadmap = _text(ACTIVE_22_ROADMAP)
+    notes_22 = _text(RELEASE_NOTES_22)
+    notes_221 = _text(notes_221_path)
+    readme = _text(README)
+    return (
+        notes_22.startswith("# SwirEngine 2.2.0 Release Notes")
+        and "Prepared from the bound 2.2.0 candidate" in notes_22
+        and notes_221.startswith("# SwirEngine 2.2.1 Release Notes")
+        and "NOT PUBLISHED" not in notes_221
+        and "Current verified progress: 10/10 milestones = 100.0%." in roadmap
+        and "**Latest public stable release:** **SwirEngine 2.2.1**" in readme
+        and '"swirengine==2.2.1"' in readme
+        and '"swirengine[audio]==2.2.1"' in readme
+        and "release-evidence/2.2.1/manifest.json" in readme
+        and "NOT PUBLISHED" not in readme
+        and (ROOT / "release-evidence/2.2.1/manifest.json").is_file()
+        and (ROOT / ".github/workflows/post-release-2.2.1.yml").is_file()
+        and not (ROOT / ".github/workflows/release-candidate-2.2.1.yml").exists()
+    )
+
+
 def _current_public_version() -> str:
     match = VERSION_RE.search(_text(PYPROJECT))
     if match is None:
@@ -308,7 +336,7 @@ def _two_point_zero_published() -> bool:
     if current == CANDIDATE_VERSION:
         return _two_point_two_candidate_ready()
     if current == PATCH_CANDIDATE_VERSION:
-        return _two_point_two_patch_candidate_ready()
+        return _two_point_two_patch_candidate_ready() or _two_point_two_patch_published()
     return _two_point_one_published()
 
 
@@ -336,7 +364,7 @@ def _verify_public_version() -> str:
         allowed.add(CURRENT_PUBLIC_VERSION)
     if _two_point_two_candidate_ready():
         allowed.add(CANDIDATE_VERSION)
-    if _two_point_two_patch_candidate_ready():
+    if _two_point_two_patch_candidate_ready() or _two_point_two_patch_published():
         allowed.add(PATCH_CANDIDATE_VERSION)
     if version not in allowed:
         raise CheckpointError(

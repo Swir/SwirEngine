@@ -34,6 +34,7 @@ def _allowed_source_versions() -> set[str]:
             for marker in (
                 "**Latest public stable release:** **SwirEngine 2.1.0**",
                 "**Latest public stable release:** **SwirEngine 2.2.0**",
+                "**Latest public stable release:** **SwirEngine 2.2.1**",
             )
         )
         if accepted_21 and (candidate_21 or published_21):
@@ -79,9 +80,22 @@ def _allowed_source_versions() -> set[str]:
             and '"swirengine[audio]==2.2.1"' not in readme_text
             and Path("release-evidence/2.2.0/manifest.json").is_file()
         )
+        patch_public_221 = (
+            "Current verified progress: 10/10 milestones = 100.0%." in roadmap_text
+            and notes_text.startswith("# SwirEngine 2.2.0 Release Notes")
+            and "NOT PUBLISHED" not in notes_text
+            and "**Latest public stable release:** **SwirEngine 2.2.1**" in readme_text
+            and '"swirengine==2.2.1"' in readme_text
+            and '"swirengine[audio]==2.2.1"' in readme_text
+            and "bound non-publishing patch candidate" not in readme_folded
+            and "NOT PUBLISHED" not in readme_text
+            and Path("release-evidence/2.2.1/manifest.json").is_file()
+            and Path(".github/workflows/post-release-2.2.1.yml").is_file()
+            and not Path(".github/workflows/release-candidate-2.2.1.yml").exists()
+        )
         if candidate_22 or published_22:
             allowed.add(CANDIDATE_VERSION)
-        if patch_candidate_221:
+        if patch_candidate_221 or patch_public_221:
             allowed.add(PATCH_CANDIDATE_VERSION)
     return allowed
 
@@ -129,14 +143,23 @@ def test_source_version_matches_guarded_release_phase():
         readme = Path("README.md").read_text(encoding="utf-8")
         readme_folded = readme.casefold()
         assert "swirengine 2.2.1" in readme_folded
-        assert "bound non-publishing patch candidate" in readme_folded
-        assert "NOT PUBLISHED" in readme
-        assert "**Latest public stable release:** **SwirEngine 2.2.0**" in readme
-        assert '"swirengine==2.2.0"' in readme
-        assert '"swirengine[audio]==2.2.0"' in readme
-        assert '"swirengine==2.2.1"' not in readme
-        assert '"swirengine[audio]==2.2.1"' not in readme
-        assert Path("release-evidence/2.2.0/manifest.json").is_file()
+        if "**Latest public stable release:** **SwirEngine 2.2.1**" in readme:
+            assert "bound non-publishing patch candidate" not in readme_folded
+            assert "NOT PUBLISHED" not in readme
+            assert '"swirengine==2.2.1"' in readme
+            assert '"swirengine[audio]==2.2.1"' in readme
+            assert Path("release-evidence/2.2.1/manifest.json").is_file()
+            assert Path(".github/workflows/post-release-2.2.1.yml").is_file()
+            assert not Path(".github/workflows/release-candidate-2.2.1.yml").exists()
+        else:
+            assert "bound non-publishing patch candidate" in readme_folded
+            assert "NOT PUBLISHED" in readme
+            assert "**Latest public stable release:** **SwirEngine 2.2.0**" in readme
+            assert '"swirengine==2.2.0"' in readme
+            assert '"swirengine[audio]==2.2.0"' in readme
+            assert '"swirengine==2.2.1"' not in readme
+            assert '"swirengine[audio]==2.2.1"' not in readme
+            assert Path("release-evidence/2.2.0/manifest.json").is_file()
 
 
 def test_supported_python_range_is_explicit():
@@ -161,6 +184,11 @@ def test_readme_preserves_locked_1_5_evidence_after_2_0_publication():
     }:
         assert "`v2.0.0`" in readme or "| 2.0 |" in readme
         if (
+            swirengine.__version__ == PATCH_CANDIDATE_VERSION
+            and "**Latest public stable release:** **SwirEngine 2.2.1**" in readme
+        ):
+            assert "**Latest public stable release:** **SwirEngine 2.2.1**" in readme
+        elif (
             swirengine.__version__ in {CANDIDATE_VERSION, PATCH_CANDIDATE_VERSION}
             and "**Latest public stable release:** **SwirEngine 2.2.0**" in readme
         ):

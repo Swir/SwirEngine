@@ -9,8 +9,8 @@
 ![CI](https://img.shields.io/github/actions/workflow/status/Swir/SwirEngine/ci.yml?branch=main&style=for-the-badge&label=CI&color=02050A&logo=githubactions&logoColor=62E5FF)
 [![PyPI](https://img.shields.io/pypi/v/swirengine?style=for-the-badge&color=02050A&logo=pypi&logoColor=62E5FF)](https://pypi.org/project/swirengine/)
 ![Python](https://img.shields.io/badge/Python-3.10--3.14%2064--bit%20CPython%20verified%20matrix-02050A?style=for-the-badge&logo=python&logoColor=62E5FF)
-![Public](https://img.shields.io/badge/PUBLIC-2.2.0%20STABLE-02050A?style=for-the-badge&logoColor=62E5FF)
-![Candidate](https://img.shields.io/badge/CANDIDATE-2.2.1%20NOT%20PUBLISHED-02050A?style=for-the-badge&logoColor=62E5FF)
+![Public](https://img.shields.io/badge/PUBLIC-2.2.1%20STABLE-02050A?style=for-the-badge&logoColor=62E5FF)
+![Verified](https://img.shields.io/badge/2.2.1-IMMUTABLE%20PUBLICATION%20VERIFIED-02050A?style=for-the-badge&logoColor=62E5FF)
 ![Development](https://img.shields.io/badge/2.2%20ROADMAP-10%2F10-02050A?style=for-the-badge&logoColor=62E5FF)
 ![License](https://img.shields.io/badge/LICENSE-MIT-02050A?style=for-the-badge&logo=opensourceinitiative&logoColor=62E5FF)
 
@@ -38,28 +38,42 @@ Status: COMPLETE
 
 **Completed verified release scope:** SwirEngine 2.2 — Production Tools & Visual Creation<br>
 **2.2 roadmap:** **10/10 milestones = 100.0% - COMPLETE**<br>
-**2.2 release:** **PUBLISHED — GitHub Release, PyPI and durable evidence verified**
+**Current stable package:** **SwirEngine 2.2.1 — GitHub Release, PyPI and public installs verified**
 
-**Bound non-publishing patch candidate:** **SwirEngine 2.2.1 — NOT PUBLISHED**<br>
-The source version, [`RELEASE_NOTES_2_2_1.md`](RELEASE_NOTES_2_2_1.md) and
-[`PYPI_DESCRIPTION_2_2_1.md`](PYPI_DESCRIPTION_2_2_1.md) are bound only as an exact
-documentation-only maintenance candidate. This does not create a tag, GitHub Release or PyPI
-upload. **SwirEngine 2.2.0 remains the latest public stable release**, and every public installation
-command below remains pinned to `2.2.0` until a guarded 2.2.1 publication succeeds.
-
-**Latest public stable release:** **SwirEngine 2.2.0**<br>
+**Latest public stable release:** **SwirEngine 2.2.1**<br>
 **Release date:** **2026-10-04**<br>
-**Release source:** immutable tag **`v2.2.0`** at publication commit
-**`2f150ba6f3fd1e1fd121a8884298e616186e267b`**; exact source and public asset identities are
-preserved by checksums, release provenance and the
-[`2.2.0 public-release evidence`](release-evidence/2.2.0/manifest.json).
+**Release source:** immutable tag **[`v2.2.1`](https://github.com/Swir/SwirEngine/releases/tag/v2.2.1)**
+at publication commit **`8d27fdb3c37fd79b93a2f3ab420b763de564c9e9`**.
 
-SwirEngine 2.2.0 is publicly released on GitHub and PyPI. Its completed
-[`ROADMAP_2_2.md`](ROADMAP_2_2.md) records the finite **Production Tools & Visual Creation**
+SwirEngine 2.2.1 is a metadata-only maintenance release: it publishes the complete package-index
+description and matching release metadata without changing runtime behavior or the public Python
+API from 2.2.0. Existing 2.2.0 projects require no data migration. The package is available from
+the [PyPI 2.2.1 project page](https://pypi.org/project/swirengine/2.2.1/).
+
+The guarded public evidence is independently readable:
+
+- [`release-evidence/2.2.1/manifest.json`](release-evidence/2.2.1/manifest.json) is the canonical,
+  repository-owned record of the exact lineage, hashes and successful authority jobs;
+- candidate source `c2fa0ba9ba4b0a4eb3f1bde0da2e5f8a681e2b7e`, candidate marker
+  `47c15f8a4c80318a31762133e0cf4d8524b82564` and publication commit
+  `8d27fdb3c37fd79b93a2f3ab420b763de564c9e9` form the verified marker-only chain;
+- [Publication Gate run `37183101288`](https://github.com/Swir/SwirEngine/actions/runs/37183101288)
+  accepted the exact publication commit;
+- [Release run `37183110375`, attempt 2](https://github.com/Swir/SwirEngine/actions/runs/37183110375/attempts/2)
+  completed with 30 successful jobs, two intentional idempotent skips and no failures, including
+  clean public-index installs on Linux and macOS with CPython 3.13 and Windows with CPython 3.14;
+- the immutable GitHub Release exposes
+  [`SHA256SUMS`](https://github.com/Swir/SwirEngine/releases/download/v2.2.1/SHA256SUMS) and
+  [`release-provenance.json`](https://github.com/Swir/SwirEngine/releases/download/v2.2.1/release-provenance.json);
+  its three distributions match the public PyPI files byte-for-byte.
+
+The completed [`ROADMAP_2_2.md`](ROADMAP_2_2.md) records the finite
+**Production Tools & Visual Creation**
 acceptance scope: the runtime-backed visual authoring stack, responsive UI Designer, privacy-safe
 Multiplayer Debugger, restricted Editor Extension SDK, production qualification and immutable
-public verification. The earlier Phase A–D candidate and publication records remain historical
-evidence; they are not the current release status.
+public verification. SwirEngine 2.2.0 and its
+[`canonical public-release evidence`](release-evidence/2.2.0/manifest.json) remain immutable
+historical records; they are not the current stable package identity.
 
 The 10/10 result means the ten named 2.2 milestones satisfy their acceptance contract. It is not
 a claim of literal perfection, universal platform support or an end to focused maintenance.
@@ -93,13 +107,13 @@ take priority.
 Install the latest public stable release from PyPI:
 
 ```bash
-python -m pip install -U "swirengine==2.2.0"
+python -m pip install -U "swirengine==2.2.1"
 ```
 
 Optional audio support:
 
 ```bash
-python -m pip install -U "swirengine[audio]==2.2.0"
+python -m pip install -U "swirengine[audio]==2.2.1"
 ```
 
 Source development:
@@ -149,13 +163,10 @@ game.run()
 
 ## 🧭 Published release and stable maintenance
 
-SwirEngine 2.2.0 is the current public stable release. Its finite roadmap is complete and remains
-the acceptance record for the published package:
-
-The repository also contains a bound, non-publishing 2.2.1 maintenance candidate whose only
-intended release change is a substantially fuller PyPI description and matching release metadata.
-It contains no functional runtime or public-API changes from 2.2.0. Candidate source metadata is
-not evidence of public availability.
+SwirEngine 2.2.1 is the current public stable release. It carries the completed 2.2 runtime and
+editor scope forward unchanged while replacing the short 2.2.0 package-index summary with the
+complete product, installation and quick-start description. The finite roadmap remains the
+acceptance record for that shared runtime scope:
 
 - [`ROADMAP_2_2.md`](ROADMAP_2_2.md) - **2.2 Production Tools & Visual Creation**, **10/10 = 100.0%**, released and frozen except for focused maintenance.
 - [`ROADMAP_2_1.md`](ROADMAP_2_1.md) — **2.1 SwirEditor & Creator Workflow**, **10/10 = 100.0%**, released and frozen except for regressions.
@@ -167,6 +178,9 @@ Historical release-development detail remains preserved in [`ROADMAP_2_0.md`](RO
 - [`ROADMAP_2_2.md`](ROADMAP_2_2.md) — completed 2.2 Production Tools & Visual Creation roadmap
 - [`docs/MIGRATING_TO_2_2.md`](docs/MIGRATING_TO_2_2.md) — migration guidance for the published 2.2 release
 - [`docs/RELEASE_GATE_2_2.md`](docs/RELEASE_GATE_2_2.md) — historical Phase A–D gates and final Phase E acceptance
+- [`release-evidence/2.2.1/manifest.json`](release-evidence/2.2.1/manifest.json) — canonical 2.2.1 immutable-public evidence
+- [`v2.2.1 GitHub Release`](https://github.com/Swir/SwirEngine/releases/tag/v2.2.1) — immutable current release and five public assets
+- [`v2.2.1 release provenance`](https://github.com/Swir/SwirEngine/releases/download/v2.2.1/release-provenance.json) — exact maintenance-release lineage and distribution identities
 - [`release-evidence/2.2.0/manifest.json`](release-evidence/2.2.0/manifest.json) — canonical immutable-public evidence
 - [`docs/PARTICLE_VFX_EDITOR_2_2.md`](docs/PARTICLE_VFX_EDITOR_2_2.md) — accepted M6 particle authoring, preview controls and runtime boundaries
 - [`docs/LIGHTING_AUTHORING_2_2.md`](docs/LIGHTING_AUTHORING_2_2.md) — accepted M7 scene lighting, isolated preview and portable export workflow
@@ -214,6 +228,7 @@ pytest
 ruff check src tests examples demo_projects tools
 python -m compileall -q src tests examples demo_projects tools
 python tools/generate_progress_svg.py --check
+python tools/verify_public_release_2_2_1.py --evidence release-evidence/2.2.1/manifest.json
 python tools/verify_public_release_2_2.py --evidence release-evidence/2.2.0/manifest.json
 python tools/verify_2_0_release_candidate.py --require-final
 python tools/verify_creator_workflow_2_0.py
@@ -234,10 +249,9 @@ Engineering quality is evaluated against complete games, public installation, re
 
 ## 🔒 API and release policy
 
-- `v1.4.0`, `v1.5.0`, `v2.0.0`, `v2.1.0` and `v2.2.0` are immutable published releases; release history is not rewritten.
-- **2.2.0 is the latest public stable package.**
-- **2.2.1 is a bound candidate, not a published release.** Its version metadata and dedicated
-  package-index description do not authorize a tag, GitHub Release or PyPI upload.
+- `v1.4.0`, `v1.5.0`, `v2.0.0`, `v2.1.0`, `v2.2.0` and `v2.2.1` are immutable published releases; release history is not rewritten.
+- **2.2.1 is the latest public stable package.** Its guarded tag, immutable GitHub Release, exact
+  PyPI files and cross-platform public-install verification are complete.
 - 1.6, 1.7, 1.8 and 1.9 remain completed source-only checkpoints and were never published as releases.
 - The 2D, 3D and multiplayer game demos remain source-only integration fixtures.
 - The published 1.5.0 `swirengine.__all__` surface remains the documented starting compatibility floor for 2.0 migration validation.
@@ -245,6 +259,9 @@ Engineering quality is evaluated against complete games, public installation, re
 - SwirEngine 2.1.0 is published from its guarded release gate; the 10/10 roadmap remains the preserved acceptance record for that release.
 - SwirEngine 2.2.0 was published through its guarded two-marker chain and immutable public
   verification; the canonical evidence remains repository-owned and excluded from distributions.
+- SwirEngine 2.2.1 was published through its own marker-only chain as a metadata-only maintenance
+  release. Its final accepted rerun made no duplicate GitHub Release or PyPI writes and verified
+  the existing public state before completing the final immutable-state job.
 - Release authorization is fail-closed: an incomplete gate publishes nothing, and any recovery
   candidate must rerun the exact-source workflow manifest before a fresh marker-only chain.
 - A completed historical roadmap does not imply literal perfection; concrete stable-line regressions still reopen focused maintenance.

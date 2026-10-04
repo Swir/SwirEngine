@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tools.verify_1_3_release_candidate import ACTIVE_STABLE_VERSIONS, audit, parse_roadmap
+from tools.verify_1_3_release_candidate import (
+    ACTIVE_STABLE_VERSIONS,
+    _public_two_point_two_patch,
+    audit,
+    parse_roadmap,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -19,6 +24,8 @@ def test_locked_1_3_compatibility_contract_remains_complete_under_current_stable
     assert report.roadmap.remaining == 0
     assert report.roadmap.percent == 100.0
     assert report.roadmap.bar == "████████████████████ 100.0%"
+    if report.version == "2.2.1":
+        assert _public_two_point_two_patch(ROOT)
 
 
 def test_roadmap_parser_derives_exact_twenty_segment_bar() -> None:

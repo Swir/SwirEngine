@@ -260,6 +260,18 @@ def audit(root: Path | None = None) -> ReadinessReport:
         and '"swirengine[audio]==2.2.1"' not in readme
         and (root / "release-evidence/2.2.0/manifest.json").is_file()
     )
+    patch_public_221 = (
+        version == PATCH_CANDIDATE_VERSION
+        and "**Latest public stable release:** **SwirEngine 2.2.1**" in readme
+        and '"swirengine==2.2.1"' in readme
+        and '"swirengine[audio]==2.2.1"' in readme
+        and "release-evidence/2.2.1/manifest.json" in readme
+        and "NOT PUBLISHED" not in readme
+        and "bound non-publishing patch candidate" not in readme_folded
+        and (root / "release-evidence/2.2.1/manifest.json").is_file()
+        and (root / ".github/workflows/post-release-2.2.1.yml").is_file()
+        and not (root / ".github/workflows/release-candidate-2.2.1.yml").exists()
+    )
     publication_final = (
         version
         in {EXPECTED_PUBLIC_VERSION, EXPECTED_CANDIDATE_VERSION, PATCH_CANDIDATE_VERSION}
@@ -267,12 +279,13 @@ def audit(root: Path | None = None) -> ReadinessReport:
             "**Latest public stable release:** **SwirEngine 2.1.0**" in readme
             or two_two_public
             or patch_candidate_221
+            or patch_public_221
         )
         and notes.startswith("# SwirEngine 2.1.0 Release Notes")
         and "NOT PUBLISHED" not in notes
     )
     if publication_final:
-        if not two_two_public and not patch_candidate_221:
+        if not two_two_public and not patch_candidate_221 and not patch_public_221:
             _require(
                 "**2.1 release:** **PUBLISHED — GitHub Release and PyPI verified**" in readme,
                 "README final publication state identifies the verified 2.1 release",
@@ -287,7 +300,7 @@ def audit(root: Path | None = None) -> ReadinessReport:
                 else "PYPI_DESCRIPTION_2_2.md"
             )
             pypi_description = _read(root, description_path)
-            if two_two_public or patch_candidate_221:
+            if two_two_public or patch_candidate_221 or patch_public_221:
                 _require(
                     (candidate_roadmap.completed, candidate_roadmap.total) == (10, 10),
                     "immutable public 2.2 preserves the accepted 10/10 roadmap",
@@ -297,6 +310,21 @@ def audit(root: Path | None = None) -> ReadinessReport:
                     _require(
                         "release-evidence/2.2.0/manifest.json" in readme,
                         "README preserves immutable public SwirEngine 2.2.0 evidence",
+                        checks,
+                    )
+                elif patch_public_221:
+                    _require(
+                        "release-evidence/2.2.1/manifest.json" in readme
+                        and "verify_public_release_2_2_1.py" in readme
+                        and '"swirengine[audio]==2.2.1"' in readme,
+                        "README identifies immutable public SwirEngine 2.2.1 and its evidence",
+                        checks,
+                    )
+                    patch_notes = _read(root, "RELEASE_NOTES_2_2_1.md")
+                    _require(
+                        patch_notes.startswith("# SwirEngine 2.2.1 Release Notes")
+                        and "NOT PUBLISHED" not in patch_notes,
+                        "2.2.1 release notes remain publication-ready and final",
                         checks,
                     )
                 else:

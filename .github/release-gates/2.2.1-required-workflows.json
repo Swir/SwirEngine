@@ -49,6 +49,6 @@
     {"path":".github/workflows/source-checkpoint-1-7.yml","name":"Source Checkpoint 1.7"},
     {"path":".github/workflows/source-checkpoint-1-8.yml","name":"Source Checkpoint 1.8"},
     {"path":".github/workflows/source-checkpoint-1-9.yml","name":"Source Checkpoint 1.9"},
-    {"path":".github/workflows/release-candidate-2.2.1.yml","name":"SwirEngine 2.2.1 Release Candidate"}
+    {"path":".github/workflows/post-release-2.2.1.yml","name":"Post-release 2.2.1 Public Verification"}
   ]
 }

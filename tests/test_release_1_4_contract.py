@@ -3,7 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from demo_projects.neon_frontier_1_4.run_game import run_headless_probe
-from tools.verify_1_4_release_candidate import TARGET_VERSION, audit, parse_roadmap
+from tools.verify_1_4_release_candidate import (
+    TARGET_VERSION,
+    _public_two_point_two_patch,
+    audit,
+    parse_roadmap,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 SUPPORTED_CURRENT_SOURCE_VERSIONS = {
@@ -26,6 +31,8 @@ def test_locked_1_4_contract_is_complete_on_supported_stable_lines() -> None:
     assert report.roadmap.remaining == 0
     assert report.roadmap.percent == 100.0
     assert report.roadmap.bar == "████████████████████ 100.0%"
+    if report.version == "2.2.1":
+        assert _public_two_point_two_patch(ROOT)
 
 
 def test_roadmap_parser_derives_exact_twenty_segment_bars() -> None:

@@ -180,6 +180,36 @@ def _bound_two_point_two_patch_candidate(root: Path) -> bool:
     )
 
 
+def _public_two_point_two_patch(root: Path) -> bool:
+    required = (
+        root / "README.md",
+        root / "RELEASE_NOTES_2_2.md",
+        root / "RELEASE_NOTES_2_2_1.md",
+        root / "ROADMAP_2_2.md",
+    )
+    if not all(path.is_file() for path in required):
+        return False
+    readme = required[0].read_text(encoding="utf-8")
+    notes_22 = required[1].read_text(encoding="utf-8")
+    notes_221 = required[2].read_text(encoding="utf-8")
+    roadmap = required[3].read_text(encoding="utf-8")
+    return (
+        notes_22.startswith("# SwirEngine 2.2.0 Release Notes")
+        and "Prepared from the bound 2.2.0 candidate" in notes_22
+        and notes_221.startswith("# SwirEngine 2.2.1 Release Notes")
+        and "NOT PUBLISHED" not in notes_221
+        and "Current verified progress: 10/10 milestones = 100.0%." in roadmap
+        and "**Latest public stable release:** **SwirEngine 2.2.1**" in readme
+        and '"swirengine==2.2.1"' in readme
+        and '"swirengine[audio]==2.2.1"' in readme
+        and "release-evidence/2.2.1/manifest.json" in readme
+        and "NOT PUBLISHED" not in readme
+        and (root / "release-evidence/2.2.1/manifest.json").is_file()
+        and (root / ".github/workflows/post-release-2.2.1.yml").is_file()
+        and not (root / ".github/workflows/release-candidate-2.2.1.yml").exists()
+    )
+
+
 def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditReport:
     root = Path(root or Path(__file__).resolve().parents[1]).resolve()
     checks: list[str] = []
@@ -194,8 +224,8 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         )
     elif version == PATCH_CANDIDATE_VERSION:
         _require(
-            _bound_two_point_two_patch_candidate(root),
-            "2.2.1 metadata is a bound non-publishing patch candidate over immutable public 2.2.0",
+            _bound_two_point_two_patch_candidate(root) or _public_two_point_two_patch(root),
+            "2.2.1 metadata is a bound patch candidate or immutable public patch release",
             checks,
         )
     _require(
