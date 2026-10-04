@@ -246,6 +246,11 @@ def test_release_builds_both_sdists_and_binds_provenance_v2() -> None:
         for step in build_steps
         if step.get("name") == "Build publication wheel and sdist"
     )
+    cache_route = next(
+        step
+        for step in build_steps
+        if step.get("name") == "Route Python caches outside the publication source tree"
+    )
     candidate_build = next(
         step
         for step in build_steps
@@ -267,6 +272,10 @@ def test_release_builds_both_sdists_and_binds_provenance_v2() -> None:
         if step.get("uses") == "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02"
     )
     assert "env" not in workflow["jobs"]["build-release"]
+    assert cache_route["run"] == (
+        'echo "PYTHONPYCACHEPREFIX=$RUNNER_TEMP/release-pycache" >> "$GITHUB_ENV"'
+    )
+    assert build_steps.index(cache_route) < build_steps.index(publication_build)
     assert materialize["env"] == {
         "CANDIDATE_SOURCE_SHA": "${{ needs.publication-chain.outputs.candidate_source_sha }}"
     }
@@ -280,9 +289,13 @@ def test_release_builds_both_sdists_and_binds_provenance_v2() -> None:
     assert "python -m ruff check --no-cache" in regress["run"]
     assert "status --porcelain --untracked-files=all" in regress["run"]
     assert "working-directory" not in publication_build
-    assert publication_build["run"] == (
+    assert (
         'python -m build --wheel --sdist --outdir "$RUNNER_TEMP/publication-dist"'
+        in publication_build["run"]
     )
+    assert publication_build["run"].count(
+        "status --porcelain --untracked-files=all"
+    ) == 2
     assert "--outdir publication-dist" not in text
     assert 'candidate_root="$RUNNER_TEMP/candidate-tree"' in candidate_build["run"]
     assert "status --porcelain --untracked-files=all" in candidate_build["run"]

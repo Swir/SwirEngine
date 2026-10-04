@@ -85,14 +85,22 @@ def test_candidate_workflow_builds_three_exact_distributions_and_fifteen_cells()
         for step in candidate["steps"]
         if step.get("name") == "Build exact-source portable wheel and sdist"
     )
-    assert build["env"] == {
-        "PYTHONPYCACHEPREFIX": "${{ runner.temp }}/candidate-pycache"
-    }
+    cache_route = next(
+        step
+        for step in candidate["steps"]
+        if step.get("name") == "Route Python caches outside the candidate source tree"
+    )
+    assert cache_route["run"] == (
+        'echo "PYTHONPYCACHEPREFIX=$RUNNER_TEMP/candidate-pycache" >> "$GITHUB_ENV"'
+    )
+    assert candidate["steps"].index(cache_route) < candidate["steps"].index(build)
+    assert "env" not in build
     assert (
         'python -m build --wheel --sdist --outdir "$RUNNER_TEMP/candidate-portable"'
         in build["run"]
     )
     assert build["run"].count("status --porcelain --untracked-files=all") == 2
+    assert build["run"].count("status --short --untracked-files=all") == 2
     assert "--outdir dist" not in build["run"]
     assert "python -m pytest -q -p no:cacheprovider" in text
     assert "python -m ruff check --no-cache" in text

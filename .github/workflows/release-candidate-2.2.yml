@@ -97,6 +97,9 @@ jobs:
           if ($actual -ne $env:EXPECTED_SOURCE_SHA) {
             throw "checkout mismatch: expected $env:EXPECTED_SOURCE_SHA, got $actual"
           }
+      - name: Route Python caches outside the candidate source tree
+        shell: bash
+        run: echo "PYTHONPYCACHEPREFIX=$RUNNER_TEMP/candidate-pycache" >> "$GITHUB_ENV"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
@@ -115,8 +118,6 @@ jobs:
       - name: Verify phase-aware 2.2 source readiness
         run: python tools/verify_2_2_release_readiness.py
       - name: Run focused candidate regressions
-        env:
-          PYTHONPYCACHEPREFIX: ${{ runner.temp }}/candidate-pycache
         run: >-
           python -m pytest -q -p no:cacheprovider
           tests/test_verify_2_2_release_candidate.py
@@ -132,8 +133,6 @@ jobs:
           tests/test_clean_wheel_2_0.py
           tests/test_vendored_wheel.py
       - name: Lint candidate tooling and regressions
-        env:
-          PYTHONPYCACHEPREFIX: ${{ runner.temp }}/candidate-pycache
         run: >-
           python -m ruff check --no-cache
           tools/verify_2_2_release_candidate.py
@@ -159,8 +158,6 @@ jobs:
           tests/test_clean_wheel_2_0.py
           tests/test_vendored_wheel.py
       - name: Compile candidate tooling and regressions
-        env:
-          PYTHONPYCACHEPREFIX: ${{ runner.temp }}/candidate-pycache
         run: >-
           python -m compileall -q
           tools/verify_2_2_release_candidate.py
@@ -186,13 +183,13 @@ jobs:
           tests/test_clean_wheel_2_0.py
           tests/test_vendored_wheel.py
       - name: Build exact-source portable wheel and sdist
-        env:
-          PYTHONPYCACHEPREFIX: ${{ runner.temp }}/candidate-pycache
         shell: bash
         run: |
           set -euo pipefail
+          git status --short --untracked-files=all
           test -z "$(git status --porcelain --untracked-files=all)"
           python -m build --wheel --sdist --outdir "$RUNNER_TEMP/candidate-portable"
+          git status --short --untracked-files=all
           test -z "$(git status --porcelain --untracked-files=all)"
       - name: Require exact portable candidate distributions
         shell: bash
