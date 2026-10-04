@@ -37,12 +37,21 @@ Status: IN PROGRESS
 
 **Active verified development scope:** SwirEngine 2.2 — Production Tools & Visual Creation  
 **2.2 roadmap:** **9/10 milestones = 90.0% - IN PROGRESS**
+**2.2 candidate:** **SwirEngine 2.2.0 — bound non-publishing candidate — NOT PUBLISHED**
+
 **2.1 release:** **PUBLISHED — GitHub Release and PyPI verified**  
 **Latest public stable release:** **SwirEngine 2.1.0**  
 **Release date:** **2026-09-23**  
 **Release source:** immutable tag **`v2.1.0`**; exact source identity is preserved by release provenance and SHA-256 checksums.
 
-SwirEngine 2.1.0 is publicly released on GitHub and PyPI and remains the current stable package. Active source development follows [`ROADMAP_2_2.md`](ROADMAP_2_2.md): **Production Tools & Visual Creation**. Milestones 1–9 are accepted, including the runtime-backed visual authoring stack, responsive UI Designer, privacy-safe Multiplayer Debugger and restricted Editor Extension SDK. Milestone 10 now targets production acceptance and 2.2 release readiness across representative 2D, 3D and multiplayer projects.
+SwirEngine 2.1.0 is publicly released on GitHub and PyPI and remains the current stable package.
+The source tree now identifies SwirEngine 2.2.0 as a **bound non-publishing candidate**:
+**NOT PUBLISHED** means that candidate artifacts are qualification evidence, not permission to
+install 2.2.0 from a public index. The candidate follows [`ROADMAP_2_2.md`](ROADMAP_2_2.md):
+**Production Tools & Visual Creation**. Milestones 1–9 are accepted, including the runtime-backed
+visual authoring stack, responsive UI Designer, privacy-safe Multiplayer Debugger and restricted
+Editor Extension SDK. Milestone 10 remains open for guarded publication, immutable public
+verification and final acceptance.
 
 Published 2.1.0 remains the stable compatibility baseline while 2.2 develops on a separate finite roadmap. Concrete regressions, compatibility failures, security/safety issues or release-blocking defects still take priority over 2.2 feature work.
 
@@ -129,7 +138,8 @@ game.run()
 
 ## 🧭 Active development and stable maintenance
 
-SwirEngine 2.1.0 is the current public stable release. Active development has moved to a new finite roadmap:
+SwirEngine 2.1.0 is the current public stable release. SwirEngine 2.2.0 is a bound
+non-publishing candidate on the active finite roadmap:
 
 - [`ROADMAP_2_2.md`](ROADMAP_2_2.md) - **2.2 Production Tools & Visual Creation**, **9/10 = 90.0%**; Milestones 1-9 accepted, Milestone 10 production acceptance and release readiness open.
 - [`ROADMAP_2_1.md`](ROADMAP_2_1.md) — **2.1 SwirEditor & Creator Workflow**, **10/10 = 100.0%**, released and frozen except for regressions.
@@ -185,7 +195,7 @@ pytest
 ruff check src tests examples demo_projects tools
 python -m compileall -q src tests examples demo_projects tools
 python tools/generate_progress_svg.py --check
-python tools/verify_2_1_release_readiness.py
+python tools/verify_2_2_release_candidate.py
 python tools/verify_2_0_release_candidate.py --require-final
 python tools/verify_creator_workflow_2_0.py
 python tools/verify_runtime_scalability_2_0.py
@@ -212,7 +222,8 @@ Engineering quality is evaluated against complete games, public installation, re
 - The published 1.5.0 `swirengine.__all__` surface remains the documented starting compatibility floor for 2.0 migration validation.
 - Breaking post-2.0 changes require explicit engineering justification, migration documentation and tests.
 - SwirEngine 2.1.0 is published from its guarded release gate; the 10/10 roadmap remains the preserved acceptance record for that release.
-- SwirEngine 2.2 is source development only until its own finite roadmap and guarded release gate are complete.
+- SwirEngine 2.2.0 is a bound non-publishing candidate and remains **NOT PUBLISHED** until its
+  guarded publication and immutable public verification complete.
 - A completed historical roadmap does not imply literal perfection; concrete stable-line regressions still reopen focused maintenance.
 
 ## 🗺 Roadmaps and active development

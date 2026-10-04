@@ -1,9 +1,9 @@
 # Migrating from SwirEngine 2.1 to 2.2
 
-SwirEngine 2.2 is currently **source development**. The latest public stable release remains
-**SwirEngine 2.1.0**. This guide describes the additive production-tools boundary being qualified
-before any 2.2 publication decision; it is not an instruction to install a nonexistent public
-2.2 package.
+SwirEngine 2.2.0 is a **bound non-publishing candidate** and is **NOT PUBLISHED**. The latest
+public stable release remains **SwirEngine 2.1.0**. This guide describes the additive
+production-tools boundary being qualified before the guarded 2.2 publication decision; it is not
+an instruction to install 2.2.0 from a public package index.
 
 ## Compatibility baseline
 
@@ -58,14 +58,17 @@ not an operating-system sandbox. Review extension code and requested capabilitie
 it. Multiplayer debugger captures are bounded diagnostic data and must not contain raw tokens,
 payloads, addresses or project paths.
 
-## Phase A invariants
+## Phase B candidate invariants
 
-While the release gate is in Phase A:
+While the release gate is in Phase B:
 
 - `ROADMAP_2_2.md` remains **9/10 = 90.0%** and Milestone 10 stays open;
-- `pyproject.toml` and `swirengine.__version__` remain `2.1.0`;
+- `pyproject.toml` and `swirengine.__version__` identify the exact bound candidate as `2.2.0`;
 - README continues to identify 2.1.0 as the latest public stable release and pins public install
   commands to that version;
+- `RELEASE_NOTES_2_2.md` and `PYPI_DESCRIPTION_2_2.md` remain publication-ready and
+  time-neutral; README carries the temporary non-publication warning instead of embedding it in
+  immutable release artifacts;
 - no `v2.2.0` tag, GitHub Release, PyPI upload or `.release/publish-2.2.0` marker is created;
 - repository-only release evidence and the complete `.release` control directory are excluded
   from wheel and sdist payloads.
@@ -75,15 +78,15 @@ guarded publication and immutable public verification may advance Milestone 10 t
 
 ## Verification
 
-The local Phase A contract can be checked with:
+The local bound-candidate contract can be checked with:
 
 ```bash
 python tools/verify_required_workflows_2_2.py
-python tools/verify_2_2_release_readiness.py
+python tools/verify_2_2_release_candidate.py
 python tools/verify_distribution_audit_data_2_2.py
 python tools/generate_progress_svg.py --check
 ```
 
-The dedicated `.github/workflows/release-readiness-2.2.yml` additionally rebuilds exact-source
-artifacts and clean-installs the wheel across the supported matrix with an explicit expected
-version. See `docs/RELEASE_GATE_2_2.md` for the evidence order and failure policy.
+The dedicated `.github/workflows/release-candidate-2.2.yml` additionally rebuilds exact-source
+artifacts and clean-installs the wheel across the supported matrix with the explicit expected
+candidate version. See `docs/RELEASE_GATE_2_2.md` for the evidence order and failure policy.

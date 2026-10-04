@@ -1,0 +1,340 @@
+name: SwirEngine 2.2 Release Candidate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "README.md"
+      - "ROADMAP_2_2.md"
+      - "RELEASE_NOTES_2_2.md"
+      - "PYPI_DESCRIPTION_2_2.md"
+      - "pyproject.toml"
+      - "docs/MIGRATING_TO_2_2.md"
+      - "docs/RELEASE_GATE_2_2.md"
+      - ".github/release-gates/2.2-required-workflows.json"
+      - ".github/workflows/release-candidate-2.2.yml"
+      - ".github/workflows/publication-gate-2.2.yml"
+      - ".github/workflows/release.yml"
+      - "tools/verify_2_2_release_candidate.py"
+      - "tools/verify_candidate_merge_2_2.py"
+      - "tools/reconcile_release_2_2.py"
+      - "tools/verify_2_2_release_readiness.py"
+      - "tools/candidate_evidence_2_2.py"
+      - "tools/verify_required_workflows_2_2.py"
+      - "tools/verify_distribution_audit_data_2_2.py"
+      - "tools/verify_sdist_identity_2_2.py"
+      - "tools/verify_clean_wheel_2_0.py"
+      - "tools/build_vendored_wheel.py"
+      - "tests/test_verify_2_2_release_candidate.py"
+      - "tests/test_candidate_merge_2_2.py"
+      - "tests/test_reconcile_release_2_2.py"
+      - "tests/test_release_workflow_2_2.py"
+      - "tests/test_release_readiness_2_2.py"
+      - "tests/test_candidate_evidence_2_2.py"
+      - "tests/test_release_candidate_workflow_2_2.py"
+      - "tests/test_required_workflows_2_2.py"
+      - "tests/test_distribution_audit_data_2_2.py"
+      - "tests/test_sdist_identity_2_2.py"
+      - "tests/test_clean_wheel_2_0.py"
+      - "tests/test_vendored_wheel.py"
+      - "src/**"
+      - "examples/**"
+      - "demo_projects/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: swirengine-2.2-candidate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  EXPECTED_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+
+jobs:
+  candidate-contract:
+    name: Exact-source non-publishing candidate contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require exact same-repository candidate pull request
+        env:
+          EXPECTED_REPOSITORY: Swir/SwirEngine
+          EXPECTED_HEAD_BRANCH: release/2.2.0-candidate
+          EXPECTED_BASE_BRANCH: main
+          ACTUAL_REPOSITORY: ${{ github.repository }}
+          PR_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          PR_BASE_REPOSITORY: ${{ github.event.pull_request.base.repo.full_name }}
+          PR_HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_EVENT_NAME" = "pull_request"
+          test "$GITHUB_REPOSITORY" = "$EXPECTED_REPOSITORY"
+          test "$ACTUAL_REPOSITORY" = "$EXPECTED_REPOSITORY"
+          test "$PR_HEAD_REPOSITORY" = "$EXPECTED_REPOSITORY"
+          test "$PR_BASE_REPOSITORY" = "$EXPECTED_REPOSITORY"
+          test "$PR_HEAD_BRANCH" = "$EXPECTED_HEAD_BRANCH"
+          test "$PR_BASE_BRANCH" = "$EXPECTED_BASE_BRANCH"
+          test -f "$GITHUB_EVENT_PATH"
+          test "$(jq -r '.repository.full_name' "$GITHUB_EVENT_PATH")" = "$EXPECTED_REPOSITORY"
+          test "$(jq -r '.pull_request.head.repo.full_name' "$GITHUB_EVENT_PATH")" = "$EXPECTED_REPOSITORY"
+          test "$(jq -r '.pull_request.base.repo.full_name' "$GITHUB_EVENT_PATH")" = "$EXPECTED_REPOSITORY"
+          test "$(jq -r '.pull_request.head.ref' "$GITHUB_EVENT_PATH")" = "$EXPECTED_HEAD_BRANCH"
+          test "$(jq -r '.pull_request.base.ref' "$GITHUB_EVENT_PATH")" = "$EXPECTED_BASE_BRANCH"
+          test "$(jq -r '.pull_request.head.sha' "$GITHUB_EVENT_PATH")" = "$EXPECTED_SOURCE_SHA"
+      - name: Check out exact candidate source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_SOURCE_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify exact checkout identity
+        shell: pwsh
+        run: |
+          $actual = git rev-parse HEAD
+          if ($actual -ne $env:EXPECTED_SOURCE_SHA) {
+            throw "checkout mismatch: expected $env:EXPECTED_SOURCE_SHA, got $actual"
+          }
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install candidate verification tooling
+        run: >-
+          python -m pip install --upgrade pip
+          "pytest>=8,<10"
+          "ruff>=0.16,<0.17"
+          "PyYAML>=6,<7"
+          "build>=1.2,<2"
+      - name: Verify named required-workflow manifest
+        run: python tools/verify_required_workflows_2_2.py
+      - name: Verify exact non-publishing 2.2.0 candidate contract
+        run: python tools/verify_2_2_release_candidate.py
+      - name: Verify phase-aware 2.2 source readiness
+        run: python tools/verify_2_2_release_readiness.py
+      - name: Run focused candidate regressions
+        run: >-
+          python -m pytest -q
+          tests/test_verify_2_2_release_candidate.py
+          tests/test_candidate_merge_2_2.py
+          tests/test_reconcile_release_2_2.py
+          tests/test_release_workflow_2_2.py
+          tests/test_release_readiness_2_2.py
+          tests/test_candidate_evidence_2_2.py
+          tests/test_release_candidate_workflow_2_2.py
+          tests/test_required_workflows_2_2.py
+          tests/test_distribution_audit_data_2_2.py
+          tests/test_sdist_identity_2_2.py
+          tests/test_clean_wheel_2_0.py
+          tests/test_vendored_wheel.py
+      - name: Lint candidate tooling and regressions
+        run: >-
+          python -m ruff check
+          tools/verify_2_2_release_candidate.py
+          tools/verify_candidate_merge_2_2.py
+          tools/reconcile_release_2_2.py
+          tools/verify_2_2_release_readiness.py
+          tools/candidate_evidence_2_2.py
+          tools/verify_required_workflows_2_2.py
+          tools/verify_distribution_audit_data_2_2.py
+          tools/verify_sdist_identity_2_2.py
+          tools/verify_clean_wheel_2_0.py
+          tools/build_vendored_wheel.py
+          tests/test_verify_2_2_release_candidate.py
+          tests/test_candidate_merge_2_2.py
+          tests/test_reconcile_release_2_2.py
+          tests/test_release_workflow_2_2.py
+          tests/test_release_readiness_2_2.py
+          tests/test_candidate_evidence_2_2.py
+          tests/test_release_candidate_workflow_2_2.py
+          tests/test_required_workflows_2_2.py
+          tests/test_distribution_audit_data_2_2.py
+          tests/test_sdist_identity_2_2.py
+          tests/test_clean_wheel_2_0.py
+          tests/test_vendored_wheel.py
+      - name: Compile candidate tooling and regressions
+        run: >-
+          python -m compileall -q
+          tools/verify_2_2_release_candidate.py
+          tools/verify_candidate_merge_2_2.py
+          tools/reconcile_release_2_2.py
+          tools/verify_2_2_release_readiness.py
+          tools/candidate_evidence_2_2.py
+          tools/verify_required_workflows_2_2.py
+          tools/verify_distribution_audit_data_2_2.py
+          tools/verify_sdist_identity_2_2.py
+          tools/verify_clean_wheel_2_0.py
+          tools/build_vendored_wheel.py
+          tests/test_verify_2_2_release_candidate.py
+          tests/test_candidate_merge_2_2.py
+          tests/test_reconcile_release_2_2.py
+          tests/test_release_workflow_2_2.py
+          tests/test_release_readiness_2_2.py
+          tests/test_candidate_evidence_2_2.py
+          tests/test_release_candidate_workflow_2_2.py
+          tests/test_required_workflows_2_2.py
+          tests/test_distribution_audit_data_2_2.py
+          tests/test_sdist_identity_2_2.py
+          tests/test_clean_wheel_2_0.py
+          tests/test_vendored_wheel.py
+      - name: Build exact-source portable wheel and sdist
+        run: python -m build --wheel --sdist --outdir dist
+      - name: Require exact portable candidate distributions
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f dist/swirengine-2.2.0-py3-none-any.whl
+          test -f dist/swirengine-2.2.0.tar.gz
+          test "$(find dist -maxdepth 1 -type f | wc -l)" -eq 2
+      - name: Inspect exact-source portable distributions
+        run: python tools/verify_distribution_audit_data_2_2.py --dist-dir dist
+      - name: Preserve exact portable candidate distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: swirengine-2.2.0-candidate-portable
+          path: |
+            dist/swirengine-2.2.0-py3-none-any.whl
+            dist/swirengine-2.2.0.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+
+  clean-install-matrix:
+    name: Clean install ${{ matrix.os }} / CPython ${{ matrix.python-version }}
+    needs: candidate-contract
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - name: Check out exact candidate source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_SOURCE_SHA }}
+          persist-credentials: false
+      - name: Verify exact checkout identity
+        shell: pwsh
+        run: |
+          $actual = git rev-parse HEAD
+          if ($actual -ne $env:EXPECTED_SOURCE_SHA) {
+            throw "checkout mismatch: expected $env:EXPECTED_SOURCE_SHA, got $actual"
+          }
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Download exact portable candidate distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: swirengine-2.2.0-candidate-portable
+          path: portable-dist
+      - name: Install Linux CPython 3.14 native build prerequisites
+        if: runner.os == 'Linux' && matrix.python-version == '3.14'
+        run: sudo apt-get update && sudo apt-get install -y libx11-dev libgl-dev libegl-dev
+      - name: Install candidate verification tooling
+        run: python -m pip install --upgrade pip setuptools wheel
+      - name: Build Windows CPython 3.14 renderer-native dependencies
+        if: runner.os == 'Windows' && matrix.python-version == '3.14'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force native-wheels | Out-Null
+          python -m pip wheel --no-deps --no-binary=:all: moderngl==5.12.0 -w native-wheels
+          python -m pip wheel --no-deps --no-binary=:all: glcontext==3.0.0 -w native-wheels
+      - name: Build Windows CPython 3.14 vendored candidate wheel
+        if: runner.os == 'Windows' && matrix.python-version == '3.14'
+        shell: pwsh
+        run: |
+          $base = (Get-ChildItem portable-dist\swirengine-2.2.0-py3-none-any.whl).FullName
+          $moderngl = (Get-ChildItem native-wheels\moderngl-*.whl).FullName
+          $glcontext = (Get-ChildItem native-wheels\glcontext-*.whl).FullName
+          python tools/build_vendored_wheel.py --base $base --vendor $moderngl --vendor $glcontext --tag cp314-cp314-win_amd64 --output-dir dist
+      - name: Verify portable wheel in a clean environment
+        if: runner.os != 'Windows' || matrix.python-version != '3.14'
+        run: >-
+          python tools/verify_clean_wheel_2_0.py
+          --wheel-dir portable-dist
+          --expected-system "${{ runner.os }}"
+          --expected-python "${{ matrix.python-version }}"
+          --expected-version 2.2.0
+          --verify-cli21
+      - name: Verify Windows CPython 3.14 vendored wheel in a clean environment
+        if: runner.os == 'Windows' && matrix.python-version == '3.14'
+        run: >-
+          python tools/verify_clean_wheel_2_0.py
+          --wheel-dir dist
+          --expected-system Windows
+          --expected-python 3.14
+          --expected-version 2.2.0
+          --require-vendored-native
+          --verify-cli21
+      - name: Inspect Windows CPython 3.14 vendored distribution
+        if: runner.os == 'Windows' && matrix.python-version == '3.14'
+        run: >-
+          python tools/verify_distribution_audit_data_2_2.py
+          --dist-dir dist
+          --wheel-only
+      - name: Preserve Windows CPython 3.14 candidate distribution
+        if: runner.os == 'Windows' && matrix.python-version == '3.14'
+        uses: actions/upload-artifact@v4
+        with:
+          name: swirengine-2.2.0-candidate-win-cp314
+          path: dist/swirengine-2.2.0-cp314-cp314-win_amd64.whl
+          if-no-files-found: error
+          retention-days: 7
+
+  candidate-evidence:
+    name: Exact-head candidate checksums and provenance
+    needs: [candidate-contract, clean-install-matrix]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out exact candidate source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_SOURCE_SHA }}
+          persist-credentials: false
+      - name: Verify exact checkout identity
+        shell: pwsh
+        run: |
+          $actual = git rev-parse HEAD
+          if ($actual -ne $env:EXPECTED_SOURCE_SHA) {
+            throw "checkout mismatch: expected $env:EXPECTED_SOURCE_SHA, got $actual"
+          }
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Download exact portable candidate distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: swirengine-2.2.0-candidate-portable
+          path: dist
+      - name: Download exact Windows CPython 3.14 candidate distribution
+        uses: actions/download-artifact@v4
+        with:
+          name: swirengine-2.2.0-candidate-win-cp314
+          path: dist
+      - name: Generate exact-head candidate evidence
+        run: >-
+          python tools/candidate_evidence_2_2.py generate
+          --dist-dir dist
+          --source-sha "$EXPECTED_SOURCE_SHA"
+          --workflow-manifest .github/release-gates/2.2-required-workflows.json
+      - name: Verify exact-head candidate evidence
+        run: >-
+          python tools/candidate_evidence_2_2.py verify
+          --dist-dir dist
+          --source-sha "$EXPECTED_SOURCE_SHA"
+          --workflow-manifest .github/release-gates/2.2-required-workflows.json
+      - name: Preserve exact-head candidate evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: swirengine-2.2.0-candidate-evidence
+          path: |
+            dist/swirengine-2.2.0-py3-none-any.whl
+            dist/swirengine-2.2.0-cp314-cp314-win_amd64.whl
+            dist/swirengine-2.2.0.tar.gz
+            dist/SHA256SUMS
+            dist/candidate-provenance.json
+          if-no-files-found: error
+          retention-days: 7

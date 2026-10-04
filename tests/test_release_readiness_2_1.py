@@ -22,13 +22,23 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_repository_passes_2_1_milestone_acceptance() -> None:
     report = audit(ROOT)
 
-    assert report.version in {"2.0.0", "2.1.0"}
+    assert report.version in {"2.0.0", "2.1.0", "2.2.0"}
     if report.version == "2.1.0":
         notes = (ROOT / "RELEASE_NOTES_2_1.md").read_text(encoding="utf-8")
         if "NOT PUBLISHED" in notes:
             assert check_release_candidate(ROOT) == []
         else:
             assert verify_publication(ROOT) == []
+    elif report.version == "2.2.0":
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        notes_21 = (ROOT / "RELEASE_NOTES_2_1.md").read_text(encoding="utf-8")
+        notes_22 = (ROOT / "RELEASE_NOTES_2_2.md").read_text(encoding="utf-8")
+        assert notes_21.startswith("# SwirEngine 2.1.0 Release Notes")
+        assert "NOT PUBLISHED" not in notes_21
+        assert notes_22.startswith("# SwirEngine 2.2.0 Release Notes")
+        assert "NOT PUBLISHED" not in notes_22
+        assert "bound non-publishing candidate" in readme
+        assert "NOT PUBLISHED" in readme
     assert report.roadmap.completed == 10
     assert report.roadmap.total == 10
     assert report.roadmap.percent == pytest.approx(100.0)

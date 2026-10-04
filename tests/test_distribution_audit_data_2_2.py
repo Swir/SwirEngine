@@ -101,6 +101,45 @@ def test_inspection_accepts_clean_distribution_pair(tmp_path: Path) -> None:
     inspect_distributions(tmp_path)
 
 
+def test_wheel_only_inspection_accepts_exact_vendored_wheel(tmp_path: Path) -> None:
+    _write_wheel(
+        tmp_path / "swirengine-2.2.0-cp314-cp314-win_amd64.whl",
+        (SAFE_WHEEL_MEMBER,),
+    )
+
+    inspect_distributions(tmp_path, wheel_only=True)
+
+
+@pytest.mark.parametrize("extra", ["wheel", "sdist"])
+def test_wheel_only_inspection_rejects_non_exact_inventory(
+    tmp_path: Path, extra: str
+) -> None:
+    _write_wheel(
+        tmp_path / "swirengine-2.2.0-cp314-cp314-win_amd64.whl",
+        (SAFE_WHEEL_MEMBER,),
+    )
+    if extra == "wheel":
+        _write_wheel(
+            tmp_path / "swirengine-2.2.0-py3-none-any.whl",
+            (SAFE_WHEEL_MEMBER,),
+        )
+    else:
+        _write_sdist(tmp_path / "swirengine-2.2.0.tar.gz", (SAFE_SDIST_MEMBER,))
+
+    with pytest.raises(DistributionAuditDataError, match="wheel only"):
+        inspect_distributions(tmp_path, wheel_only=True)
+
+
+def test_wheel_only_inspection_rejects_repository_audit_data(tmp_path: Path) -> None:
+    _write_wheel(
+        tmp_path / "swirengine-2.2.0-cp314-cp314-win_amd64.whl",
+        (SAFE_WHEEL_MEMBER, "swirengine/release-evidence/proof.json"),
+    )
+
+    with pytest.raises(DistributionAuditDataError, match="release-evidence"):
+        inspect_distributions(tmp_path, wheel_only=True)
+
+
 @pytest.mark.parametrize("archive_kind", ["wheel", "sdist"])
 def test_inspection_rejects_release_evidence_in_both_archive_types(
     tmp_path: Path, archive_kind: str

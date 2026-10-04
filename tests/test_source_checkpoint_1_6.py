@@ -34,6 +34,9 @@ def test_development_checkpoint_matches_repository_contract() -> None:
     assert total == 10
     assert 0 <= checked <= total
     assert auditor.STABLE_PUBLIC_VERSION == "1.5.0"
+    assert auditor.CURRENT_PUBLIC_VERSION == "2.1.0"
+    assert auditor.CANDIDATE_VERSION == "2.2.0"
+    assert auditor._two_point_two_candidate_ready(PROJECT_ROOT)
 
 
 def test_strict_checkpoint_refuses_an_incomplete_roadmap(tmp_path: Path) -> None:

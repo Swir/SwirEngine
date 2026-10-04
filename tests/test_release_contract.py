@@ -3,8 +3,9 @@ from pathlib import Path
 
 import swirengine
 
-PUBLIC_STABLE_VERSION = "2.0.0"
-CANDIDATE_VERSION = "2.1.0"
+HISTORICAL_PUBLIC_VERSION = "2.0.0"
+PUBLIC_STABLE_VERSION = "2.1.0"
+CANDIDATE_VERSION = "2.2.0"
 
 
 def _allowed_source_versions() -> set[str]:
@@ -13,7 +14,7 @@ def _allowed_source_versions() -> set[str]:
     if not final_complete:
         return {"1.5.0"}
 
-    allowed = {PUBLIC_STABLE_VERSION}
+    allowed = {HISTORICAL_PUBLIC_VERSION}
     roadmap_21 = Path("ROADMAP_2_1.md")
     notes_21 = Path("RELEASE_NOTES_2_1.md")
     gate_21 = Path("docs/RELEASE_GATE_2_1.md")
@@ -32,6 +33,24 @@ def _allowed_source_versions() -> set[str]:
             and "**Latest public stable release:** **SwirEngine 2.1.0**" in readme_text
         )
         if accepted_21 and (candidate_21 or published_21):
+            allowed.add(PUBLIC_STABLE_VERSION)
+
+    roadmap_22 = Path("ROADMAP_2_2.md")
+    notes_22 = Path("RELEASE_NOTES_2_2.md")
+    if PUBLIC_STABLE_VERSION in allowed and roadmap_22.is_file() and notes_22.is_file():
+        roadmap_text = roadmap_22.read_text(encoding="utf-8")
+        notes_text = notes_22.read_text(encoding="utf-8")
+        readme_text = Path("README.md").read_text(encoding="utf-8")
+        candidate_22 = (
+            "Current verified progress: 9/10 milestones = 90.0%." in roadmap_text
+            and notes_text.startswith("# SwirEngine 2.2.0 Release Notes")
+            and "NOT PUBLISHED" not in notes_text
+            and "bound non-publishing candidate" in readme_text
+            and "NOT PUBLISHED" in readme_text
+            and "**Latest public stable release:** **SwirEngine 2.1.0**" in readme_text
+            and '"swirengine==2.2.0"' not in readme_text
+        )
+        if candidate_22:
             allowed.add(CANDIDATE_VERSION)
     return allowed
 
@@ -49,7 +68,7 @@ def test_public_api_exports_are_unique_and_resolvable():
 def test_source_version_matches_guarded_release_phase():
     allowed = _allowed_source_versions()
     assert swirengine.__version__ in allowed
-    if swirengine.__version__ == CANDIDATE_VERSION:
+    if swirengine.__version__ == PUBLIC_STABLE_VERSION:
         readme = Path("README.md").read_text(encoding="utf-8")
         notes = Path("RELEASE_NOTES_2_1.md").read_text(encoding="utf-8")
         if "NOT PUBLISHED" in notes:
@@ -58,6 +77,16 @@ def test_source_version_matches_guarded_release_phase():
         else:
             assert "**Latest public stable release:** **SwirEngine 2.1.0**" in readme
             assert 'swirengine==2.1.0' in readme
+    elif swirengine.__version__ == CANDIDATE_VERSION:
+        readme = Path("README.md").read_text(encoding="utf-8")
+        notes = Path("RELEASE_NOTES_2_2.md").read_text(encoding="utf-8")
+        assert "**Latest public stable release:** **SwirEngine 2.1.0**" in readme
+        assert "bound non-publishing candidate" in readme
+        assert "NOT PUBLISHED" in readme
+        assert 'swirengine==2.1.0' in readme
+        assert '"swirengine==2.2.0"' not in readme
+        assert notes.startswith("# SwirEngine 2.2.0 Release Notes")
+        assert "NOT PUBLISHED" not in notes
 
 
 def test_supported_python_range_is_explicit():
@@ -74,11 +103,16 @@ def test_readme_preserves_locked_1_5_evidence_after_2_0_publication():
     assert "`v1.5.0`" in readme
     assert "| 1.5 |" in readme
     assert "released/locked" in readme
-    if swirengine.__version__ in {PUBLIC_STABLE_VERSION, CANDIDATE_VERSION}:
+    if swirengine.__version__ in {
+        HISTORICAL_PUBLIC_VERSION,
+        PUBLIC_STABLE_VERSION,
+        CANDIDATE_VERSION,
+    }:
         assert "`v2.0.0`" in readme or "| 2.0 |" in readme
-        if swirengine.__version__ == CANDIDATE_VERSION and "NOT PUBLISHED" not in Path(
-            "RELEASE_NOTES_2_1.md"
-        ).read_text(encoding="utf-8"):
+        if swirengine.__version__ in {PUBLIC_STABLE_VERSION, CANDIDATE_VERSION} and (
+            "NOT PUBLISHED"
+            not in Path("RELEASE_NOTES_2_1.md").read_text(encoding="utf-8")
+        ):
             assert "**Latest public stable release:** **SwirEngine 2.1.0**" in readme
         else:
             assert "**Latest public stable release:** **SwirEngine 2.0.0**" in readme

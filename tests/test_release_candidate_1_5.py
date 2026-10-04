@@ -7,8 +7,8 @@ import pytest
 from tools.verify_1_5_release_candidate import audit, parse_roadmap
 
 ROOT = Path(__file__).resolve().parents[1]
-SUPPORTED_CURRENT_SOURCE_VERSIONS = {"1.4.0", "1.5.0", "2.0.0", "2.1.0"}
-STRICT_CURRENT_SOURCE_VERSIONS = {"1.5.0", "2.0.0", "2.1.0"}
+SUPPORTED_CURRENT_SOURCE_VERSIONS = {"1.4.0", "1.5.0", "2.0.0", "2.1.0", "2.2.0"}
+STRICT_CURRENT_SOURCE_VERSIONS = {"1.5.0", "2.0.0", "2.1.0", "2.2.0"}
 
 
 def test_release_contract_audits_current_hardening_state() -> None:

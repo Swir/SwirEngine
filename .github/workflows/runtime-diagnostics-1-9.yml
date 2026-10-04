@@ -18,6 +18,7 @@ on:
       - ".github/workflows/runtime-diagnostics-1-9.yml"
   pull_request:
     paths:
+      - "pyproject.toml"
       - "src/swirengine/diagnostics19.py"
       - "tests/test_runtime_diagnostics_1_9.py"
       - "examples/demo_runtime_diagnostics_1_9.py"

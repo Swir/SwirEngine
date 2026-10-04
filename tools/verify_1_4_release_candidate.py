@@ -13,12 +13,14 @@ except ModuleNotFoundError:  # Python 3.10
 TARGET_VERSION = "1.4.0"
 PREVIOUS_STABLE_VERSION = "1.3.0"
 FORWARD_VERSION = "2.0.0"
-CANDIDATE_VERSION = "2.1.0"
+CURRENT_PUBLIC_VERSION = "2.1.0"
+CANDIDATE_VERSION = "2.2.0"
 ACTIVE_STABLE_VERSIONS = {
     PREVIOUS_STABLE_VERSION,
     TARGET_VERSION,
     "1.5.0",
     FORWARD_VERSION,
+    CURRENT_PUBLIC_VERSION,
     CANDIDATE_VERSION,
 }
 EXPECTED_TOTAL = 10
@@ -81,6 +83,30 @@ def _require(condition: bool, message: str, checks: list[str]) -> None:
     checks.append(message)
 
 
+def _bound_two_point_two_candidate(root: Path) -> bool:
+    readme_path = root / "README.md"
+    notes_21_path = root / "RELEASE_NOTES_2_1.md"
+    notes_22_path = root / "RELEASE_NOTES_2_2.md"
+    roadmap_path = root / "ROADMAP_2_2.md"
+    if not all(path.is_file() for path in (readme_path, notes_21_path, notes_22_path, roadmap_path)):
+        return False
+    readme = readme_path.read_text(encoding="utf-8")
+    notes_21 = notes_21_path.read_text(encoding="utf-8")
+    notes_22 = notes_22_path.read_text(encoding="utf-8")
+    roadmap = roadmap_path.read_text(encoding="utf-8")
+    return (
+        notes_21.startswith("# SwirEngine 2.1.0 Release Notes")
+        and "NOT PUBLISHED" not in notes_21
+        and notes_22.startswith("# SwirEngine 2.2.0 Release Notes")
+        and "Prepared from the bound 2.2.0 candidate" in notes_22
+        and "Current verified progress: 9/10 milestones = 90.0%." in roadmap
+        and "bound non-publishing candidate" in readme
+        and "NOT PUBLISHED" in readme
+        and "**Latest public stable release:** **SwirEngine 2.1.0**" in readme
+        and '"swirengine==2.2.0"' not in readme
+    )
+
+
 def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditReport:
     root = Path(root or Path(__file__).resolve().parents[1]).resolve()
     checks: list[str] = []
@@ -92,6 +118,12 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         f"package version preserves the locked 1.4 compatibility line: {version}",
         checks,
     )
+    if version == CANDIDATE_VERSION:
+        _require(
+            _bound_two_point_two_candidate(root),
+            "2.2.0 metadata is a bound non-publishing candidate over immutable public 2.1",
+            checks,
+        )
     _require(
         project["requires-python"] == EXPECTED_PYTHON_RANGE,
         f"Python contract is {EXPECTED_PYTHON_RANGE}",
@@ -117,6 +149,12 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             "later stable/candidate metadata preserves the locked 1.4 roadmap link",
             checks,
         )
+        if version == CANDIDATE_VERSION:
+            _require(
+                str(urls.get("Roadmap", "")).endswith("/ROADMAP_2_2.md"),
+                "2.2 candidate metadata points at the active 2.2 roadmap",
+                checks,
+            )
 
     roadmap_text = _read(root, "ROADMAP_1_4.md")
     roadmap = parse_roadmap(roadmap_text)
@@ -156,7 +194,14 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             checks,
         )
         _require(
-            version in {TARGET_VERSION, "1.5.0", FORWARD_VERSION, CANDIDATE_VERSION},
+            version
+            in {
+                TARGET_VERSION,
+                "1.5.0",
+                FORWARD_VERSION,
+                CURRENT_PUBLIC_VERSION,
+                CANDIDATE_VERSION,
+            },
             "complete 1.4 compatibility contract permits the 1.4 publication or later verified stable/candidate lines",
             checks,
         )
@@ -220,7 +265,8 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
 
     release = _read(root, ".github/workflows/release.yml")
     _require(
-        "pypa/gh-action-pypi-publish@release/v1" in release,
+        "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33"
+        in release,
         "current publication workflow uses Trusted Publishing",
         checks,
     )
@@ -266,7 +312,7 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             "2.0 recovery is pinned to the immutable verified release source",
             checks,
         )
-    elif version == CANDIDATE_VERSION:
+    elif version in {CURRENT_PUBLIC_VERSION, CANDIDATE_VERSION}:
         historical_release = _read(root, ".github/workflows/release-2.0.yml")
         for token in (
             'ref: "refs/tags/v2.0.0"',

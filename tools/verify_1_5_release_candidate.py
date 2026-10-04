@@ -13,7 +13,8 @@ except ModuleNotFoundError:  # Python 3.10
 TARGET_VERSION = "1.5.0"
 PREVIOUS_STABLE_VERSION = "1.4.0"
 FORWARD_VERSION = "2.0.0"
-CANDIDATE_VERSION = "2.1.0"
+CURRENT_PUBLIC_VERSION = "2.1.0"
+CANDIDATE_VERSION = "2.2.0"
 EXPECTED_TOTAL = 10
 EXPECTED_PYTHON_RANGE = ">=3.10,<3.15"
 REQUIRED_DOCS = (
@@ -116,12 +117,42 @@ def _two_point_zero_finalized(root: Path) -> bool:
     return "- [x] **10. SwirEngine 2.0 Final Release Gate & Public Verification**" in text
 
 
+def _bound_two_point_two_candidate(root: Path) -> bool:
+    readme_path = root / "README.md"
+    notes_21_path = root / "RELEASE_NOTES_2_1.md"
+    notes_22_path = root / "RELEASE_NOTES_2_2.md"
+    roadmap_path = root / "ROADMAP_2_2.md"
+    if not all(path.is_file() for path in (readme_path, notes_21_path, notes_22_path, roadmap_path)):
+        return False
+    readme = readme_path.read_text(encoding="utf-8")
+    notes_21 = notes_21_path.read_text(encoding="utf-8")
+    notes_22 = notes_22_path.read_text(encoding="utf-8")
+    roadmap = roadmap_path.read_text(encoding="utf-8")
+    return (
+        notes_21.startswith("# SwirEngine 2.1.0 Release Notes")
+        and "NOT PUBLISHED" not in notes_21
+        and notes_22.startswith("# SwirEngine 2.2.0 Release Notes")
+        and "Prepared from the bound 2.2.0 candidate" in notes_22
+        and "Current verified progress: 9/10 milestones = 90.0%." in roadmap
+        and "bound non-publishing candidate" in readme
+        and "NOT PUBLISHED" in readme
+        and "**Latest public stable release:** **SwirEngine 2.1.0**" in readme
+        and '"swirengine==2.2.0"' not in readme
+    )
+
+
 def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditReport:
     root = Path(root or Path(__file__).resolve().parents[1]).resolve()
     checks: list[str] = []
 
     project = tomllib.loads(_read(root, "pyproject.toml"))["project"]
     version = str(project["version"])
+    if version == CANDIDATE_VERSION:
+        _require(
+            _bound_two_point_two_candidate(root),
+            "2.2.0 metadata is a bound non-publishing candidate over immutable public 2.1",
+            checks,
+        )
     _require(
         project["requires-python"] == EXPECTED_PYTHON_RANGE,
         f"Python contract is {EXPECTED_PYTHON_RANGE}",
@@ -155,7 +186,9 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         )
         allowed_versions = {TARGET_VERSION}
         if forward_finalized:
-            allowed_versions.update({FORWARD_VERSION, CANDIDATE_VERSION})
+            allowed_versions.update(
+                {FORWARD_VERSION, CURRENT_PUBLIC_VERSION, CANDIDATE_VERSION}
+            )
         _require(
             version in allowed_versions,
             f"current package version preserves completed 1.5 history: {sorted(allowed_versions)}",
@@ -171,7 +204,13 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         else:
             _require(
                 str(urls.get("Roadmap", "")).endswith(
-                    "/ROADMAP_2_1.md" if version == CANDIDATE_VERSION else "/ROADMAP_2_0.md"
+                    "/ROADMAP_2_2.md"
+                    if version == CANDIDATE_VERSION
+                    else (
+                        "/ROADMAP_2_1.md"
+                        if version == CURRENT_PUBLIC_VERSION
+                        else "/ROADMAP_2_0.md"
+                    )
                 ),
                 "later metadata points at the active verified release roadmap",
                 checks,
@@ -189,7 +228,9 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         )
         allowed_versions = {PREVIOUS_STABLE_VERSION, TARGET_VERSION}
         if forward_finalized:
-            allowed_versions.update({FORWARD_VERSION, CANDIDATE_VERSION})
+            allowed_versions.update(
+                {FORWARD_VERSION, CURRENT_PUBLIC_VERSION, CANDIDATE_VERSION}
+            )
         _require(
             version in allowed_versions,
             f"package version is valid for 1.5 hardening/history: {version}",
@@ -330,7 +371,7 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
                         "verify_publication_chain_2_2.py",
                         "verify_required_workflows_2_2.py",
                         "reconcile_release_2_2.py",
-                        "pypa/gh-action-pypi-publish@release/v1",
+                        "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33",
                         "environment: pypi",
                         "id-token: write",
                     ):

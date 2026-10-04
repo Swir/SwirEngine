@@ -59,7 +59,7 @@ def manifest() -> RequiredWorkflowManifest:
     return load_manifest(ROOT / DEFAULT_MANIFEST)
 
 
-def test_repository_manifest_tracks_the_explicit_phase_a_workflows(
+def test_repository_manifest_tracks_the_explicit_candidate_workflows(
     manifest: RequiredWorkflowManifest,
 ) -> None:
     verified = verify_manifest_files(manifest, ROOT)
@@ -68,6 +68,34 @@ def test_repository_manifest_tracks_the_explicit_phase_a_workflows(
     assert len(verified) == 47
     assert len({workflow.path for workflow in verified}) == 47
     assert len({workflow.name for workflow in verified}) == 47
+    assert RequiredWorkflow(
+        path=".github/workflows/release-candidate-2.2.yml",
+        name="SwirEngine 2.2 Release Candidate",
+    ) in verified
+    assert all(workflow.path != ".github/workflows/release-readiness-2.2.yml" for workflow in verified)
+
+
+@pytest.mark.parametrize(
+    "workflow_path",
+    [
+        ".github/workflows/content-build-1-9.yml",
+        ".github/workflows/desktop-shipping-1-9.yml",
+        ".github/workflows/editor-vfx-2-2.yml",
+        ".github/workflows/game-state-production-1-9.yml",
+        ".github/workflows/real-game-production-1-9.yml",
+        ".github/workflows/runtime-diagnostics-1-9.yml",
+        ".github/workflows/scene-packages-1-9.yml",
+    ],
+)
+def test_candidate_version_change_triggers_every_previously_uncovered_workflow(
+    workflow_path: str,
+) -> None:
+    import yaml
+
+    workflow = yaml.load((ROOT / workflow_path).read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+
+    assert isinstance(workflow, dict)
+    assert "pyproject.toml" in workflow["on"]["pull_request"]["paths"]
 
 
 @pytest.mark.parametrize("mode,event", [("pull-request", "pull_request"), ("push", "push")])

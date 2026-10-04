@@ -23,6 +23,7 @@ class CandidateMergeError(ValueError):
 class CandidateMerge:
     candidate_sha: str
     merge_commit_sha: str
+    base_parent_sha: str
     main_sha: str
 
 
@@ -121,6 +122,22 @@ def _require_ancestor(root: Path, ancestor: str, descendant: str, message: str) 
         raise CandidateMergeError(f"could not verify Git ancestry{suffix}")
 
 
+def _merge_parents(root: Path, merge_commit_sha: str) -> tuple[str, str]:
+    result = _git(root, "show", "-s", "--format=%P", merge_commit_sha)
+    parents = result.stdout.strip().split()
+    _require(
+        len(parents) == 2,
+        "canonical merge commit must be a normal merge with exactly two parents; "
+        f"found {len(parents)}",
+    )
+    first_parent, second_parent = parents
+    _require(
+        bool(SHA_RE.fullmatch(first_parent)) and bool(SHA_RE.fullmatch(second_parent)),
+        "canonical merge commit parents must be canonical lowercase commit SHAs",
+    )
+    return first_parent, second_parent
+
+
 def verify_candidate_merge(
     payload: object,
     *,
@@ -152,6 +169,14 @@ def verify_candidate_merge(
         merge_commit_sha,
         "candidate source is not an ancestor of the canonical merge commit",
     )
+
+    base_parent_sha, candidate_parent_sha = _merge_parents(root, merge_commit_sha)
+    _require(
+        candidate_parent_sha == candidate_sha,
+        "canonical merge commit second parent must be the exact candidate source "
+        f"{candidate_sha}; got {candidate_parent_sha}",
+    )
+
     _require_ancestor(
         root,
         merge_commit_sha,
@@ -162,6 +187,7 @@ def verify_candidate_merge(
     return CandidateMerge(
         candidate_sha=candidate_sha,
         merge_commit_sha=merge_commit_sha,
+        base_parent_sha=base_parent_sha,
         main_sha=main_sha,
     )
 

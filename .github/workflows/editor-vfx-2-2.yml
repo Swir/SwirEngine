@@ -19,6 +19,7 @@ on:
       - ".github/workflows/editor-vfx-2-2.yml"
   pull_request:
     paths:
+      - "pyproject.toml"
       - "src/swirengine/vfx_schema22.py"
       - "src/swirengine/vfx_authoring22.py"
       - "src/swirengine/editor_vfx22.py"

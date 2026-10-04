@@ -3,8 +3,7 @@ name: SwirEngine 2.1 Release Candidate Gate
 on:
   push:
     branches:
-      - "release/**"
-      - "!release/2.1.0-publication"
+      - "release/2.1.0-candidate"
     paths:
       - "pyproject.toml"
       - "README.md"

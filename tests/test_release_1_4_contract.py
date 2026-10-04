@@ -6,7 +6,7 @@ from demo_projects.neon_frontier_1_4.run_game import run_headless_probe
 from tools.verify_1_4_release_candidate import TARGET_VERSION, audit, parse_roadmap
 
 ROOT = Path(__file__).resolve().parents[1]
-SUPPORTED_CURRENT_SOURCE_VERSIONS = {TARGET_VERSION, "1.5.0", "2.0.0", "2.1.0"}
+SUPPORTED_CURRENT_SOURCE_VERSIONS = {TARGET_VERSION, "1.5.0", "2.0.0", "2.1.0", "2.2.0"}
 
 
 def test_locked_1_4_contract_is_complete_on_supported_stable_lines() -> None:
@@ -99,7 +99,10 @@ def test_current_release_workflow_preserves_trusted_publisher_without_rewriting_
     historical = (ROOT / ".github/workflows/release-2.0.yml").read_text(encoding="utf-8")
     trigger_section = workflow.split("jobs:", 1)[0]
 
-    assert "pypa/gh-action-pypi-publish@release/v1" in workflow
+    assert (
+        "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33"
+        in workflow
+    )
     assert "id-token: write" in workflow
     assert "environment: pypi" in workflow
     assert "skip-existing: true" not in workflow

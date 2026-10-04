@@ -15,17 +15,21 @@ from tools.verify_2_2_release_readiness import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_repository_passes_2_2_phase_a_readiness() -> None:
+WORKFLOW = ROOT / ".github/workflows/release-candidate-2.2.yml"
+
+
+def test_repository_passes_2_2_phase_b_readiness() -> None:
     report = audit(ROOT)
 
-    assert report.version == "2.1.0"
+    assert report.phase == "B"
+    assert report.version == "2.2.0"
     assert report.roadmap.completed == 9
     assert report.roadmap.total == 10
     assert report.roadmap.percent == pytest.approx(90.0)
     assert len(report.checks) >= 15
 
 
-def test_phase_a_rejects_closing_milestone_10_early() -> None:
+def test_pre_release_rejects_closing_milestone_10_early() -> None:
     roadmap = (ROOT / "ROADMAP_2_2.md").read_text(encoding="utf-8")
     closed = roadmap.replace(
         "- [ ] **10. Production acceptance and 2.2 release readiness.**",
@@ -41,7 +45,7 @@ def test_phase_a_rejects_closing_milestone_10_early() -> None:
         require_phase_a_roadmap(closed, parse_roadmap(closed))
 
 
-def test_phase_a_rejects_missing_or_renumbered_milestone() -> None:
+def test_pre_release_rejects_missing_or_renumbered_milestone() -> None:
     roadmap = (ROOT / "ROADMAP_2_2.md").read_text(encoding="utf-8")
     broken = roadmap.replace(
         "- [ ] **10. Production acceptance and 2.2 release readiness.**",
@@ -84,20 +88,16 @@ def test_readme_rejects_progress_drift() -> None:
     ],
 )
 def test_readiness_workflow_rejects_publish_capability(forbidden: str) -> None:
-    workflow = (ROOT / ".github/workflows/release-readiness-2.2.yml").read_text(
-        encoding="utf-8"
-    )
+    workflow = WORKFLOW.read_text(encoding="utf-8")
 
     with pytest.raises(AssertionError, match="forbidden publishing capability"):
         validate_non_publishing_workflow(f"{workflow}\n# mutation\n{forbidden}\n")
 
 
 def test_readiness_workflow_rejects_implicit_checkout_identity() -> None:
-    workflow = (ROOT / ".github/workflows/release-readiness-2.2.yml").read_text(
-        encoding="utf-8"
-    )
+    workflow = WORKFLOW.read_text(encoding="utf-8")
     broken = workflow.replace(
-        "github.event.pull_request.head.sha || github.sha",
+        "github.event.pull_request.head.sha",
         "github.sha",
         1,
     )
@@ -106,15 +106,21 @@ def test_readiness_workflow_rejects_implicit_checkout_identity() -> None:
         validate_non_publishing_workflow(broken)
 
 
-def test_readiness_workflow_keeps_full_supported_matrix_and_stable_version() -> None:
-    workflow = (ROOT / ".github/workflows/release-readiness-2.2.yml").read_text(
-        encoding="utf-8"
-    )
+def test_candidate_workflow_keeps_full_supported_matrix_and_candidate_version() -> None:
+    workflow = WORKFLOW.read_text(encoding="utf-8")
 
     for runner in ("ubuntu-latest", "windows-latest", "macos-latest"):
         assert runner in workflow
     for version in ("3.10", "3.11", "3.12", "3.13", "3.14"):
         assert f'"{version}"' in workflow
-    assert workflow.count("--expected-version 2.1.0") == 2
+    assert workflow.count("--expected-version 2.2.0") == 2
     assert "persist-credentials: false" in workflow
     assert "id-token: write" not in workflow
+
+
+def test_candidate_workflow_rejects_missing_same_repository_binding() -> None:
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+    broken = workflow.replace("Swir/SwirEngine", "example/fork", 1)
+
+    with pytest.raises(AssertionError, match="exact-source gate"):
+        validate_non_publishing_workflow(broken, phase="B")

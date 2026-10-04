@@ -36,8 +36,23 @@ def verify(root: Path) -> list[str]:
     roadmap = (root / "ROADMAP_2_1.md").read_text(encoding="utf-8")
     release = (root / ".github/workflows/release.yml").read_text(encoding="utf-8")
 
-    if pyproject["project"]["version"] != "2.1.0":
-        errors.append("pyproject project.version must be 2.1.0 for publication")
+    version = str(pyproject["project"]["version"])
+    if version == "2.2.0":
+        try:
+            from tools.verify_2_2_release_candidate import check_release_candidate
+        except ImportError:  # pragma: no cover - direct script execution
+            from verify_2_2_release_candidate import check_release_candidate
+
+        candidate_errors = check_release_candidate(root)
+        if candidate_errors:
+            errors.append(
+                "pyproject 2.2.0 is permitted only for the complete bound candidate: "
+                + "; ".join(candidate_errors)
+            )
+    elif version != "2.1.0":
+        errors.append(
+            "pyproject project.version must be public 2.1.0 or the complete bound 2.2.0 candidate"
+        )
 
     if readme.count(PROGRESS_START) != 1 or readme.count(PROGRESS_END) != 1:
         errors.append("README must contain exactly one SWIR-PYPI-PROGRESS marker pair")
@@ -89,7 +104,7 @@ def verify(root: Path) -> list[str]:
             "environment: pypi",
             "id-token: write",
             "gh release create",
-            "pypa/gh-action-pypi-publish@release/v1",
+            "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33",
         )
     else:
         required_release_fragments = (

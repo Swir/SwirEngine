@@ -79,8 +79,8 @@
       "name": "Editor Release Readiness Milestone 10"
     },
     {
-      "path": ".github/workflows/release-readiness-2.2.yml",
-      "name": "SwirEngine 2.2 Release Readiness"
+      "path": ".github/workflows/release-candidate-2.2.yml",
+      "name": "SwirEngine 2.2 Release Candidate"
     },
     {
       "path": ".github/workflows/editor-save-profile-tooling-2-1.yml",
