@@ -42,10 +42,13 @@ def test_workflow_display_names_are_repository_unique() -> None:
 
 def test_yaml_contract_dependency_is_available_to_every_full_test_run() -> None:
     project = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    release_text, _ = _workflow()
     candidate = CANDIDATE_PATH.read_text(encoding="utf-8")
     gate_text, gate = _publication_gate()
 
     assert 'dev = ["pytest>=8,<10", "ruff>=0.16,<0.17", "PyYAML>=6,<7"]' in project
+    assert '"twine>=7,<8"' in release_text
+    assert '"twine>=6,<7"' not in release_text
     assert '"PyYAML>=6,<7"' in candidate
     assert (
         "PyYAML==6.0.3 "
