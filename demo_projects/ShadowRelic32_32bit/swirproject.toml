@@ -1,0 +1,32 @@
+name = "Shadow Relic 32 — The Moon Temple"
+mode = "2d"
+engine = ">=2.2,<3.0"
+entrypoint = "main.py"
+
+[content]
+include = ["procedural_art.py", "shadow_relic_icon.ppm", "README.md", "run_demo.bat", "build_win32.bat"]
+
+[run]
+entrypoint = "main.py"
+working_directory = "."
+arguments = []
+inherit_environment = true
+
+[profiles.windows]
+target = "windows"
+app_name = "ShadowRelic32"
+icon = "shadow_relic_icon.ppm"
+onefile = true
+console = false
+
+[profiles.linux]
+target = "linux"
+app_name = "ShadowRelic32"
+onefile = true
+console = true
+
+[profiles.macos]
+target = "macos"
+app_name = "ShadowRelic32"
+onefile = true
+console = false
