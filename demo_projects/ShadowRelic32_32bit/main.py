@@ -34,9 +34,18 @@ HEADLESS = os.environ.get("SHADOW_RELIC_HEADLESS") == "1"
 
 SOLID, PLAYER, ENEMY = 1, 2, 4
 PLAYER_W, PLAYER_H = 34.0, 54.0
-RUN_SPEED = 330.0
-JUMP_SPEED = 755.0
+RUN_SPEED = 360.0
+GROUND_ACCEL = 3100.0
+AIR_ACCEL = 1750.0
+GROUND_BRAKE = 3900.0
+AIR_BRAKE = 950.0
+JUMP_SPEED = 780.0
 GRAVITY = -1880.0
+COYOTE_TIME = 0.11
+JUMP_BUFFER_TIME = 0.14
+DASH_SPEED = 690.0
+DASH_TIME = 0.13
+DASH_COOLDOWN = 0.52
 WORLD_LEFT, WORLD_RIGHT = -1650.0, 5150.0
 SPAWN = (-1480.0, -160.0)
 GATE_X = 2680.0
@@ -44,44 +53,69 @@ BOSS_ARENA_LEFT, BOSS_ARENA_RIGHT = 3650.0, 4720.0
 EXIT_X = 4920.0
 
 PLATFORMS = (
-    (-1350, -250, 650, 90, "ruins"), (-650, -250, 560, 90, "ruins"),
-    (0, -250, 590, 90, "cave"), (690, -250, 590, 90, "cave"),
-    (1370, -250, 590, 90, "cave"), (2040, -250, 560, 90, "cave"),
-    (2650, -250, 520, 90, "temple"), (3290, -250, 600, 90, "temple"),
-    (3970, -250, 600, 90, "temple"), (4730, -250, 850, 90, "temple"),
-    (-1040, -95, 220, 24, "ruins"), (-620, 20, 200, 24, "ruins"),
-    (-180, 105, 210, 24, "cave"), (350, 20, 240, 24, "cave"),
-    (880, 115, 220, 24, "cave"), (1420, 35, 220, 24, "cave"),
-    (1900, 125, 210, 24, "cave"), (2340, 35, 190, 24, "cave"),
-    (2940, 115, 240, 24, "temple"), (3380, 20, 200, 24, "temple"),
-    (3820, 125, 230, 24, "temple"), (4300, 35, 200, 24, "temple"),
-    (4700, 120, 220, 24, "temple"),
+    (-1400, -250, 420, 90, "ruins"),
+    (-950, -250, 360, 90, "ruins"),
+    (-520, -250, 340, 90, "ruins"),
+    (-70, -250, 360, 90, "cave"),
+    (400, -250, 380, 90, "cave"),
+    (900, -250, 400, 90, "cave"),
+    (1430, -250, 410, 90, "cave"),
+    (1940, -250, 390, 90, "cave"),
+    (2390, -250, 350, 90, "cave"),
+    (2810, -250, 480, 90, "temple"),
+    (3340, -250, 420, 90, "temple"),
+    (3950, -250, 620, 90, "temple"),
+    (4720, -250, 920, 90, "temple"),
+    (-1220, -80, 180, 24, "ruins"),
+    (-830, 35, 180, 24, "ruins"),
+    (-410, 150, 160, 24, "ruins"),
+    (-30, 70, 190, 24, "cave"),
+    (430, 145, 180, 24, "cave"),
+    (900, 70, 180, 24, "cave"),
+    (1340, 150, 190, 24, "cave"),
+    (1780, 70, 170, 24, "cave"),
+    (2170, 150, 170, 24, "cave"),
+    (2440, 50, 150, 24, "cave"),
+    (2990, 150, 200, 24, "temple"),
+    (3380, 60, 170, 24, "temple"),
+    (3800, 150, 190, 24, "temple"),
+    (4250, 70, 170, 24, "temple"),
+    (4670, 140, 180, 24, "temple"),
 )
 
 SIGILS = (
-    ("sun", -620.0, 82.0),
-    ("moon", 1420.0, 96.0),
-    ("void", 2340.0, 96.0),
+    ("sun", -410.0, 205.0),
+    ("moon", 1340.0, 205.0),
+    ("void", 2170.0, 205.0),
 )
 
 SHARDS = (
-    (-1430, -155), (-1050, -45), (-620, 70), (-180, 155), (340, 70),
-    (880, 165), (1430, 85), (1900, 175), (2335, 85), (2940, 165),
-    (3820, 175), (4700, 170),
+    (-1450, -155),
+    (-1220, -25),
+    (-830, 90),
+    (-410, 205),
+    (-30, 125),
+    (430, 200),
+    (900, 125),
+    (1340, 205),
+    (1780, 125),
+    (2170, 205),
+    (3380, 115),
+    (4250, 125),
 )
 
-POTIONS = ((520.0, -155.0), (3300.0, -155.0))
-CHECKPOINTS = ((450.0, -155.0), (3070.0, -155.0))
+POTIONS = ((520.0, -155.0), (3280.0, -155.0))
+CHECKPOINTS = ((560.0, -155.0), (3140.0, -155.0))
 
 ENEMY_SPECS = (
-    ("crawler", -850.0, -158.0, 115.0, 74.0, 1),
-    ("crawler", -90.0, -158.0, 120.0, 82.0, 1),
-    ("wisp", 640.0, -20.0, 130.0, 62.0, 1),
-    ("cultist", 1180.0, -151.0, 120.0, 68.0, 2),
-    ("crawler", 1780.0, -158.0, 125.0, 88.0, 1),
-    ("wisp", 2170.0, 40.0, 120.0, 70.0, 1),
-    ("cultist", 3180.0, -151.0, 145.0, 74.0, 2),
-    ("crawler", 3550.0, -158.0, 100.0, 94.0, 1),
+    ("crawler", -1040.0, -158.0, 95.0, 88.0, 1),
+    ("crawler", -620.0, -158.0, 95.0, 96.0, 1),
+    ("wisp", 260.0, -35.0, 145.0, 76.0, 1),
+    ("cultist", 1040.0, -151.0, 120.0, 82.0, 2),
+    ("crawler", 1630.0, -158.0, 115.0, 104.0, 1),
+    ("wisp", 2260.0, 55.0, 120.0, 84.0, 1),
+    ("cultist", 3260.0, -151.0, 140.0, 92.0, 2),
+    ("crawler", 3540.0, -158.0, 85.0, 112.0, 1),
 )
 
 DIALOG = (
@@ -147,7 +181,17 @@ class ShadowRelic32:
         self.shards = 0
         self.attack_timer = 0.0
         self.attack_cooldown = 0.0
+        self.attack_buffer = 0.0
+        self.combo_step = 0
+        self.combo_timer = 0.0
+        self.coyote_timer = 0.0
+        self.jump_buffer = 0.0
+        self.dash_timer = 0.0
+        self.dash_cooldown = 0.0
         self.invulnerable = 0.0
+        self.camera_shake = 0.0
+        self.camera_base_x = 0.0
+        self.camera_base_y = 0.0
         self.dialog_index = -1
         self.dialog_timer = 0.0
         self.won = False
@@ -254,6 +298,8 @@ class ShadowRelic32:
             "alive": True,
             "phase": 0.0,
             "flash": 0.0,
+            "stun": 0.0,
+            "knockback_x": 0.0,
         }
 
     def _enemies(self) -> None:
@@ -288,6 +334,23 @@ class ShadowRelic32:
         self.boss["root"].height = 100
         self.boss["collider"].width = 76
         self.boss["collider"].height = 100
+        self.boss_shot_timer = 1.2
+        self.boss_orbs: list[dict[str, Any]] = []
+        for index in range(6):
+            node = self.rect(
+                -9999,
+                -9999,
+                24,
+                24,
+                Color(0.72, 0.20, 0.95, 0.90),
+                rotation=45,
+                visible=False,
+                layer=19,
+                name=f"warden-orb-{index}",
+            )
+            self.boss_orbs.append(
+                {"node": node, "active": False, "vx": 0.0, "vy": 0.0}
+            )
         if self.boss_defeated:
             self.boss["alive"] = False
             self.boss["collider"].enabled = False
@@ -305,8 +368,31 @@ class ShadowRelic32:
         self.hud = self.game.label("", -515, 309, font_size=19)
         self.objective = self.game.label("", 115, 309, font_size=16)
         self.zone_label = self.game.label("", 0, 260, font_size=22)
-        self.help = self.game.label("A/D move   SPACE jump   X/J sword   E talk   R respawn   N new game", 0, -330, font_size=14)
+        self.help = self.game.label(
+            "A/D move   SPACE jump   X/J combo   C/K dash   E talk   R respawn",
+            0,
+            -330,
+            font_size=14,
+        )
         self.dialog = self.game.label("", 0, -270, font_size=18)
+        self.slash_fx = self.rect(
+            -9999,
+            -9999,
+            92,
+            10,
+            Color(0.45, 1.0, 0.92, 0.0),
+            visible=False,
+            layer=25,
+        )
+        self.screen_flash = self.rect(
+            0,
+            0,
+            W,
+            H,
+            Color(1.0, 0.25, 0.32, 0.0),
+            screen_space=True,
+            layer=140,
+        )
         self.banner = self.game.label("", 0, 205, font_size=30)
         self.boss_label = self.game.label("", 0, 170, font_size=18)
         self.scanlines = [self.rect(0, -330 + i * 14, 1280, 1, Color(0, 0, 0, 0.11), screen_space=True, layer=120) for i in range(48)]
@@ -336,6 +422,13 @@ class ShadowRelic32:
         self.body.set_velocity(0, 0)
         self.invulnerable = 1.0
         self.game_over = False
+        self.camera_base_x = max(
+            WORLD_LEFT + W / 2,
+            min(WORLD_RIGHT - W / 2, self.player.x),
+        )
+        self.camera_base_y = 0.0
+        self.game.camera.x = self.camera_base_x
+        self.game.camera.y = self.camera_base_y
 
     def _grounded(self) -> bool:
         sensor = AABB(self.player.x, self.player.y - PLAYER_H / 2 - 2, PLAYER_W * 0.70, 6)
@@ -349,37 +442,87 @@ class ShadowRelic32:
         except RuntimeError:
             self.audio_ok = False
 
-    def _damage(self) -> None:
-        if self.invulnerable > 0 or self.won or self.game_over:
+    def _damage(self, source_x: float | None = None) -> None:
+        if self.invulnerable > 0 or self.dash_timer > 0 or self.won or self.game_over:
             return
         self.health -= 1
         self._sound("hit.wav", 0.24)
         self.spark.x, self.spark.y = self.player.x, self.player.y
-        self.spark.burst(14)
+        self.spark.burst(16)
+        self.camera_shake = 0.24
+        self.screen_flash.color = Color(1.0, 0.16, 0.24, 0.34)
+        if self.health <= 0:
+            self.game_over = True
+            self.body.set_velocity(0, 0)
+            return
+        direction = -self.facing
+        if source_x is not None:
+            direction = 1 if self.player.x >= source_x else -1
+        self.body.velocity_x = direction * 430
+        self.body.velocity_y = 420
+        self.invulnerable = 1.0
+
+    def _fall_respawn(self) -> None:
+        if self.won or self.game_over:
+            return
+        self.health -= 1
         if self.health <= 0:
             self.game_over = True
             self.body.set_velocity(0, 0)
             return
         self.player.x, self.player.y = self._checkpoint_position()
         self.body.set_velocity(0, 0)
-        self.invulnerable = 1.4
+        self.invulnerable = 1.0
+        self.camera_shake = 0.18
+
+    def _dash(self) -> None:
+        if self.dash_cooldown > 0 or self.won or self.game_over:
+            return
+        self.dash_timer = DASH_TIME
+        self.dash_cooldown = DASH_COOLDOWN
+        self.invulnerable = max(self.invulnerable, DASH_TIME + 0.04)
+        self.body.velocity_x = self.facing * DASH_SPEED
+        self.body.velocity_y = 0
+        self.dust.x, self.dust.y = self.player.x, self.player.y
+        self.dust.burst(12)
 
     def _attack(self) -> None:
         if self.attack_cooldown > 0 or self.won or self.game_over:
+            self.attack_buffer = 0.12
             return
-        self.attack_timer = 0.16
-        self.attack_cooldown = 0.30
+        self.combo_step = self.combo_step % 3 + 1 if self.combo_timer > 0 else 1
+        self.combo_timer = 0.42
+        self.attack_timer = 0.13 + self.combo_step * 0.015
+        self.attack_cooldown = 0.14 if self.combo_step < 3 else 0.24
         self._sound("slash.wav", 0.18)
-        cx = self.player.x + self.facing * 54
-        hits = self.game.collisions.overlap_aabb(AABB(cx, self.player.y, 90, 62), layer_mask=ENEMY, tag="enemy")
+        self.body.velocity_x += self.facing * (35 + self.combo_step * 15)
+        reach = 76 + self.combo_step * 8
+        cx = self.player.x + self.facing * (42 + self.combo_step * 3)
+        hitbox = AABB(cx, self.player.y + 2, reach, 64)
+        hits = self.game.collisions.overlap_aabb(
+            hitbox,
+            layer_mask=ENEMY,
+            tag="enemy",
+        )
         for hit in hits:
-            enemy = next((item for item in [*self.enemies, self.boss] if item["collider"] is hit and item["alive"]), None)
+            enemy = next(
+                (
+                    item
+                    for item in [*self.enemies, self.boss]
+                    if item["collider"] is hit and item["alive"]
+                ),
+                None,
+            )
             if enemy is None:
                 continue
-            enemy["hp"] = int(enemy["hp"]) - 1
-            enemy["flash"] = 0.12
+            damage = 2 if self.combo_step == 3 else 1
+            enemy["hp"] = int(enemy["hp"]) - damage
+            enemy["flash"] = 0.13
+            enemy["stun"] = 0.16 + self.combo_step * 0.03
+            enemy["knockback_x"] = self.facing * (170 + self.combo_step * 45)
+            self.camera_shake = max(self.camera_shake, 0.10 + self.combo_step * 0.02)
             self.spark.x, self.spark.y = enemy["root"].x, enemy["root"].y
-            self.spark.burst(12 if enemy is not self.boss else 22)
+            self.spark.burst(14 if enemy is not self.boss else 24)
             self._sound("boss_hit.wav" if enemy is self.boss else "hit.wav", 0.20)
             if enemy["hp"] <= 0:
                 enemy["alive"] = False
@@ -388,18 +531,102 @@ class ShadowRelic32:
                 if enemy is self.boss:
                     self.boss_defeated = True
                     self._save_progress()
-                    self.spark.burst(42)
+                    self.spark.burst(44)
             break
 
-    def _fixed(self, _dt: float) -> None:
+    @staticmethod
+    def _approach(value: float, target: float, amount: float) -> float:
+        if value < target:
+            return min(target, value + amount)
+        return max(target, value - amount)
+
+    def _fixed(self, dt: float) -> None:
         if self.won or self.game_over:
             return
-        move = float(self.game.key("D") or self.game.key("RIGHT")) - float(self.game.key("A") or self.game.key("LEFT"))
-        self.body.velocity_x = move * RUN_SPEED
+        grounded = self._grounded()
+        if grounded:
+            self.coyote_timer = COYOTE_TIME
+        else:
+            self.coyote_timer = max(0.0, self.coyote_timer - dt)
+
+        if self.dash_timer > 0:
+            self.body.gravity_scale = 0.0
+            self.body.velocity_x = self.facing * DASH_SPEED
+            self.body.velocity_y = 0.0
+            return
+
+        jump_held = self.game.key("SPACE") or self.game.key("W") or self.game.key("UP")
+        if self.body.velocity_y < 0:
+            self.body.gravity_scale = 1.45
+        elif not jump_held:
+            self.body.gravity_scale = 1.85
+        else:
+            self.body.gravity_scale = 1.0
+
+        move = float(self.game.key("D") or self.game.key("RIGHT")) - float(
+            self.game.key("A") or self.game.key("LEFT")
+        )
         if move < 0:
             self.facing = -1
         elif move > 0:
             self.facing = 1
+
+        if move:
+            acceleration = GROUND_ACCEL if grounded else AIR_ACCEL
+            target = move * RUN_SPEED
+            self.body.velocity_x = self._approach(
+                self.body.velocity_x,
+                target,
+                acceleration * dt,
+            )
+        else:
+            braking = GROUND_BRAKE if grounded else AIR_BRAKE
+            self.body.velocity_x = self._approach(
+                self.body.velocity_x,
+                0.0,
+                braking * dt,
+            )
+
+        if self.jump_buffer > 0 and self.coyote_timer > 0:
+            self.jump_buffer = 0.0
+            self.coyote_timer = 0.0
+            self.body.velocity_y = JUMP_SPEED
+            self.dust.x, self.dust.y = self.player.x, self.player.y - PLAYER_H / 2
+            self.dust.burst(9)
+            self._sound("jump.wav", 0.20)
+
+    def _spawn_boss_orb(self) -> None:
+        orb = next((item for item in self.boss_orbs if not item["active"]), None)
+        if orb is None:
+            return
+        root = self.boss["root"]
+        dx = self.player.x - root.x
+        dy = self.player.y - root.y
+        length = max(1.0, math.hypot(dx, dy))
+        speed = 330.0
+        orb["active"] = True
+        orb["node"].visible = True
+        orb["node"].x = root.x
+        orb["node"].y = root.y + 15
+        orb["vx"] = dx / length * speed
+        orb["vy"] = dy / length * speed
+
+    def _update_boss_orbs(self, dt: float) -> None:
+        for orb in self.boss_orbs:
+            if not orb["active"]:
+                continue
+            node = orb["node"]
+            node.x += float(orb["vx"]) * dt
+            node.y += float(orb["vy"]) * dt
+            node.rotation += dt * 220
+            if abs(node.x - self.player.x) < 30 and abs(node.y - self.player.y) < 35:
+                orb["active"] = False
+                node.visible = False
+                self._damage(node.x)
+                continue
+            if node.x < WORLD_LEFT - 100 or node.x > WORLD_RIGHT + 100 or abs(node.y) > 500:
+                orb["active"] = False
+                node.visible = False
 
     def _update_enemies(self, dt: float) -> None:
         for i, enemy in enumerate(self.enemies):
@@ -407,51 +634,100 @@ class ShadowRelic32:
                 continue
             enemy["phase"] = float(enemy["phase"]) + dt * 5.0
             enemy["flash"] = max(0.0, float(enemy["flash"]) - dt)
+            enemy["stun"] = max(0.0, float(enemy["stun"]) - dt)
             root = enemy["root"]
-            direction = float(enemy["direction"])
             kind = str(enemy["kind"])
-            root.x += direction * float(enemy["speed"]) * dt
-            if root.x > float(enemy["origin"]) + float(enemy["patrol"]) or root.x < float(enemy["origin"]) - float(enemy["patrol"]):
-                enemy["direction"] = -direction
+            knockback = float(enemy["knockback_x"])
+            if abs(knockback) > 1:
+                root.x += knockback * dt
+                enemy["knockback_x"] = knockback * max(0.0, 1.0 - dt * 9.0)
+            elif float(enemy["stun"]) <= 0:
+                direction = float(enemy["direction"])
+                chase = abs(self.player.x - root.x) < 210 and kind != "crawler"
+                if chase:
+                    direction = 1.0 if self.player.x > root.x else -1.0
+                    enemy["direction"] = direction
+                root.x += direction * float(enemy["speed"]) * dt
+                if (
+                    root.x > float(enemy["origin"]) + float(enemy["patrol"])
+                    or root.x < float(enemy["origin"]) - float(enemy["patrol"])
+                ):
+                    enemy["direction"] = -direction
             if kind == "wisp":
-                root.y = float(enemy["base_y"]) + math.sin(float(enemy["phase"])) * 26
+                root.y = float(enemy["base_y"]) + math.sin(float(enemy["phase"])) * 30
             sprite = enemy["sprite"]
             sprite.x = root.x
             sprite.y = root.y + 8
             frame = int(float(enemy["phase"]) * 1.35) % 2
+            side = "r" if float(enemy["direction"]) > 0 else "l"
             if kind == "crawler":
-                sprite.texture = str(self.assets / f"crawler{frame}_{'r' if float(enemy['direction']) > 0 else 'l'}.png")
+                sprite.texture = str(self.assets / f"crawler{frame}_{side}.png")
             elif kind == "wisp":
                 sprite.texture = str(self.assets / f"wisp{frame}.png")
             else:
-                sprite.texture = str(self.assets / f"cultist{frame}_{'r' if float(enemy['direction']) > 0 else 'l'}.png")
-            sprite.tint = Color(1.0, 0.42, 0.42, 1.0) if float(enemy["flash"]) > 0 else Color(1, 1, 1, 1)
+                sprite.texture = str(self.assets / f"cultist{frame}_{side}.png")
+            sprite.tint = (
+                Color(1.0, 0.42, 0.42, 1.0)
+                if float(enemy["flash"]) > 0
+                else Color(1, 1, 1, 1)
+            )
 
         if self.boss["alive"] and self.player.x > BOSS_ARENA_LEFT - 160:
             boss = self.boss
             root = boss["root"]
             boss["phase"] = float(boss["phase"]) + dt * 3.8
             boss["flash"] = max(0.0, float(boss["flash"]) - dt)
-            dx = self.player.x - root.x
-            boss["direction"] = 1.0 if dx > 0 else -1.0
-            root.x += max(-1.0, min(1.0, dx / 120.0)) * float(boss["speed"]) * dt
+            boss["stun"] = max(0.0, float(boss["stun"]) - dt)
+            knockback = float(boss["knockback_x"])
+            if abs(knockback) > 1:
+                root.x += knockback * dt
+                boss["knockback_x"] = knockback * max(0.0, 1.0 - dt * 7.0)
+            elif float(boss["stun"]) <= 0:
+                dx = self.player.x - root.x
+                boss["direction"] = 1.0 if dx > 0 else -1.0
+                speed = 105.0 + (7 - int(boss["hp"])) * 11.0
+                root.x += max(-1.0, min(1.0, dx / 120.0)) * speed * dt
             root.x = max(BOSS_ARENA_LEFT, min(BOSS_ARENA_RIGHT, root.x))
-            root.y = -128 + abs(math.sin(float(boss["phase"]) * 0.7)) * 7
+            root.y = -128 + abs(math.sin(float(boss["phase"]) * 0.75)) * 10
             sprite = boss["sprite"]
             sprite.x, sprite.y = root.x, root.y + 18
             frame = int(float(boss["phase"]) * 1.1) % 3
-            sprite.texture = str(self.assets / f"warden{frame}_{'r' if float(boss['direction']) > 0 else 'l'}.png")
-            sprite.tint = Color(1.0, 0.32, 0.35, 1) if float(boss["flash"]) > 0 else Color(1, 1, 1, 1)
+            side = "r" if float(boss["direction"]) > 0 else "l"
+            sprite.texture = str(self.assets / f"warden{frame}_{side}.png")
+            sprite.tint = (
+                Color(1.0, 0.32, 0.35, 1)
+                if float(boss["flash"]) > 0
+                else Color(1, 1, 1, 1)
+            )
+            self.boss_shot_timer -= dt
+            if self.boss_shot_timer <= 0:
+                self._spawn_boss_orb()
+                self.boss_shot_timer = 0.95 if int(boss["hp"]) <= 3 else 1.35
+        self._update_boss_orbs(dt)
 
     def _contact_damage(self) -> None:
-        hits = self.game.collisions.overlap_aabb(AABB(self.player.x, self.player.y, PLAYER_W, PLAYER_H), layer_mask=ENEMY, tag="enemy")
+        hits = self.game.collisions.overlap_aabb(
+            AABB(self.player.x, self.player.y, PLAYER_W, PLAYER_H),
+            layer_mask=ENEMY,
+            tag="enemy",
+        )
         for hit in hits:
-            enemy = next((item for item in [*self.enemies, self.boss] if item["collider"] is hit and item["alive"]), None)
+            enemy = next(
+                (
+                    item
+                    for item in [*self.enemies, self.boss]
+                    if item["collider"] is hit and item["alive"]
+                ),
+                None,
+            )
             if enemy is None:
                 continue
-            if self.body.velocity_y < -100 and self.player.y > enemy["root"].y + 24:
+            if self.body.velocity_y < -110 and self.player.y > enemy["root"].y + 24:
                 enemy["hp"] = int(enemy["hp"]) - 1
-                self.body.velocity_y = 470
+                enemy["stun"] = 0.18
+                enemy["knockback_x"] = self.facing * 150
+                self.body.velocity_y = 490
+                self.camera_shake = max(self.camera_shake, 0.08)
                 if enemy["hp"] <= 0:
                     enemy["alive"] = False
                     enemy["collider"].enabled = False
@@ -460,7 +736,7 @@ class ShadowRelic32:
                         self.boss_defeated = True
                         self._save_progress()
                 return
-            self._damage()
+            self._damage(enemy["root"].x)
             return
 
     def _collect(self) -> None:
@@ -493,6 +769,7 @@ class ShadowRelic32:
         for index, (x, y) in enumerate(CHECKPOINTS, start=1):
             if index > self.checkpoint_index and self.player.x >= x:
                 self.checkpoint_index = index
+                self.health = 5
                 self._save_progress()
                 self.spark.x, self.spark.y = x, y + 24
                 self.spark.burst(24)
@@ -539,6 +816,17 @@ class ShadowRelic32:
         self.hero_shadow.x = self.player.x
         self.hero_shadow.y = self.player.y - PLAYER_H / 2 - 5
         self.hero_shadow.width = 58 if self._grounded() else 42
+        if self.attack_timer > 0:
+            self.slash_fx.visible = True
+            self.slash_fx.x = self.player.x + self.facing * 50
+            self.slash_fx.y = self.player.y + 5
+            self.slash_fx.rotation = self.facing * (18 + self.combo_step * 12)
+            self.slash_fx.color = Color(0.45, 1.0, 0.92, min(1.0, self.attack_timer * 8))
+        else:
+            self.slash_fx.visible = False
+        if self.screen_flash.color.a > 0:
+            alpha = max(0.0, self.screen_flash.color.a - dt * 2.8)
+            self.screen_flash.color = Color(1.0, 0.16, 0.24, alpha)
 
         for index, (glow, sprite) in enumerate(self.shard_nodes):
             if not self.shard_active[index]:
@@ -565,11 +853,21 @@ class ShadowRelic32:
         if unlocked and not self.boss_defeated:
             self.gate_rune.color = Color(0.25, 1.0, 0.78, 1)
 
-    def _camera_update(self) -> None:
+    def _camera_update(self, dt: float) -> None:
+        look_ahead = max(-150.0, min(150.0, self.body.velocity_x * 0.38))
+        target_x = max(
+            WORLD_LEFT + W / 2,
+            min(WORLD_RIGHT - W / 2, self.player.x + look_ahead),
+        )
+        target_y = max(-40.0, min(80.0, (self.player.y + 15) * 0.18))
+        smooth = min(1.0, dt * 6.0)
+        self.camera_base_x += (target_x - self.camera_base_x) * smooth
+        self.camera_base_y += (target_y - self.camera_base_y) * min(1.0, dt * 4.5)
+        shake = min(1.0, self.camera_shake / 0.24) * 11.0
+        self.camera_shake = max(0.0, self.camera_shake - dt)
         cam = self.game.camera
-        target = max(WORLD_LEFT + W / 2, min(WORLD_RIGHT - W / 2, self.player.x))
-        cam.x += (target - cam.x) * 0.10
-        cam.y += ((self.player.y + 20) * 0.15 - cam.y) * 0.08
+        cam.x = self.camera_base_x + math.sin(self.time * 95.0) * shake
+        cam.y = self.camera_base_y + math.cos(self.time * 113.0) * shake * 0.55
         self.sky.x, self.sky.y = cam.x, cam.y
         for i, node in enumerate(self.bg_far):
             node.x = cam.x * 0.12 - 1280 + i * 1280
@@ -577,6 +875,7 @@ class ShadowRelic32:
             node.x = cam.x * 0.30 - 1280 + i * 1280
         for i, node in enumerate(self.bg_front):
             node.x = cam.x * 0.58 - 1280 + i * 1280
+
 
     def _ui_update(self) -> None:
         sigils = " ".join(symbol.upper() if symbol in self.collected_sigils else "---" for symbol, _x, _y in SIGILS)
@@ -626,14 +925,40 @@ class ShadowRelic32:
             node.visible = True
         for i, enemy in enumerate(self.enemies):
             _kind, x, y, patrol, speed, hp = ENEMY_SPECS[i]
-            enemy.update({"origin": x, "base_y": y, "patrol": patrol, "speed": speed, "hp": hp, "alive": True, "direction": 1.0, "phase": 0.0})
+            enemy.update(
+                {
+                    "origin": x,
+                    "base_y": y,
+                    "patrol": patrol,
+                    "speed": speed,
+                    "hp": hp,
+                    "alive": True,
+                    "direction": 1.0,
+                    "phase": 0.0,
+                    "stun": 0.0,
+                    "knockback_x": 0.0,
+                }
+            )
             enemy["root"].x, enemy["root"].y = x, y
             enemy["collider"].enabled = True
             enemy["sprite"].visible = True
-        self.boss.update({"hp": 7, "alive": True, "direction": 1.0, "phase": 0.0})
+        self.boss.update(
+            {
+                "hp": 7,
+                "alive": True,
+                "direction": 1.0,
+                "phase": 0.0,
+                "stun": 0.0,
+                "knockback_x": 0.0,
+            }
+        )
         self.boss["root"].x, self.boss["root"].y = 4260.0, -128.0
         self.boss["collider"].enabled = True
         self.boss["sprite"].visible = True
+        for orb in self.boss_orbs:
+            orb["active"] = False
+            orb["node"].visible = False
+        self.boss_shot_timer = 1.2
         self.won = False
         self.game_over = False
         self._reset_player(full=False)
@@ -644,29 +969,50 @@ class ShadowRelic32:
         self.invulnerable = max(0.0, self.invulnerable - dt)
         self.attack_timer = max(0.0, self.attack_timer - dt)
         self.attack_cooldown = max(0.0, self.attack_cooldown - dt)
+        self.attack_buffer = max(0.0, self.attack_buffer - dt)
+        self.combo_timer = max(0.0, self.combo_timer - dt)
+        self.jump_buffer = max(0.0, self.jump_buffer - dt)
+        self.dash_timer = max(0.0, self.dash_timer - dt)
+        self.dash_cooldown = max(0.0, self.dash_cooldown - dt)
+
         if self.game.key_pressed("N"):
             self._new_game()
         if self.game.key_pressed("R"):
             self._reset_player(full=False)
+
         if not self.won and not self.game_over:
-            if self.game.key_pressed("SPACE") and self._grounded():
-                self.body.velocity_y = JUMP_SPEED
-                self.dust.x, self.dust.y = self.player.x, self.player.y - PLAYER_H / 2
-                self.dust.burst(8)
-                self._sound("jump.wav", 0.20)
-            if self.game.key_pressed("X") or self.game.key_pressed("J"):
+            if (
+                self.game.key_pressed("SPACE")
+                or self.game.key_pressed("W")
+                or self.game.key_pressed("UP")
+            ):
+                self.jump_buffer = JUMP_BUFFER_TIME
+            if (
+                self.game.key_released("SPACE")
+                or self.game.key_released("W")
+                or self.game.key_released("UP")
+            ) and self.body.velocity_y > 250:
+                self.body.velocity_y *= 0.48
+            if self.game.key_pressed("C") or self.game.key_pressed("K"):
+                self._dash()
+            attack_pressed = self.game.key_pressed("X") or self.game.key_pressed("J")
+            buffered_attack = self.attack_buffer > 0 and self.attack_cooldown <= 0
+            if attack_pressed or buffered_attack:
                 self._attack()
+
             self._update_enemies(dt)
             self._contact_damage()
             self._collect()
             self._dialog_update(dt)
             if self.player.y < -430:
-                self._damage()
+                self._fall_respawn()
+
         self._sync_visuals(dt)
-        self._camera_update()
+        self._camera_update(dt)
         self._ui_update()
         if SMOKE_FRAMES and self.frames >= SMOKE_FRAMES:
             self.game.stop()
+
 
     def run(self) -> None:
         self.game.run()
