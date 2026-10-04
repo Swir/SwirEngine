@@ -112,7 +112,7 @@ def test_current_release_workflow_preserves_trusted_publisher_without_rewriting_
     assert "verify_publication_chain_2_2.py" in workflow
     assert "verify_required_workflows_2_2.py" in workflow
     assert "reconcile_release_2_2.py" in workflow
-    assert 'branches:\n      - "release/2.2.0-publication"' in publication_gate
+    assert 'branches:\n      - "release/2.2.0-publication-r2"' in publication_gate
     assert 'ref: "refs/tags/v2.0.0"' in historical
     assert "verify_2_0_release_candidate.py --require-final" in historical
     assert "git push --force" not in workflow

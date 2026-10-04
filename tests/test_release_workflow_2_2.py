@@ -43,9 +43,53 @@ def test_workflow_display_names_are_repository_unique() -> None:
 def test_yaml_contract_dependency_is_available_to_every_full_test_run() -> None:
     project = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     candidate = CANDIDATE_PATH.read_text(encoding="utf-8")
+    gate_text, gate = _publication_gate()
 
     assert 'dev = ["pytest>=8,<10", "ruff>=0.16,<0.17", "PyYAML>=6,<7"]' in project
     assert '"PyYAML>=6,<7"' in candidate
+    assert (
+        "PyYAML==6.0.3 "
+        "--hash=sha256:0f29edc409a6392443abf94b9cf89ce99889a1dd5376d94316ae5145dfedd5d6"
+        in gate_text
+    )
+    for option in (
+        "--disable-pip-version-check",
+        "--no-deps",
+        "--only-binary=:all:",
+        "--require-hashes",
+    ):
+        assert option in gate_text
+    assert '".[dev]"' not in gate_text
+    assert "pip install --upgrade pip" not in gate_text
+
+    steps = gate["jobs"]["publication-chain"]["steps"]
+    setup_index = next(
+        i
+        for i, step in enumerate(steps)
+        if step.get("uses", "").startswith("actions/setup-python@")
+    )
+    install_index = next(
+        i
+        for i, step in enumerate(steps)
+        if step.get("name") == "Install hashed YAML contract dependency"
+    )
+    verify_index = next(
+        i
+        for i, step in enumerate(steps)
+        if "verify_2_2_release_candidate.py" in step.get("run", "")
+    )
+    assert setup_index < install_index < verify_index
+    chain_step = next(step for step in steps if step.get("id") == "chain")
+    assert '--github-output "$GITHUB_OUTPUT"' in chain_step["run"]
+    candidate_step = steps[verify_index]
+    assert candidate_step["env"] == {
+        "CANDIDATE_SOURCE_SHA": "${{ steps.chain.outputs.candidate_source_sha }}"
+    }
+    candidate_run = candidate_step["run"]
+    assert 'git worktree add --detach "$candidate_root" "$CANDIDATE_SOURCE_SHA"' in candidate_run
+    assert 'git -C "$candidate_root" rev-parse HEAD' in candidate_run
+    assert 'python "$candidate_root/tools/verify_2_2_release_candidate.py"' in candidate_run
+    assert "python tools/verify_2_2_release_candidate.py" not in gate_text
 
 
 def test_release_identity_waits_for_the_publication_gate_workflow() -> None:
@@ -67,7 +111,7 @@ def test_publication_gate_is_read_only_and_marker_push_only() -> None:
     assert workflow["permissions"] == {"contents": "read"}
     assert workflow["on"] == {
         "push": {
-            "branches": ["release/2.2.0-publication"],
+            "branches": ["release/2.2.0-publication-r2"],
             "paths": [".release/publish-2.2.0/publication.json"],
         }
     }
@@ -144,7 +188,7 @@ def test_release_bootstraps_provenance_from_trusted_workflow_source() -> None:
 
 
 def test_named_exact_sha_workflow_gate_replaces_counting() -> None:
-    text, _ = _workflow()
+    text, workflow = _workflow()
 
     assert "verify_required_workflows_2_2.py" in text
     assert '--sha "$CANDIDATE_SOURCE_SHA"' in text
@@ -156,13 +200,17 @@ def test_named_exact_sha_workflow_gate_replaces_counting() -> None:
     assert "workflow_runs: [.[].workflow_runs[]]" in text
     assert "EXPECTED_PR_WORKFLOWS" not in text
     assert "count -ge" not in text
+    checkout = workflow["jobs"]["required-workflows"]["steps"][0]
+    assert checkout["with"]["ref"] == (
+        "${{ needs.publication-chain.outputs.candidate_source_sha }}"
+    )
 
 
 def test_release_builds_both_sdists_and_binds_provenance_v2() -> None:
-    text, _ = _workflow()
+    text, workflow = _workflow()
 
     required = (
-        'git worktree add --detach candidate-tree "$CANDIDATE_SOURCE_SHA"',
+        'git worktree add --detach "$candidate_root" "$CANDIDATE_SOURCE_SHA"',
         "tools/verify_sdist_identity_2_2.py",
         "--candidate candidate-dist/swirengine-2.2.0.tar.gz",
         "--publication publication-dist/swirengine-2.2.0.tar.gz",
@@ -175,6 +223,50 @@ def test_release_builds_both_sdists_and_binds_provenance_v2() -> None:
     )
     for fragment in required:
         assert fragment in text
+
+    build_steps = workflow["jobs"]["build-release"]["steps"]
+    install = next(
+        step
+        for step in build_steps
+        if step.get("name") == "Install release validation dependencies"
+    )
+    regress = next(
+        step
+        for step in build_steps
+        if step.get("name") == "Run complete exact-source tests and static checks"
+    )
+    materialize = next(
+        step
+        for step in build_steps
+        if step.get("name")
+        == "Materialize exact candidate source outside the publication tree"
+    )
+    publication_build = next(
+        step
+        for step in build_steps
+        if step.get("name") == "Build publication wheel and sdist"
+    )
+    candidate_build = next(
+        step
+        for step in build_steps
+        if step.get("name") == "Build candidate sdist from immutable C"
+    )
+    assert materialize["env"] == {
+        "CANDIDATE_SOURCE_SHA": "${{ needs.publication-chain.outputs.candidate_source_sha }}"
+    }
+    assert 'git -C "$candidate_root" rev-parse HEAD' in materialize["run"]
+    assert install["working-directory"] == "${{ runner.temp }}/candidate-tree"
+    assert regress["working-directory"] == "${{ runner.temp }}/candidate-tree"
+    assert regress["env"] == {
+        "PYTHONPYCACHEPREFIX": "${{ runner.temp }}/candidate-pycache"
+    }
+    assert "python -m pytest -q -p no:cacheprovider" in regress["run"]
+    assert "python -m ruff check --no-cache" in regress["run"]
+    assert "status --porcelain --untracked-files=all" in regress["run"]
+    assert "working-directory" not in publication_build
+    assert 'candidate_root="$RUNNER_TEMP/candidate-tree"' in candidate_build["run"]
+    assert "status --porcelain --untracked-files=all" in candidate_build["run"]
+    assert build_steps.index(candidate_build) < build_steps.index(regress)
 
 
 def test_retries_reconcile_fresh_state_and_never_clobber() -> None:

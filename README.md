@@ -224,6 +224,8 @@ Engineering quality is evaluated against complete games, public installation, re
 - SwirEngine 2.1.0 is published from its guarded release gate; the 10/10 roadmap remains the preserved acceptance record for that release.
 - SwirEngine 2.2.0 is a bound non-publishing candidate and remains **NOT PUBLISHED** until its
   guarded publication and immutable public verification complete.
+- Release authorization is fail-closed: an incomplete gate publishes nothing, and any recovery
+  candidate must rerun the exact-source workflow manifest before a fresh marker-only chain.
 - A completed historical roadmap does not imply literal perfection; concrete stable-line regressions still reopen focused maintenance.
 
 ## 🗺 Roadmaps and active development

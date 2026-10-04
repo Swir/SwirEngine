@@ -70,6 +70,7 @@ REQUIRED_WORKFLOW_PATHS = (
     "docs/RELEASE_GATE_2_2.md",
     MANIFEST,
     WORKFLOW,
+    ".github/workflows/public-api-2.0.yml",
     "tools/verify_2_2_release_candidate.py",
     "tools/verify_candidate_merge_2_2.py",
     "tools/reconcile_release_2_2.py",

@@ -3,7 +3,7 @@ name: SwirEngine 2.2 Publication Gate
 on:
   push:
     branches:
-      - "release/2.2.0-publication"
+      - "release/2.2.0-publication-r2"
     paths:
       - ".release/publish-2.2.0/publication.json"
 
@@ -28,7 +28,7 @@ jobs:
         env:
           EVENT_PATH: ${{ github.event_path }}
           EXPECTED_REPOSITORY: Swir/SwirEngine
-          PUBLICATION_BRANCH: release/2.2.0-publication
+          PUBLICATION_BRANCH: release/2.2.0-publication-r2
         shell: bash
         run: |
           set -euo pipefail
@@ -47,15 +47,35 @@ jobs:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.13"
+      - name: Install hashed YAML contract dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' \
+            'PyYAML==6.0.3 --hash=sha256:0f29edc409a6392443abf94b9cf89ce99889a1dd5376d94316ae5145dfedd5d6' \
+            > "$RUNNER_TEMP/publication-gate-requirements.txt"
+          python -m pip install \
+            --disable-pip-version-check \
+            --no-deps \
+            --only-binary=:all: \
+            --require-hashes \
+            -r "$RUNNER_TEMP/publication-gate-requirements.txt"
       - name: Verify deterministic C to M1 to P chain
+        id: chain
         run: >-
           python tools/verify_publication_chain_2_2.py
           --publication-sha "$GITHUB_SHA"
           --tag-policy absent-or-publication
+          --github-output "$GITHUB_OUTPUT"
       - name: Require the complete non-publishing candidate contract
+        env:
+          CANDIDATE_SOURCE_SHA: ${{ steps.chain.outputs.candidate_source_sha }}
         shell: bash
         run: |
           set -euo pipefail
-          test -f RELEASE_NOTES_2_2.md
-          test -f tools/verify_2_2_release_candidate.py
-          python tools/verify_2_2_release_candidate.py
+          candidate_root="$RUNNER_TEMP/candidate-source"
+          git worktree add --detach "$candidate_root" "$CANDIDATE_SOURCE_SHA"
+          test "$(git -C "$candidate_root" rev-parse HEAD)" = "$CANDIDATE_SOURCE_SHA"
+          test -f "$candidate_root/RELEASE_NOTES_2_2.md"
+          test -f "$candidate_root/tools/verify_2_2_release_candidate.py"
+          python "$candidate_root/tools/verify_2_2_release_candidate.py"
