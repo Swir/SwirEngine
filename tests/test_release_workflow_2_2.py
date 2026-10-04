@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import yaml
@@ -310,6 +311,135 @@ def test_release_builds_both_sdists_and_binds_provenance_v2() -> None:
         "${{ runner.temp }}/publication-dist/*"
     )
     assert build_steps.index(candidate_build) < build_steps.index(regress)
+
+
+def test_release_evidence_retry_recovers_only_complete_attested_public_assets() -> None:
+    _, workflow = _workflow()
+    job = workflow["jobs"]["release-evidence"]
+    assert job["permissions"] == {
+        "attestations": "read",
+        "contents": "read",
+    }
+
+    step = next(
+        step
+        for step in job["steps"]
+        if step.get("name") == "Capture initial PyPI, tag and GitHub Release state"
+    )
+    assert step["env"] == {
+        "GH_TOKEN": "${{ github.token }}",
+        "CANDIDATE_SOURCE_SHA": (
+            "${{ needs.publication-chain.outputs.candidate_source_sha }}"
+        ),
+        "CANDIDATE_MARKER_SHA": (
+            "${{ needs.publication-chain.outputs.candidate_marker_sha }}"
+        ),
+        "PUBLICATION_SHA": "${{ needs.publication-chain.outputs.publication_sha }}",
+        "WORKFLOW_MANIFEST_SHA256": (
+            "${{ needs.publication-chain.outputs.workflow_manifest_sha256 }}"
+        ),
+        "LOGICAL_SDIST_SHA256": (
+            "${{ needs.build-release.outputs.logical_sdist_sha256 }}"
+        ),
+    }
+    run = step["run"]
+
+    snapshot_index = run.index("snapshot initial-state/release.json")
+    normal_reconcile_index = run.index("if python tools/reconcile_release_2_2.py")
+    fallback_branch_index = run.index(
+        'else\n  echo "Fresh assets differ from public state; '
+        'requiring exact immutable release recovery."'
+    )
+    download_index = run.index('gh release download "$RELEASE_TAG"')
+    attestation_index = run.index('gh release verify "$RELEASE_TAG"')
+    evidence_index = run.index("python tools/release_evidence_2_2.py verify")
+    recovery_snapshot_index = run.index("snapshot recovery-state/release.json")
+    complete_reconcile_index = run.rindex("python tools/reconcile_release_2_2.py")
+    snapshot_stage_index = run.index(
+        'cp -- "recovery-state/$state_file" "initial-state/$state_file"'
+    )
+    overwrite_index = run.index('cp -- "$fallback_dir/$asset" "dist/$asset"')
+    fallback_end_index = run.index("\nfi\njq . initial-state/plan.json")
+    assert (
+        snapshot_index
+        < normal_reconcile_index
+        < fallback_branch_index
+        < download_index
+        < attestation_index
+        < evidence_index
+        < recovery_snapshot_index
+        < complete_reconcile_index
+        < snapshot_stage_index
+        < overwrite_index
+        < fallback_end_index
+    )
+
+    assert run.count("python tools/reconcile_release_2_2.py") == 2
+    assert run.count("--require-complete") == 1
+    assert run.count("--pypi-json initial-state/pypi.json") == 1
+    assert run.count("--tag-json initial-state/tag.json") == 1
+    assert run.count("--release-json initial-state/release.json") == 1
+    assert run.count("--pypi-json recovery-state/pypi.json") == 1
+    assert run.count("--tag-json recovery-state/tag.json") == 1
+    assert run.count("--release-json recovery-state/release.json") == 1
+    assert 'fallback_dir="$(mktemp -d "$RUNNER_TEMP/' in run
+    assert 'test "${#release_assets[@]}" -eq 5' in run
+    assets_match = re.search(
+        r"release_assets=\(\n(?P<body>.*?)\n\s*\)",
+        run,
+        flags=re.DOTALL,
+    )
+    assert assets_match is not None
+    assert assets_match.group("body").split() == [
+        "swirengine-2.2.0-py3-none-any.whl",
+        "swirengine-2.2.0-cp314-cp314-win_amd64.whl",
+        "swirengine-2.2.0.tar.gz",
+        "SHA256SUMS",
+        "release-provenance.json",
+    ]
+    assert '--pattern "$asset"' in run
+    assert 'test ! -L "$fallback_dir/$asset"' in run
+    assert 'gh release verify-asset "$RELEASE_TAG" "$fallback_dir/$asset"' in run
+    assert 'cmp -- "$fallback_dir/$asset" "dist/$asset"' in run
+    assert (
+        'test "$(find "$fallback_dir" -mindepth 1 -maxdepth 1 -type f | wc -l)" '
+        "-eq 5"
+    ) in run
+    assert (
+        'test "$(find dist -mindepth 1 -maxdepth 1 | wc -l)" -eq 5' in run
+    )
+    assert (
+        'test "$(find dist -mindepth 1 -maxdepth 1 -type f | wc -l)" -eq 5'
+        in run
+    )
+    assert "> recovery-state/plan.json" in run
+    assert "recovery_files=(pypi.json tag.json release.json plan.json)" in run
+    assert 'test "${#recovery_files[@]}" -eq 4' in run
+    assert (
+        'test "$(find recovery-state -mindepth 1 -maxdepth 1 -type f | wc -l)" '
+        "-eq 4"
+    ) in run
+    assert 'cmp -- "recovery-state/$state_file" "initial-state/$state_file"' in run
+    for option in (
+        '--candidate-source-commit "$CANDIDATE_SOURCE_SHA"',
+        '--candidate-marker-commit "$CANDIDATE_MARKER_SHA"',
+        '--publication-commit "$PUBLICATION_SHA"',
+        "--workflow-manifest .github/release-gates/2.2-required-workflows.json",
+        '--expected-workflow-manifest-sha256 "$WORKFLOW_MANIFEST_SHA256"',
+        '--expected-logical-sdist-sha256 "$LOGICAL_SDIST_SHA256"',
+    ):
+        assert option in run
+    for mutation in (
+        "gh release create",
+        "gh release edit",
+        "gh release upload",
+        "gh release delete",
+        "gh api --method",
+        "git push",
+        "git tag",
+        "twine upload",
+    ):
+        assert mutation not in run
 
 
 def test_retries_reconcile_fresh_state_and_never_clobber() -> None:
