@@ -1,4 +1,14 @@
 /release-evidence/2.2.0/manifest.json text eol=lf
 /.github/release-gates/2.2-required-workflows.json text eol=lf
+/.github/release-gates/2.2.1-required-workflows.json text eol=lf
 /RELEASE_NOTES_2_2.md text eol=lf
 /PYPI_DESCRIPTION_2_2.md text eol=lf
+/RELEASE_NOTES_2_2_1.md text eol=lf
+/PYPI_DESCRIPTION_2_2_1.md text eol=lf
+/tools/verify_public_release_2_2.py text eol=lf
+/tools/verify_publication_chain_2_2.py text eol=lf
+/tools/candidate_evidence_2_2.py text eol=lf
+/tools/release_evidence_2_2.py text eol=lf
+/tools/reconcile_release_2_2.py text eol=lf
+/.github/workflows/post-release-2.2.yml text eol=lf
+/.github/workflows/publication-gate-2.2.yml text eol=lf

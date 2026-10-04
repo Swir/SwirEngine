@@ -16,7 +16,9 @@ def test_legacy_cli21_call_keeps_2_1_0_version_assertion() -> None:
     assert resolve_expected_version(None, verify_cli21=True) == "2.1.0"
 
 
-@pytest.mark.parametrize("expected", ["2.1.0", "2.2.0", "2.2.0rc1", "12.34.56+local"])
+@pytest.mark.parametrize(
+    "expected", ["2.1.0", "2.2.0", "2.2.1", "2.2.0rc1", "12.34.56+local"]
+)
 def test_explicit_expected_version_is_preserved(expected: str) -> None:
     assert resolve_expected_version(expected, verify_cli21=False) == expected
 

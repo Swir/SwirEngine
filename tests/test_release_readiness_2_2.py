@@ -21,11 +21,10 @@ WORKFLOW = ROOT / "tests/fixtures/release-candidate-2.2.yml"
 POST_RELEASE_WORKFLOW = ROOT / ".github/workflows/post-release-2.2.yml"
 
 
-def test_repository_passes_2_2_phase_e_readiness() -> None:
+def test_repository_passes_2_2_release_or_patch_readiness() -> None:
     report = audit(ROOT)
 
-    assert report.phase == "E"
-    assert report.version == "2.2.0"
+    assert (report.phase, report.version) in {("E", "2.2.0"), ("PATCH", "2.2.1")}
     assert report.roadmap.completed == 10
     assert report.roadmap.total == 10
     assert report.roadmap.percent == pytest.approx(100.0)
@@ -75,6 +74,34 @@ def test_readme_phase_e_rejects_reverting_public_install_to_2_1() -> None:
 
     with pytest.raises(AssertionError, match="Phase E contract"):
         validate_readme(broken, state, root=ROOT, phase="E")
+
+
+def test_readme_accepts_bound_2_2_1_patch_candidate_over_public_2_2_0() -> None:
+    roadmap = (ROOT / "ROADMAP_2_2.md").read_text(encoding="utf-8")
+    state = parse_roadmap(roadmap)
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    if "bound non-publishing patch candidate" not in readme.casefold():
+        readme += (
+            "\nSwirEngine 2.2.1 is the bound non-publishing patch candidate. "
+            "It is NOT PUBLISHED.\n"
+        )
+
+    validate_readme(readme, state, root=ROOT, phase="PATCH")
+
+
+def test_readme_patch_candidate_rejects_public_2_2_1_install_pin() -> None:
+    roadmap = (ROOT / "ROADMAP_2_2.md").read_text(encoding="utf-8")
+    state = parse_roadmap(roadmap)
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    if "bound non-publishing patch candidate" not in readme.casefold():
+        readme += (
+            "\nSwirEngine 2.2.1 is the bound non-publishing patch candidate. "
+            "It is NOT PUBLISHED.\n"
+        )
+    broken = readme + '\npython -m pip install -U "swirengine==2.2.1"\n'
+
+    with pytest.raises(AssertionError, match="must not advertise a public 2.2.1 install"):
+        validate_readme(broken, state, root=ROOT, phase="PATCH")
 
 
 def test_readme_rejects_progress_drift() -> None:

@@ -10,6 +10,7 @@ except ModuleNotFoundError:  # pragma: no cover - exercised on CPython 3.10
 
 PROGRESS_START = "<!-- SWIR-PYPI-PROGRESS:START -->"
 PROGRESS_END = "<!-- SWIR-PYPI-PROGRESS:END -->"
+PATCH_CANDIDATE_VERSION = "2.2.1"
 
 
 def _expected_active_block(root: Path) -> str:
@@ -37,6 +38,21 @@ def _two_two_public(readme: str, roadmap_22: str) -> bool:
     )
 
 
+def _two_two_patch_candidate(readme: str, roadmap_22: str) -> bool:
+    readme_folded = readme.casefold()
+    return (
+        "Current verified progress: 10/10 milestones = 100.0%." in roadmap_22
+        and "swirengine 2.2.1" in readme_folded
+        and "bound non-publishing patch candidate" in readme_folded
+        and "NOT PUBLISHED" in readme
+        and "**Latest public stable release:** **SwirEngine 2.2.0**" in readme
+        and '"swirengine==2.2.0"' in readme
+        and '"swirengine[audio]==2.2.0"' in readme
+        and '"swirengine==2.2.1"' not in readme
+        and '"swirengine[audio]==2.2.1"' not in readme
+    )
+
+
 def verify(root: Path) -> list[str]:
     errors: list[str] = []
     pyproject = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
@@ -48,6 +64,9 @@ def verify(root: Path) -> list[str]:
 
     version = str(pyproject["project"]["version"])
     public_22 = version == "2.2.0" and _two_two_public(readme, roadmap_22)
+    patch_candidate_221 = version == PATCH_CANDIDATE_VERSION and _two_two_patch_candidate(
+        readme, roadmap_22
+    )
     if version == "2.2.0":
         if public_22:
             required_public_paths = (
@@ -71,9 +90,22 @@ def verify(root: Path) -> list[str]:
                     "pyproject 2.2.0 is permitted only for the complete bound candidate "
                     "or immutable public release: " + "; ".join(candidate_errors)
                 )
+    elif version == PATCH_CANDIDATE_VERSION:
+        if not patch_candidate_221:
+            errors.append(
+                "pyproject 2.2.1 is permitted only for the bound non-publishing patch "
+                "candidate over immutable public 2.2.0"
+            )
+        for relative in (
+            "release-evidence/2.2.0/manifest.json",
+            ".github/workflows/post-release-2.2.yml",
+        ):
+            if not (root / relative).is_file():
+                errors.append(f"published 2.2 compatibility state is missing: {relative}")
     elif version != "2.1.0":
         errors.append(
-            "pyproject project.version must be public 2.1.0 or complete 2.2.0 release state"
+            "pyproject project.version must be public 2.1.0, complete 2.2.0 release state, "
+            "or the bound 2.2.1 patch candidate"
         )
 
     if readme.count(PROGRESS_START) != 1 or readme.count(PROGRESS_END) != 1:
@@ -91,7 +123,7 @@ def verify(root: Path) -> list[str]:
                     "README PyPI progress block must match the deterministic active-roadmap ASCII block"
                 )
 
-    expected_public_version = "2.2.0" if public_22 else "2.1.0"
+    expected_public_version = "2.2.0" if public_22 or patch_candidate_221 else "2.1.0"
     if f"Latest public stable release:** **SwirEngine {expected_public_version}" not in readme:
         errors.append(
             f"README must identify SwirEngine {expected_public_version} as the public stable release"
@@ -119,7 +151,21 @@ def verify(root: Path) -> list[str]:
     if 'swirengine==2.1.0' not in notes:
         errors.append("release notes must include the exact 2.1.0 install command")
 
-    if "RELEASE_VERSION: 2.2.0" in release:
+    if "RELEASE_VERSION: 2.2.1" in release:
+        required_release_fragments = (
+            "RELEASE_TAG: v2.2.1",
+            "SwirEngine 2.2.1 Publication Gate",
+            "workflow_run.event",
+            "workflow_run.head_repository.full_name",
+            "verify_publication_chain_2_2_1.py",
+            "verify_required_workflows_2_2.py",
+            "reconcile_release_2_2_1.py",
+            "environment: pypi",
+            "id-token: write",
+            "gh release create",
+            "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33",
+        )
+    elif "RELEASE_VERSION: 2.2.0" in release:
         required_release_fragments = (
             "RELEASE_TAG: v2.2.0",
             "SwirEngine 2.2 Publication Gate",

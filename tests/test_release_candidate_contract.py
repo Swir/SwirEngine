@@ -33,11 +33,11 @@ def test_active_release_workflow_uses_guarded_2_2_gate_and_keeps_history_separat
     historical = (ROOT / ".github/workflows/release-2.0.yml").read_text(encoding="utf-8")
 
     assert "verify_1_3_release_candidate.py" in ci
-    assert "RELEASE_TAG: v2.2.0" in release
-    assert "SwirEngine 2.2 Publication Gate" in release
-    assert "verify_publication_chain_2_2.py" in release
+    assert "RELEASE_TAG: v2.2.1" in release
+    assert "SwirEngine 2.2.1 Publication Gate" in release
+    assert "verify_publication_chain_2_2_1.py" in release
     assert "verify_required_workflows_2_2.py" in release
-    assert "reconcile_release_2_2.py" in release
+    assert "reconcile_release_2_2_1.py" in release
     assert "verify_2_0_release_candidate.py --require-final" in historical
     assert "verify_1_3_release_candidate.py --require-complete" not in release
     assert "verify_1_2_release_candidate.py --require-complete" not in release

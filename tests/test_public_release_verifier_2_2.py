@@ -39,6 +39,18 @@ BYTE_BOUND_FILES = {
     "/RELEASE_NOTES_2_2.md text eol=lf",
     "/PYPI_DESCRIPTION_2_2.md text eol=lf",
 }
+PATCH_BYTE_BOUND_FILES = {
+    "/.github/release-gates/2.2.1-required-workflows.json text eol=lf",
+    "/RELEASE_NOTES_2_2_1.md text eol=lf",
+    "/PYPI_DESCRIPTION_2_2_1.md text eol=lf",
+    "/tools/verify_public_release_2_2.py text eol=lf",
+    "/tools/verify_publication_chain_2_2.py text eol=lf",
+    "/tools/candidate_evidence_2_2.py text eol=lf",
+    "/tools/release_evidence_2_2.py text eol=lf",
+    "/tools/reconcile_release_2_2.py text eol=lf",
+    "/.github/workflows/post-release-2.2.yml text eol=lf",
+    "/.github/workflows/publication-gate-2.2.yml text eol=lf",
+}
 
 
 def _run(**overrides: object) -> dict[str, object]:
@@ -151,7 +163,8 @@ def test_byte_bound_release_evidence_forces_lf_on_every_platform() -> None:
         if line and not line.startswith("#")
     }
 
-    assert attributes == BYTE_BOUND_FILES
+    assert BYTE_BOUND_FILES <= attributes
+    assert PATCH_BYTE_BOUND_FILES <= attributes
 
 
 def test_manifest_rejects_noncanonical_rendering(tmp_path: Path) -> None:

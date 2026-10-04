@@ -12,6 +12,7 @@ except ModuleNotFoundError:  # Python 3.10
 EXPECTED_STABLE_VERSION = "2.0.0"
 EXPECTED_PUBLIC_VERSION = "2.1.0"
 EXPECTED_CANDIDATE_VERSION = "2.2.0"
+PATCH_CANDIDATE_VERSION = "2.2.1"
 EXPECTED_PYTHON_RANGE = ">=3.10,<3.15"
 EXPECTED_COMPLETED = 10
 EXPECTED_TOTAL = 10
@@ -200,8 +201,10 @@ def audit(root: Path | None = None) -> ReadinessReport:
             EXPECTED_STABLE_VERSION,
             EXPECTED_PUBLIC_VERSION,
             EXPECTED_CANDIDATE_VERSION,
+            PATCH_CANDIDATE_VERSION,
         },
-        "2.1 history permits stable 2.0.0, immutable public 2.1.0, or complete 2.2.0 state",
+        "2.1 history permits stable 2.0.0, immutable public 2.1.0, complete 2.2.0, "
+        "or the bound 2.2.1 patch candidate",
         checks,
     )
     init_text = _read(root, "src/swirengine/__init__.py")
@@ -244,40 +247,67 @@ def audit(root: Path | None = None) -> ReadinessReport:
         and (root / ".github/workflows/post-release-2.2.yml").is_file()
         and not (root / ".github/workflows/release-candidate-2.2.yml").exists()
     )
+    readme_folded = readme.casefold()
+    patch_candidate_221 = (
+        version == PATCH_CANDIDATE_VERSION
+        and "swirengine 2.2.1" in readme_folded
+        and "bound non-publishing patch candidate" in readme_folded
+        and "NOT PUBLISHED" in readme
+        and "**Latest public stable release:** **SwirEngine 2.2.0**" in readme
+        and '"swirengine==2.2.0"' in readme
+        and '"swirengine[audio]==2.2.0"' in readme
+        and '"swirengine==2.2.1"' not in readme
+        and '"swirengine[audio]==2.2.1"' not in readme
+        and (root / "release-evidence/2.2.0/manifest.json").is_file()
+    )
     publication_final = (
-        version in {EXPECTED_PUBLIC_VERSION, EXPECTED_CANDIDATE_VERSION}
+        version
+        in {EXPECTED_PUBLIC_VERSION, EXPECTED_CANDIDATE_VERSION, PATCH_CANDIDATE_VERSION}
         and (
             "**Latest public stable release:** **SwirEngine 2.1.0**" in readme
             or two_two_public
+            or patch_candidate_221
         )
         and notes.startswith("# SwirEngine 2.1.0 Release Notes")
         and "NOT PUBLISHED" not in notes
     )
     if publication_final:
-        if not two_two_public:
+        if not two_two_public and not patch_candidate_221:
             _require(
                 "**2.1 release:** **PUBLISHED — GitHub Release and PyPI verified**" in readme,
                 "README final publication state identifies the verified 2.1 release",
                 checks,
             )
-        if version == EXPECTED_CANDIDATE_VERSION:
+        if version in {EXPECTED_CANDIDATE_VERSION, PATCH_CANDIDATE_VERSION}:
             candidate_notes = _read(root, "RELEASE_NOTES_2_2.md")
             candidate_roadmap = parse_roadmap(_read(root, "ROADMAP_2_2.md"))
-            pypi_description = _read(root, "PYPI_DESCRIPTION_2_2.md")
-            if two_two_public:
+            description_path = (
+                "PYPI_DESCRIPTION_2_2_1.md"
+                if version == PATCH_CANDIDATE_VERSION
+                else "PYPI_DESCRIPTION_2_2.md"
+            )
+            pypi_description = _read(root, description_path)
+            if two_two_public or patch_candidate_221:
                 _require(
                     (candidate_roadmap.completed, candidate_roadmap.total) == (10, 10),
                     "immutable public 2.2 preserves the accepted 10/10 roadmap",
                     checks,
                 )
-                _require(
-                    "**2.2 release:** **PUBLISHED — GitHub Release, PyPI and durable evidence "
-                    "verified**" in readme
-                    and "release-evidence/2.2.0/manifest.json" in readme
-                    and '"swirengine[audio]==2.2.0"' in readme,
-                    "README identifies immutable public SwirEngine 2.2.0 and its evidence",
-                    checks,
-                )
+                if patch_candidate_221:
+                    _require(
+                        "release-evidence/2.2.0/manifest.json" in readme,
+                        "README preserves immutable public SwirEngine 2.2.0 evidence",
+                        checks,
+                    )
+                else:
+                    _require(
+                        "**2.2 release:** **PUBLISHED — GitHub Release, PyPI and durable evidence "
+                        "verified**" in readme
+                        and "release-evidence/2.2.0/manifest.json" in readme
+                        and '"swirengine[audio]==2.2.0"' in readme,
+                        "README identifies immutable public SwirEngine 2.2.0 and its evidence",
+                        checks,
+                    )
             else:
                 _require(
                     (candidate_roadmap.completed, candidate_roadmap.total) == (9, 10),
@@ -305,10 +335,10 @@ def audit(root: Path | None = None) -> ReadinessReport:
                 checks,
             )
             _require(
-                project.get("readme") == "PYPI_DESCRIPTION_2_2.md"
+                project.get("readme") == description_path
                 and "NOT PUBLISHED" not in pypi_description
                 and "latest public stable" not in pypi_description.lower(),
-                "2.2 package metadata uses a time-neutral PyPI description",
+                "2.2 package metadata uses the version-matched time-neutral PyPI description",
                 checks,
             )
     else:
@@ -331,7 +361,7 @@ def audit(root: Path | None = None) -> ReadinessReport:
             )
 
     urls = project.get("urls", {})
-    if version == EXPECTED_CANDIDATE_VERSION:
+    if version in {EXPECTED_CANDIDATE_VERSION, PATCH_CANDIDATE_VERSION}:
         expected_roadmap = "ROADMAP_2_2.md"
     else:
         expected_roadmap = "ROADMAP_2_1.md" if publication_final else "ROADMAP_2_0.md"
@@ -345,7 +375,7 @@ def audit(root: Path | None = None) -> ReadinessReport:
         "package metadata exposes the completed 2.1 source roadmap",
         checks,
     )
-    if version == EXPECTED_CANDIDATE_VERSION:
+    if version in {EXPECTED_CANDIDATE_VERSION, PATCH_CANDIDATE_VERSION}:
         _require(
             str(urls.get("2.2 Roadmap", "")).endswith("ROADMAP_2_2.md"),
             "package metadata exposes the active or immutable public 2.2 roadmap",

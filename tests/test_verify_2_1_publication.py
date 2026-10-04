@@ -19,6 +19,24 @@ def test_publication_contract_passes_current_tree() -> None:
     assert module.verify(root) == []
 
 
+def test_publication_contract_recognizes_only_a_non_publishing_2_2_1_patch_candidate() -> None:
+    module = _load_verifier()
+    roadmap = "Current verified progress: 10/10 milestones = 100.0%."
+    readme = (
+        "SwirEngine 2.2.1 is the bound non-publishing patch candidate.\n"
+        "NOT PUBLISHED\n"
+        "**Latest public stable release:** **SwirEngine 2.2.0**\n"
+        'python -m pip install -U "swirengine==2.2.0"\n'
+        'python -m pip install -U "swirengine[audio]==2.2.0"'
+    )
+
+    assert module._two_two_patch_candidate(readme, roadmap)
+    assert not module._two_two_patch_candidate(
+        readme + '\npython -m pip install -U "swirengine==2.2.1"',
+        roadmap,
+    )
+
+
 def test_publication_contract_rejects_svg_inside_pypi_block(tmp_path: Path) -> None:
     module = _load_verifier()
     root = Path(__file__).resolve().parents[1]
