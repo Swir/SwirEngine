@@ -28,9 +28,12 @@ def _allowed_source_versions() -> set[str]:
             and "## Phase C — publication decision" in gate_text
         )
         candidate_21 = "NOT PUBLISHED" in notes_text
-        published_21 = (
-            notes_text.startswith("# SwirEngine 2.1.0 Release Notes")
-            and "**Latest public stable release:** **SwirEngine 2.1.0**" in readme_text
+        published_21 = notes_text.startswith("# SwirEngine 2.1.0 Release Notes") and any(
+            marker in readme_text
+            for marker in (
+                "**Latest public stable release:** **SwirEngine 2.1.0**",
+                "**Latest public stable release:** **SwirEngine 2.2.0**",
+            )
         )
         if accepted_21 and (candidate_21 or published_21):
             allowed.add(PUBLIC_STABLE_VERSION)
@@ -50,7 +53,17 @@ def _allowed_source_versions() -> set[str]:
             and "**Latest public stable release:** **SwirEngine 2.1.0**" in readme_text
             and '"swirengine==2.2.0"' not in readme_text
         )
-        if candidate_22:
+        published_22 = (
+            "Current verified progress: 10/10 milestones = 100.0%." in roadmap_text
+            and notes_text.startswith("# SwirEngine 2.2.0 Release Notes")
+            and "NOT PUBLISHED" not in notes_text
+            and "**Latest public stable release:** **SwirEngine 2.2.0**" in readme_text
+            and '"swirengine==2.2.0"' in readme_text
+            and Path("release-evidence/2.2.0/manifest.json").is_file()
+            and Path(".github/workflows/post-release-2.2.yml").is_file()
+            and not Path(".github/workflows/release-candidate-2.2.yml").exists()
+        )
+        if candidate_22 or published_22:
             allowed.add(CANDIDATE_VERSION)
     return allowed
 
@@ -80,13 +93,20 @@ def test_source_version_matches_guarded_release_phase():
     elif swirengine.__version__ == CANDIDATE_VERSION:
         readme = Path("README.md").read_text(encoding="utf-8")
         notes = Path("RELEASE_NOTES_2_2.md").read_text(encoding="utf-8")
-        assert "**Latest public stable release:** **SwirEngine 2.1.0**" in readme
-        assert "bound non-publishing candidate" in readme
-        assert "NOT PUBLISHED" in readme
-        assert 'swirengine==2.1.0' in readme
-        assert '"swirengine==2.2.0"' not in readme
         assert notes.startswith("# SwirEngine 2.2.0 Release Notes")
         assert "NOT PUBLISHED" not in notes
+        if "**Latest public stable release:** **SwirEngine 2.2.0**" in readme:
+            assert '"swirengine==2.2.0"' in readme
+            assert "10/10 = 100.0%" in readme
+            assert Path("release-evidence/2.2.0/manifest.json").is_file()
+            assert Path(".github/workflows/post-release-2.2.yml").is_file()
+            assert not Path(".github/workflows/release-candidate-2.2.yml").exists()
+        else:
+            assert "**Latest public stable release:** **SwirEngine 2.1.0**" in readme
+            assert "bound non-publishing candidate" in readme
+            assert "NOT PUBLISHED" in readme
+            assert 'swirengine==2.1.0' in readme
+            assert '"swirengine==2.2.0"' not in readme
 
 
 def test_supported_python_range_is_explicit():
@@ -109,7 +129,12 @@ def test_readme_preserves_locked_1_5_evidence_after_2_0_publication():
         CANDIDATE_VERSION,
     }:
         assert "`v2.0.0`" in readme or "| 2.0 |" in readme
-        if swirengine.__version__ in {PUBLIC_STABLE_VERSION, CANDIDATE_VERSION} and (
+        if (
+            swirengine.__version__ == CANDIDATE_VERSION
+            and "**Latest public stable release:** **SwirEngine 2.2.0**" in readme
+        ):
+            assert "**Latest public stable release:** **SwirEngine 2.2.0**" in readme
+        elif swirengine.__version__ in {PUBLIC_STABLE_VERSION, CANDIDATE_VERSION} and (
             "NOT PUBLISHED"
             not in Path("RELEASE_NOTES_2_1.md").read_text(encoding="utf-8")
         ):

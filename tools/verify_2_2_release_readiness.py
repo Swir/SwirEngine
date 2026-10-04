@@ -13,6 +13,7 @@ PUBLIC_STABLE_VERSION = "2.1.0"
 EXPECTED_CANDIDATE_VERSION = "2.2.0"
 EXPECTED_PYTHON_RANGE = ">=3.10,<3.15"
 EXPECTED_COMPLETED = 9
+EXPECTED_FINAL_COMPLETED = 10
 EXPECTED_TOTAL = 10
 PYPI_PROGRESS_START = "<!-- SWIR-PYPI-PROGRESS:START -->"
 PYPI_PROGRESS_END = "<!-- SWIR-PYPI-PROGRESS:END -->"
@@ -30,6 +31,10 @@ SUMMARY_RE = re.compile(
 )
 M10_OPEN_RE = re.compile(
     r"^- \[ \] \*\*10\. Production acceptance and 2\.2 release readiness\.\*\*",
+    re.MULTILINE,
+)
+M10_CLOSED_RE = re.compile(
+    r"^- \[x\] \*\*10\. Production acceptance and 2\.2 release readiness\.\*\*",
     re.MULTILINE,
 )
 
@@ -73,12 +78,24 @@ REQUIRED_WORKFLOWS = (
 )
 PHASE_A_WORKFLOW = ".github/workflows/release-readiness-2.2.yml"
 PHASE_B_WORKFLOW = ".github/workflows/release-candidate-2.2.yml"
+PHASE_B_WORKFLOW_FIXTURE = "tests/fixtures/release-candidate-2.2.yml"
+PHASE_E_WORKFLOW = ".github/workflows/post-release-2.2.yml"
 PHASE_B_FILES = (
     "PYPI_DESCRIPTION_2_2.md",
     "RELEASE_NOTES_2_2.md",
     "tools/candidate_evidence_2_2.py",
     "tools/verify_2_2_release_candidate.py",
     PHASE_B_WORKFLOW,
+)
+PHASE_E_FILES = (
+    "PYPI_DESCRIPTION_2_2.md",
+    "RELEASE_NOTES_2_2.md",
+    "tools/candidate_evidence_2_2.py",
+    "tools/verify_2_2_release_candidate.py",
+    "tools/verify_public_release_2_2.py",
+    "release-evidence/2.2.0/manifest.json",
+    PHASE_B_WORKFLOW_FIXTURE,
+    PHASE_E_WORKFLOW,
 )
 FORBIDDEN_WORKFLOW_FRAGMENTS = (
     "contents: write",
@@ -146,6 +163,13 @@ def require_phase_a_roadmap(text: str, state: RoadmapState) -> None:
         raise AssertionError("Milestone 10 must remain open exactly once during 2.2 Phase A")
 
 
+def require_phase_e_roadmap(text: str, state: RoadmapState) -> None:
+    if state.completed != EXPECTED_FINAL_COMPLETED or state.total != EXPECTED_TOTAL:
+        raise AssertionError("2.2 Phase E must be exactly 10/10 after immutable public verification")
+    if len(M10_CLOSED_RE.findall(text)) != 1:
+        raise AssertionError("Milestone 10 must be closed exactly once during 2.2 Phase E")
+
+
 def _expected_readme_progress(root: Path) -> str:
     try:
         from tools.generate_progress_svg import parse_progress, render_readme_progress
@@ -170,21 +194,26 @@ def validate_readme(
         raise AssertionError("README PyPI progress must exactly match ROADMAP_2_2.md")
     if not match.group(0).isascii() or "<img" in match.group(0) or ".svg" in match.group(0):
         raise AssertionError("README PyPI progress block must remain deterministic plain ASCII")
-    if state.completed != EXPECTED_COMPLETED or state.total != EXPECTED_TOTAL:
-        raise AssertionError("README pre-release validation requires the frozen 9/10 roadmap state")
-    common_required = (
-        "**Latest public stable release:** **SwirEngine 2.1.0**",
-        "**2.2 roadmap:** **9/10 milestones = 90.0% - IN PROGRESS**",
-        '"swirengine==2.1.0"',
-        '"swirengine[audio]==2.1.0"',
-    )
-    for fragment in common_required:
-        if fragment not in readme:
-            raise AssertionError(f"README pre-release contract is missing: {fragment}")
-
     normalized = " ".join(readme.split()).casefold()
     if phase is None:
-        phase = "B" if "bound non-publishing candidate" in normalized else "A"
+        if "10/10 milestones = 100.0% - complete" in normalized:
+            phase = "E"
+        else:
+            phase = "B" if "bound non-publishing candidate" in normalized else "A"
+    if phase in {"A", "B"}:
+        if state.completed != EXPECTED_COMPLETED or state.total != EXPECTED_TOTAL:
+            raise AssertionError(
+                "README pre-release validation requires the frozen 9/10 roadmap state"
+            )
+        common_required = (
+            "**Latest public stable release:** **SwirEngine 2.1.0**",
+            "**2.2 roadmap:** **9/10 milestones = 90.0% - IN PROGRESS**",
+            '"swirengine==2.1.0"',
+            '"swirengine[audio]==2.1.0"',
+        )
+        for fragment in common_required:
+            if fragment not in readme:
+                raise AssertionError(f"README pre-release contract is missing: {fragment}")
     if phase == "A":
         if "swirengine 2.2 is source development only" not in normalized:
             raise AssertionError("README Phase A source-development boundary is missing")
@@ -192,9 +221,27 @@ def validate_readme(
         for fragment in ("swirengine 2.2.0", "bound non-publishing candidate"):
             if fragment not in normalized:
                 raise AssertionError(f"README Phase B contract is missing: {fragment}")
+    elif phase == "E":
+        if state.completed != EXPECTED_FINAL_COMPLETED or state.total != EXPECTED_TOTAL:
+            raise AssertionError("README Phase E validation requires the final 10/10 roadmap state")
+        required = (
+            "STATUS-2.2.0%20PUBLISHED",
+            "**Latest public stable release:** **SwirEngine 2.2.0**",
+            "**2.2 roadmap:** **10/10 milestones = 100.0% - COMPLETE**",
+            "**2.2 release:** **PUBLISHED — GitHub Release, PyPI and durable evidence verified**",
+            '"swirengine==2.2.0"',
+            '"swirengine[audio]==2.2.0"',
+            "release-evidence/2.2.0/manifest.json",
+            "python tools/verify_public_release_2_2.py --evidence release-evidence/2.2.0/manifest.json",
+        )
+        for fragment in required:
+            if fragment not in readme:
+                raise AssertionError(f"README Phase E contract is missing: {fragment}")
     else:
-        raise AssertionError(f"unsupported 2.2 pre-release phase: {phase}")
-    if '"swirengine==2.2.0"' in readme or '"swirengine[audio]==2.2.0"' in readme:
+        raise AssertionError(f"unsupported 2.2 release phase: {phase}")
+    if phase != "E" and (
+        '"swirengine==2.2.0"' in readme or '"swirengine[audio]==2.2.0"' in readme
+    ):
         raise AssertionError("README must not advertise a public 2.2.0 install before Phase E")
 
 
@@ -241,22 +288,63 @@ def validate_non_publishing_workflow(workflow: str, *, phase: str | None = None)
             raise AssertionError(f"2.2 pre-release workflow is missing exact-source gate: {fragment}")
 
 
+def validate_post_release_workflow(workflow: str) -> None:
+    folded = workflow.casefold()
+    if not re.search(
+        r"(?m)^permissions:\s*\n\s+actions:\s+read\s*\n\s+contents:\s+read\s*$",
+        workflow,
+    ):
+        raise AssertionError(
+            "2.2 post-release workflow must declare only actions: read and contents: read"
+        )
+    for fragment in FORBIDDEN_WORKFLOW_FRAGMENTS:
+        if fragment in folded:
+            raise AssertionError(
+                f"2.2 post-release workflow contains forbidden publishing capability: {fragment}"
+            )
+    required = (
+        "name: Post-release 2.2 Public Verification",
+        "pull_request:",
+        "push:",
+        "branches: [main]",
+        "ref: ${{ github.event.pull_request.head.sha || github.sha }}",
+        "fetch-depth: 0",
+        "persist-credentials: false",
+        "name: Public-release verifier contract",
+        "name: Public install ${{ matrix.os }} / CPython ${{ matrix.python-version }}",
+        "python tools/verify_public_release_2_2.py --skip-install",
+        "run: python tools/verify_public_release_2_2.py",
+        'python-version: "3.13"',
+        'python-version: "3.14"',
+        "ubuntu-latest",
+        "macos-latest",
+        "windows-latest",
+    )
+    for fragment in required:
+        if fragment not in workflow:
+            raise AssertionError(f"2.2 post-release workflow is missing contract: {fragment}")
+
+
 def audit(root: Path | None = None) -> ReadinessReport:
     repository_root = Path(root or Path(__file__).resolve().parents[1]).resolve()
     checks: list[str] = []
 
     project = tomllib.loads(_read(repository_root, "pyproject.toml"))["project"]
     version = str(project["version"])
+    roadmap_text = _read(repository_root, "ROADMAP_2_2.md")
+    state = parse_roadmap(roadmap_text)
     if version == PUBLIC_STABLE_VERSION:
         phase = "A"
-    elif version == EXPECTED_CANDIDATE_VERSION:
+    elif version == EXPECTED_CANDIDATE_VERSION and state.completed == EXPECTED_COMPLETED:
         phase = "B"
+    elif version == EXPECTED_CANDIDATE_VERSION and state.completed == EXPECTED_FINAL_COMPLETED:
+        phase = "E"
     else:
         raise AssertionError(
-            "2.2 pre-release package metadata must be exactly 2.1.0 (Phase A) "
-            "or 2.2.0 (Phase B)"
+            "2.2 package metadata and roadmap must be exactly 2.1.0/9-of-10 (Phase A), "
+            "2.2.0/9-of-10 (Phase B), or 2.2.0/10-of-10 (Phase E)"
         )
-    checks.append(f"2.2 pre-release metadata matches Phase {phase}")
+    checks.append(f"2.2 metadata matches Phase {phase}")
     runtime = _read(repository_root, "src/swirengine/__init__.py")
     _require(
         f'__version__ = "{version}"' in runtime,
@@ -285,19 +373,21 @@ def audit(root: Path | None = None) -> ReadinessReport:
     else:
         _require(
             str(urls.get("Roadmap", "")).endswith("ROADMAP_2_2.md"),
-            "Phase B package metadata points at the active 2.2 roadmap",
+            f"Phase {phase} package metadata points at the 2.2 roadmap",
             checks,
         )
         _require(
             str(urls.get("2.1 Roadmap", "")).endswith("ROADMAP_2_1.md"),
-            "Phase B package metadata preserves the immutable 2.1 roadmap",
+            f"Phase {phase} package metadata preserves the immutable 2.1 roadmap",
             checks,
         )
 
-    roadmap_text = _read(repository_root, "ROADMAP_2_2.md")
-    state = parse_roadmap(roadmap_text)
-    require_phase_a_roadmap(roadmap_text, state)
-    checks.append(f"2.2 roadmap remains exact 9/10 during Phase {phase}")
+    if phase == "E":
+        require_phase_e_roadmap(roadmap_text, state)
+        checks.append("2.2 roadmap is exact 10/10 after immutable public verification")
+    else:
+        require_phase_a_roadmap(roadmap_text, state)
+        checks.append(f"2.2 roadmap remains exact 9/10 during Phase {phase}")
 
     validate_readme(
         _read(repository_root, "README.md"),
@@ -305,9 +395,14 @@ def audit(root: Path | None = None) -> ReadinessReport:
         root=repository_root,
         phase=phase,
     )
-    checks.append("README preserves public 2.1.0 and exact active 2.2 progress")
+    checks.append(f"README matches the exact Phase {phase} public-release boundary")
 
-    phase_files = (PHASE_A_WORKFLOW,) if phase == "A" else PHASE_B_FILES
+    if phase == "A":
+        phase_files = (PHASE_A_WORKFLOW,)
+    elif phase == "B":
+        phase_files = PHASE_B_FILES
+    else:
+        phase_files = PHASE_E_FILES
     for relative in (
         REQUIRED_DOCS
         + REQUIRED_VERIFIERS
@@ -316,12 +411,18 @@ def audit(root: Path | None = None) -> ReadinessReport:
         + phase_files
     ):
         _read(repository_root, relative)
-    checks.append("2.2 preflight docs, verifiers, fixtures and workflows are present")
+    checks.append("2.2 release docs, verifiers, fixtures and workflows are present")
 
     gate = _read(repository_root, "docs/RELEASE_GATE_2_2.md")
+    gate_words = " ".join(gate.split()).casefold()
     _require(
         "Phase A — 9/10 exact-source preflight" in gate
-        and "Only final Phase E acceptance may advance the roadmap to 10/10 = 100.0%" in gate,
+        and (
+            "only final phase e acceptance may advance the roadmap to 10/10 = 100.0%"
+            in gate_words
+            or "only immutable public verification and the final phase e record authorized "
+            "the release claim" in gate_words
+        ),
         "2.2 release gate keeps roadmap completion behind final Phase E evidence",
         checks,
     )
@@ -331,8 +432,7 @@ def audit(root: Path | None = None) -> ReadinessReport:
             "2.2 release gate does not invent Phase A acceptance evidence",
             checks,
         )
-    else:
-        gate_words = " ".join(gate.split()).casefold()
+    elif phase == "B":
         for fragment in (
             "6c109e2dce25d94dee91f5b06b84a134e4302d58",
             "a634e980649ec50307479ab0d14f483c77315e6a",
@@ -346,6 +446,18 @@ def audit(root: Path | None = None) -> ReadinessReport:
                 f"Phase B release gate records accepted Phase A evidence: {fragment}",
                 checks,
             )
+    else:
+        for fragment in (
+            "phase e — final evidence and roadmap acceptance",
+            "final phase e acceptance is complete",
+            "release-evidence/2.2.0/manifest.json",
+            "server-enforced immutable",
+        ):
+            _require(
+                fragment in gate_words,
+                f"Phase E release gate records immutable public evidence: {fragment}",
+                checks,
+            )
     migration = _read(repository_root, "docs/MIGRATING_TO_2_2.md")
     migration_words = " ".join(migration.split())
     if phase == "A":
@@ -353,11 +465,18 @@ def audit(root: Path | None = None) -> ReadinessReport:
             "latest public stable release remains **SwirEngine 2.1.0**" in migration_words
             and "source development" in migration.casefold()
         )
-    else:
+    elif phase == "B":
         migration_folded = migration_words.casefold()
         migration_ok = (
             "latest public stable release remains **swirengine 2.1.0**" in migration_folded
             and "bound non-publishing candidate" in migration_folded
+        )
+    else:
+        migration_folded = migration_words.casefold()
+        migration_ok = (
+            "swirengine 2.2.0 is **published**" in migration_folded
+            and "release-evidence/2.2.0/manifest.json" in migration_folded
+            and "verify_public_release_2_2.py" in migration_folded
         )
     _require(
         migration_ok,
@@ -365,14 +484,24 @@ def audit(root: Path | None = None) -> ReadinessReport:
         checks,
     )
 
-    workflow_path = PHASE_A_WORKFLOW if phase == "A" else PHASE_B_WORKFLOW
-    workflow = _read(repository_root, workflow_path)
-    validate_non_publishing_workflow(workflow, phase=phase)
-    checks.append("dedicated 2.2 workflow is exact-source and non-publishing")
+    if phase == "E":
+        _require(
+            not (repository_root / PHASE_B_WORKFLOW).exists(),
+            "Phase E removes the active historical candidate workflow",
+            checks,
+        )
+        workflow = _read(repository_root, PHASE_E_WORKFLOW)
+        validate_post_release_workflow(workflow)
+        checks.append("dedicated Phase E workflow is exact-source and read-only")
+    else:
+        workflow_path = PHASE_A_WORKFLOW if phase == "A" else PHASE_B_WORKFLOW
+        workflow = _read(repository_root, workflow_path)
+        validate_non_publishing_workflow(workflow, phase=phase)
+        checks.append("dedicated 2.2 workflow is exact-source and non-publishing")
 
     _require(
         not (repository_root / ".release" / "publish-2.2.0").exists(),
-        f"Phase {phase} publication marker is absent",
+        f"Phase {phase} repository publication marker is absent",
         checks,
     )
 

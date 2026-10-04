@@ -1,17 +1,27 @@
 # Changelog
 
-## 2.2.0 bound candidate - 2026-10-04
+## 2.2.0 - 2026-10-04
 
-SwirEngine 2.2.0 is a bound non-publishing candidate. It is not a public release; SwirEngine
-2.1.0 remains the latest public stable package while guarded publication and immutable public
-verification are pending.
+SwirEngine 2.2.0 is published on PyPI and GitHub. The immutable `v2.2.0` tag resolves to publication
+commit `2f150ba6f3fd1e1fd121a8884298e616186e267b`; exact public assets and the successful publication
+attempt are recorded in the canonical
+[`2.2.0 public-release evidence`](release-evidence/2.2.0/manifest.json).
 
-- bound the 2.2 package/runtime identity to the accepted Production Tools & Visual Creation source
-- retained the 9/10 roadmap state until post-release evidence can close Milestone 10
-- preserved public installation guidance at SwirEngine 2.1.0
-- prepared time-neutral release notes and package-index description for immutable publication
-- kept material/shader, node-graph, terrain/foliage, animation, VFX, lighting, UI and multiplayer
-  authoring on the shipping runtime paths covered by the candidate gates
+- completed the finite Production Tools & Visual Creation roadmap at **10/10 = 100.0%** after
+  production acceptance and immutable public verification
+- published the portable wheel, Windows CPython 3.14 wheel and sdist with canonical checksums and
+  release provenance through the guarded two-marker publication chain
+- verified exact PyPI and immutable GitHub Release state plus clean public installs on Linux,
+  macOS and Windows in Release run `37175535837`, attempt 1
+- preserved the reviewed release notes and package-index description byte-for-byte across
+  publication
+- shipped material/shader, node-graph, terrain/foliage, animation, VFX, lighting, responsive UI
+  and multiplayer/editor authoring on the covered shipping runtime paths
+- retained the historical Phase A–D candidate/publication record while making Phase E evidence
+  the durable current release status
+
+Roadmap completion applies to the ten named 2.2 milestones. It is not a claim of literal
+perfection or an end to focused compatibility, safety and regression maintenance.
 
 ## 1.4 development - 2026-09-16
 

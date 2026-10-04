@@ -1,0 +1,81 @@
+{
+  "candidate_marker_commit": "48ca4b55b9707845796451136002a4c6568ac231",
+  "candidate_source_commit": "efd5d2b5c26941d49599cd925bb1f8c35b844c3f",
+  "logical_sdist_sha256": "e0a48491ee53820b0a5af370e960879d6d359a361014242dad528322351afd75",
+  "package": "swirengine",
+  "phase_e_required_workflows_sha256": "4b765c20736147881e99bc2a9414265815fbda2013bd20fc32d27be6f189e17a",
+  "publication_commit": "2f150ba6f3fd1e1fd121a8884298e616186e267b",
+  "publication_required_workflows_sha256": "9ca3c9f2fd42e7ac410d571f6847c22e94e04ce522322b83f07e48e3070b0f49",
+  "pypi_description_sha256": "2c6a0bbe870b360c14fd4ae9d28f4957a2168912bd5072266ea62266b257a126",
+  "release_assets": [
+    {
+      "name": "SHA256SUMS",
+      "sha256": "6473a712f90b342171ad5e1b30744d0cec5447b2a087be25d910a317b48cb3c5",
+      "size": 299
+    },
+    {
+      "name": "release-provenance.json",
+      "sha256": "2fbe6065bcfbe1c99284eae263f511bb4a0e0064b105805a6e7e1750545cc445",
+      "size": 1064
+    },
+    {
+      "name": "swirengine-2.2.0-cp314-cp314-win_amd64.whl",
+      "sha256": "1261932138e183773f3131ca7972d442e667e1d56c944ed8d18f3fc023f0ac8d",
+      "size": 945574
+    },
+    {
+      "name": "swirengine-2.2.0-py3-none-any.whl",
+      "sha256": "a16b47d9376e4fcf570ba91ce03545c62127999a61e6c60751a836f609bf4646",
+      "size": 827421
+    },
+    {
+      "name": "swirengine-2.2.0.tar.gz",
+      "sha256": "9f2048d8d5332f449a90d41164b1d19521f2c5802a0b40b5d3d9d0370cc37053",
+      "size": 2884911
+    }
+  ],
+  "release_notes_sha256": "1350ef99dbb1d6ba6b9d516024b1d30ebaa0ce232d417e46a0ed3a700afae572",
+  "release_workflow": {
+    "run_attempt": 1,
+    "run_id": 37175535837,
+    "successful_jobs": [
+      {
+        "id": 111357683135,
+        "name": "Fresh-read and verify exact PyPI files"
+      },
+      {
+        "id": 111357598636,
+        "name": "Fresh-read and verify immutable GitHub Release"
+      },
+      {
+        "id": 111357451691,
+        "name": "Generate provenance and take initial public-state snapshot"
+      },
+      {
+        "id": 111357703738,
+        "name": "Public PyPI verify / macos-latest / Python 3.13"
+      },
+      {
+        "id": 111357703757,
+        "name": "Public PyPI verify / ubuntu-latest / Python 3.13"
+      },
+      {
+        "id": 111357703747,
+        "name": "Public PyPI verify / windows-latest / Python 3.14"
+      },
+      {
+        "id": 111357256100,
+        "name": "Verify immutable publication chain and trigger"
+      },
+      {
+        "id": 111357784847,
+        "name": "Verify immutable tag, release, package and evidence"
+      }
+    ],
+    "trusted_workflow_commit": "8cfe640b216c06e5423821615f97828e43b917c6"
+  },
+  "repository": "Swir/SwirEngine",
+  "schema": "swirengine-public-release-evidence-v4",
+  "tag": "v2.2.0",
+  "version": "2.2.0"
+}

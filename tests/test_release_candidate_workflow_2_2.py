@@ -5,7 +5,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-WORKFLOW_PATH = ROOT / ".github/workflows/release-candidate-2.2.yml"
+WORKFLOW_PATH = ROOT / "tests/fixtures/release-candidate-2.2.yml"
 EXPECTED_SOURCE_EXPRESSION = "${{ github.event.pull_request.head.sha }}"
 
 
@@ -16,7 +16,7 @@ def _workflow() -> tuple[str, dict[str, object]]:
     return text, parsed
 
 
-def test_candidate_workflow_is_same_repo_pull_request_only_and_read_only() -> None:
+def test_historical_candidate_workflow_is_same_repo_pull_request_only_and_read_only() -> None:
     text, workflow = _workflow()
 
     assert workflow["name"] == "SwirEngine 2.2 Release Candidate"
@@ -33,7 +33,7 @@ def test_candidate_workflow_is_same_repo_pull_request_only_and_read_only() -> No
     assert "git push" not in text
 
 
-def test_candidate_workflow_binds_exact_same_repo_branch_and_head() -> None:
+def test_historical_candidate_workflow_binds_exact_same_repo_branch_and_head() -> None:
     text, workflow = _workflow()
     jobs = workflow["jobs"]
     assert set(jobs) == {"candidate-contract", "clean-install-matrix", "candidate-evidence"}

@@ -4,18 +4,23 @@
 
 <img width="100%" src="assets/readme/progress-mini.svg" alt="SwirEngine 2.2 Production Tools and Visual Creation roadmap progress" />
 
-SwirEngine 2.2 starts after the public SwirEngine 2.1.0 creator-workflow release. The target is a finite production-tools release: creators should be able to author more of a complete 2D/3D/multiplayer game visually while the generated data remains backed by shipping runtime systems.
+SwirEngine 2.2 follows the public SwirEngine 2.1.0 creator-workflow release. Its finite
+production-tools scope is now complete and published: creators can author more of a complete
+2D/3D/multiplayer game visually while the generated data remains backed by shipping runtime
+systems.
 
-Current verified progress: 9/10 milestones = 90.0%.
+Current verified progress: 10/10 milestones = 100.0%.
 
 ## Product rules
 
-- The public SwirEngine 2.1.0 release and tag remain immutable.
+- The public SwirEngine 2.1.0 and 2.2.0 releases and tags remain immutable.
 - 2.2 progress advances only after exact-head acceptance evidence for a complete milestone.
 - Visual tools must serialize portable project data and round-trip through runtime APIs; editor-only mock state does not count.
 - Representative 2D, 3D and multiplayer fixtures remain the end-to-end quality gate.
 - Performance claims require reproducible evidence; no invented FPS or cross-engine superiority claims.
 - The README keeps exactly one deterministic PyPI-safe ASCII progress block sourced from this roadmap.
+- Completion means the ten named 2.2 milestones satisfy their finite acceptance contract; it is
+  not a claim of literal perfection or an end to focused maintenance.
 
 ## Milestones
 
@@ -28,7 +33,7 @@ Current verified progress: 9/10 milestones = 90.0%.
 - [x] **7. Lighting, Environment and Post-FX authoring.** Add creator controls for lights, sky/environment, shadows, tone mapping and post-processing with scene persistence and live renderer validation.
 - [x] **8. UI Designer 2.2.** Add responsive anchors/containers, reusable styles, interaction states and UI animation authoring while preserving keyboard/gamepad focus/navigation behavior.
 - [x] **9. Multiplayer Debugger + Editor Extension SDK.** Add replication/session inspection, latency/debug views and a bounded plugin API for extending SwirEditor without bypassing project/runtime safety contracts.
-- [ ] **10. Production acceptance and 2.2 release readiness.** Drive representative 2D, 3D and multiplayer projects through authoring, profiling, build/export and staged runtime; requalify supported CPython/platform packaging, clean installs, performance/safety evidence, checksums/provenance and the guarded release gate.
+- [x] **10. Production acceptance and 2.2 release readiness.** Drive representative 2D, 3D and multiplayer projects through authoring, profiling, build/export and staged runtime; requalify supported CPython/platform packaging, clean installs, performance/safety evidence, checksums/provenance and the guarded release gate.
 
 ## Milestone 1 acceptance gate
 
@@ -214,4 +219,45 @@ Milestone 9 may be checked only when the exact implementation head proves all of
 
 Milestone 9 accepted on 2026-10-01 after PR #239 exact head `50b76c0b44d2a06f6cb07227cbdebdaf4c92d8b8` completed all 38 exact-SHA Actions workflows successfully with 175 successful PR check runs. The implementation merged normally to `main` as `7611068101c19aa7b69446913c8814efe9224167`; both commits share tree `2b4f4678b6e70221daaab8f0f791e60188841d3c`. All 21 associated post-merge workflow runs and all 117 final check runs completed successfully before this acceptance record advanced the roadmap to 9/10.
 
-The earlier exact head `90483821e116f38ed65559d7cb2239dfb5f50dbd` was not accepted or rerun as a flake after Desktop Shipping exposed a real planning-performance regression. The final exact head restored the deterministic desktop-planning budget without weakening discovery, final or pre-clean source confinement: the 500-cycle CPython 3.13 workload completed in 4.7089 seconds on the PR head and 4.8262 seconds on the merged `main` SHA against the 5.0-second ceiling, with fingerprint `8984903953e78b82`. Required CPython 3.10/3.13/3.14 contracts, localhost RTT, bounded private capture, native Tk, `.swir` exclusion and relocated installed-wheel execution all passed without an acceptance rerun, gate bypass or dependency change. This is source-development acceptance only; no public 2.2 release, operating-system sandbox claim or public-network latency claim is implied. Milestone 10 is the final open production-acceptance and release-readiness target.
+The earlier exact head `90483821e116f38ed65559d7cb2239dfb5f50dbd` was not accepted or rerun as a flake after Desktop Shipping exposed a real planning-performance regression. The final exact head restored the deterministic desktop-planning budget without weakening discovery, final or pre-clean source confinement: the 500-cycle CPython 3.13 workload completed in 4.7089 seconds on the PR head and 4.8262 seconds on the merged `main` SHA against the 5.0-second ceiling, with fingerprint `8984903953e78b82`. Required CPython 3.10/3.13/3.14 contracts, localhost RTT, bounded private capture, native Tk, `.swir` exclusion and relocated installed-wheel execution all passed without an acceptance rerun, gate bypass or dependency change. This was source-development acceptance only; it made no public 2.2 release, operating-system sandbox or public-network latency claim. Milestone 10 remained the final production-acceptance and release-readiness target.
+
+## Milestone 10 acceptance gate
+
+Milestone 10 may be checked only when all of the following are true:
+
+1. Representative 2D, 3D and multiplayer projects remain green through authoring, profiling,
+   build/export, relocation and staged runtime checks on the accepted source.
+2. The exact wheel, native Windows wheel and sdist are bound to the reviewed publication chain by
+   canonical checksums, provenance and the logical-sdist identity.
+3. `v2.2.0` resolves directly to the publication commit, PyPI exposes exactly the accepted files,
+   and the final GitHub Release is server-enforced immutable with the exact title, notes and five
+   release assets.
+4. Clean public-index installs pass on Linux and macOS with CPython 3.13 and on Windows with
+   CPython 3.14, outside the repository checkout and without workflow-cache substitution.
+5. The exact successful publication attempt and its authority jobs are recorded in canonical,
+   repository-owned Phase E evidence that is excluded from wheel and sdist payloads.
+6. README, migration, changelog, release-gate and deterministic progress surfaces agree on the
+   published 2.2.0 identity and the finite 10/10 scope.
+
+### M10 implementation and acceptance evidence
+
+- [x] Immutable two-marker publication chain from candidate source
+  `efd5d2b5c26941d49599cd925bb1f8c35b844c3f` through candidate marker
+  `48ca4b55b9707845796451136002a4c6568ac231` to publication commit
+  `2f150ba6f3fd1e1fd121a8884298e616186e267b`.
+- [x] Direct immutable `v2.2.0` tag, exact PyPI distribution set and exact five-asset GitHub
+  Release, including canonical checksums and release provenance.
+- [x] Successful final Release run `37175535837`, attempt 1, at trusted workflow commit
+  `8cfe640b216c06e5423821615f97828e43b917c6`, including all eight authority jobs and the expanded
+  Linux, macOS and Windows public-install matrix.
+- [x] Durable canonical evidence in
+  [`release-evidence/2.2.0/manifest.json`](release-evidence/2.2.0/manifest.json), independently
+  rechecked by `tools/verify_public_release_2_2.py` and the read-only post-release workflow.
+- [x] Release notes and package-index description preserved byte-for-byte from the reviewed
+  candidate source.
+
+Milestone 10 was accepted on 2026-10-04 after the guarded publication and fresh immutable-public
+verification completed. SwirEngine 2.2.0 is published on PyPI and GitHub, and this roadmap is now
+**10/10 = 100.0%** for its named Production Tools & Visual Creation scope. This is a finite
+acceptance statement, not a claim that the engine is perfect, supports every environment or will
+never require regression fixes.

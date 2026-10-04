@@ -37,8 +37,10 @@ def test_repository_passes_2_1_milestone_acceptance() -> None:
         assert "NOT PUBLISHED" not in notes_21
         assert notes_22.startswith("# SwirEngine 2.2.0 Release Notes")
         assert "NOT PUBLISHED" not in notes_22
-        assert "bound non-publishing candidate" in readme
-        assert "NOT PUBLISHED" in readme
+        assert "STATUS-2.2.0%20PUBLISHED" in readme
+        assert "**Latest public stable release:** **SwirEngine 2.2.0**" in readme
+        assert '"swirengine==2.2.0"' in readme
+        assert (ROOT / "release-evidence/2.2.0/manifest.json").is_file()
     assert report.roadmap.completed == 10
     assert report.roadmap.total == 10
     assert report.roadmap.percent == pytest.approx(100.0)

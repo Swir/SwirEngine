@@ -28,30 +28,52 @@ def _expected_active_block(root: Path) -> str:
     return render_readme_progress(data)
 
 
+def _two_two_public(readme: str, roadmap_22: str) -> bool:
+    return (
+        "STATUS-2.2.0%20PUBLISHED" in readme
+        and "**Latest public stable release:** **SwirEngine 2.2.0**" in readme
+        and '"swirengine==2.2.0"' in readme
+        and "Current verified progress: 10/10 milestones = 100.0%." in roadmap_22
+    )
+
+
 def verify(root: Path) -> list[str]:
     errors: list[str] = []
     pyproject = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
     readme = (root / "README.md").read_text(encoding="utf-8")
     notes = (root / "RELEASE_NOTES_2_1.md").read_text(encoding="utf-8")
     roadmap = (root / "ROADMAP_2_1.md").read_text(encoding="utf-8")
+    roadmap_22 = (root / "ROADMAP_2_2.md").read_text(encoding="utf-8")
     release = (root / ".github/workflows/release.yml").read_text(encoding="utf-8")
 
     version = str(pyproject["project"]["version"])
+    public_22 = version == "2.2.0" and _two_two_public(readme, roadmap_22)
     if version == "2.2.0":
-        try:
-            from tools.verify_2_2_release_candidate import check_release_candidate
-        except ImportError:  # pragma: no cover - direct script execution
-            from verify_2_2_release_candidate import check_release_candidate
-
-        candidate_errors = check_release_candidate(root)
-        if candidate_errors:
-            errors.append(
-                "pyproject 2.2.0 is permitted only for the complete bound candidate: "
-                + "; ".join(candidate_errors)
+        if public_22:
+            required_public_paths = (
+                "release-evidence/2.2.0/manifest.json",
+                ".github/workflows/post-release-2.2.yml",
             )
+            for relative in required_public_paths:
+                if not (root / relative).is_file():
+                    errors.append(f"published 2.2 compatibility state is missing: {relative}")
+            if (root / ".github/workflows/release-candidate-2.2.yml").exists():
+                errors.append("published 2.2 state must retire the active candidate workflow")
+        else:
+            try:
+                from tools.verify_2_2_release_candidate import check_release_candidate
+            except ImportError:  # pragma: no cover - direct script execution
+                from verify_2_2_release_candidate import check_release_candidate
+
+            candidate_errors = check_release_candidate(root)
+            if candidate_errors:
+                errors.append(
+                    "pyproject 2.2.0 is permitted only for the complete bound candidate "
+                    "or immutable public release: " + "; ".join(candidate_errors)
+                )
     elif version != "2.1.0":
         errors.append(
-            "pyproject project.version must be public 2.1.0 or the complete bound 2.2.0 candidate"
+            "pyproject project.version must be public 2.1.0 or complete 2.2.0 release state"
         )
 
     if readme.count(PROGRESS_START) != 1 or readme.count(PROGRESS_END) != 1:
@@ -69,10 +91,15 @@ def verify(root: Path) -> list[str]:
                     "README PyPI progress block must match the deterministic active-roadmap ASCII block"
                 )
 
-    if "Latest public stable release:** **SwirEngine 2.1.0" not in readme:
-        errors.append("README must identify SwirEngine 2.1.0 as the public stable release")
-    if 'swirengine==2.1.0' not in readme:
-        errors.append("README must advertise the exact 2.1.0 PyPI install after publication")
+    expected_public_version = "2.2.0" if public_22 else "2.1.0"
+    if f"Latest public stable release:** **SwirEngine {expected_public_version}" not in readme:
+        errors.append(
+            f"README must identify SwirEngine {expected_public_version} as the public stable release"
+        )
+    if f'swirengine=={expected_public_version}' not in readme:
+        errors.append(
+            f"README must advertise the exact {expected_public_version} PyPI install after publication"
+        )
     if "Latest public stable release:** **SwirEngine 2.0.0" in readme:
         errors.append("README still claims 2.0.0 is the latest public stable release")
 
