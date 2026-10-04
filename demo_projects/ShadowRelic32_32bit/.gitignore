@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+generated_assets/
+build_assets/
+build/
+dist/
+*.spec
