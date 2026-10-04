@@ -8,7 +8,6 @@ from pathlib import Path
 import pytest
 
 from tools.verify_public_release_2_2 import (
-    CANDIDATE_SOURCE_COMMIT,
     DEFAULT_EVIDENCE,
     EXPECTED_DISTRIBUTION_NAMES,
     EXPECTED_RELEASE_ASSETS,
@@ -76,17 +75,17 @@ def _jobs() -> dict[str, object]:
 
 
 def _old_manifest() -> bytes:
-    return subprocess.run(
-        [
-            "git",
-            "-C",
-            str(ROOT),
-            "show",
-            f"{CANDIDATE_SOURCE_COMMIT}:{WORKFLOW_MANIFEST}",
-        ],
-        check=True,
-        capture_output=True,
-    ).stdout
+    payload = json.loads((ROOT / WORKFLOW_MANIFEST).read_bytes())
+    workflows = payload["required_workflows"]
+    assert workflows[19] == {
+        "path": ".github/workflows/post-release-2.2.yml",
+        "name": "Post-release 2.2 Public Verification",
+    }
+    workflows[19] = {
+        "path": ".github/workflows/release-candidate-2.2.yml",
+        "name": "SwirEngine 2.2 Release Candidate",
+    }
+    return (json.dumps(payload, indent=2) + "\n").encode()
 
 
 def _new_manifest(old_raw: bytes) -> bytes:
