@@ -33,6 +33,12 @@ from tools.verify_public_release_2_2 import (
 ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE = ROOT / DEFAULT_EVIDENCE
 WORKFLOW_MANIFEST = ".github/release-gates/2.2-required-workflows.json"
+BYTE_BOUND_FILES = {
+    "/release-evidence/2.2.0/manifest.json text eol=lf",
+    "/.github/release-gates/2.2-required-workflows.json text eol=lf",
+    "/RELEASE_NOTES_2_2.md text eol=lf",
+    "/PYPI_DESCRIPTION_2_2.md text eol=lf",
+}
 
 
 def _run(**overrides: object) -> dict[str, object]:
@@ -136,6 +142,16 @@ def test_manifest_is_the_single_canonical_v4_record() -> None:
     assert [item["name"] for item in evidence["release_workflow"]["successful_jobs"]] == sorted(
         item["name"] for item in evidence["release_workflow"]["successful_jobs"]
     )
+
+
+def test_byte_bound_release_evidence_forces_lf_on_every_platform() -> None:
+    attributes = {
+        line
+        for line in (ROOT / ".gitattributes").read_text(encoding="utf-8").splitlines()
+        if line and not line.startswith("#")
+    }
+
+    assert attributes == BYTE_BOUND_FILES
 
 
 def test_manifest_rejects_noncanonical_rendering(tmp_path: Path) -> None:
