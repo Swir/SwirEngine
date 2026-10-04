@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_repository_passes_2_1_milestone_acceptance() -> None:
     report = audit(ROOT)
 
-    assert report.version in {"2.0.0", "2.1.0", "2.2.0"}
+    assert report.version in {"2.0.0", "2.1.0", "2.2.0", "2.2.1"}
     if report.version == "2.1.0":
         notes = (ROOT / "RELEASE_NOTES_2_1.md").read_text(encoding="utf-8")
         if "NOT PUBLISHED" in notes:
@@ -40,6 +40,18 @@ def test_repository_passes_2_1_milestone_acceptance() -> None:
         assert "STATUS-2.2.0%20PUBLISHED" in readme
         assert "**Latest public stable release:** **SwirEngine 2.2.0**" in readme
         assert '"swirengine==2.2.0"' in readme
+        assert (ROOT / "release-evidence/2.2.0/manifest.json").is_file()
+    elif report.version == "2.2.1":
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        readme_folded = readme.casefold()
+        assert "swirengine 2.2.1" in readme_folded
+        assert "bound non-publishing patch candidate" in readme_folded
+        assert "NOT PUBLISHED" in readme
+        assert "**Latest public stable release:** **SwirEngine 2.2.0**" in readme
+        assert '"swirengine==2.2.0"' in readme
+        assert '"swirengine[audio]==2.2.0"' in readme
+        assert '"swirengine==2.2.1"' not in readme
+        assert '"swirengine[audio]==2.2.1"' not in readme
         assert (ROOT / "release-evidence/2.2.0/manifest.json").is_file()
     assert report.roadmap.completed == 10
     assert report.roadmap.total == 10

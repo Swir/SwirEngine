@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.2.1 candidate - Unreleased
+
+SwirEngine 2.2.1 is a bound, non-publishing maintenance candidate. SwirEngine 2.2.0 remains the
+latest public stable package until a guarded 2.2.1 publication completes and the corresponding
+public tag, GitHub Release and PyPI project state exist.
+
+- replaced the short package-index summary with a complete PyPI description covering installation,
+  2D and 3D quick starts, runtime systems, multiplayer boundaries, SwirEditor, the completed 2.2
+  production-tool scope, platform limits, examples and documentation links
+- added dedicated 2.2.1 release notes and bound both new release-text inputs to LF-normalized
+  repository bytes
+- advanced candidate package metadata and `swirengine.__version__` to `2.2.1` so future artifacts
+  can be built and verified from one exact source identity
+- retained the complete 2.2 runtime, public API and feature scope without functional runtime or API
+  changes
+- kept every public installation command pinned to `2.2.0` while the candidate is not published
+
+This entry does not authorize publication. No `v2.2.1` tag, GitHub Release or PyPI upload is implied
+until the release gate succeeds from the exact candidate source.
+
 ## 2.2.0 - 2026-10-04
 
 SwirEngine 2.2.0 is published on PyPI and GitHub. The immutable `v2.2.0` tag resolves to publication

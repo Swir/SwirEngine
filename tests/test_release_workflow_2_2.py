@@ -7,8 +7,8 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_PATH = ROOT / ".github/workflows/release.yml"
-PUBLICATION_GATE_PATH = ROOT / ".github/workflows/publication-gate-2.2.yml"
-CANDIDATE_PATH = ROOT / "tests/fixtures/release-candidate-2.2.yml"
+PUBLICATION_GATE_PATH = ROOT / ".github/workflows/publication-gate-2.2.1.yml"
+CANDIDATE_PATH = ROOT / ".github/workflows/release-candidate-2.2.1.yml"
 CHECKOUT_ACTION = "actions/checkout@11d5960a326750d5838078e36cf38b85af677262"
 DOWNLOAD_ACTION = "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093"
 PYPI_ACTION = (
@@ -80,7 +80,7 @@ def test_yaml_contract_dependency_is_available_to_every_full_test_run() -> None:
     verify_index = next(
         i
         for i, step in enumerate(steps)
-        if "verify_2_2_release_candidate.py" in step.get("run", "")
+        if "verify_2_2_1_release_candidate.py" in step.get("run", "")
     )
     assert setup_index < install_index < verify_index
     chain_step = next(step for step in steps if step.get("id") == "chain")
@@ -92,8 +92,8 @@ def test_yaml_contract_dependency_is_available_to_every_full_test_run() -> None:
     candidate_run = candidate_step["run"]
     assert 'git worktree add --detach "$candidate_root" "$CANDIDATE_SOURCE_SHA"' in candidate_run
     assert 'git -C "$candidate_root" rev-parse HEAD' in candidate_run
-    assert 'python "$candidate_root/tools/verify_2_2_release_candidate.py"' in candidate_run
-    assert "python tools/verify_2_2_release_candidate.py" not in gate_text
+    assert 'python "$candidate_root/tools/verify_2_2_1_release_candidate.py"' in candidate_run
+    assert "python tools/verify_2_2_1_release_candidate.py" not in gate_text
 
 
 def test_release_identity_waits_for_the_publication_gate_workflow() -> None:
@@ -103,7 +103,7 @@ def test_release_identity_waits_for_the_publication_gate_workflow() -> None:
     assert isinstance(triggers, dict)
     assert set(triggers) == {"workflow_run"}
     assert triggers["workflow_run"] == {
-        "workflows": ["SwirEngine 2.2 Publication Gate"],
+        "workflows": ["SwirEngine 2.2.1 Publication Gate"],
         "types": ["completed"],
     }
     assert workflow["name"] == "Release"
@@ -111,18 +111,18 @@ def test_release_identity_waits_for_the_publication_gate_workflow() -> None:
 
 def test_publication_gate_is_read_only_and_marker_push_only() -> None:
     text, workflow = _publication_gate()
-    assert workflow["name"] == "SwirEngine 2.2 Publication Gate"
+    assert workflow["name"] == "SwirEngine 2.2.1 Publication Gate"
     assert workflow["permissions"] == {"contents": "read"}
     assert workflow["on"] == {
         "push": {
-            "branches": ["release/2.2.0-publication-r2"],
-            "paths": [".release/publish-2.2.0/publication.json"],
+            "branches": ["release/2.2.1-publication"],
+            "paths": [".release/publish-2.2.1/publication.json"],
         }
     }
     assert "id-token: write" not in text
     assert "contents: write" not in text
-    assert "tools/verify_publication_chain_2_2.py" in text
-    assert "tools/verify_2_2_release_candidate.py" in text
+    assert "tools/verify_publication_chain_2_2_1.py" in text
+    assert "tools/verify_2_2_1_release_candidate.py" in text
     for step in workflow["jobs"]["publication-chain"]["steps"]:
         uses = step.get("uses")
         if uses is not None:
@@ -148,7 +148,7 @@ def test_release_requires_exact_trigger_and_two_marker_chain() -> None:
         "'.workflow_run.head_branch'",
         "'.workflow_run.head_sha'",
         'test "$remote_tag" = "$PUBLICATION_SHA"',
-        "trusted-verifier/tools/verify_publication_chain_2_2.py",
+        "trusted-verifier/tools/verify_publication_chain_2_2_1.py",
         "trusted-verifier/tools/verify_candidate_merge_2_2.py",
         "--tag-policy absent-or-publication",
         "--tag-policy publication",
@@ -183,7 +183,7 @@ def test_release_bootstraps_provenance_from_trusted_workflow_source() -> None:
     }
 
     chain_run = next(step["run"] for step in steps if step.get("id") == "chain")
-    assert "python trusted-verifier/tools/verify_publication_chain_2_2.py" in chain_run
+    assert "python trusted-verifier/tools/verify_publication_chain_2_2_1.py" in chain_run
     assert "--root publication-source" in chain_run
     merge_run = next(step["run"] for step in steps if "candidate pull request" in step.get("name", ""))
     assert "python trusted-verifier/tools/verify_candidate_merge_2_2.py" in merge_run
@@ -196,6 +196,7 @@ def test_named_exact_sha_workflow_gate_replaces_counting() -> None:
 
     assert "verify_required_workflows_2_2.py" in text
     assert '--sha "$CANDIDATE_SOURCE_SHA"' in text
+    assert "--manifest .github/release-gates/2.2.1-required-workflows.json" in text
     assert "--mode pull-request" in text
     assert "head_sha=${CANDIDATE_SOURCE_SHA}&event=pull_request" in text
     assert "gh api --paginate --slurp" in text
@@ -216,9 +217,9 @@ def test_release_builds_both_sdists_and_binds_provenance_v2() -> None:
     required = (
         'git worktree add --detach "$candidate_root" "$CANDIDATE_SOURCE_SHA"',
         "tools/verify_sdist_identity_2_2.py",
-        '--candidate "$RUNNER_TEMP/candidate-dist/swirengine-2.2.0.tar.gz"',
-        '--publication "$RUNNER_TEMP/publication-dist/swirengine-2.2.0.tar.gz"',
-        "tools/release_evidence_2_2.py",
+        '--candidate "$RUNNER_TEMP/candidate-dist/swirengine-2.2.1.tar.gz"',
+        '--publication "$RUNNER_TEMP/publication-dist/swirengine-2.2.1.tar.gz"',
+        "tools/release_evidence_2_2_1.py",
         '--candidate-source-commit "$CANDIDATE_SOURCE_SHA"',
         '--candidate-marker-commit "$CANDIDATE_MARKER_SHA"',
         '--publication-commit "$PUBLICATION_SHA"',
@@ -345,16 +346,16 @@ def test_release_evidence_retry_recovers_only_complete_attested_public_assets() 
     run = step["run"]
 
     snapshot_index = run.index("snapshot initial-state/release.json")
-    normal_reconcile_index = run.index("if python tools/reconcile_release_2_2.py")
+    normal_reconcile_index = run.index("if python tools/reconcile_release_2_2_1.py")
     fallback_branch_index = run.index(
         'else\n  echo "Fresh assets differ from public state; '
         'requiring exact immutable release recovery."'
     )
     download_index = run.index('gh release download "$RELEASE_TAG"')
     attestation_index = run.index('gh release verify "$RELEASE_TAG"')
-    evidence_index = run.index("python tools/release_evidence_2_2.py verify")
+    evidence_index = run.index("python tools/release_evidence_2_2_1.py verify")
     recovery_snapshot_index = run.index("snapshot recovery-state/release.json")
-    complete_reconcile_index = run.rindex("python tools/reconcile_release_2_2.py")
+    complete_reconcile_index = run.rindex("python tools/reconcile_release_2_2_1.py")
     snapshot_stage_index = run.index(
         'cp -- "recovery-state/$state_file" "initial-state/$state_file"'
     )
@@ -374,7 +375,7 @@ def test_release_evidence_retry_recovers_only_complete_attested_public_assets() 
         < fallback_end_index
     )
 
-    assert run.count("python tools/reconcile_release_2_2.py") == 2
+    assert run.count("python tools/reconcile_release_2_2_1.py") == 2
     assert run.count("--require-complete") == 1
     assert run.count("--pypi-json initial-state/pypi.json") == 1
     assert run.count("--tag-json initial-state/tag.json") == 1
@@ -391,9 +392,9 @@ def test_release_evidence_retry_recovers_only_complete_attested_public_assets() 
     )
     assert assets_match is not None
     assert assets_match.group("body").split() == [
-        "swirengine-2.2.0-py3-none-any.whl",
-        "swirengine-2.2.0-cp314-cp314-win_amd64.whl",
-        "swirengine-2.2.0.tar.gz",
+        "swirengine-2.2.1-py3-none-any.whl",
+        "swirengine-2.2.1-cp314-cp314-win_amd64.whl",
+        "swirengine-2.2.1.tar.gz",
         "SHA256SUMS",
         "release-provenance.json",
     ]
@@ -424,7 +425,7 @@ def test_release_evidence_retry_recovers_only_complete_attested_public_assets() 
         '--candidate-source-commit "$CANDIDATE_SOURCE_SHA"',
         '--candidate-marker-commit "$CANDIDATE_MARKER_SHA"',
         '--publication-commit "$PUBLICATION_SHA"',
-        "--workflow-manifest .github/release-gates/2.2-required-workflows.json",
+        "--workflow-manifest .github/release-gates/2.2.1-required-workflows.json",
         '--expected-workflow-manifest-sha256 "$WORKFLOW_MANIFEST_SHA256"',
         '--expected-logical-sdist-sha256 "$LOGICAL_SDIST_SHA256"',
     ):
@@ -445,10 +446,14 @@ def test_release_evidence_retry_recovers_only_complete_attested_public_assets() 
 def test_retries_reconcile_fresh_state_and_never_clobber() -> None:
     text, _ = _workflow()
 
-    assert text.count("tools/reconcile_release_2_2.py") >= 7
+    assert text.count("tools/reconcile_release_2_2_1.py") >= 7
     assert text.count("--initial-pypi-json") >= 4
     assert text.count("--initial-tag-json") >= 4
     assert text.count("--initial-release-json") >= 4
+    assert text.count("--pypi-description PYPI_DESCRIPTION_2_2_1.md") == 2
+    assert (
+        text.count("--pypi-description release-input/PYPI_DESCRIPTION_2_2_1.md") == 6
+    )
     assert "--require-complete" in text
     assert "skip-existing" not in text
     assert "--clobber" not in text
@@ -551,8 +556,8 @@ def test_github_release_requires_server_immutability_and_attestations() -> None:
 
     assert "gh release verify \"$RELEASE_TAG\"" in text
     assert "gh release verify-asset \"$RELEASE_TAG\"" in text
-    assert "--notes-file github-release-input/RELEASE_NOTES_2_2.md" in text
-    assert text.count("--release-notes release-input/RELEASE_NOTES_2_2.md") == 6
+    assert "--notes-file github-release-input/RELEASE_NOTES_2_2_1.md" in text
+    assert text.count("--release-notes release-input/RELEASE_NOTES_2_2_1.md") == 6
     assert jobs["verify-github-release"]["permissions"] == {
         "attestations": "read",
         "contents": "read",
@@ -561,27 +566,28 @@ def test_github_release_requires_server_immutability_and_attestations() -> None:
     evidence_upload = next(
         step
         for step in jobs["release-evidence"]["steps"]
-        if step.get("with", {}).get("name") == "swirengine-2.2.0-publication-assets"
+        if step.get("with", {}).get("name") == "swirengine-2.2.1-publication-assets"
     )
     assert set(evidence_upload["with"]["path"].splitlines()) == {
         "dist/*",
         "initial-state/*.json",
-        "RELEASE_NOTES_2_2.md",
+        "RELEASE_NOTES_2_2_1.md",
+        "PYPI_DESCRIPTION_2_2_1.md",
     }
 
     create_run = jobs["github-release"]["steps"][1]["run"]
     for name in (
-        "swirengine-2.2.0-py3-none-any.whl",
-        "swirengine-2.2.0-cp314-cp314-win_amd64.whl",
-        "swirengine-2.2.0.tar.gz",
+        "swirengine-2.2.1-py3-none-any.whl",
+        "swirengine-2.2.1-cp314-cp314-win_amd64.whl",
+        "swirengine-2.2.1.tar.gz",
         "SHA256SUMS",
         "release-provenance.json",
     ):
         assert create_run.count(f"github-release-input/{name}") == 1
     assert "github-release-input/*" not in create_run
     assert "--draft" not in create_run
-    assert '--title "SwirEngine 2.2.0"' in create_run
-    assert "--notes-file github-release-input/RELEASE_NOTES_2_2.md" in create_run
+    assert '--title "SwirEngine 2.2.1"' in create_run
+    assert "--notes-file github-release-input/RELEASE_NOTES_2_2_1.md" in create_run
 
 
 def test_release_workflow_pins_every_reusable_action_to_a_full_commit() -> None:
@@ -602,7 +608,7 @@ def test_release_assets_are_never_built_from_public_registry_state() -> None:
     text, _ = _workflow()
 
     assert 'ref: ${{ needs.publication-chain.outputs.publication_sha }}' in text
-    assert "swirengine==2.2.0" in text
+    assert "swirengine==2.2.1" in text
     assert "--index-url https://pypi.org/simple" in text
-    assert "--expected-version 2.2.0" in text
+    assert "--expected-version 2.2.1" in text
     assert "refs/tags/v2.1.0" not in text

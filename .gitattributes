@@ -1,4 +1,7 @@
 /release-evidence/2.2.0/manifest.json text eol=lf
 /.github/release-gates/2.2-required-workflows.json text eol=lf
+/.github/release-gates/2.2.1-required-workflows.json text eol=lf
 /RELEASE_NOTES_2_2.md text eol=lf
 /PYPI_DESCRIPTION_2_2.md text eol=lf
+/RELEASE_NOTES_2_2_1.md text eol=lf
+/PYPI_DESCRIPTION_2_2_1.md text eol=lf

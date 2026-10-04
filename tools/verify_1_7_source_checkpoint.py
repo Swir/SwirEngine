@@ -15,6 +15,7 @@ STABLE_PUBLIC_VERSION = "1.5.0"
 FORWARD_PUBLIC_VERSION = "2.0.0"
 CURRENT_PUBLIC_VERSION = "2.1.0"
 CANDIDATE_VERSION = "2.2.0"
+PATCH_CANDIDATE_VERSION = "2.2.1"
 EXPECTED_MILESTONES = 10
 
 MILESTONE_RE = re.compile(r"^- \[([ x])\] \*\*(\d+)\.", re.MULTILINE)
@@ -192,6 +193,32 @@ def _two_point_two_candidate_ready(root: Path) -> bool:
     return history_ok and (candidate_ok or public_ok)
 
 
+def _two_point_two_patch_candidate_ready(root: Path) -> bool:
+    roadmap = root / "ROADMAP_2_2.md"
+    notes = root / "RELEASE_NOTES_2_2.md"
+    readme = root / "README.md"
+    if not all(path.is_file() for path in (roadmap, notes, readme)):
+        return False
+    roadmap_text = roadmap.read_text(encoding="utf-8")
+    notes_text = notes.read_text(encoding="utf-8")
+    readme_text = readme.read_text(encoding="utf-8")
+    readme_folded = readme_text.casefold()
+    return (
+        notes_text.startswith("# SwirEngine 2.2.0 Release Notes")
+        and "Prepared from the bound 2.2.0 candidate" in notes_text
+        and "Current verified progress: 10/10 milestones = 100.0%." in roadmap_text
+        and "swirengine 2.2.1" in readme_folded
+        and "bound non-publishing patch candidate" in readme_folded
+        and "NOT PUBLISHED" in readme_text
+        and "**Latest public stable release:** **SwirEngine 2.2.0**" in readme_text
+        and '"swirengine==2.2.0"' in readme_text
+        and '"swirengine[audio]==2.2.0"' in readme_text
+        and '"swirengine==2.2.1"' not in readme_text
+        and '"swirengine[audio]==2.2.1"' not in readme_text
+        and (root / "release-evidence/2.2.0/manifest.json").is_file()
+    )
+
+
 def _assert_locked_roadmap(root: Path, version: str) -> None:
     text = _read_text(root, f"ROADMAP_{version.replace('.', '_')}.md")
     _assert("100.0%" in text, f"locked {version} roadmap must preserve its 100.0% completion marker")
@@ -231,6 +258,8 @@ def validate_checkpoint(root: Path = PROJECT_ROOT, *, require_complete: bool = F
         allowed_versions.add(CURRENT_PUBLIC_VERSION)
     if _two_point_two_candidate_ready(root):
         allowed_versions.add(CANDIDATE_VERSION)
+    if _two_point_two_patch_candidate_ready(root):
+        allowed_versions.add(PATCH_CANDIDATE_VERSION)
     _assert(
         project_version in allowed_versions,
         f"pyproject.toml must preserve the locked 1.7 history under {sorted(allowed_versions)}; found {project_version}",

@@ -9,7 +9,8 @@
 ![CI](https://img.shields.io/github/actions/workflow/status/Swir/SwirEngine/ci.yml?branch=main&style=for-the-badge&label=CI&color=02050A&logo=githubactions&logoColor=62E5FF)
 [![PyPI](https://img.shields.io/pypi/v/swirengine?style=for-the-badge&color=02050A&logo=pypi&logoColor=62E5FF)](https://pypi.org/project/swirengine/)
 ![Python](https://img.shields.io/badge/Python-3.10--3.14%2064--bit%20CPython%20verified%20matrix-02050A?style=for-the-badge&logo=python&logoColor=62E5FF)
-![Status](https://img.shields.io/badge/STATUS-2.2.0%20PUBLISHED-02050A?style=for-the-badge&logoColor=62E5FF)
+![Public](https://img.shields.io/badge/PUBLIC-2.2.0%20STABLE-02050A?style=for-the-badge&logoColor=62E5FF)
+![Candidate](https://img.shields.io/badge/CANDIDATE-2.2.1%20NOT%20PUBLISHED-02050A?style=for-the-badge&logoColor=62E5FF)
 ![Development](https://img.shields.io/badge/2.2%20ROADMAP-10%2F10-02050A?style=for-the-badge&logoColor=62E5FF)
 ![License](https://img.shields.io/badge/LICENSE-MIT-02050A?style=for-the-badge&logo=opensourceinitiative&logoColor=62E5FF)
 
@@ -38,6 +39,13 @@ Status: COMPLETE
 **Completed verified release scope:** SwirEngine 2.2 — Production Tools & Visual Creation<br>
 **2.2 roadmap:** **10/10 milestones = 100.0% - COMPLETE**<br>
 **2.2 release:** **PUBLISHED — GitHub Release, PyPI and durable evidence verified**
+
+**Bound non-publishing patch candidate:** **SwirEngine 2.2.1 — NOT PUBLISHED**<br>
+The source version, [`RELEASE_NOTES_2_2_1.md`](RELEASE_NOTES_2_2_1.md) and
+[`PYPI_DESCRIPTION_2_2_1.md`](PYPI_DESCRIPTION_2_2_1.md) are bound only as an exact
+documentation-only maintenance candidate. This does not create a tag, GitHub Release or PyPI
+upload. **SwirEngine 2.2.0 remains the latest public stable release**, and every public installation
+command below remains pinned to `2.2.0` until a guarded 2.2.1 publication succeeds.
 
 **Latest public stable release:** **SwirEngine 2.2.0**<br>
 **Release date:** **2026-10-04**<br>
@@ -144,6 +152,11 @@ game.run()
 SwirEngine 2.2.0 is the current public stable release. Its finite roadmap is complete and remains
 the acceptance record for the published package:
 
+The repository also contains a bound, non-publishing 2.2.1 maintenance candidate whose only
+intended release change is a substantially fuller PyPI description and matching release metadata.
+It contains no functional runtime or public-API changes from 2.2.0. Candidate source metadata is
+not evidence of public availability.
+
 - [`ROADMAP_2_2.md`](ROADMAP_2_2.md) - **2.2 Production Tools & Visual Creation**, **10/10 = 100.0%**, released and frozen except for focused maintenance.
 - [`ROADMAP_2_1.md`](ROADMAP_2_1.md) — **2.1 SwirEditor & Creator Workflow**, **10/10 = 100.0%**, released and frozen except for regressions.
 
@@ -223,6 +236,8 @@ Engineering quality is evaluated against complete games, public installation, re
 
 - `v1.4.0`, `v1.5.0`, `v2.0.0`, `v2.1.0` and `v2.2.0` are immutable published releases; release history is not rewritten.
 - **2.2.0 is the latest public stable package.**
+- **2.2.1 is a bound candidate, not a published release.** Its version metadata and dedicated
+  package-index description do not authorize a tag, GitHub Release or PyPI upload.
 - 1.6, 1.7, 1.8 and 1.9 remain completed source-only checkpoints and were never published as releases.
 - The 2D, 3D and multiplayer game demos remain source-only integration fixtures.
 - The published 1.5.0 `swirengine.__all__` surface remains the documented starting compatibility floor for 2.0 migration validation.

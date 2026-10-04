@@ -11,6 +11,7 @@ except ModuleNotFoundError:  # pragma: no cover - CPython 3.10
 
 PUBLIC_STABLE_VERSION = "2.1.0"
 EXPECTED_CANDIDATE_VERSION = "2.2.0"
+PATCH_CANDIDATE_VERSION = "2.2.1"
 EXPECTED_PYTHON_RANGE = ">=3.10,<3.15"
 EXPECTED_COMPLETED = 9
 EXPECTED_FINAL_COMPLETED = 10
@@ -196,7 +197,9 @@ def validate_readme(
         raise AssertionError("README PyPI progress block must remain deterministic plain ASCII")
     normalized = " ".join(readme.split()).casefold()
     if phase is None:
-        if "10/10 milestones = 100.0% - complete" in normalized:
+        if "bound non-publishing patch candidate" in normalized:
+            phase = "PATCH"
+        elif "10/10 milestones = 100.0% - complete" in normalized:
             phase = "E"
         else:
             phase = "B" if "bound non-publishing candidate" in normalized else "A"
@@ -237,9 +240,33 @@ def validate_readme(
         for fragment in required:
             if fragment not in readme:
                 raise AssertionError(f"README Phase E contract is missing: {fragment}")
+    elif phase == "PATCH":
+        if state.completed != EXPECTED_FINAL_COMPLETED or state.total != EXPECTED_TOTAL:
+            raise AssertionError(
+                "README patch-candidate validation requires the final 10/10 roadmap state"
+            )
+        required = (
+            "SwirEngine 2.2.1",
+            "bound non-publishing patch candidate",
+            "NOT PUBLISHED",
+            "**Latest public stable release:** **SwirEngine 2.2.0**",
+            '"swirengine==2.2.0"',
+            '"swirengine[audio]==2.2.0"',
+            "release-evidence/2.2.0/manifest.json",
+        )
+        for fragment in required:
+            if fragment.casefold() not in readme.casefold():
+                raise AssertionError(
+                    f"README 2.2.1 patch-candidate contract is missing: {fragment}"
+                )
+        for forbidden in ('"swirengine==2.2.1"', '"swirengine[audio]==2.2.1"'):
+            if forbidden in readme:
+                raise AssertionError(
+                    "README must not advertise a public 2.2.1 install before publication"
+                )
     else:
         raise AssertionError(f"unsupported 2.2 release phase: {phase}")
-    if phase != "E" and (
+    if phase in {"A", "B"} and (
         '"swirengine==2.2.0"' in readme or '"swirengine[audio]==2.2.0"' in readme
     ):
         raise AssertionError("README must not advertise a public 2.2.0 install before Phase E")
@@ -339,10 +366,13 @@ def audit(root: Path | None = None) -> ReadinessReport:
         phase = "B"
     elif version == EXPECTED_CANDIDATE_VERSION and state.completed == EXPECTED_FINAL_COMPLETED:
         phase = "E"
+    elif version == PATCH_CANDIDATE_VERSION and state.completed == EXPECTED_FINAL_COMPLETED:
+        phase = "PATCH"
     else:
         raise AssertionError(
             "2.2 package metadata and roadmap must be exactly 2.1.0/9-of-10 (Phase A), "
-            "2.2.0/9-of-10 (Phase B), or 2.2.0/10-of-10 (Phase E)"
+            "2.2.0/9-of-10 (Phase B), 2.2.0/10-of-10 (Phase E), or "
+            "2.2.1/10-of-10 (bound patch candidate)"
         )
     checks.append(f"2.2 metadata matches Phase {phase}")
     runtime = _read(repository_root, "src/swirengine/__init__.py")
@@ -382,9 +412,9 @@ def audit(root: Path | None = None) -> ReadinessReport:
             checks,
         )
 
-    if phase == "E":
+    if phase in {"E", "PATCH"}:
         require_phase_e_roadmap(roadmap_text, state)
-        checks.append("2.2 roadmap is exact 10/10 after immutable public verification")
+        checks.append("2.2 roadmap remains exact 10/10 after immutable public verification")
     else:
         require_phase_a_roadmap(roadmap_text, state)
         checks.append(f"2.2 roadmap remains exact 9/10 during Phase {phase}")
@@ -471,11 +501,17 @@ def audit(root: Path | None = None) -> ReadinessReport:
             "latest public stable release remains **swirengine 2.1.0**" in migration_folded
             and "bound non-publishing candidate" in migration_folded
         )
-    else:
+    elif phase == "E":
         migration_folded = migration_words.casefold()
         migration_ok = (
             "swirengine 2.2.0 is **published**" in migration_folded
             and "release-evidence/2.2.0/manifest.json" in migration_folded
+            and "verify_public_release_2_2.py" in migration_folded
+        )
+    else:
+        migration_folded = migration_words.casefold()
+        migration_ok = (
+            "release-evidence/2.2.0/manifest.json" in migration_folded
             and "verify_public_release_2_2.py" in migration_folded
         )
     _require(
@@ -484,7 +520,7 @@ def audit(root: Path | None = None) -> ReadinessReport:
         checks,
     )
 
-    if phase == "E":
+    if phase in {"E", "PATCH"}:
         _require(
             not (repository_root / PHASE_B_WORKFLOW).exists(),
             "Phase E removes the active historical candidate workflow",
@@ -504,6 +540,12 @@ def audit(root: Path | None = None) -> ReadinessReport:
         f"Phase {phase} repository publication marker is absent",
         checks,
     )
+    if phase == "PATCH":
+        _require(
+            not (repository_root / ".release" / "publish-2.2.1").exists(),
+            "2.2.1 patch candidate repository publication marker is absent",
+            checks,
+        )
 
     return ReadinessReport(phase=phase, version=version, roadmap=state, checks=tuple(checks))
 

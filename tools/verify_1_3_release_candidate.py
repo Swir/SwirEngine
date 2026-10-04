@@ -13,6 +13,7 @@ except ModuleNotFoundError:  # Python 3.10
 TARGET_VERSION = "1.3.0"
 CURRENT_STABLE_VERSION = "1.2.0"
 BOUND_CANDIDATE_VERSION = "2.2.0"
+PATCH_CANDIDATE_VERSION = "2.2.1"
 ACTIVE_STABLE_VERSIONS = {
     CURRENT_STABLE_VERSION,
     TARGET_VERSION,
@@ -21,6 +22,7 @@ ACTIVE_STABLE_VERSIONS = {
     "2.0.0",
     "2.1.0",
     BOUND_CANDIDATE_VERSION,
+    PATCH_CANDIDATE_VERSION,
 }
 EXPECTED_TOTAL = 10
 EXPECTED_PYTHON_RANGE = ">=3.10,<3.15"
@@ -125,6 +127,32 @@ def _bound_two_point_two_candidate(root: Path) -> bool:
     return history_ok and (candidate_ok or public_ok)
 
 
+def _bound_two_point_two_patch_candidate(root: Path) -> bool:
+    readme_path = root / "README.md"
+    notes_path = root / "RELEASE_NOTES_2_2.md"
+    roadmap_path = root / "ROADMAP_2_2.md"
+    if not all(path.is_file() for path in (readme_path, notes_path, roadmap_path)):
+        return False
+    readme = readme_path.read_text(encoding="utf-8")
+    readme_folded = readme.casefold()
+    notes = notes_path.read_text(encoding="utf-8")
+    roadmap = roadmap_path.read_text(encoding="utf-8")
+    return (
+        notes.startswith("# SwirEngine 2.2.0 Release Notes")
+        and "Prepared from the bound 2.2.0 candidate" in notes
+        and "Current verified progress: 10/10 milestones = 100.0%." in roadmap
+        and "swirengine 2.2.1" in readme_folded
+        and "bound non-publishing patch candidate" in readme_folded
+        and "NOT PUBLISHED" in readme
+        and "**Latest public stable release:** **SwirEngine 2.2.0**" in readme
+        and '"swirengine==2.2.0"' in readme
+        and '"swirengine[audio]==2.2.0"' in readme
+        and '"swirengine==2.2.1"' not in readme
+        and '"swirengine[audio]==2.2.1"' not in readme
+        and (root / "release-evidence/2.2.0/manifest.json").is_file()
+    )
+
+
 def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditReport:
     root = Path(root or Path(__file__).resolve().parents[1]).resolve()
     checks: list[str] = []
@@ -140,6 +168,12 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         _require(
             _bound_two_point_two_candidate(root),
             "2.2.0 metadata is a bound non-publishing candidate over immutable public 2.1",
+            checks,
+        )
+    elif version == PATCH_CANDIDATE_VERSION:
+        _require(
+            _bound_two_point_two_patch_candidate(root),
+            "2.2.1 metadata is a bound non-publishing patch candidate over immutable public 2.2.0",
             checks,
         )
     _require(
@@ -171,7 +205,8 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             _require(version == TARGET_VERSION, f"historical 1.3 publication version is {TARGET_VERSION}", checks)
         else:
             _require(
-                version in {"1.4.0", "1.5.0", "2.0.0", "2.1.0", "2.2.0"},
+                version
+                in {"1.4.0", "1.5.0", "2.0.0", "2.1.0", "2.2.0", "2.2.1"},
                 "later verified stable/candidate lines preserve the completed 1.3 compatibility contract",
                 checks,
             )
@@ -179,7 +214,7 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         _require(roadmap.completed <= 10, "development roadmap cannot exceed 10 deliverables", checks)
 
     readme = _read(root, "README.md")
-    if version in {"2.0.0", "2.1.0", "2.2.0"}:
+    if version in {"2.0.0", "2.1.0", "2.2.0", "2.2.1"}:
         _require(
             "64-bit CPython 3.10–3.14" in readme,
             "current README documents the verified 2.x Python support matrix",

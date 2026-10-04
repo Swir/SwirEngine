@@ -4,9 +4,9 @@ build-backend = "hatchling.build"
 
 [project]
 name = "swirengine"
-version = "2.2.0"
+version = "2.2.1"
 description = "Modern Python-first 2D/3D game engine with a unified API."
-readme = "PYPI_DESCRIPTION_2_2.md"
+readme = "PYPI_DESCRIPTION_2_2_1.md"
 requires-python = ">=3.10,<3.15"
 license = {text = "MIT"}
 authors = [{name = "SwirEngine contributors"}]

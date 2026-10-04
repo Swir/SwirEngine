@@ -6,7 +6,14 @@ from demo_projects.neon_frontier_1_4.run_game import run_headless_probe
 from tools.verify_1_4_release_candidate import TARGET_VERSION, audit, parse_roadmap
 
 ROOT = Path(__file__).resolve().parents[1]
-SUPPORTED_CURRENT_SOURCE_VERSIONS = {TARGET_VERSION, "1.5.0", "2.0.0", "2.1.0", "2.2.0"}
+SUPPORTED_CURRENT_SOURCE_VERSIONS = {
+    TARGET_VERSION,
+    "1.5.0",
+    "2.0.0",
+    "2.1.0",
+    "2.2.0",
+    "2.2.1",
+}
 
 
 def test_locked_1_4_contract_is_complete_on_supported_stable_lines() -> None:
@@ -93,7 +100,7 @@ def test_historical_1_4_tag_bridge_only_targets_exact_verified_main_commit() -> 
 
 def test_current_release_workflow_preserves_trusted_publisher_without_rewriting_history() -> None:
     workflow = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
-    publication_gate = (ROOT / ".github/workflows/publication-gate-2.2.yml").read_text(
+    publication_gate = (ROOT / ".github/workflows/publication-gate-2.2.1.yml").read_text(
         encoding="utf-8"
     )
     historical = (ROOT / ".github/workflows/release-2.0.yml").read_text(encoding="utf-8")
@@ -107,12 +114,12 @@ def test_current_release_workflow_preserves_trusted_publisher_without_rewriting_
     assert "environment: pypi" in workflow
     assert "skip-existing: true" not in workflow
     assert "workflow_run:" in trigger_section
-    assert "RELEASE_TAG: v2.2.0" in trigger_section
-    assert "SwirEngine 2.2 Publication Gate" in trigger_section
-    assert "verify_publication_chain_2_2.py" in workflow
+    assert "RELEASE_TAG: v2.2.1" in trigger_section
+    assert "SwirEngine 2.2.1 Publication Gate" in trigger_section
+    assert "verify_publication_chain_2_2_1.py" in workflow
     assert "verify_required_workflows_2_2.py" in workflow
-    assert "reconcile_release_2_2.py" in workflow
-    assert 'branches:\n      - "release/2.2.0-publication-r2"' in publication_gate
+    assert "reconcile_release_2_2_1.py" in workflow
+    assert 'branches:\n      - "release/2.2.1-publication"' in publication_gate
     assert 'ref: "refs/tags/v2.0.0"' in historical
     assert "verify_2_0_release_candidate.py --require-final" in historical
     assert "git push --force" not in workflow

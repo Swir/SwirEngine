@@ -6,6 +6,7 @@ import swirengine
 HISTORICAL_PUBLIC_VERSION = "2.0.0"
 PUBLIC_STABLE_VERSION = "2.1.0"
 CANDIDATE_VERSION = "2.2.0"
+PATCH_CANDIDATE_VERSION = "2.2.1"
 
 
 def _allowed_source_versions() -> set[str]:
@@ -63,8 +64,25 @@ def _allowed_source_versions() -> set[str]:
             and Path(".github/workflows/post-release-2.2.yml").is_file()
             and not Path(".github/workflows/release-candidate-2.2.yml").exists()
         )
+        readme_folded = readme_text.casefold()
+        patch_candidate_221 = (
+            "Current verified progress: 10/10 milestones = 100.0%." in roadmap_text
+            and notes_text.startswith("# SwirEngine 2.2.0 Release Notes")
+            and "NOT PUBLISHED" not in notes_text
+            and "swirengine 2.2.1" in readme_folded
+            and "bound non-publishing patch candidate" in readme_folded
+            and "NOT PUBLISHED" in readme_text
+            and "**Latest public stable release:** **SwirEngine 2.2.0**" in readme_text
+            and '"swirengine==2.2.0"' in readme_text
+            and '"swirengine[audio]==2.2.0"' in readme_text
+            and '"swirengine==2.2.1"' not in readme_text
+            and '"swirengine[audio]==2.2.1"' not in readme_text
+            and Path("release-evidence/2.2.0/manifest.json").is_file()
+        )
         if candidate_22 or published_22:
             allowed.add(CANDIDATE_VERSION)
+        if patch_candidate_221:
+            allowed.add(PATCH_CANDIDATE_VERSION)
     return allowed
 
 
@@ -107,6 +125,18 @@ def test_source_version_matches_guarded_release_phase():
             assert "NOT PUBLISHED" in readme
             assert 'swirengine==2.1.0' in readme
             assert '"swirengine==2.2.0"' not in readme
+    elif swirengine.__version__ == PATCH_CANDIDATE_VERSION:
+        readme = Path("README.md").read_text(encoding="utf-8")
+        readme_folded = readme.casefold()
+        assert "swirengine 2.2.1" in readme_folded
+        assert "bound non-publishing patch candidate" in readme_folded
+        assert "NOT PUBLISHED" in readme
+        assert "**Latest public stable release:** **SwirEngine 2.2.0**" in readme
+        assert '"swirengine==2.2.0"' in readme
+        assert '"swirengine[audio]==2.2.0"' in readme
+        assert '"swirengine==2.2.1"' not in readme
+        assert '"swirengine[audio]==2.2.1"' not in readme
+        assert Path("release-evidence/2.2.0/manifest.json").is_file()
 
 
 def test_supported_python_range_is_explicit():
@@ -127,14 +157,19 @@ def test_readme_preserves_locked_1_5_evidence_after_2_0_publication():
         HISTORICAL_PUBLIC_VERSION,
         PUBLIC_STABLE_VERSION,
         CANDIDATE_VERSION,
+        PATCH_CANDIDATE_VERSION,
     }:
         assert "`v2.0.0`" in readme or "| 2.0 |" in readme
         if (
-            swirengine.__version__ == CANDIDATE_VERSION
+            swirengine.__version__ in {CANDIDATE_VERSION, PATCH_CANDIDATE_VERSION}
             and "**Latest public stable release:** **SwirEngine 2.2.0**" in readme
         ):
             assert "**Latest public stable release:** **SwirEngine 2.2.0**" in readme
-        elif swirengine.__version__ in {PUBLIC_STABLE_VERSION, CANDIDATE_VERSION} and (
+        elif swirengine.__version__ in {
+            PUBLIC_STABLE_VERSION,
+            CANDIDATE_VERSION,
+            PATCH_CANDIDATE_VERSION,
+        } and (
             "NOT PUBLISHED"
             not in Path("RELEASE_NOTES_2_1.md").read_text(encoding="utf-8")
         ):

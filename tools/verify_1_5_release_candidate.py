@@ -15,6 +15,7 @@ PREVIOUS_STABLE_VERSION = "1.4.0"
 FORWARD_VERSION = "2.0.0"
 CURRENT_PUBLIC_VERSION = "2.1.0"
 CANDIDATE_VERSION = "2.2.0"
+PATCH_CANDIDATE_VERSION = "2.2.1"
 EXPECTED_TOTAL = 10
 EXPECTED_PYTHON_RANGE = ">=3.10,<3.15"
 REQUIRED_DOCS = (
@@ -153,6 +154,32 @@ def _bound_two_point_two_candidate(root: Path) -> bool:
     return history_ok and (candidate_ok or public_ok)
 
 
+def _bound_two_point_two_patch_candidate(root: Path) -> bool:
+    readme_path = root / "README.md"
+    notes_path = root / "RELEASE_NOTES_2_2.md"
+    roadmap_path = root / "ROADMAP_2_2.md"
+    if not all(path.is_file() for path in (readme_path, notes_path, roadmap_path)):
+        return False
+    readme = readme_path.read_text(encoding="utf-8")
+    readme_folded = readme.casefold()
+    notes = notes_path.read_text(encoding="utf-8")
+    roadmap = roadmap_path.read_text(encoding="utf-8")
+    return (
+        notes.startswith("# SwirEngine 2.2.0 Release Notes")
+        and "Prepared from the bound 2.2.0 candidate" in notes
+        and "Current verified progress: 10/10 milestones = 100.0%." in roadmap
+        and "swirengine 2.2.1" in readme_folded
+        and "bound non-publishing patch candidate" in readme_folded
+        and "NOT PUBLISHED" in readme
+        and "**Latest public stable release:** **SwirEngine 2.2.0**" in readme
+        and '"swirengine==2.2.0"' in readme
+        and '"swirengine[audio]==2.2.0"' in readme
+        and '"swirengine==2.2.1"' not in readme
+        and '"swirengine[audio]==2.2.1"' not in readme
+        and (root / "release-evidence/2.2.0/manifest.json").is_file()
+    )
+
+
 def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditReport:
     root = Path(root or Path(__file__).resolve().parents[1]).resolve()
     checks: list[str] = []
@@ -163,6 +190,12 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         _require(
             _bound_two_point_two_candidate(root),
             "2.2.0 metadata is a bound non-publishing candidate over immutable public 2.1",
+            checks,
+        )
+    elif version == PATCH_CANDIDATE_VERSION:
+        _require(
+            _bound_two_point_two_patch_candidate(root),
+            "2.2.1 metadata is a bound non-publishing patch candidate over immutable public 2.2.0",
             checks,
         )
     _require(
@@ -199,7 +232,12 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         allowed_versions = {TARGET_VERSION}
         if forward_finalized:
             allowed_versions.update(
-                {FORWARD_VERSION, CURRENT_PUBLIC_VERSION, CANDIDATE_VERSION}
+                {
+                    FORWARD_VERSION,
+                    CURRENT_PUBLIC_VERSION,
+                    CANDIDATE_VERSION,
+                    PATCH_CANDIDATE_VERSION,
+                }
             )
         _require(
             version in allowed_versions,
@@ -217,7 +255,7 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
             _require(
                 str(urls.get("Roadmap", "")).endswith(
                     "/ROADMAP_2_2.md"
-                    if version == CANDIDATE_VERSION
+                    if version in {CANDIDATE_VERSION, PATCH_CANDIDATE_VERSION}
                     else (
                         "/ROADMAP_2_1.md"
                         if version == CURRENT_PUBLIC_VERSION
@@ -241,7 +279,12 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
         allowed_versions = {PREVIOUS_STABLE_VERSION, TARGET_VERSION}
         if forward_finalized:
             allowed_versions.update(
-                {FORWARD_VERSION, CURRENT_PUBLIC_VERSION, CANDIDATE_VERSION}
+                {
+                    FORWARD_VERSION,
+                    CURRENT_PUBLIC_VERSION,
+                    CANDIDATE_VERSION,
+                    PATCH_CANDIDATE_VERSION,
+                }
             )
         _require(
             version in allowed_versions,
@@ -376,7 +419,19 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
                         f"historical 2.0 publication workflow preserves {token}",
                         checks,
                     )
-                if "RELEASE_TAG: v2.2.0" in trigger_section:
+                if version == PATCH_CANDIDATE_VERSION:
+                    for token in (
+                        "workflow_run:",
+                        "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33",
+                        "environment: pypi",
+                        "id-token: write",
+                    ):
+                        _require(
+                            token in release,
+                            f"2.2.1 patch publication workflow preserves {token}",
+                            checks,
+                        )
+                elif "RELEASE_TAG: v2.2.0" in trigger_section:
                     publication_gate = _read(root, ".github/workflows/publication-gate-2.2.yml")
                     for token in (
                         "SwirEngine 2.2 Publication Gate",
@@ -417,7 +472,10 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
                         "2.1 publication workflow is isolated to the dedicated publication branch",
                         checks,
                     )
-            if "RELEASE_TAG: v2.2.0" in trigger_section:
+            if (
+                version == PATCH_CANDIDATE_VERSION
+                or "RELEASE_TAG: v2.2.0" in trigger_section
+            ):
                 _require(
                     "workflow_run:" in trigger_section,
                     "current 2.2 publication waits for the independent push gate",

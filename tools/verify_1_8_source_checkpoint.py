@@ -27,6 +27,7 @@ STABLE_PUBLIC_VERSION = "1.5.0"
 FORWARD_PUBLIC_VERSION = "2.0.0"
 CURRENT_PUBLIC_VERSION = "2.1.0"
 CANDIDATE_VERSION = "2.2.0"
+PATCH_CANDIDATE_VERSION = "2.2.1"
 EXPECTED_MILESTONES = 10
 
 MILESTONE_RE = re.compile(r"^- \[([ xX])\] \*\*(\d+)\.", re.MULTILINE)
@@ -240,6 +241,34 @@ def _two_point_two_candidate_ready() -> bool:
     return history_ok and (candidate_ok or public_ok)
 
 
+def _two_point_two_patch_candidate_ready() -> bool:
+    readme_path = ROOT / "README.md"
+    if (
+        not ACTIVE_22_ROADMAP.is_file()
+        or not RELEASE_NOTES_22.is_file()
+        or not readme_path.is_file()
+    ):
+        return False
+    roadmap = _text(ACTIVE_22_ROADMAP)
+    notes = _text(RELEASE_NOTES_22)
+    readme = _text(readme_path)
+    readme_folded = readme.casefold()
+    return (
+        notes.startswith("# SwirEngine 2.2.0 Release Notes")
+        and "Prepared from the bound 2.2.0 candidate" in notes
+        and "Current verified progress: 10/10 milestones = 100.0%." in roadmap
+        and "swirengine 2.2.1" in readme_folded
+        and "bound non-publishing patch candidate" in readme_folded
+        and "NOT PUBLISHED" in readme
+        and "**Latest public stable release:** **SwirEngine 2.2.0**" in readme
+        and '"swirengine==2.2.0"' in readme
+        and '"swirengine[audio]==2.2.0"' in readme
+        and '"swirengine==2.2.1"' not in readme
+        and '"swirengine[audio]==2.2.1"' not in readme
+        and (ROOT / "release-evidence/2.2.0/manifest.json").is_file()
+    )
+
+
 def _current_public_version() -> str:
     pyproject = _text(PYPROJECT)
     match = VERSION_RE.search(pyproject)
@@ -257,9 +286,11 @@ def _verify_public_version() -> str:
         allowed.add(CURRENT_PUBLIC_VERSION)
     if _two_point_two_candidate_ready():
         allowed.add(CANDIDATE_VERSION)
+    if _two_point_two_patch_candidate_ready():
+        allowed.add(PATCH_CANDIDATE_VERSION)
     if version not in allowed:
         raise CheckpointError(
-            "locked 1.8 history permits only finalized public lines or the bound 2.2 candidate: "
+            "locked 1.8 history permits only finalized public lines or a bound 2.2 candidate: "
             f"allowed={sorted(allowed)}, found {version}"
         )
     return version

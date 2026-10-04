@@ -52,7 +52,7 @@ def test_development_checkpoint_audit_passes() -> None:
     version = current_version()
     assert f"roadmap={completed}/{total}" in result.stdout
     assert f"public-version={version}" in result.stdout
-    if version in {"2.0.0", "2.1.0", "2.2.0"}:
+    if version in {"2.0.0", "2.1.0", "2.2.0", "2.2.1"}:
         assert two_point_zero_finalized()
         assert "2.0-readiness: final release candidate" in result.stdout
     else:
@@ -79,7 +79,7 @@ def test_roadmap_has_exactly_ten_ordered_milestones() -> None:
 
 def test_source_version_preserves_finalized_2_0_compatibility() -> None:
     version = current_version()
-    if version in {"2.0.0", "2.1.0", "2.2.0"}:
+    if version in {"2.0.0", "2.1.0", "2.2.0", "2.2.1"}:
         assert two_point_zero_finalized()
     else:
         assert version == "1.5.0"

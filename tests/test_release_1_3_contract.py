@@ -13,6 +13,7 @@ def test_locked_1_3_compatibility_contract_remains_complete_under_current_stable
     assert report.version in ACTIVE_STABLE_VERSIONS
     assert "1.5.0" in ACTIVE_STABLE_VERSIONS
     assert "2.2.0" in ACTIVE_STABLE_VERSIONS
+    assert "2.2.1" in ACTIVE_STABLE_VERSIONS
     assert report.roadmap.total == 10
     assert report.roadmap.completed == 10
     assert report.roadmap.remaining == 0
@@ -51,11 +52,11 @@ def test_active_release_workflow_uses_current_final_gate_and_registered_trusted_
     trigger_section = workflow.split("jobs:", 1)[0]
 
     assert "workflow_run:" in trigger_section
-    assert "RELEASE_TAG: v2.2.0" in trigger_section
-    assert "SwirEngine 2.2 Publication Gate" in trigger_section
-    assert "verify_publication_chain_2_2.py" in workflow
+    assert "RELEASE_TAG: v2.2.1" in trigger_section
+    assert "SwirEngine 2.2.1 Publication Gate" in trigger_section
+    assert "verify_publication_chain_2_2_1.py" in workflow
     assert "verify_required_workflows_2_2.py" in workflow
-    assert "reconcile_release_2_2.py" in workflow
+    assert "reconcile_release_2_2_1.py" in workflow
     assert "verify_1_5_release_candidate.py --require-complete" not in workflow
     assert "verify_1_4_release_candidate.py --require-complete" not in workflow
     assert "verify_1_3_release_candidate.py" not in workflow

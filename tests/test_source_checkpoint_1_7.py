@@ -35,7 +35,11 @@ def test_strict_checkpoint_matches_repository_contract() -> None:
     assert auditor.STABLE_PUBLIC_VERSION == "1.5.0"
     assert auditor.CURRENT_PUBLIC_VERSION == "2.1.0"
     assert auditor.CANDIDATE_VERSION == "2.2.0"
-    assert auditor._two_point_two_candidate_ready(PROJECT_ROOT)
+    assert auditor.PATCH_CANDIDATE_VERSION == "2.2.1"
+    if auditor._project_version(PROJECT_ROOT) == auditor.PATCH_CANDIDATE_VERSION:
+        assert auditor._two_point_two_patch_candidate_ready(PROJECT_ROOT)
+    else:
+        assert auditor._two_point_two_candidate_ready(PROJECT_ROOT)
 
 
 def test_checkpoint_required_file_contract_has_no_duplicates() -> None:
