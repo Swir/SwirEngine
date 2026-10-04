@@ -14,6 +14,8 @@ ROOT = Path(__file__).resolve().parents[1]
 AUDIT_DIR = "release-evidence"
 PUBLICATION_MARKER = (".release", "publish-2.2.0")
 EXPECTED_SDIST_EXCLUDES = ["/release-evidence", "/.release"]
+FORBIDDEN_CACHE_COMPONENTS = {".pytest_cache", ".ruff_cache", "__pycache__"}
+FORBIDDEN_NESTED_ARCHIVE_SUFFIXES = (".tar.gz", ".whl")
 
 
 class DistributionAuditDataError(RuntimeError):
@@ -72,6 +74,23 @@ def _reject_publication_marker(names: list[str] | tuple[str, ...], *, label: str
             )
 
 
+def _reject_build_contamination(names: list[str] | tuple[str, ...], *, label: str) -> None:
+    for name in names:
+        parts = _normalized_parts(name)
+        if any(part in FORBIDDEN_CACHE_COMPONENTS for part in parts):
+            raise DistributionAuditDataError(
+                f"{label} contains build/test cache data: {name!r}"
+            )
+        if parts and parts[-1].endswith(FORBIDDEN_NESTED_ARCHIVE_SUFFIXES):
+            raise DistributionAuditDataError(
+                f"{label} contains a nested distribution archive: {name!r}"
+            )
+        if parts and parts[-1].endswith((".pyc", ".pyo")):
+            raise DistributionAuditDataError(
+                f"{label} contains generated Python bytecode: {name!r}"
+            )
+
+
 def inspect_distributions(dist_dir: Path, *, wheel_only: bool = False) -> None:
     root = dist_dir.resolve()
     wheels = sorted(root.glob("swirengine-*.whl"))
@@ -87,11 +106,13 @@ def inspect_distributions(dist_dir: Path, *, wheel_only: bool = False) -> None:
         names = tuple(archive.namelist())
         _reject_audit_member(names, label="wheel")
         _reject_publication_marker(names, label="wheel")
+        _reject_build_contamination(names, label="wheel")
     if not wheel_only:
         with tarfile.open(sdists[0], mode="r:gz") as archive:
             names = tuple(member.name for member in archive.getmembers())
             _reject_audit_member(names, label="sdist")
             _reject_publication_marker(names, label="sdist")
+            _reject_build_contamination(names, label="sdist")
 
 
 def main() -> int:

@@ -97,6 +97,9 @@ jobs:
           if ($actual -ne $env:EXPECTED_SOURCE_SHA) {
             throw "checkout mismatch: expected $env:EXPECTED_SOURCE_SHA, got $actual"
           }
+      - name: Route Python caches outside the candidate source tree
+        shell: bash
+        run: echo "PYTHONPYCACHEPREFIX=$RUNNER_TEMP/candidate-pycache" >> "$GITHUB_ENV"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
@@ -116,7 +119,7 @@ jobs:
         run: python tools/verify_2_2_release_readiness.py
       - name: Run focused candidate regressions
         run: >-
-          python -m pytest -q
+          python -m pytest -q -p no:cacheprovider
           tests/test_verify_2_2_release_candidate.py
           tests/test_candidate_merge_2_2.py
           tests/test_reconcile_release_2_2.py
@@ -131,7 +134,7 @@ jobs:
           tests/test_vendored_wheel.py
       - name: Lint candidate tooling and regressions
         run: >-
-          python -m ruff check
+          python -m ruff check --no-cache
           tools/verify_2_2_release_candidate.py
           tools/verify_candidate_merge_2_2.py
           tools/reconcile_release_2_2.py
@@ -180,23 +183,32 @@ jobs:
           tests/test_clean_wheel_2_0.py
           tests/test_vendored_wheel.py
       - name: Build exact-source portable wheel and sdist
-        run: python -m build --wheel --sdist --outdir dist
+        shell: bash
+        run: |
+          set -euo pipefail
+          git status --short --untracked-files=all
+          test -z "$(git status --porcelain --untracked-files=all)"
+          python -m build --wheel --sdist --outdir "$RUNNER_TEMP/candidate-portable"
+          git status --short --untracked-files=all
+          test -z "$(git status --porcelain --untracked-files=all)"
       - name: Require exact portable candidate distributions
         shell: bash
         run: |
           set -euo pipefail
-          test -f dist/swirengine-2.2.0-py3-none-any.whl
-          test -f dist/swirengine-2.2.0.tar.gz
-          test "$(find dist -maxdepth 1 -type f | wc -l)" -eq 2
+          test -f "$RUNNER_TEMP/candidate-portable/swirengine-2.2.0-py3-none-any.whl"
+          test -f "$RUNNER_TEMP/candidate-portable/swirengine-2.2.0.tar.gz"
+          test "$(find "$RUNNER_TEMP/candidate-portable" -maxdepth 1 -type f | wc -l)" -eq 2
       - name: Inspect exact-source portable distributions
-        run: python tools/verify_distribution_audit_data_2_2.py --dist-dir dist
+        run: >-
+          python tools/verify_distribution_audit_data_2_2.py
+          --dist-dir "$RUNNER_TEMP/candidate-portable"
       - name: Preserve exact portable candidate distributions
         uses: actions/upload-artifact@v4
         with:
           name: swirengine-2.2.0-candidate-portable
           path: |
-            dist/swirengine-2.2.0-py3-none-any.whl
-            dist/swirengine-2.2.0.tar.gz
+            ${{ runner.temp }}/candidate-portable/swirengine-2.2.0-py3-none-any.whl
+            ${{ runner.temp }}/candidate-portable/swirengine-2.2.0.tar.gz
           if-no-files-found: error
           retention-days: 7
 

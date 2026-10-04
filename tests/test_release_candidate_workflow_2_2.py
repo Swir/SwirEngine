@@ -72,12 +72,47 @@ def test_candidate_workflow_binds_exact_same_repo_branch_and_head() -> None:
 
 def test_candidate_workflow_builds_three_exact_distributions_and_fifteen_cells() -> None:
     text, workflow = _workflow()
-    matrix = workflow["jobs"]["clean-install-matrix"]["strategy"]["matrix"]
+    jobs = workflow["jobs"]
+    candidate = jobs["candidate-contract"]
+    matrix = jobs["clean-install-matrix"]["strategy"]["matrix"]
 
     assert matrix["os"] == ["ubuntu-latest", "windows-latest", "macos-latest"]
     assert matrix["python-version"] == ["3.10", "3.11", "3.12", "3.13", "3.14"]
     assert len(matrix["os"]) * len(matrix["python-version"]) == 15
-    assert "python -m build --wheel --sdist --outdir dist" in text
+    assert "env" not in candidate
+    build = next(
+        step
+        for step in candidate["steps"]
+        if step.get("name") == "Build exact-source portable wheel and sdist"
+    )
+    cache_route = next(
+        step
+        for step in candidate["steps"]
+        if step.get("name") == "Route Python caches outside the candidate source tree"
+    )
+    assert cache_route["run"] == (
+        'echo "PYTHONPYCACHEPREFIX=$RUNNER_TEMP/candidate-pycache" >> "$GITHUB_ENV"'
+    )
+    assert candidate["steps"].index(cache_route) < candidate["steps"].index(build)
+    assert "env" not in build
+    assert (
+        'python -m build --wheel --sdist --outdir "$RUNNER_TEMP/candidate-portable"'
+        in build["run"]
+    )
+    assert build["run"].count("status --porcelain --untracked-files=all") == 2
+    assert build["run"].count("status --short --untracked-files=all") == 2
+    assert "--outdir dist" not in build["run"]
+    assert "python -m pytest -q -p no:cacheprovider" in text
+    assert "python -m ruff check --no-cache" in text
+    upload = next(
+        step
+        for step in candidate["steps"]
+        if step.get("uses") == "actions/upload-artifact@v4"
+    )
+    assert upload["with"]["path"] == (
+        "${{ runner.temp }}/candidate-portable/swirengine-2.2.0-py3-none-any.whl\n"
+        "${{ runner.temp }}/candidate-portable/swirengine-2.2.0.tar.gz\n"
+    )
     assert "tools/build_vendored_wheel.py" in text
     for distribution in (
         "swirengine-2.2.0-py3-none-any.whl",
@@ -118,7 +153,8 @@ def test_candidate_workflow_runs_candidate_contract_and_focused_regressions() ->
         "python tools/verify_2_2_release_candidate.py",
         "python tools/verify_2_2_release_readiness.py",
         "python tools/verify_required_workflows_2_2.py",
-        "python tools/verify_distribution_audit_data_2_2.py --dist-dir dist",
+        "python tools/verify_distribution_audit_data_2_2.py",
+        '--dist-dir "$RUNNER_TEMP/candidate-portable"',
         "tests/test_verify_2_2_release_candidate.py",
         "tests/test_candidate_merge_2_2.py",
         "tests/test_reconcile_release_2_2.py",

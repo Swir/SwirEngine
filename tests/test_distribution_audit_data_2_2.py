@@ -229,6 +229,24 @@ def test_v11_rejects_windows_trailing_dot_or_space(
 
 
 @pytest.mark.parametrize(
+    ("archive_kind", "member", "message"),
+    [
+        ("sdist", "root/publication-dist/swirengine-2.2.0-py3-none-any.whl", "nested"),
+        ("wheel", "root/.pytest_cache/state", "cache"),
+        ("sdist", "root/tools/__pycache__/verify.cpython-313.pyc", "cache"),
+        ("wheel", "root/swirengine/generated.pyo", "bytecode"),
+    ],
+)
+def test_rejects_nested_build_outputs_and_caches(
+    tmp_path: Path, archive_kind: str, member: str, message: str
+) -> None:
+    _write_pair_with_member(tmp_path, archive_kind, member)
+
+    with pytest.raises(DistributionAuditDataError, match=message):
+        inspect_distributions(tmp_path)
+
+
+@pytest.mark.parametrize(
     "member",
     [
         "root/release-evidence-old/proof.json",
