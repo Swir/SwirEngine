@@ -72,6 +72,12 @@ def test_source_version_preserves_finalized_2_0_compatibility() -> None:
     version = current_version()
     if version in {"2.0.0", "2.1.0", "2.2.0", "2.2.1"}:
         assert two_point_zero_finalized()
+        if version == "2.2.1":
+            readme = (ROOT / "README.md").read_text(encoding="utf-8")
+            if "**Latest public stable release:** **SwirEngine 2.2.1**" in readme:
+                assert (ROOT / "release-evidence/2.2.1/manifest.json").is_file()
+                assert (ROOT / ".github/workflows/post-release-2.2.1.yml").is_file()
+                assert not (ROOT / ".github/workflows/release-candidate-2.2.1.yml").exists()
     else:
         assert version == "1.5.0"
 

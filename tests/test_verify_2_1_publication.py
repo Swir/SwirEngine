@@ -37,6 +37,22 @@ def test_publication_contract_recognizes_only_a_non_publishing_2_2_1_patch_candi
     )
 
 
+def test_publication_contract_recognizes_the_public_2_2_1_patch_release() -> None:
+    module = _load_verifier()
+    roadmap = "Current verified progress: 10/10 milestones = 100.0%."
+    readme = (
+        "**Latest public stable release:** **SwirEngine 2.2.1**\n"
+        'python -m pip install -U "swirengine==2.2.1"\n'
+        'python -m pip install -U "swirengine[audio]==2.2.1"\n'
+        "release-evidence/2.2.1/manifest.json\n"
+        "python tools/verify_public_release_2_2_1.py "
+        "--evidence release-evidence/2.2.1/manifest.json"
+    )
+
+    assert module._two_two_patch_public(readme, roadmap)
+    assert not module._two_two_patch_public(readme + "\nNOT PUBLISHED", roadmap)
+
+
 def test_publication_contract_rejects_svg_inside_pypi_block(tmp_path: Path) -> None:
     module = _load_verifier()
     root = Path(__file__).resolve().parents[1]

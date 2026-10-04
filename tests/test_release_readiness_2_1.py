@@ -45,14 +45,24 @@ def test_repository_passes_2_1_milestone_acceptance() -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         readme_folded = readme.casefold()
         assert "swirengine 2.2.1" in readme_folded
-        assert "bound non-publishing patch candidate" in readme_folded
-        assert "NOT PUBLISHED" in readme
-        assert "**Latest public stable release:** **SwirEngine 2.2.0**" in readme
-        assert '"swirengine==2.2.0"' in readme
-        assert '"swirengine[audio]==2.2.0"' in readme
-        assert '"swirengine==2.2.1"' not in readme
-        assert '"swirengine[audio]==2.2.1"' not in readme
-        assert (ROOT / "release-evidence/2.2.0/manifest.json").is_file()
+        if "**Latest public stable release:** **SwirEngine 2.2.1**" in readme:
+            assert "bound non-publishing patch candidate" not in readme_folded
+            assert "NOT PUBLISHED" not in readme
+            assert '"swirengine==2.2.1"' in readme
+            assert '"swirengine[audio]==2.2.1"' in readme
+            assert (ROOT / "release-evidence/2.2.1/manifest.json").is_file()
+            assert (ROOT / ".github/workflows/post-release-2.2.1.yml").is_file()
+            assert not (ROOT / ".github/workflows/release-candidate-2.2.1.yml").exists()
+            assert verify_publication(ROOT) == []
+        else:
+            assert "bound non-publishing patch candidate" in readme_folded
+            assert "NOT PUBLISHED" in readme
+            assert "**Latest public stable release:** **SwirEngine 2.2.0**" in readme
+            assert '"swirengine==2.2.0"' in readme
+            assert '"swirengine[audio]==2.2.0"' in readme
+            assert '"swirengine==2.2.1"' not in readme
+            assert '"swirengine[audio]==2.2.1"' not in readme
+            assert (ROOT / "release-evidence/2.2.0/manifest.json").is_file()
     assert report.roadmap.completed == 10
     assert report.roadmap.total == 10
     assert report.roadmap.percent == pytest.approx(100.0)

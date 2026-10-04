@@ -11,9 +11,15 @@ systems.
 
 Current verified progress: 10/10 milestones = 100.0%.
 
+The current public maintenance release is **SwirEngine 2.2.1**. It preserves the accepted
+runtime, API and project-data scope while publishing the complete package-index description.
+Its immutable lineage, artifacts and cross-platform public installs are recorded in
+[`release-evidence/2.2.1/manifest.json`](release-evidence/2.2.1/manifest.json); the 2.2.0 Phase E
+record remains preserved as the feature-release baseline.
+
 ## Product rules
 
-- The public SwirEngine 2.1.0 and 2.2.0 releases and tags remain immutable.
+- The public SwirEngine 2.1.0, 2.2.0 and 2.2.1 releases and tags remain immutable.
 - 2.2 progress advances only after exact-head acceptance evidence for a complete milestone.
 - Visual tools must serialize portable project data and round-trip through runtime APIs; editor-only mock state does not count.
 - Representative 2D, 3D and multiplayer fixtures remain the end-to-end quality gate.

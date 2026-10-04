@@ -1,24 +1,38 @@
 # Changelog
 
-## 2.2.1 candidate - Unreleased
+## 2.2.1 - 2026-10-04
 
-SwirEngine 2.2.1 is a bound, non-publishing maintenance candidate. SwirEngine 2.2.0 remains the
-latest public stable package until a guarded 2.2.1 publication completes and the corresponding
-public tag, GitHub Release and PyPI project state exist.
+SwirEngine 2.2.1 is published on [PyPI](https://pypi.org/project/swirengine/2.2.1/) and as an
+[immutable GitHub Release](https://github.com/Swir/SwirEngine/releases/tag/v2.2.1). The direct
+`v2.2.1` tag resolves to publication commit `8d27fdb3c37fd79b93a2f3ab420b763de564c9e9`.
+This is a metadata-only maintenance release; runtime behavior, the public Python API and the
+completed 10/10 SwirEngine 2.2 feature scope are unchanged from 2.2.0.
 
 - replaced the short package-index summary with a complete PyPI description covering installation,
   2D and 3D quick starts, runtime systems, multiplayer boundaries, SwirEditor, the completed 2.2
   production-tool scope, platform limits, examples and documentation links
-- added dedicated 2.2.1 release notes and bound both new release-text inputs to LF-normalized
-  repository bytes
-- advanced candidate package metadata and `swirengine.__version__` to `2.2.1` so future artifacts
-  can be built and verified from one exact source identity
-- retained the complete 2.2 runtime, public API and feature scope without functional runtime or API
-  changes
-- kept every public installation command pinned to `2.2.0` while the candidate is not published
-
-This entry does not authorize publication. No `v2.2.1` tag, GitHub Release or PyPI upload is implied
-until the release gate succeeds from the exact candidate source.
+- published the dedicated 2.2.1 release notes and package-index description from their reviewed,
+  LF-normalized repository bytes
+- preserved the complete 2.2 runtime, public API, project data and compatibility boundaries; 2.2.0
+  projects require no data migration
+- verified the marker-only lineage from source `c2fa0ba9ba4b0a4eb3f1bde0da2e5f8a681e2b7e`
+  through marker `47c15f8a4c80318a31762133e0cf4d8524b82564` to publication commit
+  `8d27fdb3c37fd79b93a2f3ab420b763de564c9e9`
+- accepted the exact publication commit in
+  [Publication Gate run `37183101288`](https://github.com/Swir/SwirEngine/actions/runs/37183101288)
+  and completed [Release run `37183110375`, attempt 2](https://github.com/Swir/SwirEngine/actions/runs/37183110375/attempts/2)
+  with 30 successful jobs, two intentional idempotent skips and no failures
+- recorded the exact lineage, public assets and attempt-scoped authority jobs in the canonical
+  [`2.2.1 public-release evidence`](release-evidence/2.2.1/manifest.json)
+- passed clean public-index installation and runtime-identity checks on Linux and macOS with
+  CPython 3.13 and Windows with CPython 3.14
+- published matching GitHub Release and PyPI files: portable wheel
+  `e61be3dbe011ff6035b65111e99478127b918f57f900c6803e3d649a44a41379`, Windows CPython 3.14
+  wheel `4ee9257831aab322f9da220feebe01fc25ecb8e5191f0a3ead0a2933a0304f1b`, and sdist
+  `e1505898990d98d33a8f83075933220b87a3e2fe1269f77bfdd350f02a27915c`
+- exposed canonical [`SHA256SUMS`](https://github.com/Swir/SwirEngine/releases/download/v2.2.1/SHA256SUMS)
+  and [`release-provenance.json`](https://github.com/Swir/SwirEngine/releases/download/v2.2.1/release-provenance.json)
+  as immutable release assets
 
 ## 2.2.0 - 2026-10-04
 

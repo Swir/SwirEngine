@@ -1,11 +1,12 @@
 # SwirEngine 2.2 Release Gate
 
 This document defines the finite production-acceptance and publication contract for
-`ROADMAP_2_2.md`. SwirEngine 2.2.0 is now published and accepted at **10/10 = 100.0%**. The Phase
-A–D sections below preserve the boundaries that applied while 2.2 was being qualified; their
-temporary 2.1-stable, 9/10 and non-publication statements are historical, not the current status.
-A green source branch was necessary evidence, but only immutable public verification and the final
-Phase E record authorized the release claim.
+`ROADMAP_2_2.md`. SwirEngine 2.2.0 remains the immutable feature release accepted at
+**10/10 = 100.0%**, and metadata-only maintenance release **2.2.1 is now the latest public stable
+package**. The Phase A–E sections preserve the boundaries and evidence that applied while 2.2.0
+was being qualified and published; the dedicated 2.2.1 section records the later maintenance
+publication. A green source branch was necessary evidence, but only immutable public verification
+authorized either release claim.
 
 ## Phase A — 9/10 exact-source preflight
 
@@ -47,10 +48,10 @@ No run IDs are asserted here because they are not part of the recorded evidence.
 ## Phase B — bound non-publishing candidate
 
 Phase B prepares and qualifies the exact **SwirEngine 2.2.0 bound non-publishing candidate**.
-README must state **NOT PUBLISHED**, keep SwirEngine 2.1.0 as the latest public stable release and
-keep every public install command pinned to 2.1.0. Package/runtime metadata may now identify
-2.2.0, and the primary package roadmap points to `ROADMAP_2_2.md` while all historical roadmap
-links remain available.
+README must carry an explicit non-publication warning, keep SwirEngine 2.1.0 as the latest public
+stable release and keep every public install command pinned to 2.1.0. Package/runtime metadata may
+now identify 2.2.0, and the primary package roadmap points to `ROADMAP_2_2.md` while all historical
+roadmap links remain available.
 
 Candidate artifacts are short-lived evidence and do not authorize a tag, upload, release creation
 or public-stable README claim. The candidate source identity, artifact hashes and
@@ -102,11 +103,71 @@ Final Phase E acceptance is complete:
 - `tools/verify_public_release_2_2.py` and `.github/workflows/post-release-2.2.yml` re-read the
   public state and verify it without publication permissions.
 
-The roadmap therefore advances to **10/10 = 100.0%** and README identifies 2.2.0 as the latest
-public stable release. Before this acceptance, both documents correctly remained at 9/10 even
-after partial or misleadingly green publication attempts. Completion applies only to the finite
+At the 2.2.0 Phase E acceptance, the roadmap advanced to **10/10 = 100.0%** and README identified
+2.2.0 as the latest public stable release. Before that acceptance, both documents correctly
+remained at 9/10 even after partial or misleadingly green publication attempts. Completion applies
+only to the finite
 ten-milestone Production Tools & Visual Creation contract; it is not a claim of literal perfection
 or universal platform support.
+
+## SwirEngine 2.2.1 metadata-only maintenance publication
+
+SwirEngine 2.2.1 carries the accepted 2.2 runtime, public API, project data and 10/10 roadmap scope
+forward without functional changes. Its release change is the complete package-index description
+and matching release metadata. Existing 2.2.0 projects require no data migration.
+
+The final public state is verified as follows:
+
+- [`release-evidence/2.2.1/manifest.json`](../release-evidence/2.2.1/manifest.json) is the canonical
+  repository-owned record of lineage, exact assets, attempt-scoped authority jobs and both
+  publication/Phase E workflow-manifest identities;
+- candidate source `c2fa0ba9ba4b0a4eb3f1bde0da2e5f8a681e2b7e`, candidate marker
+  `47c15f8a4c80318a31762133e0cf4d8524b82564` and publication commit
+  `8d27fdb3c37fd79b93a2f3ab420b763de564c9e9` form the marker-only chain recorded in the published
+  [`release-provenance.json`](https://github.com/Swir/SwirEngine/releases/download/v2.2.1/release-provenance.json);
+- [`v2.2.1`](https://github.com/Swir/SwirEngine/releases/tag/v2.2.1) is a direct tag to that
+  publication commit, and the GitHub Release is server-enforced immutable, non-draft and
+  non-prerelease;
+- [Publication Gate run `37183101288`, attempt 1](https://github.com/Swir/SwirEngine/actions/runs/37183101288)
+  accepted the exact publication commit;
+- [Release run `37183110375`, attempt 2](https://github.com/Swir/SwirEngine/actions/runs/37183110375/attempts/2)
+  executed trusted workflow head `3577e2fc25e3bf1604630a844851b5052abc7639` and completed all
+  32 jobs with 30 successes, two intentional skips and no failures;
+- the tag write job
+  [`111381182146`](https://github.com/Swir/SwirEngine/actions/runs/37183110375/job/111381182146)
+  took its idempotent read-back path because the exact tag already existed; the GitHub Release
+  writer [`111381243165`](https://github.com/Swir/SwirEngine/actions/runs/37183110375/job/111381243165)
+  and PyPI writer
+  [`111381335658`](https://github.com/Swir/SwirEngine/actions/runs/37183110375/job/111381335658)
+  were skipped rather than duplicating immutable public objects;
+- fresh tag, GitHub Release and PyPI reconciliation succeeded, followed by clean public-index
+  installs on [Linux / CPython 3.13](https://github.com/Swir/SwirEngine/actions/runs/37183110375/job/111381365661),
+  [macOS / CPython 3.13](https://github.com/Swir/SwirEngine/actions/runs/37183110375/job/111381365706)
+  and [Windows / CPython 3.14](https://github.com/Swir/SwirEngine/actions/runs/37183110375/job/111381365690);
+- the final
+  [immutable tag, release, package and evidence job](https://github.com/Swir/SwirEngine/actions/runs/37183110375/job/111381456957)
+  succeeded.
+
+The GitHub Release and PyPI expose the same three distributions:
+
+| File | Size | SHA-256 |
+|---|---:|---|
+| `swirengine-2.2.1-py3-none-any.whl` | 830462 bytes | `e61be3dbe011ff6035b65111e99478127b918f57f900c6803e3d649a44a41379` |
+| `swirengine-2.2.1-cp314-cp314-win_amd64.whl` | 948619 bytes | `4ee9257831aab322f9da220feebe01fc25ecb8e5191f0a3ead0a2933a0304f1b` |
+| `swirengine-2.2.1.tar.gz` | 2925167 bytes | `e1505898990d98d33a8f83075933220b87a3e2fe1269f77bfdd350f02a27915c` |
+
+The remaining immutable assets are `SHA256SUMS` (299 bytes,
+`1cbc2f69adae97fd7b74ff828ba24768beeaf5f5f5e634421a72962e1a4e7e7d`) and
+`release-provenance.json` (1064 bytes,
+`d67ff60c0694f1229a1261bb9a267c28dfd911a31e96d77262f3ff44b1b4ce8c`).
+
+The canonical evidence records publication workflow-manifest digest
+`d75b8dbd9afed9b6fe4df7892dbebcd009ea57bd87e0c1de8046085bc7b56d0a`, Phase E
+workflow-manifest digest `a04ea73f89974ee4e0d58d132cad0c849a492bc6615788174a305b407bef2eb0`
+and logical-sdist digest `0329fbfcfdd42364091a72e8d0808f2d584793a13ac5fd366f11a8e03ffdd27d`.
+The immutable [`SHA256SUMS`](https://github.com/Swir/SwirEngine/releases/download/v2.2.1/SHA256SUMS)
+is the compact public checksum manifest. The repository-owned 2.2.0 evidence remains preserved and
+continues to describe that earlier feature release rather than being rewritten as 2.2.1 evidence.
 
 ## Failure policy
 

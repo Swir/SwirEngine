@@ -94,6 +94,14 @@ jobs:
 """
 
 
+def _pre_publication_readme() -> str:
+    return (
+        "# SwirEngine\n\n"
+        "**Latest public stable release:** **SwirEngine 2.2.0**\n\n"
+        'python -m pip install -U "swirengine==2.2.0"\n'
+    )
+
+
 def _candidate_root(tmp_path: Path) -> Path:
     root = tmp_path / "candidate"
     root.mkdir()
@@ -114,7 +122,7 @@ def _candidate_root(tmp_path: Path) -> Path:
     (root / "src/swirengine/__init__.py").write_text(
         '__version__ = "2.2.1"\n', encoding="utf-8"
     )
-    shutil.copyfile(ROOT / "README.md", root / "README.md")
+    (root / "README.md").write_text(_pre_publication_readme(), encoding="utf-8")
     shutil.copyfile(ROOT / "ROADMAP_2_2.md", root / "ROADMAP_2_2.md")
     (root / PACKAGE_DESCRIPTION).write_text(_description(), encoding="utf-8")
     (root / RELEASE_NOTES).write_text(

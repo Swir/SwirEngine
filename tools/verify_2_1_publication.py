@@ -53,6 +53,20 @@ def _two_two_patch_candidate(readme: str, roadmap_22: str) -> bool:
     )
 
 
+def _two_two_patch_public(readme: str, roadmap_22: str) -> bool:
+    readme_folded = readme.casefold()
+    return (
+        "Current verified progress: 10/10 milestones = 100.0%." in roadmap_22
+        and "**Latest public stable release:** **SwirEngine 2.2.1**" in readme
+        and '"swirengine==2.2.1"' in readme
+        and '"swirengine[audio]==2.2.1"' in readme
+        and "release-evidence/2.2.1/manifest.json" in readme
+        and "verify_public_release_2_2_1.py" in readme
+        and "NOT PUBLISHED" not in readme
+        and "bound non-publishing patch candidate" not in readme_folded
+    )
+
+
 def verify(root: Path) -> list[str]:
     errors: list[str] = []
     pyproject = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
@@ -65,6 +79,9 @@ def verify(root: Path) -> list[str]:
     version = str(pyproject["project"]["version"])
     public_22 = version == "2.2.0" and _two_two_public(readme, roadmap_22)
     patch_candidate_221 = version == PATCH_CANDIDATE_VERSION and _two_two_patch_candidate(
+        readme, roadmap_22
+    )
+    patch_public_221 = version == PATCH_CANDIDATE_VERSION and _two_two_patch_public(
         readme, roadmap_22
     )
     if version == "2.2.0":
@@ -91,10 +108,10 @@ def verify(root: Path) -> list[str]:
                     "or immutable public release: " + "; ".join(candidate_errors)
                 )
     elif version == PATCH_CANDIDATE_VERSION:
-        if not patch_candidate_221:
+        if not (patch_candidate_221 or patch_public_221):
             errors.append(
-                "pyproject 2.2.1 is permitted only for the bound non-publishing patch "
-                "candidate over immutable public 2.2.0"
+                "pyproject 2.2.1 is permitted only for the bound patch candidate or its "
+                "immutable public release"
             )
         for relative in (
             "release-evidence/2.2.0/manifest.json",
@@ -102,10 +119,19 @@ def verify(root: Path) -> list[str]:
         ):
             if not (root / relative).is_file():
                 errors.append(f"published 2.2 compatibility state is missing: {relative}")
+        if patch_public_221:
+            for relative in (
+                "release-evidence/2.2.1/manifest.json",
+                ".github/workflows/post-release-2.2.1.yml",
+            ):
+                if not (root / relative).is_file():
+                    errors.append(f"published 2.2.1 compatibility state is missing: {relative}")
+            if (root / ".github/workflows/release-candidate-2.2.1.yml").exists():
+                errors.append("published 2.2.1 state must retire the active candidate workflow")
     elif version != "2.1.0":
         errors.append(
             "pyproject project.version must be public 2.1.0, complete 2.2.0 release state, "
-            "or the bound 2.2.1 patch candidate"
+            "or the bound/public 2.2.1 patch line"
         )
 
     if readme.count(PROGRESS_START) != 1 or readme.count(PROGRESS_END) != 1:
@@ -123,7 +149,12 @@ def verify(root: Path) -> list[str]:
                     "README PyPI progress block must match the deterministic active-roadmap ASCII block"
                 )
 
-    expected_public_version = "2.2.0" if public_22 or patch_candidate_221 else "2.1.0"
+    if patch_public_221:
+        expected_public_version = "2.2.1"
+    elif public_22 or patch_candidate_221:
+        expected_public_version = "2.2.0"
+    else:
+        expected_public_version = "2.1.0"
     if f"Latest public stable release:** **SwirEngine {expected_public_version}" not in readme:
         errors.append(
             f"README must identify SwirEngine {expected_public_version} as the public stable release"

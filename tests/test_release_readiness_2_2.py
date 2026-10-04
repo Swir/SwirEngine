@@ -19,12 +19,35 @@ ROOT = Path(__file__).resolve().parents[1]
 
 WORKFLOW = ROOT / "tests/fixtures/release-candidate-2.2.yml"
 POST_RELEASE_WORKFLOW = ROOT / ".github/workflows/post-release-2.2.yml"
+PATCH_POST_RELEASE_WORKFLOW = ROOT / ".github/workflows/post-release-2.2.1.yml"
+
+
+def _readme_fixture(*lines: str) -> str:
+    current = (ROOT / "README.md").read_text(encoding="utf-8")
+    start = current.index("<!-- SWIR-PYPI-PROGRESS:START -->")
+    end_marker = "<!-- SWIR-PYPI-PROGRESS:END -->"
+    end = current.index(end_marker, start) + len(end_marker)
+    return current[start:end] + "\n\n" + "\n".join(lines) + "\n"
+
+
+def _patch_candidate_readme() -> str:
+    return _readme_fixture(
+        "SwirEngine 2.2.1 is the bound non-publishing patch candidate. NOT PUBLISHED",
+        "**Latest public stable release:** **SwirEngine 2.2.0**",
+        'python -m pip install -U "swirengine==2.2.0"',
+        'python -m pip install -U "swirengine[audio]==2.2.0"',
+        "release-evidence/2.2.0/manifest.json",
+    )
 
 
 def test_repository_passes_2_2_release_or_patch_readiness() -> None:
     report = audit(ROOT)
 
-    assert (report.phase, report.version) in {("E", "2.2.0"), ("PATCH", "2.2.1")}
+    assert (report.phase, report.version) in {
+        ("E", "2.2.0"),
+        ("PATCH", "2.2.1"),
+        ("PATCH-E", "2.2.1"),
+    }
     assert report.roadmap.completed == 10
     assert report.roadmap.total == 10
     assert report.roadmap.percent == pytest.approx(100.0)
@@ -69,7 +92,17 @@ def test_pre_release_rejects_missing_or_renumbered_milestone() -> None:
 def test_readme_phase_e_rejects_reverting_public_install_to_2_1() -> None:
     roadmap = (ROOT / "ROADMAP_2_2.md").read_text(encoding="utf-8")
     state = parse_roadmap(roadmap)
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    readme = _readme_fixture(
+        "STATUS-2.2.0%20PUBLISHED",
+        "**Latest public stable release:** **SwirEngine 2.2.0**",
+        "**2.2 roadmap:** **10/10 milestones = 100.0% - COMPLETE**",
+        "**2.2 release:** **PUBLISHED — GitHub Release, PyPI and durable evidence verified**",
+        'python -m pip install -U "swirengine==2.2.0"',
+        'python -m pip install -U "swirengine[audio]==2.2.0"',
+        "release-evidence/2.2.0/manifest.json",
+        "python tools/verify_public_release_2_2.py --evidence "
+        "release-evidence/2.2.0/manifest.json",
+    )
     broken = readme.replace('"swirengine==2.2.0"', '"swirengine==2.1.0"', 1)
 
     with pytest.raises(AssertionError, match="Phase E contract"):
@@ -79,12 +112,7 @@ def test_readme_phase_e_rejects_reverting_public_install_to_2_1() -> None:
 def test_readme_accepts_bound_2_2_1_patch_candidate_over_public_2_2_0() -> None:
     roadmap = (ROOT / "ROADMAP_2_2.md").read_text(encoding="utf-8")
     state = parse_roadmap(roadmap)
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    if "bound non-publishing patch candidate" not in readme.casefold():
-        readme += (
-            "\nSwirEngine 2.2.1 is the bound non-publishing patch candidate. "
-            "It is NOT PUBLISHED.\n"
-        )
+    readme = _patch_candidate_readme()
 
     validate_readme(readme, state, root=ROOT, phase="PATCH")
 
@@ -92,16 +120,19 @@ def test_readme_accepts_bound_2_2_1_patch_candidate_over_public_2_2_0() -> None:
 def test_readme_patch_candidate_rejects_public_2_2_1_install_pin() -> None:
     roadmap = (ROOT / "ROADMAP_2_2.md").read_text(encoding="utf-8")
     state = parse_roadmap(roadmap)
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    if "bound non-publishing patch candidate" not in readme.casefold():
-        readme += (
-            "\nSwirEngine 2.2.1 is the bound non-publishing patch candidate. "
-            "It is NOT PUBLISHED.\n"
-        )
+    readme = _patch_candidate_readme()
     broken = readme + '\npython -m pip install -U "swirengine==2.2.1"\n'
 
     with pytest.raises(AssertionError, match="must not advertise a public 2.2.1 install"):
         validate_readme(broken, state, root=ROOT, phase="PATCH")
+
+
+def test_readme_accepts_immutable_public_2_2_1_patch() -> None:
+    roadmap = (ROOT / "ROADMAP_2_2.md").read_text(encoding="utf-8")
+    state = parse_roadmap(roadmap)
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    validate_readme(readme, state, root=ROOT, phase="PATCH-E")
 
 
 def test_readme_rejects_progress_drift() -> None:
@@ -174,3 +205,9 @@ def test_post_release_workflow_rejects_publish_capability() -> None:
 
     with pytest.raises(AssertionError, match="forbidden publishing capability"):
         validate_post_release_workflow(f"{workflow}\npermissions: contents: write\n")
+
+
+def test_patch_post_release_workflow_is_exact_source_and_read_only() -> None:
+    workflow = PATCH_POST_RELEASE_WORKFLOW.read_text(encoding="utf-8")
+
+    validate_post_release_workflow(workflow, version="2.2.1")

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from tools.verify_1_5_release_candidate import audit, parse_roadmap
+from tools.verify_1_5_release_candidate import _public_two_point_two_patch, audit, parse_roadmap
 
 ROOT = Path(__file__).resolve().parents[1]
 SUPPORTED_CURRENT_SOURCE_VERSIONS = {
@@ -30,6 +30,8 @@ def test_release_contract_audits_current_hardening_state() -> None:
     assert report.roadmap.completed in {9, 10}
     assert report.version in SUPPORTED_CURRENT_SOURCE_VERSIONS
     assert report.checks
+    if report.version == "2.2.1":
+        assert _public_two_point_two_patch(ROOT)
 
 
 def test_strict_release_contract_tracks_roadmap_completion() -> None:
