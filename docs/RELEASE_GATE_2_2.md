@@ -1,9 +1,11 @@
 # SwirEngine 2.2 Release Gate
 
 This document defines the finite production-acceptance and publication contract for
-`ROADMAP_2_2.md`. It preserves the published SwirEngine 2.1.0 package, tag and public evidence
-while 2.2 is still being qualified. A green source branch is necessary evidence, not a public
-release claim.
+`ROADMAP_2_2.md`. SwirEngine 2.2.0 is now published and accepted at **10/10 = 100.0%**. The Phase
+A–D sections below preserve the boundaries that applied while 2.2 was being qualified; their
+temporary 2.1-stable, 9/10 and non-publication statements are historical, not the current status.
+A green source branch was necessary evidence, but only immutable public verification and the final
+Phase E record authorized the release claim.
 
 ## Phase A — 9/10 exact-source preflight
 
@@ -81,10 +83,30 @@ Phase E records the immutable tag/source identity, public PyPI metadata, GitHub 
 hashes, clean public installation results and exact successful post-release workflow evidence.
 The evidence must be durable repository data but excluded from wheel and sdist payloads.
 
-Only final Phase E acceptance may advance the roadmap to 10/10 = 100.0%. That change must run its
-own exact-head required workflow set and the resulting merged `main` SHA must also finish green.
-Until then, README and `ROADMAP_2_2.md` must continue to report 9/10, even if an earlier release
-operation succeeded.
+Final Phase E acceptance is complete:
+
+- candidate source `efd5d2b5c26941d49599cd925bb1f8c35b844c3f`, candidate marker
+  `48ca4b55b9707845796451136002a4c6568ac231` and publication commit
+  `2f150ba6f3fd1e1fd121a8884298e616186e267b` form the verified marker-only chain;
+- `v2.2.0` resolves directly to that publication commit, PyPI exposes the exact three
+  distributions, and the GitHub Release is server-enforced immutable with the exact five assets;
+- Release run `37175535837`, attempt 1, executed trusted workflow commit
+  `8cfe640b216c06e5423821615f97828e43b917c6`; all eight authority jobs succeeded, including the
+  expanded Linux, macOS and Windows clean public-install cells;
+- [`release-evidence/2.2.0/manifest.json`](../release-evidence/2.2.0/manifest.json) is the canonical
+  versioned record of the lineage, publication and Phase E workflow-manifest digests, logical
+  sdist, immutable metadata, public asset identities and attempt-scoped job identities;
+- `.github/release-gates/2.2-required-workflows.json` replaces only the historical candidate gate
+  entry with `Post-release 2.2 Public Verification`; the publication-time manifest remains bound
+  by its immutable candidate-source digest;
+- `tools/verify_public_release_2_2.py` and `.github/workflows/post-release-2.2.yml` re-read the
+  public state and verify it without publication permissions.
+
+The roadmap therefore advances to **10/10 = 100.0%** and README identifies 2.2.0 as the latest
+public stable release. Before this acceptance, both documents correctly remained at 9/10 even
+after partial or misleadingly green publication attempts. Completion applies only to the finite
+ten-milestone Production Tools & Visual Creation contract; it is not a claim of literal perfection
+or universal platform support.
 
 ## Failure policy
 

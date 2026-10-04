@@ -219,24 +219,39 @@ def _two_point_one_published() -> bool:
 
 def _two_point_two_candidate_ready() -> bool:
     if (
-        not _two_point_one_published()
+        not RELEASE_NOTES_21.is_file()
         or not ACTIVE_22_ROADMAP.is_file()
         or not RELEASE_NOTES_22.is_file()
         or not README.is_file()
     ):
         return False
     roadmap = _text(ACTIVE_22_ROADMAP)
+    notes_21 = _text(RELEASE_NOTES_21)
     notes = _text(RELEASE_NOTES_22)
     readme = _text(README)
-    return (
-        "Current verified progress: 9/10 milestones = 90.0%." in roadmap
+    history_ok = (
+        notes_21.startswith("# SwirEngine 2.1.0 Release Notes")
+        and "NOT PUBLISHED" not in notes_21
         and notes.startswith("# SwirEngine 2.2.0 Release Notes")
         and "Prepared from the bound 2.2.0 candidate" in notes
+    )
+    candidate_ok = (
+        "Current verified progress: 9/10 milestones = 90.0%." in roadmap
         and "bound non-publishing candidate" in readme
         and "NOT PUBLISHED" in readme
         and "**Latest public stable release:** **SwirEngine 2.1.0**" in readme
         and '"swirengine==2.2.0"' not in readme
     )
+    public_ok = (
+        "Current verified progress: 10/10 milestones = 100.0%." in roadmap
+        and "STATUS-2.2.0%20PUBLISHED" in readme
+        and "**Latest public stable release:** **SwirEngine 2.2.0**" in readme
+        and '"swirengine==2.2.0"' in readme
+        and (ROOT / "release-evidence/2.2.0/manifest.json").is_file()
+        and (ROOT / ".github/workflows/post-release-2.2.yml").is_file()
+        and not (ROOT / ".github/workflows/release-candidate-2.2.yml").exists()
+    )
+    return history_ok and (candidate_ok or public_ok)
 
 
 def _current_public_version() -> str:

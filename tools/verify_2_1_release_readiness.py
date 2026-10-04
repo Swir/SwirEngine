@@ -201,7 +201,7 @@ def audit(root: Path | None = None) -> ReadinessReport:
             EXPECTED_PUBLIC_VERSION,
             EXPECTED_CANDIDATE_VERSION,
         },
-        "2.1 history permits stable 2.0.0, immutable public 2.1.0, or the bound 2.2.0 candidate",
+        "2.1 history permits stable 2.0.0, immutable public 2.1.0, or complete 2.2.0 state",
         checks,
     )
     init_text = _read(root, "src/swirengine/__init__.py")
@@ -235,40 +235,68 @@ def audit(root: Path | None = None) -> ReadinessReport:
         "README PyPI ASCII progress matches the current active roadmap while 2.1 acceptance stays frozen"
     )
 
+    two_two_public = (
+        version == EXPECTED_CANDIDATE_VERSION
+        and "STATUS-2.2.0%20PUBLISHED" in readme
+        and "**Latest public stable release:** **SwirEngine 2.2.0**" in readme
+        and '"swirengine==2.2.0"' in readme
+        and (root / "release-evidence/2.2.0/manifest.json").is_file()
+        and (root / ".github/workflows/post-release-2.2.yml").is_file()
+        and not (root / ".github/workflows/release-candidate-2.2.yml").exists()
+    )
     publication_final = (
         version in {EXPECTED_PUBLIC_VERSION, EXPECTED_CANDIDATE_VERSION}
-        and "**Latest public stable release:** **SwirEngine 2.1.0**" in readme
+        and (
+            "**Latest public stable release:** **SwirEngine 2.1.0**" in readme
+            or two_two_public
+        )
         and notes.startswith("# SwirEngine 2.1.0 Release Notes")
         and "NOT PUBLISHED" not in notes
     )
     if publication_final:
-        _require(
-            "**2.1 release:** **PUBLISHED — GitHub Release and PyPI verified**" in readme,
-            "README final publication state identifies the verified 2.1 release",
-            checks,
-        )
+        if not two_two_public:
+            _require(
+                "**2.1 release:** **PUBLISHED — GitHub Release and PyPI verified**" in readme,
+                "README final publication state identifies the verified 2.1 release",
+                checks,
+            )
         if version == EXPECTED_CANDIDATE_VERSION:
             candidate_notes = _read(root, "RELEASE_NOTES_2_2.md")
             candidate_roadmap = parse_roadmap(_read(root, "ROADMAP_2_2.md"))
             pypi_description = _read(root, "PYPI_DESCRIPTION_2_2.md")
-            _require(
-                (candidate_roadmap.completed, candidate_roadmap.total) == (9, 10),
-                "bound 2.2 candidate preserves the open 9/10 roadmap",
-                checks,
-            )
-            _require(
-                "SwirEngine 2.2.0" in readme
-                and "bound non-publishing candidate" in readme
-                and "NOT PUBLISHED" in readme,
-                "README identifies SwirEngine 2.2.0 as a bound non-publishing candidate",
-                checks,
-            )
-            _require(
-                '"swirengine==2.2.0"' not in readme
-                and '"swirengine[audio]==2.2.0"' not in readme,
-                "README does not advertise public 2.2.0 installation before publication",
-                checks,
-            )
+            if two_two_public:
+                _require(
+                    (candidate_roadmap.completed, candidate_roadmap.total) == (10, 10),
+                    "immutable public 2.2 preserves the accepted 10/10 roadmap",
+                    checks,
+                )
+                _require(
+                    "**2.2 release:** **PUBLISHED — GitHub Release, PyPI and durable evidence "
+                    "verified**" in readme
+                    and "release-evidence/2.2.0/manifest.json" in readme
+                    and '"swirengine[audio]==2.2.0"' in readme,
+                    "README identifies immutable public SwirEngine 2.2.0 and its evidence",
+                    checks,
+                )
+            else:
+                _require(
+                    (candidate_roadmap.completed, candidate_roadmap.total) == (9, 10),
+                    "bound 2.2 candidate preserves the open 9/10 roadmap",
+                    checks,
+                )
+                _require(
+                    "SwirEngine 2.2.0" in readme
+                    and "bound non-publishing candidate" in readme
+                    and "NOT PUBLISHED" in readme,
+                    "README identifies SwirEngine 2.2.0 as a bound non-publishing candidate",
+                    checks,
+                )
+                _require(
+                    '"swirengine==2.2.0"' not in readme
+                    and '"swirengine[audio]==2.2.0"' not in readme,
+                    "README does not advertise public 2.2.0 installation before publication",
+                    checks,
+                )
             _require(
                 candidate_notes.startswith("# SwirEngine 2.2.0 Release Notes")
                 and "Prepared from the bound 2.2.0 candidate" in candidate_notes
@@ -320,7 +348,7 @@ def audit(root: Path | None = None) -> ReadinessReport:
     if version == EXPECTED_CANDIDATE_VERSION:
         _require(
             str(urls.get("2.2 Roadmap", "")).endswith("ROADMAP_2_2.md"),
-            "package metadata exposes the active 2.2 candidate roadmap",
+            "package metadata exposes the active or immutable public 2.2 roadmap",
             checks,
         )
 

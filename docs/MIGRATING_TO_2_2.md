@@ -1,9 +1,9 @@
 # Migrating from SwirEngine 2.1 to 2.2
 
-SwirEngine 2.2.0 is a **bound non-publishing candidate** and is **NOT PUBLISHED**. The latest
-public stable release remains **SwirEngine 2.1.0**. This guide describes the additive
-production-tools boundary being qualified before the guarded 2.2 publication decision; it is not
-an instruction to install 2.2.0 from a public package index.
+SwirEngine 2.2.0 is **PUBLISHED** and is the latest public stable release. The immutable
+`v2.2.0` tag, exact PyPI files, GitHub Release assets and public-install evidence are bound by the
+canonical [`2.2.0 evidence manifest`](../release-evidence/2.2.0/manifest.json). This guide covers
+the additive migration from the published 2.1 runtime and creator workflow.
 
 ## Compatibility baseline
 
@@ -17,22 +17,20 @@ an instruction to install 2.2.0 from a public package index.
   Windows, Linux and macOS cells. It does not imply support for untested architectures or Python
   implementations.
 
-## Before opening a project from source
+## Before upgrading a project
 
-Keep the project and its assets under version control, then test the unchanged project against the
-2.2 source checkout before accepting newly serialized editor data:
+Keep the project and its assets under version control, retain a restorable 2.1 copy, then install
+the exact public 2.2 release before accepting newly serialized editor data:
 
 ```bash
-git clone https://github.com/Swir/SwirEngine.git
-cd SwirEngine
-python -m pip install -e ".[dev]"
+python -m pip install -U "swirengine==2.2.0"
 swirengine editor
 ```
 
-For production installs, continue to use the public stable release:
+Optional audio support remains an explicit extra:
 
 ```bash
-python -m pip install -U "swirengine==2.1.0"
+python -m pip install -U "swirengine[audio]==2.2.0"
 ```
 
 Do not publish editor-generated changes until save/reopen, source runtime and relocated export
@@ -58,35 +56,46 @@ not an operating-system sandbox. Review extension code and requested capabilitie
 it. Multiplayer debugger captures are bounded diagnostic data and must not contain raw tokens,
 payloads, addresses or project paths.
 
-## Phase B candidate invariants
+## Historical Phase B candidate invariants
 
-While the release gate is in Phase B:
+Before publication, Phase B deliberately required all of the following:
 
-- `ROADMAP_2_2.md` remains **9/10 = 90.0%** and Milestone 10 stays open;
-- `pyproject.toml` and `swirengine.__version__` identify the exact bound candidate as `2.2.0`;
-- README continues to identify 2.1.0 as the latest public stable release and pins public install
+- `ROADMAP_2_2.md` remained **9/10 = 90.0%** and Milestone 10 stayed open;
+- `pyproject.toml` and `swirengine.__version__` identified the exact bound candidate as `2.2.0`;
+- README continued to identify 2.1.0 as the latest public stable release and pinned public install
   commands to that version;
-- `RELEASE_NOTES_2_2.md` and `PYPI_DESCRIPTION_2_2.md` remain publication-ready and
-  time-neutral; README carries the temporary non-publication warning instead of embedding it in
-  immutable release artifacts;
-- no `v2.2.0` tag, GitHub Release, PyPI upload or `.release/publish-2.2.0` marker is created;
+- `RELEASE_NOTES_2_2.md` and `PYPI_DESCRIPTION_2_2.md` remained publication-ready and
+  time-neutral; README carried the temporary non-publication warning instead of embedding it in
+  those now-immutable release artifacts;
+- no `v2.2.0` tag, GitHub Release, PyPI upload or `.release/publish-2.2.0` marker was created;
 - repository-only release evidence and the complete `.release` control directory are excluded
   from wheel and sdist payloads.
 
-Roadmap completion is intentionally later than source preflight. Only final Phase E evidence after
-guarded publication and immutable public verification may advance Milestone 10 to 10/10.
+These statements remain the historical candidate boundary, not the current release status.
+
+## Phase E published state
+
+Guarded publication and immutable public verification are complete. `ROADMAP_2_2.md` is now
+**10/10 = 100.0%**, `v2.2.0` resolves directly to the publication commit, and the exact public
+files passed clean-install checks on Linux, macOS and Windows. The evidence manifest records the
+release lineage, both required-workflow manifest identities, all five GitHub Release assets and
+the exact successful authority jobs from Release run `37175535837`, attempt 1.
+
+The 10/10 result covers the finite named 2.2 scope. It does not promise literal perfection,
+support for unverified platforms or freedom from future focused migration and regression work.
 
 ## Verification
 
-The local bound-candidate contract can be checked with:
+The durable public-release contract can be checked with:
 
 ```bash
 python tools/verify_required_workflows_2_2.py
-python tools/verify_2_2_release_candidate.py
+python tools/verify_public_release_2_2.py --evidence release-evidence/2.2.0/manifest.json
 python tools/verify_distribution_audit_data_2_2.py
 python tools/generate_progress_svg.py --check
 ```
 
-The dedicated `.github/workflows/release-candidate-2.2.yml` additionally rebuilds exact-source
-artifacts and clean-installs the wheel across the supported matrix with the explicit expected
-candidate version. See `docs/RELEASE_GATE_2_2.md` for the evidence order and failure policy.
+The read-only `.github/workflows/post-release-2.2.yml` repeats the immutable publication-chain,
+public metadata, asset and clean-install checks without holding publication permissions. See
+`docs/RELEASE_GATE_2_2.md` for the preserved Phase A–D history, final Phase E evidence order and
+failure policy.

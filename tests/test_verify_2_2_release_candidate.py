@@ -6,7 +6,6 @@ from pathlib import Path
 from tools.verify_2_2_release_candidate import (
     MANIFEST,
     REQUIRED_WORKFLOW_PATHS,
-    ROOT,
     WORKFLOW,
     WORKFLOW_NAME,
     check_release_candidate,
@@ -270,5 +269,31 @@ def test_candidate_contract_rejects_duplicate_manifest_path(tmp_path: Path) -> N
     assert any("duplicate paths" in error for error in errors)
 
 
-def test_repository_satisfies_phase_b_candidate_contract() -> None:
-    assert check_release_candidate(ROOT) == []
+def test_phase_e_fixture_is_not_reinterpreted_as_a_phase_b_candidate(tmp_path: Path) -> None:
+    root = _repository(tmp_path)
+    roadmap = root / "ROADMAP_2_2.md"
+    roadmap.write_text(
+        roadmap.read_text(encoding="utf-8")
+        .replace("- [ ] **10.", "- [x] **10.")
+        .replace("9/10 milestones = 90.0%", "10/10 milestones = 100.0%"),
+        encoding="utf-8",
+    )
+    readme = root / "README.md"
+    readme.write_text(
+        readme.read_text(encoding="utf-8")
+        .replace("bound non-publishing candidate", "immutable public release")
+        .replace("SwirEngine 2.1.0", "SwirEngine 2.2.0")
+        .replace("swirengine==2.1.0", "swirengine==2.2.0"),
+        encoding="utf-8",
+    )
+    (root / WORKFLOW).unlink()
+
+    errors = check_release_candidate(root)
+
+    assert errors
+    assert any(
+        "candidate workflow" in error
+        or "missing required Phase B file" in error
+        or "9/10" in error
+        for error in errors
+    )

@@ -158,24 +158,38 @@ def _two_point_one_published(root: Path) -> bool:
 
 def _two_point_two_candidate_ready(root: Path) -> bool:
     roadmap = root / "ROADMAP_2_2.md"
+    notes_21 = root / "RELEASE_NOTES_2_1.md"
     notes = root / "RELEASE_NOTES_2_2.md"
     readme = root / "README.md"
-    if not _two_point_one_published(root) or not all(
-        path.is_file() for path in (roadmap, notes, readme)
-    ):
+    if not all(path.is_file() for path in (roadmap, notes_21, notes, readme)):
         return False
     roadmap_text = roadmap.read_text(encoding="utf-8")
+    notes_21_text = notes_21.read_text(encoding="utf-8")
     notes_text = notes.read_text(encoding="utf-8")
     readme_text = readme.read_text(encoding="utf-8")
-    return (
-        "Current verified progress: 9/10 milestones = 90.0%." in roadmap_text
+    history_ok = (
+        notes_21_text.startswith("# SwirEngine 2.1.0 Release Notes")
+        and "NOT PUBLISHED" not in notes_21_text
         and notes_text.startswith("# SwirEngine 2.2.0 Release Notes")
         and "Prepared from the bound 2.2.0 candidate" in notes_text
+    )
+    candidate_ok = (
+        "Current verified progress: 9/10 milestones = 90.0%." in roadmap_text
         and "bound non-publishing candidate" in readme_text
         and "NOT PUBLISHED" in readme_text
         and "**Latest public stable release:** **SwirEngine 2.1.0**" in readme_text
         and '"swirengine==2.2.0"' not in readme_text
     )
+    public_ok = (
+        "Current verified progress: 10/10 milestones = 100.0%." in roadmap_text
+        and "STATUS-2.2.0%20PUBLISHED" in readme_text
+        and "**Latest public stable release:** **SwirEngine 2.2.0**" in readme_text
+        and '"swirengine==2.2.0"' in readme_text
+        and (root / "release-evidence/2.2.0/manifest.json").is_file()
+        and (root / ".github/workflows/post-release-2.2.yml").is_file()
+        and not (root / ".github/workflows/release-candidate-2.2.yml").exists()
+    )
+    return history_ok and (candidate_ok or public_ok)
 
 
 def _assert_locked_roadmap(root: Path, version: str) -> None:

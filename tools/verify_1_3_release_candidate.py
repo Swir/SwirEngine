@@ -99,18 +99,30 @@ def _bound_two_point_two_candidate(root: Path) -> bool:
     notes_21 = notes_21_path.read_text(encoding="utf-8")
     notes_22 = notes_22_path.read_text(encoding="utf-8")
     roadmap = roadmap_path.read_text(encoding="utf-8")
-    return (
+    history_ok = (
         notes_21.startswith("# SwirEngine 2.1.0 Release Notes")
         and "NOT PUBLISHED" not in notes_21
         and notes_22.startswith("# SwirEngine 2.2.0 Release Notes")
         and "Prepared from the bound 2.2.0 candidate" in notes_22
-        and "Current verified progress: 9/10 milestones = 90.0%." in roadmap
+    )
+    candidate_ok = (
+        "Current verified progress: 9/10 milestones = 90.0%." in roadmap
         and "SwirEngine 2.2.0" in readme
         and "bound non-publishing candidate" in readme
         and "NOT PUBLISHED" in readme
         and "**Latest public stable release:** **SwirEngine 2.1.0**" in readme
         and '"swirengine==2.2.0"' not in readme
     )
+    public_ok = (
+        "Current verified progress: 10/10 milestones = 100.0%." in roadmap
+        and "STATUS-2.2.0%20PUBLISHED" in readme
+        and "**Latest public stable release:** **SwirEngine 2.2.0**" in readme
+        and '"swirengine==2.2.0"' in readme
+        and (root / "release-evidence/2.2.0/manifest.json").is_file()
+        and (root / ".github/workflows/post-release-2.2.yml").is_file()
+        and not (root / ".github/workflows/release-candidate-2.2.yml").exists()
+    )
+    return history_ok and (candidate_ok or public_ok)
 
 
 def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditReport:

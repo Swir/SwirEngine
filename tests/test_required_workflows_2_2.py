@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import fnmatch
 import json
 from pathlib import Path
 
@@ -19,6 +20,24 @@ from tools.verify_required_workflows_2_2 import (
 
 ROOT = Path(__file__).resolve().parents[1]
 HEAD_SHA = "a" * 40
+PHASE_E_PLANNED_FILES = (
+    ".github/release-gates/2.2-required-workflows.json",
+    ".github/workflows/post-release-2.2.yml",
+    ".github/workflows/release-candidate-2.2.yml",
+    "CHANGELOG.md",
+    "README.md",
+    "ROADMAP_2_2.md",
+    "assets/readme/progress-2-2-card.svg",
+    "assets/readme/progress-card.svg",
+    "assets/readme/progress-mini.svg",
+    "docs/MIGRATING_TO_2_2.md",
+    "docs/RELEASE_GATE_2_2.md",
+    "release-evidence/2.2.0/manifest.json",
+    "tests/fixtures/release-candidate-2.2.yml",
+    "tests/test_post_release_workflow_2_2.py",
+    "tools/verify_2_2_release_readiness.py",
+    "tools/verify_public_release_2_2.py",
+)
 
 
 def _run(
@@ -59,7 +78,7 @@ def manifest() -> RequiredWorkflowManifest:
     return load_manifest(ROOT / DEFAULT_MANIFEST)
 
 
-def test_repository_manifest_tracks_the_explicit_candidate_workflows(
+def test_repository_manifest_tracks_the_explicit_post_release_workflows(
     manifest: RequiredWorkflowManifest,
 ) -> None:
     verified = verify_manifest_files(manifest, ROOT)
@@ -69,10 +88,31 @@ def test_repository_manifest_tracks_the_explicit_candidate_workflows(
     assert len({workflow.path for workflow in verified}) == 47
     assert len({workflow.name for workflow in verified}) == 47
     assert RequiredWorkflow(
-        path=".github/workflows/release-candidate-2.2.yml",
-        name="SwirEngine 2.2 Release Candidate",
+        path=".github/workflows/post-release-2.2.yml",
+        name="Post-release 2.2 Public Verification",
     ) in verified
+    assert all(
+        workflow.path != ".github/workflows/release-candidate-2.2.yml"
+        for workflow in verified
+    )
     assert all(workflow.path != ".github/workflows/release-readiness-2.2.yml" for workflow in verified)
+
+
+def test_all_47_required_workflows_are_triggered_by_the_phase_e_change_set(
+    manifest: RequiredWorkflowManifest,
+) -> None:
+    import yaml
+
+    for required in manifest.workflows:
+        workflow = yaml.load((ROOT / required.path).read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+        pull_request = workflow["on"]["pull_request"]
+        if not isinstance(pull_request, dict) or "paths" not in pull_request:
+            continue
+        patterns = pull_request["paths"]
+        assert any(
+            any(fnmatch.fnmatchcase(relative, pattern) for pattern in patterns)
+            for relative in PHASE_E_PLANNED_FILES
+        ), f"Phase E change set does not trigger {required.path}"
 
 
 @pytest.mark.parametrize(

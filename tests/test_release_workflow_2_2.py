@@ -8,7 +8,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_PATH = ROOT / ".github/workflows/release.yml"
 PUBLICATION_GATE_PATH = ROOT / ".github/workflows/publication-gate-2.2.yml"
-CANDIDATE_PATH = ROOT / ".github/workflows/release-candidate-2.2.yml"
+CANDIDATE_PATH = ROOT / "tests/fixtures/release-candidate-2.2.yml"
 CHECKOUT_ACTION = "actions/checkout@11d5960a326750d5838078e36cf38b85af677262"
 DOWNLOAD_ACTION = "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093"
 PYPI_ACTION = (

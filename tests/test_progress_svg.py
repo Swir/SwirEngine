@@ -15,6 +15,7 @@ from tools.generate_progress_svg import (
     PYPI_BLOCK_RE,
     PYPI_PROGRESS_END,
     PYPI_PROGRESS_START,
+    RELEASE_STATUS,
     STATUS_PATH,
     TEMPLATE_PATH,
     ProgressData,
@@ -54,7 +55,10 @@ def test_active_2_2_math_matches_canonical_assets() -> None:
     data = parse_progress((ROOT / STATUS_PATH).read_text(encoding="utf-8"))
 
     assert STATUS_PATH.as_posix() == "ROADMAP_2_2.md"
+    assert data.completed == 10
     assert data.total == 10
+    assert data.display_percentage == "100.0%"
+    assert data.status == "COMPLETE"
     assert data.percentage == pytest.approx((data.completed / data.total) * 100.0)
     assert generate(check=True) == 0
 
@@ -75,6 +79,7 @@ def test_active_2_2_math_matches_canonical_assets() -> None:
     assert "SwirEngine 2.2 — Production Tools &amp; Visual Creation" in card
     assert data.counter in card
     assert data.display_percentage in card
+    assert RELEASE_STATUS in card
     assert outputs[COMPAT_CARD_PATH] == card
     assert outputs[COMPAT_MINI_PATH] == mini
 
@@ -95,6 +100,8 @@ def test_readme_pypi_ascii_progress_is_single_deterministic_surface() -> None:
     assert block.count("```") == 2
     assert data.display_percentage in block
     assert data.counter in block
+    assert "[##############################] 100.0%" in block
+    assert "Status: COMPLETE" in block
     assert "<img" not in block
     assert ".svg" not in block
     fenced_text = block.split("```text\n", 1)[1].split("\n```", 1)[0]

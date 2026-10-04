@@ -1,3 +1,4 @@
+# Historical Phase B workflow fixture. It is intentionally not an active workflow.
 name: SwirEngine 2.2 Release Candidate
 
 on:
