@@ -600,6 +600,11 @@ jobs:
   prepare-pypi:
     name: Reconcile and stage only missing PyPI files
     needs: [publication-chain, release-evidence, verify-github-release]
+    if: >-
+      always() &&
+      needs.publication-chain.result == 'success' &&
+      needs.release-evidence.result == 'success' &&
+      needs.verify-github-release.result == 'success'
     runs-on: ubuntu-24.04
     outputs:
       upload: ${{ steps.plan.outputs.upload }}
@@ -928,6 +933,10 @@ jobs:
   post-release-public-pypi:
     name: Public PyPI verify / ${{ matrix.os }} / Python ${{ matrix.python-version }}
     needs: [publication-chain, verify-pypi]
+    if: >-
+      always() &&
+      needs.publication-chain.result == 'success' &&
+      needs.verify-pypi.result == 'success'
     strategy:
       fail-fast: false
       matrix:
@@ -980,6 +989,11 @@ jobs:
   final-public-state:
     name: Verify immutable tag, release, package and evidence
     needs: [publication-chain, release-evidence, post-release-public-pypi]
+    if: >-
+      always() &&
+      needs.publication-chain.result == 'success' &&
+      needs.release-evidence.result == 'success' &&
+      needs.post-release-public-pypi.result == 'success'
     runs-on: ubuntu-24.04
     permissions:
       contents: read

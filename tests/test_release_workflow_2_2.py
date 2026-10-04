@@ -457,6 +457,29 @@ def test_retries_reconcile_fresh_state_and_never_clobber() -> None:
     assert text.count("git/ref/heads/${PUBLICATION_BRANCH}") >= 5
 
 
+def test_read_only_verification_continues_after_intended_write_job_skips() -> None:
+    _, workflow = _workflow()
+    jobs = workflow["jobs"]
+
+    assert jobs["prepare-pypi"]["if"] == (
+        "always() && "
+        "needs.publication-chain.result == 'success' && "
+        "needs.release-evidence.result == 'success' && "
+        "needs.verify-github-release.result == 'success'"
+    )
+    assert jobs["post-release-public-pypi"]["if"] == (
+        "always() && "
+        "needs.publication-chain.result == 'success' && "
+        "needs.verify-pypi.result == 'success'"
+    )
+    assert jobs["final-public-state"]["if"] == (
+        "always() && "
+        "needs.publication-chain.result == 'success' && "
+        "needs.release-evidence.result == 'success' && "
+        "needs.post-release-public-pypi.result == 'success'"
+    )
+
+
 def test_trusted_publisher_identity_and_minimal_write_permissions_are_preserved() -> None:
     text, workflow = _workflow()
     jobs = workflow["jobs"]
