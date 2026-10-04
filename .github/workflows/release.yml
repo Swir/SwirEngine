@@ -333,6 +333,7 @@ jobs:
     needs: [publication-chain, build-release, clean-install-matrix]
     runs-on: ubuntu-24.04
     permissions:
+      attestations: read
       contents: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -373,6 +374,11 @@ jobs:
       - name: Capture initial PyPI, tag and GitHub Release state
         env:
           GH_TOKEN: ${{ github.token }}
+          CANDIDATE_SOURCE_SHA: ${{ needs.publication-chain.outputs.candidate_source_sha }}
+          CANDIDATE_MARKER_SHA: ${{ needs.publication-chain.outputs.candidate_marker_sha }}
+          PUBLICATION_SHA: ${{ needs.publication-chain.outputs.publication_sha }}
+          WORKFLOW_MANIFEST_SHA256: ${{ needs.publication-chain.outputs.workflow_manifest_sha256 }}
+          LOGICAL_SDIST_SHA256: ${{ needs.build-release.outputs.logical_sdist_sha256 }}
         shell: bash
         run: |
           set -euo pipefail
@@ -393,14 +399,83 @@ jobs:
           snapshot initial-state/pypi.json "https://pypi.org/pypi/swirengine/${RELEASE_VERSION}/json"
           snapshot initial-state/tag.json "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" 1
           snapshot initial-state/release.json "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" 1
-          python tools/reconcile_release_2_2.py \
-            --dist-dir dist \
-            --release-notes RELEASE_NOTES_2_2.md \
-            --publication-commit "${{ needs.publication-chain.outputs.publication_sha }}" \
-            --pypi-json initial-state/pypi.json \
-            --tag-json initial-state/tag.json \
-            --release-json initial-state/release.json \
-            > initial-state/plan.json
+
+          if python tools/reconcile_release_2_2.py \
+              --dist-dir dist \
+              --release-notes RELEASE_NOTES_2_2.md \
+              --publication-commit "$PUBLICATION_SHA" \
+              --pypi-json initial-state/pypi.json \
+              --tag-json initial-state/tag.json \
+              --release-json initial-state/release.json \
+              > initial-state/plan.json; then
+            echo "Freshly built release assets reconcile with the captured public state."
+          else
+            echo "Fresh assets differ from public state; requiring exact immutable release recovery."
+            fallback_dir="$(mktemp -d "$RUNNER_TEMP/immutable-release-assets.XXXXXX")"
+            release_assets=(
+              swirengine-2.2.0-py3-none-any.whl
+              swirengine-2.2.0-cp314-cp314-win_amd64.whl
+              swirengine-2.2.0.tar.gz
+              SHA256SUMS
+              release-provenance.json
+            )
+            test "${#release_assets[@]}" -eq 5
+            for asset in "${release_assets[@]}"; do
+              gh release download "$RELEASE_TAG" \
+                --repo "$GITHUB_REPOSITORY" \
+                --dir "$fallback_dir" \
+                --pattern "$asset"
+              test -f "$fallback_dir/$asset"
+              test ! -L "$fallback_dir/$asset"
+            done
+            test "$(find "$fallback_dir" -mindepth 1 -maxdepth 1 | wc -l)" -eq 5
+            test "$(find "$fallback_dir" -mindepth 1 -maxdepth 1 -type f | wc -l)" -eq 5
+
+            gh release verify "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY"
+            for asset in "${release_assets[@]}"; do
+              gh release verify-asset "$RELEASE_TAG" "$fallback_dir/$asset" \
+                --repo "$GITHUB_REPOSITORY"
+            done
+
+            python tools/release_evidence_2_2.py verify \
+              --dist-dir "$fallback_dir" \
+              --candidate-source-commit "$CANDIDATE_SOURCE_SHA" \
+              --candidate-marker-commit "$CANDIDATE_MARKER_SHA" \
+              --publication-commit "$PUBLICATION_SHA" \
+              --workflow-manifest .github/release-gates/2.2-required-workflows.json \
+              --expected-workflow-manifest-sha256 "$WORKFLOW_MANIFEST_SHA256" \
+              --expected-logical-sdist-sha256 "$LOGICAL_SDIST_SHA256"
+
+            mkdir -p recovery-state
+            snapshot recovery-state/pypi.json "https://pypi.org/pypi/swirengine/${RELEASE_VERSION}/json"
+            snapshot recovery-state/tag.json "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" 1
+            snapshot recovery-state/release.json "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" 1
+            python tools/reconcile_release_2_2.py \
+              --dist-dir "$fallback_dir" \
+              --release-notes RELEASE_NOTES_2_2.md \
+              --publication-commit "$PUBLICATION_SHA" \
+              --pypi-json recovery-state/pypi.json \
+              --tag-json recovery-state/tag.json \
+              --release-json recovery-state/release.json \
+              --require-complete \
+              > recovery-state/plan.json
+
+            recovery_files=(pypi.json tag.json release.json plan.json)
+            test "${#recovery_files[@]}" -eq 4
+            test "$(find recovery-state -mindepth 1 -maxdepth 1 | wc -l)" -eq 4
+            test "$(find recovery-state -mindepth 1 -maxdepth 1 -type f | wc -l)" -eq 4
+            for state_file in "${recovery_files[@]}"; do
+              cp -- "recovery-state/$state_file" "initial-state/$state_file"
+              cmp -- "recovery-state/$state_file" "initial-state/$state_file"
+            done
+
+            for asset in "${release_assets[@]}"; do
+              cp -- "$fallback_dir/$asset" "dist/$asset"
+              cmp -- "$fallback_dir/$asset" "dist/$asset"
+            done
+            test "$(find dist -mindepth 1 -maxdepth 1 | wc -l)" -eq 5
+            test "$(find dist -mindepth 1 -maxdepth 1 -type f | wc -l)" -eq 5
+          fi
           jq . initial-state/plan.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
