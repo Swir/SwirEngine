@@ -422,6 +422,13 @@ class ShadowRelic32:
         self.body.set_velocity(0, 0)
         self.invulnerable = 1.0
         self.game_over = False
+        self.camera_base_x = max(
+            WORLD_LEFT + W / 2,
+            min(WORLD_RIGHT - W / 2, self.player.x),
+        )
+        self.camera_base_y = 0.0
+        self.game.camera.x = self.camera_base_x
+        self.game.camera.y = self.camera_base_y
 
     def _grounded(self) -> bool:
         sensor = AABB(self.player.x, self.player.y - PLAYER_H / 2 - 2, PLAYER_W * 0.70, 6)
