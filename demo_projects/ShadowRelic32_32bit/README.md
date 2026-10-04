@@ -8,15 +8,15 @@ while using SwirEngine systems for the actual runtime rather than embedding a se
 
 - large scrolling world split into **Drowned Ruins**, **Crystal Caverns** and **Moon Temple**
 - SwirEngine `PhysicsWorld2D` / `RigidBody2D` / `CollisionWorld2D` player movement
-- sword combat (`X` / `J`) plus stomp combat
+- responsive 3-hit relic-blade combo (`X` / `J`), stomp combat and short invulnerable dash
 - crawler, wisp and cultist enemies
 - an NPC Archivist with multi-line interaction (`E`)
 - three persistent Moon Temple sigils that unlock the temple gate
 - checkpoints with real `SaveStore` persistence
 - healing potions and optional crystal shards
-- final **Shadow Warden** boss with 7 HP
+- final **Shadow Warden** boss with 7 HP, knockback/stun reactions and aimed shadow orbs
 - ending portal and persistent boss completion
-- parallax backgrounds, particles, HUD, screen-space overlays and optional generated audio
+- look-ahead/dead-zone camera, impact shake, slash FX, particles, HUD and optional generated audio
 - deterministic headless physics/save probe for CI or quick validation
 - original procedural 32-bit-style artwork and sound generated on first launch
 - original **Shadow Relic** application icon (`shadow_relic_icon.ppm` source + generated PNG/ICO)
@@ -46,12 +46,17 @@ python main.py
 
 ## Controls
 
-- `A` / `D` or Left / Right — move
-- `Space` — jump
-- `X` or `J` — relic-blade attack
+- `A` / `D` or Left / Right — analog-feeling accelerated movement
+- `Space`, `W` or Up — jump; release early for a short hop
+- `X` or `J` — fast 3-hit relic-blade combo
+- `C` or `K` — short invulnerable dash
 - `E` — talk to the Archivist
 - `R` — respawn at the latest checkpoint
 - `N` — erase adventure progress and start a new run
+
+The movement layer includes coyote time, jump buffering, variable jump height, stronger falling gravity,
+ground/air acceleration and separate braking. Taking a normal enemy hit now knocks the hero back
+instead of teleporting to a checkpoint; checkpoints heal and only death/falling causes a respawn.
 
 ## Headless validation
 
