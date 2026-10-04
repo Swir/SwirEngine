@@ -1,0 +1,8 @@
+{
+  "candidate_marker_commit": "48ca4b55b9707845796451136002a4c6568ac231",
+  "candidate_source_commit": "efd5d2b5c26941d49599cd925bb1f8c35b844c3f",
+  "repository": "Swir/SwirEngine",
+  "schema_version": 1,
+  "version": "2.2.0",
+  "workflow_manifest_sha256": "9ca3c9f2fd42e7ac410d571f6847c22e94e04ce522322b83f07e48e3070b0f49"
+}
