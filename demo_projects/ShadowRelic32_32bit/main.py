@@ -124,6 +124,54 @@ DIALOG = (
     "Beyond it waits the Shadow Warden. X or J swings your relic blade.",
 )
 
+MOVE_COLLISION_EPSILON = 0.5
+
+
+def move_horizontal_strict(
+    target: Rectangle2D,
+    collider: BoxCollider2D,
+    world: CollisionWorld2D,
+    amount: float,
+) -> float:
+    """Move horizontally while ignoring floor-only edge contact.
+
+    SwirEngine AABB overlap intentionally treats touching edges as intersecting. That is useful
+    for contact queries, but a platformer must not reinterpret the floor under a standing hero as
+    a horizontal wall. This controller resolves only contacts with real vertical penetration.
+    """
+
+    if amount == 0.0:
+        return 0.0
+
+    start_x = float(target.x)
+    target.x = start_x + float(amount)
+    bounds = collider.bounds
+    hits = world.overlap_aabb(bounds, layer_mask=SOLID, tag="solid")
+
+    for other in hits:
+        other_bounds = other.bounds
+        vertical_overlap = min(bounds.top, other_bounds.top) - max(
+            bounds.bottom,
+            other_bounds.bottom,
+        )
+        horizontal_overlap = min(bounds.right, other_bounds.right) - max(
+            bounds.left,
+            other_bounds.left,
+        )
+        if (
+            vertical_overlap <= MOVE_COLLISION_EPSILON
+            or horizontal_overlap <= MOVE_COLLISION_EPSILON
+        ):
+            continue
+
+        if amount > 0:
+            target.x -= bounds.right - other_bounds.left
+        else:
+            target.x += other_bounds.right - bounds.left
+        bounds = collider.bounds
+
+    return float(target.x) - start_x
+
 
 def run_headless_probe() -> dict[str, object]:
     collisions = CollisionWorld2D(cell_size=96.0)
@@ -138,6 +186,21 @@ def run_headless_probe() -> dict[str, object]:
     floor_y = -80 + 20 + PLAYER_H / 2
     if abs(player.y - floor_y) > 0.15:
         raise AssertionError("Shadow Relic player did not settle on SwirEngine collision geometry")
+
+    start_x = player.x
+    for _ in range(90):
+        moved = move_horizontal_strict(
+            player,
+            collider,
+            collisions,
+            220.0 * FIXED_DT,
+        )
+        if moved <= 0:
+            raise AssertionError("Shadow Relic horizontal controller treated the floor as a wall")
+        physics.step(FIXED_DT)
+    if player.x - start_x < 150:
+        raise AssertionError("Shadow Relic horizontal traversal regression")
+
     body.apply_impulse(0, JUMP_SPEED)
     peak = player.y
     for _ in range(180):
@@ -153,6 +216,7 @@ def run_headless_probe() -> dict[str, object]:
             raise AssertionError("Shadow Relic SaveStore persistence probe failed")
     return {
         "engine_physics": True,
+        "horizontal_travel": round(player.x - start_x, 2),
         "landed": True,
         "jump_height": round(peak - floor_y, 2),
         "save_store": True,
@@ -188,6 +252,7 @@ class ShadowRelic32:
         self.jump_buffer = 0.0
         self.dash_timer = 0.0
         self.dash_cooldown = 0.0
+        self.move_velocity_x = 0.0
         self.invulnerable = 0.0
         self.camera_shake = 0.0
         self.camera_base_x = 0.0
@@ -420,6 +485,7 @@ class ShadowRelic32:
         self.health = max(1, self.health)
         self.player.x, self.player.y = self._checkpoint_position()
         self.body.set_velocity(0, 0)
+        self.move_velocity_x = 0.0
         self.invulnerable = 1.0
         self.game_over = False
         self.camera_base_x = max(
@@ -458,7 +524,7 @@ class ShadowRelic32:
         direction = -self.facing
         if source_x is not None:
             direction = 1 if self.player.x >= source_x else -1
-        self.body.velocity_x = direction * 430
+        self.move_velocity_x = direction * 430
         self.body.velocity_y = 420
         self.invulnerable = 1.0
 
@@ -481,7 +547,8 @@ class ShadowRelic32:
         self.dash_timer = DASH_TIME
         self.dash_cooldown = DASH_COOLDOWN
         self.invulnerable = max(self.invulnerable, DASH_TIME + 0.04)
-        self.body.velocity_x = self.facing * DASH_SPEED
+        self.move_velocity_x = self.facing * DASH_SPEED
+        self.body.velocity_x = 0.0
         self.body.velocity_y = 0
         self.dust.x, self.dust.y = self.player.x, self.player.y
         self.dust.burst(12)
@@ -495,7 +562,7 @@ class ShadowRelic32:
         self.attack_timer = 0.13 + self.combo_step * 0.015
         self.attack_cooldown = 0.14 if self.combo_step < 3 else 0.24
         self._sound("slash.wav", 0.18)
-        self.body.velocity_x += self.facing * (35 + self.combo_step * 15)
+        self.move_velocity_x += self.facing * (35 + self.combo_step * 15)
         reach = 76 + self.combo_step * 8
         cx = self.player.x + self.facing * (42 + self.combo_step * 3)
         hitbox = AABB(cx, self.player.y + 2, reach, 64)
@@ -543,16 +610,28 @@ class ShadowRelic32:
     def _fixed(self, dt: float) -> None:
         if self.won or self.game_over:
             return
+
         grounded = self._grounded()
         if grounded:
             self.coyote_timer = COYOTE_TIME
         else:
             self.coyote_timer = max(0.0, self.coyote_timer - dt)
 
+        self.body.velocity_x = 0.0
+
         if self.dash_timer > 0:
             self.body.gravity_scale = 0.0
-            self.body.velocity_x = self.facing * DASH_SPEED
+            self.move_velocity_x = self.facing * DASH_SPEED
             self.body.velocity_y = 0.0
+            moved = move_horizontal_strict(
+                self.player,
+                self.player_collider,
+                self.game.collisions,
+                self.move_velocity_x * dt,
+            )
+            if abs(moved) + MOVE_COLLISION_EPSILON < abs(self.move_velocity_x * dt):
+                self.move_velocity_x = 0.0
+                self.dash_timer = 0.0
             return
 
         jump_held = self.game.key("SPACE") or self.game.key("W") or self.game.key("UP")
@@ -573,19 +652,29 @@ class ShadowRelic32:
 
         if move:
             acceleration = GROUND_ACCEL if grounded else AIR_ACCEL
-            target = move * RUN_SPEED
-            self.body.velocity_x = self._approach(
-                self.body.velocity_x,
-                target,
+            target_speed = move * RUN_SPEED
+            self.move_velocity_x = self._approach(
+                self.move_velocity_x,
+                target_speed,
                 acceleration * dt,
             )
         else:
             braking = GROUND_BRAKE if grounded else AIR_BRAKE
-            self.body.velocity_x = self._approach(
-                self.body.velocity_x,
+            self.move_velocity_x = self._approach(
+                self.move_velocity_x,
                 0.0,
                 braking * dt,
             )
+
+        requested = self.move_velocity_x * dt
+        moved = move_horizontal_strict(
+            self.player,
+            self.player_collider,
+            self.game.collisions,
+            requested,
+        )
+        if abs(moved) + MOVE_COLLISION_EPSILON < abs(requested):
+            self.move_velocity_x = 0.0
 
         if self.jump_buffer > 0 and self.coyote_timer > 0:
             self.jump_buffer = 0.0
@@ -798,7 +887,7 @@ class ShadowRelic32:
             self.dialog.text = ""
 
     def _sync_visuals(self, dt: float) -> None:
-        self.phase += dt * (10 if abs(self.body.velocity_x) > 5 else 3.5)
+        self.phase += dt * (10 if abs(self.move_velocity_x) > 5 else 3.5)
         side = "r" if self.facing > 0 else "l"
         if self.attack_timer > 0:
             texture = f"hero_attack_{side}.png"
@@ -806,7 +895,7 @@ class ShadowRelic32:
             texture = f"hero_hurt_{side}.png"
         elif not self._grounded():
             texture = f"hero_jump_{side}.png"
-        elif abs(self.body.velocity_x) > 10:
+        elif abs(self.move_velocity_x) > 10:
             texture = f"hero_run{int(self.phase * 1.3) % 4}_{side}.png"
         else:
             texture = f"hero_idle{int(self.phase * 0.6) % 2}_{side}.png"
@@ -854,7 +943,7 @@ class ShadowRelic32:
             self.gate_rune.color = Color(0.25, 1.0, 0.78, 1)
 
     def _camera_update(self, dt: float) -> None:
-        look_ahead = max(-150.0, min(150.0, self.body.velocity_x * 0.38))
+        look_ahead = max(-150.0, min(150.0, self.move_velocity_x * 0.38))
         target_x = max(
             WORLD_LEFT + W / 2,
             min(WORLD_RIGHT - W / 2, self.player.x + look_ahead),
