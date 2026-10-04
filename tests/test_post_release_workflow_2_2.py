@@ -67,6 +67,12 @@ def test_post_release_contract_is_focused_and_skips_only_installation() -> None:
     assert contract["name"] == "Public-release verifier contract"
     assert contract["runs-on"] == "ubuntu-24.04"
     assert any(step.get("uses") == SETUP_PYTHON_ACTION for step in contract["steps"])
+    install = next(
+        step
+        for step in contract["steps"]
+        if step.get("name") == "Install focused validation tooling"
+    )
+    assert install["run"] == 'python -m pip install --upgrade pip ".[dev]"'
     assert "tests/test_public_release_verifier_2_2.py" in text
     assert "tests/test_post_release_workflow_2_2.py" in text
     assert "tools/verify_2_2_release_readiness.py" in text
