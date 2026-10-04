@@ -19,7 +19,7 @@ jobs:
     name: Verify marker-only publication source
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
@@ -44,7 +44,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           remote_head="$(git ls-remote origin "refs/heads/$PUBLICATION_BRANCH" | awk '{print $1}')"
           test "$remote_head" = "$GITHUB_SHA"
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.13"
       - name: Verify deterministic C to M1 to P chain

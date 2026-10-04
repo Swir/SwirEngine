@@ -96,6 +96,7 @@ def test_exact_same_repository_merge_on_fresh_main_passes(tmp_path: Path) -> Non
 
     assert result.candidate_sha == graph.candidate_sha
     assert result.merge_commit_sha == graph.merge_sha
+    assert result.base_parent_sha == graph.initial_sha
     assert result.main_sha == graph.merge_sha
 
 
@@ -181,6 +182,43 @@ def test_squash_merge_that_does_not_contain_candidate_is_rejected(tmp_path: Path
             candidate_sha=graph.candidate_sha,
             root=graph.root,
         )
+
+
+def test_fast_forward_candidate_is_not_accepted_as_normal_merge(tmp_path: Path) -> None:
+    graph = _graph(tmp_path)
+    _git(graph.root, "update-ref", "refs/remotes/origin/main", graph.candidate_sha)
+
+    with pytest.raises(CandidateMergeError, match="exactly two parents"):
+        verify_candidate_merge(
+            [_pull(graph, merge_sha=graph.candidate_sha)],
+            candidate_sha=graph.candidate_sha,
+            root=graph.root,
+        )
+
+
+def test_later_merge_containing_candidate_is_not_canonical_candidate_merge(
+    tmp_path: Path,
+) -> None:
+    graph = _graph(tmp_path)
+    _git(graph.root, "switch", "-c", "later-side")
+    (graph.root / "side.txt").write_text("side\n", encoding="utf-8")
+    later_side_sha = _commit(graph.root, "later side")
+
+    _git(graph.root, "switch", "main")
+    (graph.root / "main.txt").write_text("main\n", encoding="utf-8")
+    _commit(graph.root, "later main")
+    _git(graph.root, "merge", "--no-ff", "later-side", "-m", "later merge")
+    later_merge_sha = _git(graph.root, "rev-parse", "HEAD")
+    _git(graph.root, "update-ref", "refs/remotes/origin/main", later_merge_sha)
+
+    with pytest.raises(CandidateMergeError, match="second parent must be the exact candidate"):
+        verify_candidate_merge(
+            [_pull(graph, merge_sha=later_merge_sha)],
+            candidate_sha=graph.candidate_sha,
+            root=graph.root,
+        )
+
+    assert later_side_sha != graph.candidate_sha
 
 
 def test_merge_not_reachable_from_fresh_main_is_rejected(tmp_path: Path) -> None:

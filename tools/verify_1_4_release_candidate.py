@@ -265,7 +265,8 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
 
     release = _read(root, ".github/workflows/release.yml")
     _require(
-        "pypa/gh-action-pypi-publish@release/v1" in release,
+        "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33"
+        in release,
         "current publication workflow uses Trusted Publishing",
         checks,
     )

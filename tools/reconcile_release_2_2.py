@@ -33,6 +33,8 @@ except ModuleNotFoundError:  # pragma: no cover - direct script execution
     )
 
 TAG = f"v{EXPECTED_VERSION}"
+EXPECTED_RELEASE_TITLE = f"SwirEngine {EXPECTED_VERSION}"
+DEFAULT_RELEASE_NOTES = Path(__file__).resolve().parents[1] / "RELEASE_NOTES_2_2.md"
 EXPECTED_PROVENANCE_KEYS = {
     "schema",
     "package",
@@ -66,6 +68,8 @@ class ArtifactIdentity:
 @dataclass(frozen=True, slots=True)
 class ExpectedRelease:
     publication_commit: str
+    release_title: str
+    release_body: str
     distributions: tuple[ArtifactIdentity, ...]
     release_assets: tuple[ArtifactIdentity, ...]
 
@@ -169,7 +173,12 @@ def _local_identity(path: Path) -> ArtifactIdentity:
     return ArtifactIdentity(name=path.name, sha256=sha256_file(path), size=path.stat().st_size)
 
 
-def load_expected_release(dist_dir: Path, *, publication_commit: str) -> ExpectedRelease:
+def load_expected_release(
+    dist_dir: Path,
+    *,
+    publication_commit: str,
+    release_notes: Path = DEFAULT_RELEASE_NOTES,
+) -> ExpectedRelease:
     _require(
         bool(_COMMIT_RE.fullmatch(publication_commit)),
         "publication commit must be exactly 40 lowercase hexadecimal characters",
@@ -178,6 +187,15 @@ def load_expected_release(dist_dir: Path, *, publication_commit: str) -> Expecte
     checksums_path = dist_dir / CHECKSUMS_NAME
     _require(provenance_path.is_file(), f"local release asset is missing: {PROVENANCE_NAME}")
     _require(checksums_path.is_file(), f"local release asset is missing: {CHECKSUMS_NAME}")
+    _require(
+        release_notes.is_file() and not release_notes.is_symlink(),
+        f"release notes are missing or unsafe: {release_notes}",
+    )
+    try:
+        release_body = release_notes.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise ReleaseReconciliationError(f"cannot read release notes: {exc}") from exc
+    _require(bool(release_body), "release notes must not be empty")
     try:
         provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
@@ -252,6 +270,8 @@ def load_expected_release(dist_dir: Path, *, publication_commit: str) -> Expecte
     evidence = (_local_identity(checksums_path), _local_identity(provenance_path))
     return ExpectedRelease(
         publication_commit=publication_commit,
+        release_title=EXPECTED_RELEASE_TITLE,
+        release_body=release_body,
         distributions=tuple(distributions),
         release_assets=tuple(sorted((*distributions, *evidence))),
     )
@@ -319,14 +339,30 @@ def _validate_tag(payload: object | None, *, publication_commit: str) -> bool:
     return True
 
 
-def _release_identities(payload: object | None) -> tuple[ArtifactIdentity, ...] | None:
+def _release_identities(
+    payload: object | None,
+    *,
+    expected: ExpectedRelease,
+) -> tuple[ArtifactIdentity, ...] | None:
     if payload is None:
         return None
     _require(isinstance(payload, Mapping), "GitHub Release snapshot must be an object or null")
     assert isinstance(payload, Mapping)
     _require(payload.get("tag_name") == TAG, "GitHub Release has an unexpected tag")
+    _require(
+        payload.get("name") == expected.release_title,
+        "GitHub Release has an unexpected title",
+    )
+    _require(
+        payload.get("body") == expected.release_body,
+        "GitHub Release notes do not match the exact release notes",
+    )
     _require(payload.get("draft") is False, "GitHub Release must not be a draft")
     _require(payload.get("prerelease") is False, "GitHub Release must not be a prerelease")
+    _require(
+        payload.get("immutable") is True,
+        "GitHub Release must be server-enforced immutable",
+    )
     return _remote_identities(
         payload.get("assets"),
         source="GitHub Release",
@@ -340,17 +376,26 @@ def reconcile_release(
 ) -> ReconciliationPlan:
     pypi = _pypi_identities(snapshot.pypi)
     tag_exists = _validate_tag(snapshot.tag, publication_commit=expected.publication_commit)
-    release = _release_identities(snapshot.release)
+    release = _release_identities(snapshot.release, expected=expected)
     _require(
         release is None or tag_exists,
         "GitHub Release exists while the exact tag snapshot is absent",
     )
     pypi_uploads = _missing_only(expected.distributions, pypi, source="PyPI")
-    github_uploads = (
-        tuple(item.name for item in expected.release_assets)
-        if release is None
-        else _missing_only(expected.release_assets, release, source="GitHub Release")
-    )
+    if release is None:
+        github_uploads = tuple(item.name for item in expected.release_assets)
+    else:
+        missing_release_assets = _missing_only(
+            expected.release_assets,
+            release,
+            source="GitHub Release",
+        )
+        _require(
+            not missing_release_assets,
+            "immutable GitHub Release is incomplete and cannot accept missing assets: "
+            f"{list(missing_release_assets)!r}",
+        )
+        github_uploads = ()
     return ReconciliationPlan(
         pypi_uploads=pypi_uploads,
         github_uploads=github_uploads,
@@ -406,6 +451,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--pypi-json", type=Path, required=True)
     parser.add_argument("--tag-json", type=Path, required=True)
     parser.add_argument("--release-json", type=Path, required=True)
+    parser.add_argument("--release-notes", type=Path, default=DEFAULT_RELEASE_NOTES)
     parser.add_argument("--initial-pypi-json", type=Path)
     parser.add_argument("--initial-tag-json", type=Path)
     parser.add_argument("--initial-release-json", type=Path)
@@ -432,6 +478,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         expected = load_expected_release(
             args.dist_dir,
             publication_commit=args.publication_commit,
+            release_notes=args.release_notes,
         )
         fresh = ReleaseSnapshot(
             pypi=_load_json(args.pypi_json),

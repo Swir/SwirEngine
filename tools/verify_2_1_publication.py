@@ -104,7 +104,7 @@ def verify(root: Path) -> list[str]:
             "environment: pypi",
             "id-token: write",
             "gh release create",
-            "pypa/gh-action-pypi-publish@release/v1",
+            "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33",
         )
     else:
         required_release_fragments = (

@@ -59,7 +59,10 @@ def test_active_release_workflow_uses_current_final_gate_and_registered_trusted_
     assert "verify_1_5_release_candidate.py --require-complete" not in workflow
     assert "verify_1_4_release_candidate.py --require-complete" not in workflow
     assert "verify_1_3_release_candidate.py" not in workflow
-    assert "pypa/gh-action-pypi-publish@release/v1" in workflow
+    assert (
+        "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33"
+        in workflow
+    )
     assert "environment: pypi" in workflow
     assert "id-token: write" in workflow
     assert "skip-existing: true" not in workflow

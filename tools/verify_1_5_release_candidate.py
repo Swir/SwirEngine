@@ -371,7 +371,7 @@ def audit(root: Path | None = None, *, require_complete: bool = False) -> AuditR
                         "verify_publication_chain_2_2.py",
                         "verify_required_workflows_2_2.py",
                         "reconcile_release_2_2.py",
-                        "pypa/gh-action-pypi-publish@release/v1",
+                        "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33",
                         "environment: pypi",
                         "id-token: write",
                     ):

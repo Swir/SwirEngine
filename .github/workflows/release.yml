@@ -38,13 +38,13 @@ jobs:
       workflow_manifest_sha256: ${{ steps.chain.outputs.workflow_manifest_sha256 }}
     steps:
       - name: Check out trusted verifier source
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.workflow_sha }}
           persist-credentials: false
           path: trusted-verifier
       - name: Check out untrusted publication source for inspection
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
@@ -55,12 +55,14 @@ jobs:
           EVENT_PATH: ${{ github.event_path }}
           EXPECTED_REPOSITORY: Swir/SwirEngine
           PUBLICATION_SHA: ${{ github.event.workflow_run.head_sha }}
+          TRUSTED_WORKFLOW_REF: ${{ github.workflow_ref }}
           TRUSTED_WORKFLOW_SHA: ${{ github.workflow_sha }}
         shell: bash
         run: |
           set -euo pipefail
           test "$GITHUB_REPOSITORY" = "$EXPECTED_REPOSITORY"
           test "$GITHUB_EVENT_NAME" = "workflow_run"
+          test "$TRUSTED_WORKFLOW_REF" = "$EXPECTED_REPOSITORY/.github/workflows/release.yml@refs/heads/main"
           test "$(jq -r '.repository.full_name' "$EVENT_PATH")" = "$EXPECTED_REPOSITORY"
           test "$(jq -r '.action' "$EVENT_PATH")" = "completed"
           test "$(jq -r '.workflow_run.name' "$EVENT_PATH")" = "SwirEngine 2.2 Publication Gate"
@@ -113,7 +115,7 @@ jobs:
       actions: read
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ needs.publication-chain.outputs.publication_sha }}
           persist-credentials: false
@@ -155,12 +157,12 @@ jobs:
     outputs:
       logical_sdist_sha256: ${{ steps.sdist.outputs.logical_sdist_sha256 }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ needs.publication-chain.outputs.publication_sha }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.13"
           cache: pip
@@ -215,7 +217,7 @@ jobs:
               "swirengine-2.2.0-py3-none-any.whl",
               "swirengine-2.2.0.tar.gz",
           ], paths
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: swirengine-2.2.0-publication-portable
           path: publication-dist/*
@@ -232,11 +234,11 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ needs.publication-chain.outputs.publication_sha }}
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -287,7 +289,7 @@ jobs:
           --verify-cli21
       - name: Preserve Windows CPython 3.14 release wheel
         if: runner.os == 'Windows' && matrix.python-version == '3.14'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: swirengine-2.2.0-publication-win-cp314
           path: dist/*.whl
@@ -301,18 +303,18 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ needs.publication-chain.outputs.publication_sha }}
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.13"
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: swirengine-2.2.0-publication-portable
           path: dist
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: swirengine-2.2.0-publication-win-cp314
           path: dist
@@ -361,33 +363,38 @@ jobs:
           snapshot initial-state/release.json "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" 1
           python tools/reconcile_release_2_2.py \
             --dist-dir dist \
+            --release-notes RELEASE_NOTES_2_2.md \
             --publication-commit "${{ needs.publication-chain.outputs.publication_sha }}" \
             --pypi-json initial-state/pypi.json \
             --tag-json initial-state/tag.json \
             --release-json initial-state/release.json \
             > initial-state/plan.json
           jq . initial-state/plan.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: swirengine-2.2.0-publication-assets
           path: |
             dist/*
             initial-state/*.json
+            RELEASE_NOTES_2_2.md
           if-no-files-found: error
           retention-days: 7
 
-  ensure-tag:
-    name: Reconcile and create immutable v2.2.0 tag
+  prepare-tag:
+    name: Reconcile exact tag state without write permission
     needs: [publication-chain, release-evidence]
     runs-on: ubuntu-24.04
+    outputs:
+      create: ${{ steps.plan.outputs.create }}
     permissions:
-      contents: write
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ needs.publication-chain.outputs.publication_sha }}
-          fetch-depth: 0
-      - uses: actions/download-artifact@v4
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+          path: trusted-verifier
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: swirengine-2.2.0-publication-assets
           path: release-input
@@ -399,6 +406,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test "$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/${PUBLICATION_BRANCH}" --jq '.object.sha')" = "$PUBLICATION_SHA"
           mkdir -p fresh-state
           snapshot() {
             local output="$1" url="$2" auth="${3:-0}" status
@@ -410,8 +418,9 @@ jobs:
           snapshot fresh-state/pypi.json "https://pypi.org/pypi/swirengine/${RELEASE_VERSION}/json"
           snapshot fresh-state/tag.json "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" 1
           snapshot fresh-state/release.json "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" 1
-          python tools/reconcile_release_2_2.py \
+          python trusted-verifier/tools/reconcile_release_2_2.py \
             --dist-dir release-input/dist \
+            --release-notes release-input/RELEASE_NOTES_2_2.md \
             --publication-commit "$PUBLICATION_SHA" \
             --initial-pypi-json release-input/initial-state/pypi.json \
             --initial-tag-json release-input/initial-state/tag.json \
@@ -421,44 +430,81 @@ jobs:
             --release-json fresh-state/release.json > plan.json
           jq . plan.json
           echo "create=$(jq -r '.create_tag' plan.json)" >> "$GITHUB_OUTPUT"
-      - name: Create tag only when the reconciled state says it is absent
-        if: steps.plan.outputs.create == 'true'
+
+  ensure-tag:
+    name: Create only the pre-reconciled v2.2.0 tag
+    needs: [publication-chain, prepare-tag]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Create the exact tag when absent and read it back
+        env:
+          CREATE_TAG: ${{ needs.prepare-tag.outputs.create }}
+          GH_TOKEN: ${{ github.token }}
+          PUBLICATION_SHA: ${{ needs.publication-chain.outputs.publication_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/${PUBLICATION_BRANCH}" --jq '.object.sha')" = "$PUBLICATION_SHA"
+          if [ "$CREATE_TAG" = true ]; then
+            if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" > tag-before.json 2>/dev/null; then
+              echo "Refusing to replace an unexpectedly existing release tag."
+              exit 1
+            fi
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+              -f ref="refs/tags/${RELEASE_TAG}" \
+              -f sha="$PUBLICATION_SHA" > tag-created.json
+          else
+            test "$CREATE_TAG" = false
+          fi
+          test "$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" --jq '.object.sha')" = "$PUBLICATION_SHA"
+
+  verify-tag:
+    name: Verify exact tag and publication chain without write permission
+    needs: [publication-chain, ensure-tag]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+          path: trusted-verifier
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.publication-chain.outputs.publication_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+          path: publication-source
+      - name: Verify immutable tag target and marker-only chain
         env:
           PUBLICATION_SHA: ${{ needs.publication-chain.outputs.publication_sha }}
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git ls-remote origin "refs/heads/$PUBLICATION_BRANCH" | awk '{print $1}')" = "$PUBLICATION_SHA"
-          test -z "$(git ls-remote origin "refs/tags/$RELEASE_TAG" | awk '{print $1}')"
-          git tag "$RELEASE_TAG" "$PUBLICATION_SHA"
-          git push origin "refs/tags/$RELEASE_TAG"
-      - name: Immediate tag read-back
-        env:
-          PUBLICATION_SHA: ${{ needs.publication-chain.outputs.publication_sha }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          remote_tag="$(git ls-remote origin "refs/tags/$RELEASE_TAG" | awk '{print $1}')"
-          test "$remote_tag" = "$PUBLICATION_SHA"
-          git fetch origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
-          python tools/verify_publication_chain_2_2.py \
+          git -C publication-source fetch origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          python trusted-verifier/tools/verify_publication_chain_2_2.py \
+            --root publication-source \
             --publication-sha "$PUBLICATION_SHA" \
             --tag-policy publication
 
-  pypi-publish:
-    name: Reconcile and publish only missing PyPI files
-    needs: [publication-chain, release-evidence, ensure-tag]
+  prepare-pypi:
+    name: Reconcile and stage only missing PyPI files
+    needs: [publication-chain, release-evidence, verify-github-release]
     runs-on: ubuntu-24.04
-    environment: pypi
+    outputs:
+      upload: ${{ steps.plan.outputs.upload }}
     permissions:
       contents: read
-      id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ needs.publication-chain.outputs.publication_sha }}
+          ref: ${{ github.workflow_sha }}
           persist-credentials: false
-      - uses: actions/download-artifact@v4
+          path: trusted-verifier
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: swirengine-2.2.0-publication-assets
           path: release-input
@@ -470,7 +516,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git ls-remote origin "refs/heads/$PUBLICATION_BRANCH" | awk '{print $1}')" = "$PUBLICATION_SHA"
+          test "$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/${PUBLICATION_BRANCH}" --jq '.object.sha')" = "$PUBLICATION_SHA"
           mkdir -p fresh-state pypi-dist
           snapshot() {
             local output="$1" url="$2" auth="${3:-0}" status
@@ -482,8 +528,9 @@ jobs:
           snapshot fresh-state/pypi.json "https://pypi.org/pypi/swirengine/${RELEASE_VERSION}/json"
           snapshot fresh-state/tag.json "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" 1
           snapshot fresh-state/release.json "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" 1
-          python tools/reconcile_release_2_2.py \
+          python trusted-verifier/tools/reconcile_release_2_2.py \
             --dist-dir release-input/dist \
+            --release-notes release-input/RELEASE_NOTES_2_2.md \
             --publication-commit "$PUBLICATION_SHA" \
             --initial-pypi-json release-input/initial-state/pypi.json \
             --initial-tag-json release-input/initial-state/tag.json \
@@ -497,14 +544,60 @@ jobs:
           done
           count="$(jq '.pypi_uploads | length' plan.json)"
           echo "upload=$([ "$count" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-      - name: Publish the reconciled missing distributions through Trusted Publisher
+      - name: Preserve only reconciled missing PyPI distributions
         if: steps.plan.outputs.upload == 'true'
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: swirengine-2.2.0-pypi-missing
+          path: pypi-dist/*
+          if-no-files-found: error
+          retention-days: 1
+
+  pypi-publish:
+    name: Publish staged PyPI files through Trusted Publisher
+    needs: prepare-pypi
+    if: needs.prepare-pypi.outputs.upload == 'true'
+    runs-on: ubuntu-24.04
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - name: Download only pre-reconciled distributions
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: swirengine-2.2.0-pypi-missing
+          path: pypi-dist
+      - name: Publish only the staged distributions
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
         with:
           packages-dir: pypi-dist/
+
+  verify-pypi:
+    name: Fresh-read and verify exact PyPI files
+    needs: [publication-chain, release-evidence, prepare-pypi, pypi-publish]
+    if: >-
+      always() &&
+      needs.publication-chain.result == 'success' &&
+      needs.release-evidence.result == 'success' &&
+      needs.prepare-pypi.result == 'success' &&
+      (needs.pypi-publish.result == 'success' || needs.pypi-publish.result == 'skipped')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+          path: trusted-verifier
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: swirengine-2.2.0-publication-assets
+          path: release-input
       - name: Immediate PyPI read-back and reconciliation
         env:
           PUBLICATION_SHA: ${{ needs.publication-chain.outputs.publication_sha }}
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -512,18 +605,29 @@ jobs:
             status="$(curl --silent --show-error --location --output pypi-after.json --write-out '%{http_code}' \
               "https://pypi.org/pypi/swirengine/${RELEASE_VERSION}/json")"
             if [ "$status" = 200 ]; then
-              cp fresh-state/tag.json tag-after.json
-              cp fresh-state/release.json release-after.json
-              if python tools/reconcile_release_2_2.py \
+              tag_status="$(curl --silent --show-error --location \
+                -H "Authorization: Bearer $GH_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                --output tag-after.json --write-out '%{http_code}' \
+                "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}")"
+              release_status="$(curl --silent --show-error --location \
+                -H "Authorization: Bearer $GH_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                --output release-after.json --write-out '%{http_code}' \
+                "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}")"
+              test "$tag_status" = 200
+              case "$release_status" in 200) ;; 404) printf 'null\n' > release-after.json ;; *) exit 1 ;; esac
+              if python trusted-verifier/tools/reconcile_release_2_2.py \
                 --dist-dir release-input/dist \
+                --release-notes release-input/RELEASE_NOTES_2_2.md \
                 --publication-commit "$PUBLICATION_SHA" \
-                --initial-pypi-json fresh-state/pypi.json \
-                --initial-tag-json fresh-state/tag.json \
-                --initial-release-json fresh-state/release.json \
+                --initial-pypi-json release-input/initial-state/pypi.json \
+                --initial-tag-json release-input/initial-state/tag.json \
+                --initial-release-json release-input/initial-state/release.json \
                 --pypi-json pypi-after.json \
                 --tag-json tag-after.json \
-                --release-json release-after.json > after-plan.json \
-                && jq -e '.pypi_uploads | length == 0' after-plan.json; then
+                --release-json release-after.json \
+                --require-complete > after-plan.json; then
                 exit 0
               fi
             fi
@@ -532,18 +636,21 @@ jobs:
           echo "PyPI did not expose the exact reconciled files in time."
           exit 1
 
-  github-release:
-    name: Reconcile and create or complete GitHub Release 2.2.0
-    needs: [publication-chain, release-evidence, pypi-publish]
+  prepare-github-release:
+    name: Reconcile and stage exact GitHub Release assets
+    needs: [publication-chain, release-evidence, verify-tag]
     runs-on: ubuntu-24.04
+    outputs:
+      create: ${{ steps.plan.outputs.create }}
     permissions:
-      contents: write
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ needs.publication-chain.outputs.publication_sha }}
+          ref: ${{ github.workflow_sha }}
           persist-credentials: false
-      - uses: actions/download-artifact@v4
+          path: trusted-verifier
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: swirengine-2.2.0-publication-assets
           path: release-input
@@ -555,8 +662,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git ls-remote origin "refs/heads/$PUBLICATION_BRANCH" | awk '{print $1}')" = "$PUBLICATION_SHA"
-          mkdir -p fresh-state github-assets
+          test "$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/${PUBLICATION_BRANCH}" --jq '.object.sha')" = "$PUBLICATION_SHA"
+          mkdir -p fresh-state github-release-input
           snapshot() {
             local output="$1" url="$2" auth="${3:-0}" status
             args=(--silent --show-error --location --output "$output" --write-out '%{http_code}')
@@ -567,8 +674,9 @@ jobs:
           snapshot fresh-state/pypi.json "https://pypi.org/pypi/swirengine/${RELEASE_VERSION}/json"
           snapshot fresh-state/tag.json "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" 1
           snapshot fresh-state/release.json "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" 1
-          python tools/reconcile_release_2_2.py \
+          python trusted-verifier/tools/reconcile_release_2_2.py \
             --dist-dir release-input/dist \
+            --release-notes release-input/RELEASE_NOTES_2_2.md \
             --publication-commit "$PUBLICATION_SHA" \
             --initial-pypi-json release-input/initial-state/pypi.json \
             --initial-tag-json release-input/initial-state/tag.json \
@@ -576,56 +684,134 @@ jobs:
             --pypi-json fresh-state/pypi.json \
             --tag-json fresh-state/tag.json \
             --release-json fresh-state/release.json > plan.json
-          jq -e '.create_tag == false and (.pypi_uploads | length == 0)' plan.json
-          jq -r '.github_uploads[]' plan.json | while IFS= read -r name; do
-            cp "release-input/dist/$name" github-assets/
-          done
-          echo "create=$(jq -r '.create_release' plan.json)" >> "$GITHUB_OUTPUT"
-          echo "upload=$([ "$(jq '.github_uploads | length' plan.json)" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-      - name: Create verified GitHub Release when absent
+          jq -e '.create_tag == false' plan.json
+          create="$(jq -r '.create_release' plan.json)"
+          if [ "$create" = true ]; then
+            jq -e '.github_uploads | length == 5' plan.json
+            jq -r '.github_uploads[]' plan.json | while IFS= read -r name; do
+              cp "release-input/dist/$name" github-release-input/
+            done
+            cp release-input/RELEASE_NOTES_2_2.md github-release-input/
+          else
+            test "$create" = false
+            jq -e '.github_uploads | length == 0' plan.json
+          fi
+          echo "create=$create" >> "$GITHUB_OUTPUT"
+      - name: Preserve exact assets and notes for the minimal write job
         if: steps.plan.outputs.create == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: >-
-          gh release create "$RELEASE_TAG" github-assets/*
-          --verify-tag
-          --title "SwirEngine 2.2.0"
-          --notes-file RELEASE_NOTES_2_2.md
-          --repo "$GITHUB_REPOSITORY"
-      - name: Upload only reconciled missing assets to an existing release
-        if: steps.plan.outputs.create != 'true' && steps.plan.outputs.upload == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          for asset in github-assets/*; do
-            gh release upload "$RELEASE_TAG" "$asset" --repo "$GITHUB_REPOSITORY"
-          done
-      - name: Immediate GitHub Release read-back
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: swirengine-2.2.0-github-release-input
+          path: github-release-input/*
+          if-no-files-found: error
+          retention-days: 1
+
+  github-release:
+    name: Publish the pre-reconciled immutable GitHub Release
+    needs: [publication-chain, prepare-github-release]
+    if: needs.prepare-github-release.outputs.create == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download only pre-reconciled release input
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: swirengine-2.2.0-github-release-input
+          path: github-release-input
+      - name: Create the exact release with all assets before immutable publication
         env:
           GH_TOKEN: ${{ github.token }}
           PUBLICATION_SHA: ${{ needs.publication-chain.outputs.publication_sha }}
         shell: bash
         run: |
           set -euo pipefail
+          test "$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/${PUBLICATION_BRANCH}" --jq '.object.sha')" = "$PUBLICATION_SHA"
+          test "$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" --jq '.object.sha')" = "$PUBLICATION_SHA"
+          gh release create "$RELEASE_TAG" \
+            github-release-input/swirengine-2.2.0-py3-none-any.whl \
+            github-release-input/swirengine-2.2.0-cp314-cp314-win_amd64.whl \
+            github-release-input/swirengine-2.2.0.tar.gz \
+            github-release-input/SHA256SUMS \
+            github-release-input/release-provenance.json \
+            --verify-tag \
+            --title "SwirEngine 2.2.0" \
+            --notes-file github-release-input/RELEASE_NOTES_2_2.md \
+            --repo "$GITHUB_REPOSITORY"
+
+  verify-github-release:
+    name: Fresh-read and verify immutable GitHub Release
+    needs: [publication-chain, release-evidence, prepare-github-release, github-release]
+    if: >-
+      always() &&
+      needs.publication-chain.result == 'success' &&
+      needs.release-evidence.result == 'success' &&
+      needs.prepare-github-release.result == 'success' &&
+      (needs.github-release.result == 'success' || needs.github-release.result == 'skipped')
+    runs-on: ubuntu-24.04
+    permissions:
+      attestations: read
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+          path: trusted-verifier
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: swirengine-2.2.0-publication-assets
+          path: release-input
+      - name: Immediate immutable GitHub Release read-back
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUBLICATION_SHA: ${{ needs.publication-chain.outputs.publication_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          pypi_status="$(curl --silent --show-error --location \
+            --output pypi-after.json --write-out '%{http_code}' \
+            "https://pypi.org/pypi/swirengine/${RELEASE_VERSION}/json")"
+          case "$pypi_status" in 200) ;; 404) printf 'null\n' > pypi-after.json ;; *) exit 1 ;; esac
+          curl --fail --silent --show-error --location \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" \
+            > tag-after.json
           for attempt in $(seq 1 30); do
             status="$(curl --silent --show-error --location \
               -H "Authorization: Bearer $GH_TOKEN" \
               -H "Accept: application/vnd.github+json" \
               --output release-after.json --write-out '%{http_code}' \
               "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}")"
-            if [ "$status" = 200 ] && python tools/reconcile_release_2_2.py \
+            if [ "$status" = 200 ] && python trusted-verifier/tools/reconcile_release_2_2.py \
               --dist-dir release-input/dist \
+              --release-notes release-input/RELEASE_NOTES_2_2.md \
               --publication-commit "$PUBLICATION_SHA" \
-              --initial-pypi-json fresh-state/pypi.json \
-              --initial-tag-json fresh-state/tag.json \
-              --initial-release-json fresh-state/release.json \
-              --pypi-json fresh-state/pypi.json \
-              --tag-json fresh-state/tag.json \
-              --release-json release-after.json \
-              --require-complete; then
-              exit 0
+              --pypi-json pypi-after.json \
+              --tag-json tag-after.json \
+              --release-json release-after.json > after-plan.json \
+              && jq -e '
+                .create_tag == false and
+                .create_release == false and
+                (.github_uploads | length == 0)
+              ' after-plan.json; then
+              if gh release verify "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY"; then
+                attestations_ok=true
+                for asset in \
+                  swirengine-2.2.0-py3-none-any.whl \
+                  swirengine-2.2.0-cp314-cp314-win_amd64.whl \
+                  swirengine-2.2.0.tar.gz \
+                  SHA256SUMS \
+                  release-provenance.json; do
+                  if ! gh release verify-asset "$RELEASE_TAG" "release-input/dist/$asset" \
+                    --repo "$GITHUB_REPOSITORY"; then
+                    attestations_ok=false
+                    break
+                  fi
+                done
+                if [ "$attestations_ok" = true ]; then exit 0; fi
+              fi
             fi
             sleep 10
           done
@@ -634,7 +820,7 @@ jobs:
 
   post-release-public-pypi:
     name: Public PyPI verify / ${{ matrix.os }} / Python ${{ matrix.python-version }}
-    needs: [publication-chain, github-release]
+    needs: [publication-chain, verify-pypi]
     strategy:
       fail-fast: false
       matrix:
@@ -649,11 +835,11 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ needs.publication-chain.outputs.publication_sha }}
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install only public SwirEngine 2.2.0
@@ -691,12 +877,12 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ needs.publication-chain.outputs.publication_sha }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: swirengine-2.2.0-publication-assets
           path: release-input
@@ -723,6 +909,7 @@ jobs:
             > final-state/release.json
           python tools/reconcile_release_2_2.py \
             --dist-dir release-input/dist \
+            --release-notes release-input/RELEASE_NOTES_2_2.md \
             --publication-commit "$PUBLICATION_SHA" \
             --pypi-json final-state/pypi.json \
             --tag-json final-state/tag.json \

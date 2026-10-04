@@ -80,6 +80,7 @@ def _release(
     *,
     draft: bool = False,
     prerelease: bool = False,
+    immutable: bool = True,
 ) -> dict[str, object]:
     selected = (
         expected.release_assets
@@ -88,8 +89,11 @@ def _release(
     )
     return {
         "tag_name": "v2.2.0",
+        "name": expected.release_title,
+        "body": expected.release_body,
         "draft": draft,
         "prerelease": prerelease,
+        "immutable": immutable,
         "assets": [
             {
                 "name": item.name,
@@ -130,14 +134,13 @@ def test_complete_state_is_a_noop(tmp_path: Path) -> None:
     assert plan.complete is True
 
 
-def test_partial_state_plans_only_missing_uploads(tmp_path: Path) -> None:
+def test_partial_pypi_state_plans_only_missing_distributions(tmp_path: Path) -> None:
     expected = _write_inputs(tmp_path)
     present_distribution = expected.distributions[0].name
-    present_asset = expected.release_assets[0].name
     snapshot = ReleaseSnapshot(
         pypi=_pypi(expected, {present_distribution}),
         tag=_tag(),
-        release=_release(expected, {present_asset}),
+        release=_release(expected),
     )
 
     plan = reconcile_release(expected, snapshot)
@@ -145,11 +148,24 @@ def test_partial_state_plans_only_missing_uploads(tmp_path: Path) -> None:
     assert set(plan.pypi_uploads) == {
         item.name for item in expected.distributions if item.name != present_distribution
     }
-    assert set(plan.github_uploads) == {
-        item.name for item in expected.release_assets if item.name != present_asset
-    }
+    assert plan.github_uploads == ()
     assert plan.create_tag is False
     assert plan.create_release is False
+
+
+def test_incomplete_immutable_release_fails_closed(tmp_path: Path) -> None:
+    expected = _write_inputs(tmp_path)
+    present_asset = expected.release_assets[0].name
+
+    with pytest.raises(ReleaseReconciliationError, match="incomplete and cannot accept"):
+        reconcile_release(
+            expected,
+            ReleaseSnapshot(
+                pypi=_pypi(expected),
+                tag=_tag(),
+                release=_release(expected, {present_asset}),
+            ),
+        )
 
 
 @pytest.mark.parametrize("field", ["sha256", "size"])
@@ -278,6 +294,44 @@ def test_non_final_github_release_fails_closed(
         )
 
 
+def test_mutable_github_release_fails_closed(tmp_path: Path) -> None:
+    expected = _write_inputs(tmp_path)
+
+    with pytest.raises(ReleaseReconciliationError, match="server-enforced immutable"):
+        reconcile_release(
+            expected,
+            ReleaseSnapshot(
+                pypi=_pypi(expected),
+                tag=_tag(),
+                release=_release(expected, immutable=False),
+            ),
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("name", "SwirEngine 2.2", "unexpected title"),
+        ("body", "different notes\n", "release notes"),
+    ],
+)
+def test_release_title_and_notes_are_exact(
+    tmp_path: Path,
+    field: str,
+    value: str,
+    message: str,
+) -> None:
+    expected = _write_inputs(tmp_path)
+    release = _release(expected)
+    release[field] = value
+
+    with pytest.raises(ReleaseReconciliationError, match=message):
+        reconcile_release(
+            expected,
+            ReleaseSnapshot(pypi=_pypi(expected), tag=_tag(), release=release),
+        )
+
+
 def test_release_without_exact_tag_fails_closed(tmp_path: Path) -> None:
     expected = _write_inputs(tmp_path)
 
@@ -296,17 +350,16 @@ def test_reread_accepts_only_monotonic_progress(tmp_path: Path) -> None:
     expected = _write_inputs(tmp_path)
     initial = ReleaseSnapshot(pypi=None, tag=None, release=None)
     pypi_name = expected.distributions[0].name
-    github_name = expected.release_assets[0].name
     reread = ReleaseSnapshot(
         pypi=_pypi(expected, {pypi_name}),
         tag=_tag(),
-        release=_release(expected, {github_name}),
+        release=_release(expected),
     )
 
     plan = reconcile_after_reread(expected, initial, reread)
 
     assert pypi_name not in plan.pypi_uploads
-    assert github_name not in plan.github_uploads
+    assert plan.github_uploads == ()
     assert plan.create_tag is False
     assert plan.create_release is False
 
