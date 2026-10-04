@@ -212,8 +212,8 @@ def test_release_builds_both_sdists_and_binds_provenance_v2() -> None:
     required = (
         'git worktree add --detach "$candidate_root" "$CANDIDATE_SOURCE_SHA"',
         "tools/verify_sdist_identity_2_2.py",
-        "--candidate candidate-dist/swirengine-2.2.0.tar.gz",
-        "--publication publication-dist/swirengine-2.2.0.tar.gz",
+        '--candidate "$RUNNER_TEMP/candidate-dist/swirengine-2.2.0.tar.gz"',
+        '--publication "$RUNNER_TEMP/publication-dist/swirengine-2.2.0.tar.gz"',
         "tools/release_evidence_2_2.py",
         '--candidate-source-commit "$CANDIDATE_SOURCE_SHA"',
         '--candidate-marker-commit "$CANDIDATE_MARKER_SHA"',
@@ -251,6 +251,22 @@ def test_release_builds_both_sdists_and_binds_provenance_v2() -> None:
         for step in build_steps
         if step.get("name") == "Build candidate sdist from immutable C"
     )
+    distribution_audit = next(
+        step
+        for step in build_steps
+        if step.get("name") == "Validate exact publication distributions"
+    )
+    distribution_inventory = next(
+        step
+        for step in build_steps
+        if step.get("name") == "Require exact portable artifact names"
+    )
+    distribution_upload = next(
+        step
+        for step in build_steps
+        if step.get("uses") == "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02"
+    )
+    assert "env" not in workflow["jobs"]["build-release"]
     assert materialize["env"] == {
         "CANDIDATE_SOURCE_SHA": "${{ needs.publication-chain.outputs.candidate_source_sha }}"
     }
@@ -264,8 +280,19 @@ def test_release_builds_both_sdists_and_binds_provenance_v2() -> None:
     assert "python -m ruff check --no-cache" in regress["run"]
     assert "status --porcelain --untracked-files=all" in regress["run"]
     assert "working-directory" not in publication_build
+    assert publication_build["run"] == (
+        'python -m build --wheel --sdist --outdir "$RUNNER_TEMP/publication-dist"'
+    )
+    assert "--outdir publication-dist" not in text
     assert 'candidate_root="$RUNNER_TEMP/candidate-tree"' in candidate_build["run"]
     assert "status --porcelain --untracked-files=all" in candidate_build["run"]
+    assert '--outdir "$RUNNER_TEMP/candidate-dist" "$candidate_root"' in candidate_build["run"]
+    assert 'twine check "$RUNNER_TEMP/publication-dist"/*' in distribution_audit["run"]
+    assert '--dist-dir "$RUNNER_TEMP/publication-dist"' in distribution_audit["run"]
+    assert 'os.environ["RUNNER_TEMP"]' in distribution_inventory["run"]
+    assert distribution_upload["with"]["path"] == (
+        "${{ runner.temp }}/publication-dist/*"
+    )
     assert build_steps.index(candidate_build) < build_steps.index(regress)
 
 

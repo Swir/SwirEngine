@@ -193,7 +193,7 @@ jobs:
             --publication-sha "$PUBLICATION_SHA" \
             --tag-policy absent-or-publication
       - name: Build publication wheel and sdist
-        run: python -m build --wheel --sdist --outdir publication-dist
+        run: python -m build --wheel --sdist --outdir "$RUNNER_TEMP/publication-dist"
       - name: Build candidate sdist from immutable C
         env:
           CANDIDATE_SOURCE_SHA: ${{ needs.publication-chain.outputs.candidate_source_sha }}
@@ -203,7 +203,7 @@ jobs:
           candidate_root="$RUNNER_TEMP/candidate-tree"
           test "$(git -C "$candidate_root" rev-parse HEAD)" = "$CANDIDATE_SOURCE_SHA"
           test -z "$(git -C "$candidate_root" status --porcelain --untracked-files=all)"
-          python -m build --sdist --outdir candidate-dist "$candidate_root"
+          python -m build --sdist --outdir "$RUNNER_TEMP/candidate-dist" "$candidate_root"
       - name: Run complete exact-source tests and static checks
         working-directory: ${{ runner.temp }}/candidate-tree
         env:
@@ -219,18 +219,22 @@ jobs:
         id: sdist
         run: >-
           python tools/verify_sdist_identity_2_2.py
-          --candidate candidate-dist/swirengine-2.2.0.tar.gz
-          --publication publication-dist/swirengine-2.2.0.tar.gz
+          --candidate "$RUNNER_TEMP/candidate-dist/swirengine-2.2.0.tar.gz"
+          --publication "$RUNNER_TEMP/publication-dist/swirengine-2.2.0.tar.gz"
           --github-output "$GITHUB_OUTPUT"
       - name: Validate exact publication distributions
         run: |
-          python -m twine check publication-dist/*
-          python tools/verify_distribution_audit_data_2_2.py --dist-dir publication-dist
+          python -m twine check "$RUNNER_TEMP/publication-dist"/*
+          python tools/verify_distribution_audit_data_2_2.py --dist-dir "$RUNNER_TEMP/publication-dist"
       - name: Require exact portable artifact names
         shell: python
         run: |
+          import os
           from pathlib import Path
-          paths = sorted(path.name for path in Path("publication-dist").iterdir())
+          publication_dist = Path(os.environ["RUNNER_TEMP"]) / "publication-dist"
+          paths = sorted(
+              path.name for path in publication_dist.iterdir()
+          )
           assert paths == [
               "swirengine-2.2.0-py3-none-any.whl",
               "swirengine-2.2.0.tar.gz",
@@ -238,7 +242,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: swirengine-2.2.0-publication-portable
-          path: publication-dist/*
+          path: ${{ runner.temp }}/publication-dist/*
           if-no-files-found: error
           retention-days: 7
 
