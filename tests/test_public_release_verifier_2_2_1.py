@@ -107,20 +107,48 @@ def _pypi(description: str | None = None) -> dict[str, object]:
 
 
 def _candidate_workflow_bytes() -> bytes:
-    return subprocess.run(
-        [
-            "git",
-            "-C",
-            str(ROOT),
-            "show",
-            (
-                f"{verifier.CANDIDATE_SOURCE_COMMIT}:"
-                f"{verifier.RETIRED_CANDIDATE_WORKFLOW.as_posix()}"
-            ),
-        ],
+    fixture = (ROOT / verifier.CANDIDATE_WORKFLOW_FIXTURE).read_bytes()
+    assert fixture.startswith(verifier.HISTORICAL_CANDIDATE_HEADER)
+    candidate = fixture[len(verifier.HISTORICAL_CANDIDATE_HEADER) :]
+    assert verifier._sha256(candidate) == verifier.CANDIDATE_WORKFLOW_SHA256
+    return candidate
+
+
+def _historical_release_objects_available() -> bool:
+    required = (
+        f"{verifier.CANDIDATE_SOURCE_COMMIT}^{{commit}}",
+        f"{verifier.CANDIDATE_SOURCE_COMMIT}^{{tree}}",
+        f"{verifier.CANDIDATE_MARKER_COMMIT}^{{commit}}",
+        f"{verifier.CANDIDATE_MARKER_COMMIT}^{{tree}}",
+        f"{verifier.PUBLICATION_COMMIT}^{{commit}}",
+        f"{verifier.PUBLICATION_COMMIT}^{{tree}}",
+        (
+            f"{verifier.CANDIDATE_SOURCE_COMMIT}:"
+            f"{verifier.RETIRED_CANDIDATE_WORKFLOW.as_posix()}"
+        ),
+        f"{verifier.CANDIDATE_SOURCE_COMMIT}:{verifier.WORKFLOW_MANIFEST.as_posix()}",
+    )
+    return all(
+        subprocess.run(
+            ["git", "-C", str(ROOT), "cat-file", "-e", revision],
+            check=False,
+            capture_output=True,
+        ).returncode
+        == 0
+        for revision in required
+    )
+
+
+def _is_shallow_repository() -> bool:
+    completed = subprocess.run(
+        ["git", "-C", str(ROOT), "rev-parse", "--is-shallow-repository"],
         check=True,
         capture_output=True,
-    ).stdout
+        text=True,
+    )
+    value = completed.stdout.strip()
+    assert value in {"true", "false"}
+    return value == "true"
 
 
 def test_manifest_is_the_single_canonical_v4_record() -> None:
@@ -196,6 +224,14 @@ def test_manifest_rejects_any_canonical_data_drift(
 
 
 def test_repository_evidence_binds_chain_manifest_and_retired_candidate() -> None:
+    if not _historical_release_objects_available():
+        assert _is_shallow_repository(), (
+            "immutable 2.2.1 publication-chain objects are missing from a full checkout"
+        )
+        pytest.skip(
+            "immutable 2.2.1 publication-chain objects are unavailable in this shallow "
+            "checkout; the dedicated post-release workflow fetches full history"
+        )
     old_raw = verifier.verify_repository_evidence(ROOT, verifier.expected_evidence())
 
     assert verifier._sha256(old_raw) == verifier.PUBLICATION_REQUIRED_WORKFLOWS_SHA256
@@ -203,6 +239,26 @@ def test_repository_evidence_binds_chain_manifest_and_retired_candidate() -> Non
     assert (ROOT / verifier.CANDIDATE_WORKFLOW_FIXTURE).read_bytes() == (
         verifier.HISTORICAL_CANDIDATE_HEADER + _candidate_workflow_bytes()
     )
+
+
+def test_candidate_fixture_body_has_the_immutable_c_workflow_digest() -> None:
+    assert verifier._sha256(_candidate_workflow_bytes()) == (
+        verifier.CANDIDATE_WORKFLOW_SHA256
+    )
+
+
+def test_candidate_fixture_rejects_nonhistorical_c_workflow_bytes() -> None:
+    with pytest.raises(
+        verifier.PublicReleaseVerificationError,
+        match="immutable C workflow digest",
+    ):
+        verifier._validate_candidate_workflow_fixture(
+            ROOT / verifier.CANDIDATE_WORKFLOW_FIXTURE,
+            _candidate_workflow_bytes() + b"# drift\n",
+        )
+
+
+def test_phase_e_contract_files_are_regular() -> None:
     for relative in (
         verifier.POST_RELEASE_WORKFLOW,
         verifier.RELEASE_NOTES,
@@ -244,7 +300,10 @@ def test_candidate_fixture_rejects_any_byte_drift(
     assert callable(fixture_bytes)
     fixture.write_bytes(fixture_bytes(candidate))
 
-    with pytest.raises(verifier.PublicReleaseVerificationError, match="exact header plus C"):
+    with pytest.raises(
+        verifier.PublicReleaseVerificationError,
+        match="candidate workflow fixture",
+    ):
         verifier._validate_candidate_workflow_fixture(fixture, candidate)
 
 

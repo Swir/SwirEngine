@@ -55,6 +55,9 @@ HISTORICAL_CANDIDATE_HEADER = (
 )
 
 CANDIDATE_SOURCE_COMMIT = "c2fa0ba9ba4b0a4eb3f1bde0da2e5f8a681e2b7e"
+CANDIDATE_WORKFLOW_SHA256 = (
+    "b8892c8c1aea299099f7ae8e81901678add4f7914fc578aae7bac2b141a6cda4"
+)
 CANDIDATE_MARKER_COMMIT = "47c15f8a4c80318a31762133e0cf4d8524b82564"
 PUBLICATION_COMMIT = "8d27fdb3c37fd79b93a2f3ab420b763de564c9e9"
 PUBLICATION_REQUIRED_WORKFLOWS_SHA256 = (
@@ -285,7 +288,10 @@ def _validate_candidate_workflow_fixture(
     fixture: Path,
     candidate_workflow: bytes,
 ) -> None:
-    expected = HISTORICAL_CANDIDATE_HEADER + candidate_workflow
+    _require(
+        _sha256(candidate_workflow) == CANDIDATE_WORKFLOW_SHA256,
+        "historical 2.2.1 candidate workflow differs from the immutable C workflow digest",
+    )
     try:
         actual = fixture.read_bytes()
     except OSError as exc:
@@ -293,7 +299,16 @@ def _validate_candidate_workflow_fixture(
             f"cannot read historical 2.2.1 candidate workflow fixture: {exc}"
         ) from exc
     _require(
-        actual == expected,
+        actual.startswith(HISTORICAL_CANDIDATE_HEADER),
+        "historical 2.2.1 candidate workflow fixture lacks the exact header",
+    )
+    fixture_workflow = actual[len(HISTORICAL_CANDIDATE_HEADER) :]
+    _require(
+        _sha256(fixture_workflow) == CANDIDATE_WORKFLOW_SHA256,
+        "historical 2.2.1 candidate workflow fixture body digest is not immutable",
+    )
+    _require(
+        fixture_workflow == candidate_workflow,
         "historical 2.2.1 candidate workflow fixture is not the exact header plus C workflow",
     )
 
